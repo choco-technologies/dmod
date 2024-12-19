@@ -1,0 +1,59 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Configure",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S",
+                ".",
+                "-B",
+                "build",
+                "-DCMAKE_BUILD_TYPE=${input:buildType}",
+                "-DDMOD_MODE=${input:mode}"
+            ],
+            "group": "build",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "detail": "Build the project in DMOD_MODULE mode"
+        },
+        {
+            "label": "Build",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build"
+            ],
+            "group": "build",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "detail": "Build the project in current mode"
+        }
+    ],
+    "inputs" : [
+        {
+            "id": "buildType",
+            "type": "pickString",
+            "description": "Select the build type",
+            "options": [
+                "Debug",
+                "Release"
+            ]
+        },
+        {
+            "id": "mode",
+            "type": "pickString",
+            "description": "Select the mode",
+            "options": [
+                "DMOD_SYSTEM",
+                "DMOD_MODULE"
+            ]
+        }
+    ],
+}
