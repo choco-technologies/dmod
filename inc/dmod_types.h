@@ -6,6 +6,14 @@
 
 typedef struct 
 {
+    uint32_t       Size;
+    uint32_t       Version;
+    uint32_t       Flags;
+    char           Data[0];
+} Dmod_Config_t;
+
+typedef struct 
+{
     uint32_t        HeaderSize;
     uint32_t        Version;
     char            Name[DMOD_MAX_MODULE_NAME_LENGTH];

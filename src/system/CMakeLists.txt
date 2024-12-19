@@ -4,9 +4,13 @@ add_library(${MODULE_NAME} STATIC
     dmod_system.c
 )
 
-target_include_directories(${MODULE_NAME} PUBLIC
-    dmod_inc
-)
+target_include_directories(${MODULE_NAME} 
+    PUBLIC 
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)   
 
 # Link libraries if needed
-# target_link_libraries(dmod_common some_other_library)
+target_link_libraries(${MODULE_NAME} 
+    PRIVATE    
+        dmod_inc
+    )
