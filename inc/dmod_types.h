@@ -5,6 +5,14 @@
 #include <stddef.h>
 #include "dmod_defs.h"
 
+typedef enum 
+{
+    DMOD_API_TYPE_INPUT,
+    DMOD_API_TYPE_OUTPUT,
+
+    DMOD_API_TYPE_COUNT
+} Dmod_ApiType_t;
+
 typedef struct 
 {
     uint32_t       Size;
@@ -39,8 +47,8 @@ typedef struct
 typedef struct
 {
     Dmod_ModuleSection_t    Header;
-    Dmod_ModuleSection_t    Input;
-    Dmod_ModuleSection_t    Output;
+    Dmod_ModuleSection_t    Inputs;
+    Dmod_ModuleSection_t    Outputs;
     Dmod_ModuleSection_t    Text;
     Dmod_ModuleSection_t    Data;
     Dmod_ModuleSection_t    Bss;
@@ -60,13 +68,24 @@ typedef struct
 typedef struct
 {
     void*   Entries[2];
-} Dmod_OutputSection_t;
+} Dmod_OutputsSection_t;
 
 
 typedef struct 
 {
     Dmod_ApiRegistration_t* Entries;
-} Dmod_InputSection_t;
+} Dmod_InputsSection_t;
+
+typedef struct 
+{
+    union 
+    {
+        Dmod_InputsSection_t*    InputSection;
+        Dmod_OutputsSection_t*   OutputSection;
+    };
+    size_t              SectionSize;
+    Dmod_ApiType_t      ApiType;
+} Dmod_Api_t;
 
 /**
  * @brief Context handle
@@ -78,16 +97,8 @@ typedef struct
     uint32_t                 Signature;
     Dmod_ModuleHeader_t*     Header;
     Dmod_ModuleFooter_t*     Footer;
-    struct 
-    {
-        Dmod_InputSection_t*     Section;
-        size_t                   NumberOfEntries;
-    } Input;
-    struct 
-    {
-        Dmod_OutputSection_t*    Section;
-        size_t                   NumberOfEntries;
-    } Output;
+    Dmod_Api_t               Inputs;
+    Dmod_Api_t               Outputs;
     void*                    Data;
     size_t                   Size;
 } Dmod_Context_t;

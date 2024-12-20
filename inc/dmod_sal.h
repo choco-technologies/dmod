@@ -111,6 +111,10 @@ extern void    Dmod_Assert( int Condition, const char* Message, const char* File
 
 #define DMOD_ASSERT( Condition )        DMOD_ASSERT_MSG( Condition, #Condition )
 
+#ifndef DMOD_LOG_VERBOSE
+#   define DMOD_LOG_VERBOSE(...)    Dmod_Printf( "[VERBOSE] " __VA_ARGS__ )
+#endif
+
 #ifndef DMOD_LOG_INFO
 #   define DMOD_LOG_INFO(...)      Dmod_Printf( "[INFO] " __VA_ARGS__ )
 #endif

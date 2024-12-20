@@ -75,7 +75,8 @@
  * @{
  */
 
-extern bool Dmod_IsApiSignatureValid( const char* Signature );
+extern bool         Dmod_IsApiSignatureValid( const char* Signature );
+extern size_t       Dmod_Api_GetNumberOfEntries( Dmod_Api_t* Api );
 
 //! @}
 

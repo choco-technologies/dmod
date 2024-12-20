@@ -19,6 +19,24 @@ static bool             LoadInput( Dmod_Context_t* Context );
 static bool             InitPointer( Dmod_Context_t* Context, void** PointerRef, const char* PointerName );
 
 //==============================================================================
+//                              GLOBAL VARIABLES
+//==============================================================================
+extern void* __dmod_inputs_start;
+extern void* __dmod_inputs_size;
+extern void* __dmod_outputs_start;
+extern void* __dmod_outputs_size;
+static Dmod_Api_t __dmod_input_api = {
+    .InputSection    = (void*)&__dmod_inputs_start,
+    .SectionSize     = (size_t)&__dmod_inputs_size,
+    .ApiType         = DMOD_API_TYPE_INPUT
+};
+static Dmod_Api_t __dmod_output_api = {
+    .OutputSection    = (void*)&__dmod_outputs_start,
+    .SectionSize     = (size_t)&__dmod_outputs_size,
+    .ApiType         = DMOD_API_TYPE_OUTPUT
+};
+
+//==============================================================================
 //                              FUNCTION IMPLEMENTATIONS
 //==============================================================================
 
@@ -94,6 +112,41 @@ void Dmod_Unload( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Connect API
+ * 
+ * @param Outputs Outputs section
+ * @param Inputs Inputs section
+ */
+int Dmod_ConnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
+{
+    if( OutputsApi == NULL || InputsApi == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot connect API - invalid API pointers\n");
+        return -EINVAL;
+    }
+    
+    size_t numberOfOutputs = Dmod_Api_GetNumberOfEntries( OutputsApi );
+    size_t numberOfInputs = Dmod_Api_GetNumberOfEntries( InputsApi );
+
+    for(size_t i = 0; i < numberOfOutputs; i++)
+    {
+        for(size_t j = 0; j < numberOfInputs; j++)
+        {
+            if( !Dmod_IsApiSignatureValid( OutputsApi->OutputSection->Entries[i] ) )
+            {
+                continue;
+            }
+            else if( strcmp( OutputsApi->OutputSection->Entries[i], InputsApi->InputSection->Entries[j].Signature ) == 0 )
+            {
+                DMOD_LOG_VERBOSE("Connected: %s\n", InputsApi->InputSection->Entries[j].Signature);
+                OutputsApi->OutputSection->Entries[i] = InputsApi->InputSection->Entries[j].Function;
+            }
+        }
+    }
+    return 0;
+}
+
+/**
  * @brief Get function
  * 
  * @param Context Context to get function from
@@ -109,17 +162,18 @@ void* Dmod_GetFunction( Dmod_Context_t* Context, const char* Signature )
         return NULL;
     }
 
-    if( Context->Output.Section == NULL )
+    if( Context->Inputs.InputSection == NULL )
     {
         DMOD_LOG_ERROR("Cannot get function - no output section\n");
         return NULL;
     }
 
-    for(size_t i = 0; i < Context->Input.NumberOfEntries; i++)
+    size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
+    for(size_t i = 0; i < numberOfEntries; i++)
     {
-        if( strcmp( Context->Input.Section->Entries[i].Signature, Signature ) == 0 )
+        if( strcmp( Context->Inputs.InputSection->Entries[i].Signature, Signature ) == 0 )
         {
-            return Context->Input.Section->Entries[i].Function;
+            return Context->Inputs.InputSection->Entries[i].Function;
         }
     }
 
@@ -429,7 +483,7 @@ static bool LoadOutput( Dmod_Context_t* Context )
     }
 
     Dmod_ModuleFooter_t* footer = Context->Footer;
-    Dmod_ModuleSection_t* output = &footer->Output;
+    Dmod_ModuleSection_t* output = &footer->Outputs;
 
     if( output->SectionStart == 0 || output->SectionSize == 0 )
     {
@@ -443,7 +497,7 @@ static bool LoadOutput( Dmod_Context_t* Context )
         return false;
     }
 
-    Dmod_OutputSection_t* outputSection = Context->Data + output->SectionStart;
+    Dmod_OutputsSection_t* outputSection = Context->Data + output->SectionStart;
     size_t numberOfEntries = output->SectionSize / sizeof( outputSection->Entries[0] );
     if( numberOfEntries == 0 )
     {
@@ -473,8 +527,9 @@ static bool LoadOutput( Dmod_Context_t* Context )
         }
     }
 
-    Context->Output.Section = outputSection;
-    Context->Output.NumberOfEntries = numberOfEntries;
+    Context->Outputs.OutputSection      = outputSection;
+    Context->Outputs.SectionSize        = output->SectionSize;
+    Context->Outputs.ApiType            = DMOD_API_TYPE_OUTPUT;
 
     return true;
 }
@@ -494,7 +549,7 @@ static bool LoadInput( Dmod_Context_t* Context )
     }
 
     Dmod_ModuleFooter_t* footer = Context->Footer;
-    Dmod_ModuleSection_t* input = &footer->Input;
+    Dmod_ModuleSection_t* input = &footer->Inputs;
 
     if( input->SectionStart == 0 || input->SectionSize == 0 )
     {
@@ -516,7 +571,7 @@ static bool LoadInput( Dmod_Context_t* Context )
         return false;
     }
 
-    Dmod_InputSection_t* inputSection = Context->Data + input->SectionStart;
+    Dmod_InputsSection_t* inputSection = Context->Data + input->SectionStart;
     size_t numberOfEntries = input->SectionSize / sizeof( inputSection->Entries[0] );
     if( numberOfEntries == 0 )
     {
@@ -553,8 +608,9 @@ static bool LoadInput( Dmod_Context_t* Context )
         }
     }
 
-    Context->Input.Section = inputSection;
-    Context->Input.NumberOfEntries = numberOfEntries;
+    Context->Inputs.InputSection    = inputSection;
+    Context->Inputs.SectionSize     = input->SectionSize;
+    Context->Inputs.ApiType         = DMOD_API_TYPE_INPUT;
 
     return true;
 }

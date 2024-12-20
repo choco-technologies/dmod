@@ -52,6 +52,7 @@
  */
 extern Dmod_Context_t*  Dmod_Load           ( const char* Path );
 extern void             Dmod_Unload         ( Dmod_Context_t* Context );
+extern int              Dmod_ConnectApi     ( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi );
 extern void*            Dmod_GetFunction    ( Dmod_Context_t* Context, const char* Signature );
 extern int              Dmod_Init           ( Dmod_Context_t* Context, Dmod_Config_t* Config );
 extern int              Dmod_Main           ( Dmod_Context_t* Context, int argc, char *argv[] );
