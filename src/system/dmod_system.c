@@ -2,6 +2,7 @@
 #include "dmod_system.h"
 #include <stdbool.h>
 #include <string.h>
+#include <errno.h>
 
 //==============================================================================
 //                              LOCAL FUNCTION PROTOTYPES
@@ -21,6 +22,13 @@ static bool             InitPointer( Dmod_Context_t* Context, void** PointerRef,
 //                              FUNCTION IMPLEMENTATIONS
 //==============================================================================
 
+/**
+ * @brief Load module
+ * 
+ * @param Path Path to the module
+ * 
+ * @return Pointer to the context
+ */
 Dmod_Context_t* Dmod_Load( const char* Path )
 {
     if( Path == NULL )
@@ -67,6 +75,152 @@ Dmod_Context_t* Dmod_Load( const char* Path )
     }
 
     return context;
+}
+
+/**
+ * @brief Unload module
+ * 
+ * @param Context Context to unload
+ */
+void Dmod_Unload( Dmod_Context_t* Context )
+{
+    if( Context == NULL || !Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot unload module - invalid context\n");
+        return;
+    }
+
+    Context_Delete( Context );
+}
+
+/**
+ * @brief Get function
+ * 
+ * @param Context Context to get function from
+ * @param Signature Signature of the function
+ * 
+ * @return Pointer to the function
+ */
+void* Dmod_GetFunction( Dmod_Context_t* Context, const char* Signature )
+{
+    if( Context == NULL || !Context_IsValid( Context ) || !Dmod_IsApiSignatureValid( Signature ) )
+    {
+        DMOD_LOG_ERROR("Cannot get function - invalid context or signature\n");
+        return NULL;
+    }
+
+    if( Context->Output.Section == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot get function - no output section\n");
+        return NULL;
+    }
+
+    for(size_t i = 0; i < Context->Input.NumberOfEntries; i++)
+    {
+        if( strcmp( Context->Input.Section->Entries[i].Signature, Signature ) == 0 )
+        {
+            return Context->Input.Section->Entries[i].Function;
+        }
+    }
+
+    DMOD_LOG_ERROR("Cannot get function - function not found: %s\n", Signature);
+    return NULL;
+}
+
+/**
+ * @brief Initialize module
+ * 
+ * @param Context Context to initialize
+ * @param Config Configuration
+ * 
+ * @return 0 on success, errno on error
+ */
+int Dmod_Init( Dmod_Context_t* Context, Dmod_Config_t* Config )
+{
+    int result = -EINVAL;
+    if( Context_IsValid( Context ) )
+    {
+        if( Context->Header->Init == NULL )
+        {
+            DMOD_LOG_INFO("Init function not set\n");
+            result = 0;
+        }
+        else 
+        {
+            result = Context->Header->Init( Config );
+        }
+    }
+    return result;
+}
+
+/**
+ * @brief Call main function
+ * 
+ * @param Context Context to call main function
+ * @param argc Number of arguments
+ * @param argv Arguments
+ * 
+ * @return Return value of the main function
+ */
+int Dmod_Main( Dmod_Context_t* Context, int argc, char *argv[] )
+{
+    int result = -EINVAL;
+    if( Context_IsValid( Context ) )
+    {
+        if( Context->Header->Main == NULL )
+        {
+            DMOD_LOG_INFO("Main function not set\n");
+            result = 0;
+        }
+        else 
+        {
+            result = Context->Header->Main( argc, argv );
+        }
+    }
+    return result;
+}
+
+/**
+ * @brief Deinitialize module
+ * 
+ * @param Context Context to deinitialize
+ * 
+ * @return 0 on success, errno on error
+ */
+int Dmod_Deinit( Dmod_Context_t* Context )
+{
+    int result = -EINVAL;
+    if( Context_IsValid( Context ) )
+    {
+        if( Context->Header->Deinit == NULL )
+        {
+            DMOD_LOG_INFO("Deinit function not set\n");
+            result = 0;
+        }
+        else 
+        {
+            result = Context->Header->Deinit();
+        }
+    }
+    return result;
+}
+
+/**
+ * @brief Get stack size
+ * 
+ * @param Context Context to get stack size from
+ * 
+ * @return Stack size
+ */
+uint64_t Dmod_GetStackSize( Dmod_Context_t* Context )
+{
+    if( Context == NULL || !Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot get stack size - invalid context\n");
+        return 0;
+    }
+
+    return Context->Header->RequiredStackSize;
 }
 
 //==============================================================================

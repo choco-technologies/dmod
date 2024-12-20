@@ -54,6 +54,7 @@
 #ifndef INC_DMOD_H_
 #define INC_DMOD_H_
 
+#include <stdbool.h>
 #include "dmod_types.h"
 #include "dmod_sal.h"
 
@@ -64,5 +65,18 @@
 #else 
 #   error "DMOD_MODULE or DMOD_SYSTEM must be defined"
 #endif
+
+//==============================================================================
+//                              FUNCTION PROTOTYPES
+//==============================================================================
+
+/**
+ * @addtogroup DMOD
+ * @{
+ */
+
+extern bool Dmod_IsApiSignatureValid( const char* Signature );
+
+//! @}
 
 #endif /* INC_DMOD_H_ */

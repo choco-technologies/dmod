@@ -27,6 +27,7 @@ typedef struct
     Dmod_Init_t     Init;
     Dmod_Main_t     Main;
     Dmod_Deinit_t   Deinit;
+    uint64_t        RequiredStackSize;
 } Dmod_ModuleHeader_t;
 
 typedef struct 

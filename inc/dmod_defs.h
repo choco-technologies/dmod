@@ -21,8 +21,7 @@
 //                              SIGNATURE definitions
 //==============================================================================
 #define DMOD_SIGNATURE_PREFIX		"\021DMOD\022"
-#define DMOD_SIGNATURE_SUFFIX		"\022\023"
-#define DMOD_MAKE_SIGNATURE( MODULE, VERSION, NAME )		    DMOD_SIGNATURE_PREFIX #NAME "@" #MODULE ":" #VERSION DMOD_SIGNATURE_SUFFIX
+#define DMOD_MAKE_SIGNATURE( MODULE, VERSION, NAME )		    DMOD_SIGNATURE_PREFIX #NAME "@" #MODULE ":" #VERSION 
 
 //==============================================================================
 //                              DMOD_API definitions

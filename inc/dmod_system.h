@@ -50,8 +50,13 @@
  * @addtogroup DMOD-System
  * @{
  */
-extern Dmod_Context_t* Dmod_Load( const char* Path );
-extern void Dmod_Unload( Dmod_Context_t* Context );
+extern Dmod_Context_t*  Dmod_Load           ( const char* Path );
+extern void             Dmod_Unload         ( Dmod_Context_t* Context );
+extern void*            Dmod_GetFunction    ( Dmod_Context_t* Context, const char* Signature );
+extern int              Dmod_Init           ( Dmod_Context_t* Context, Dmod_Config_t* Config );
+extern int              Dmod_Main           ( Dmod_Context_t* Context, int argc, char *argv[] );
+extern int              Dmod_Deinit         ( Dmod_Context_t* Context );
+extern uint64_t         Dmod_GetStackSize   ( Dmod_Context_t* Context );
 //! @}
 
 #endif // DMOD_SYSTEM_H
