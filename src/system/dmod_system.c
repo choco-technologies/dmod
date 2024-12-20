@@ -16,6 +16,8 @@ static bool             LoadHeader( Dmod_Context_t* Context );
 static bool             LoadFooter( Dmod_Context_t* Context );
 static bool             LoadOutput( Dmod_Context_t* Context );
 static bool             LoadInput( Dmod_Context_t* Context );
+static bool             LoadGot( Dmod_Context_t* Context );
+static bool             LoadBss( Dmod_Context_t* Context );
 static bool             InitPointer( Dmod_Context_t* Context, void** PointerRef, const char* PointerName );
 
 //==============================================================================
@@ -85,6 +87,8 @@ Dmod_Context_t* Dmod_Load( const char* Path )
      || !LoadFooter( context )
      || !LoadOutput( context )
      || !LoadInput( context )
+     || !LoadGot( context )
+     || !LoadBss( context )
         )
     {
         Dmod_FileClose( file );
@@ -117,12 +121,12 @@ void Dmod_Unload( Dmod_Context_t* Context )
  * @param Outputs Outputs section
  * @param Inputs Inputs section
  */
-int Dmod_ConnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
+bool Dmod_ConnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
 {
     if( OutputsApi == NULL || InputsApi == NULL )
     {
         DMOD_LOG_ERROR("Cannot connect API - invalid API pointers\n");
-        return -EINVAL;
+        return false;
     }
     
     size_t numberOfOutputs = Dmod_Api_GetNumberOfEntries( OutputsApi );
@@ -143,7 +147,7 @@ int Dmod_ConnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
             }
         }
     }
-    return 0;
+    return true;
 }
 
 /**
@@ -611,6 +615,84 @@ static bool LoadInput( Dmod_Context_t* Context )
     Context->Inputs.InputSection    = inputSection;
     Context->Inputs.SectionSize     = input->SectionSize;
     Context->Inputs.ApiType         = DMOD_API_TYPE_INPUT;
+
+    return true;
+}
+
+/**
+ * @brief Load got section
+ * 
+ * @param Context Context to load got to
+ * 
+ * @return True if got was loaded successfully, false otherwise
+ */
+static bool LoadGot( Dmod_Context_t* Context )
+{
+    if( Context == NULL )
+    {
+        return false;
+    }
+
+    Dmod_ModuleFooter_t* footer = Context->Footer;
+    Dmod_ModuleSection_t* got = &footer->Got;
+
+    if( got->SectionStart == 0 || got->SectionSize == 0 )
+    {
+        DMOD_LOG_INFO("No got to load\n");
+        return true;
+    }
+
+    if( got->SectionStart + got->SectionSize > Context->Size )
+    {
+        DMOD_LOG_ERROR("Cannot load got - got section out of bounds\n");
+        return false;
+    }
+
+    Dmod_GotSection_t* gotSection = Context->Data + got->SectionStart;
+    size_t numberOfEntries = got->SectionSize / sizeof( gotSection->Entries[0] );
+
+    for(size_t i = 0; i < numberOfEntries; i++)
+    {
+        if( !InitPointer( Context, &gotSection->Entries[i], "Got Entry" ) )
+        {
+            DMOD_LOG_ERROR("Cannot load got - cannot initialize got entry at index %d\n", i);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Load bss section
+ * 
+ * @param Context Context to load bss to
+ * 
+ * @return True if bss was loaded successfully, false otherwise
+ */
+static bool LoadBss( Dmod_Context_t* Context )
+{
+    if( Context == NULL )
+    {
+        return false;
+    }
+
+    Dmod_ModuleFooter_t* footer = Context->Footer;
+    Dmod_ModuleSection_t* bss = &footer->Bss;
+
+    if( bss->SectionStart == 0 || bss->SectionSize == 0 )
+    {
+        DMOD_LOG_INFO("No bss to load\n");
+        return true;
+    }
+
+    if( bss->SectionStart + bss->SectionSize > Context->Size )
+    {
+        DMOD_LOG_ERROR("Cannot load bss - bss section out of bounds\n");
+        return false;
+    }
+
+    memset( Context->Data + bss->SectionStart, 0, bss->SectionSize );
 
     return true;
 }

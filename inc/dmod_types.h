@@ -36,6 +36,7 @@ typedef struct
     Dmod_Main_t     Main;
     Dmod_Deinit_t   Deinit;
     uint64_t        RequiredStackSize;
+    uint32_t        Priority;    
 } Dmod_ModuleHeader_t;
 
 typedef struct 
@@ -75,6 +76,11 @@ typedef struct
 {
     Dmod_ApiRegistration_t* Entries;
 } Dmod_InputsSection_t;
+
+typedef struct 
+{
+    void*   Entries[2];
+} Dmod_GotSection_t;
 
 typedef struct 
 {
