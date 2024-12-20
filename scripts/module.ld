@@ -24,6 +24,8 @@ SECTIONS
         __outputs_end = .;
     } : outputs
 
+    . = ALIGN(8);
+
     .text : 
     {
         __text_start = .;

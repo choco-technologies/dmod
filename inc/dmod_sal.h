@@ -78,7 +78,15 @@ extern void*    Dmod_AlignedMalloc( size_t Size, size_t Alignment );
  */
 extern void*    Dmod_FileOpen( const char* Path, const char* Mode );
 extern size_t   Dmod_FileRead( void* Buffer, size_t Size, size_t Count, void* File );
-extern int      Dmod_FileClose( void* File );
+extern int      Dmod_FileSeek( void* File, long Offset, int Origin );
+extern size_t   Dmod_FileSize( void* File );
+extern void     Dmod_FileClose( void* File );
+
+#ifndef DMOD_SEEK_SET
+#   define DMOD_SEEK_SET   0
+#   define DMOD_SEEK_CUR   1
+#   define DMOD_SEEK_END   2
+#endif
 //! @}
 
 /**

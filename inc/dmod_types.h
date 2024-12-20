@@ -47,128 +47,49 @@ typedef struct
     Dmod_ModuleSection_t    Bin;
 } Dmod_ModuleFooter_t;
 
+typedef struct 
+{
+    void*       Function;
+    const char* Signature;
+} Dmod_ApiRegistration_t;
+
+/**
+ * @brief Stores data in the module output section
+ */
+typedef struct
+{
+    void*   Entries[2];
+} Dmod_OutputSection_t;
+
+
+typedef struct 
+{
+    Dmod_ApiRegistration_t* Entries;
+} Dmod_InputSection_t;
+
 /**
  * @brief Context handle
  * 
  * @note This handle is used to store the context of the module
  */
-typedef struct Dmod_Context_t* Dmod_Context_t;
-
-/**
- * @brief Memory interface
- * 
- * @note This interface is used to allocate and free memory
- */
 typedef struct 
 {
-    /**
-     * @brief Allocate memory
-     * 
-     * @param Size Size of memory to allocate
-     * 
-     * @return Pointer to allocated memory
-     */
-    void* (*Malloc)(size_t Size);         
+    uint32_t                 Signature;
+    Dmod_ModuleHeader_t*     Header;
+    Dmod_ModuleFooter_t*     Footer;
+    struct 
+    {
+        Dmod_InputSection_t*     Section;
+        size_t                   NumberOfEntries;
+    } Input;
+    struct 
+    {
+        Dmod_OutputSection_t*    Section;
+        size_t                   NumberOfEntries;
+    } Output;
+    void*                    Data;
+    size_t                   Size;
+} Dmod_Context_t;
 
-    /**
-     * @brief Allocate aligned memory
-     * 
-     * @param Size Size of memory to allocate
-     * @param Alignment Alignment of memory
-     * 
-     * @return Pointer to allocated memory
-     * 
-     * @note Optional - set to NULL if not supported
-     */                  
-    void* (*AlignedMalloc)(size_t Size, size_t Alignment);  
-
-    /**
-     * @brief Free memory
-     * 
-     * @param ptr Pointer to memory to free
-     * 
-     * @return NULL
-     */
-    void* (*Free)(void *ptr);                               
-} Dmod_MemIf_t;
-
-/**
- * @brief File interface
- * 
- * @note This interface is used to open, read and close files
- */
-typedef struct 
-{
-    /**
-     * @brief Open file
-     * 
-     * @param Path Path to file
-     * @param Mode Mode to open file
-     * 
-     * @return Pointer to file
-     */
-    void* (*Open)(const char *Path, const char *Mode);
-
-    /**
-     * @brief Read file
-     * 
-     * @param File Pointer to file
-     * @param Buffer Buffer to read data into
-     * @param Size Size of data to read
-     * 
-     * @return Number of bytes read
-     */
-    size_t (*Read)(void *File, void *Buffer, size_t Size);
-
-    /**
-     * @brief Write file
-     * 
-     * @param File Pointer to file
-     * @param Buffer Buffer to write data from
-     * @param Size Size of data to write
-     * 
-     * @return Number of bytes written
-     */
-    int (*Close)(void *File);
-} Dmod_FileIf_t;
-
-/**
- * @brief Debug interface
- * 
- * @note This interface is used to print and assert messages
- */
-typedef struct 
-{
-    /**
-     * @brief Printf function
-     * 
-     * @param Format Format string
-     * 
-     * @return Number of characters printed
-     */
-    int (*Printf)(const char *Format, ...);
-
-    /**
-     * @brief Assert function
-     * 
-     * @param Condition Condition to assert
-     * @param Message Message to print
-     * @param File File name
-     * @param Line Line number
-     */
-    void (*Assert)(int Condition, const char *Message, const char *File, int Line);
-} Dmod_DbgIf_t;
-
-/**
- * @brief System interface
- * 
- * @note This interface is used to provide memory, file and debug interfaces
- */
-typedef struct 
-{
-    Dmod_MemIf_t    Memory;     //!< Memory interface
-    Dmod_FileIf_t   File;       //!< File interface
-    Dmod_DbgIf_t    Debug;      //!< Debug interface
-} Dmod_SystemIf_t;
 
 #endif /* INC_DMOD_TYPES_H_ */

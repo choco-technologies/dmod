@@ -1,5 +1,10 @@
 {
     "files.associations": {
-        "assert.h": "c"
+        "assert.h": "c",
+        "array": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "ranges": "c",
+        "utility": "c"
     }
 }

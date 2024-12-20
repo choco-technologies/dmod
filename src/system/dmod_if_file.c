@@ -33,7 +33,7 @@
  * 
  */
 
-#include "dmod_if.h"
+#include "dmod_sal.h"
 #ifdef DMOD_USE_STDIO
 #   include <stdio.h>
 #endif
@@ -77,6 +77,51 @@ size_t DMOD_WEAK_SYMBOL Dmod_FileRead(void *Buffer, size_t Size, size_t Count, v
     DMOD_ERROR("Dmod_FileRead interface not implemented");
     return 0;
     #endif
+}
+
+/**
+ * @brief Seek file
+ * 
+ * @param File Pointer to file
+ * @param Offset Offset to seek
+ * @param Origin Origin of seek
+ * 
+ * @return 0 on success, -1 on error
+ */
+int DMOD_WEAK_SYMBOL Dmod_FileSeek(void *File, long Offset, int Origin)
+{
+    #if defined(DMOD_USE_STDIO)
+    return fseek(File, Offset, Origin);
+    #else 
+    DMOD_ERROR("Dmod_FileSeek interface not implemented");
+    return -1;
+    #endif
+}
+
+/**
+ * @brief Get file size
+ * 
+ * @param File Pointer to file
+ * 
+ * @return Size of file
+ */
+size_t DMOD_WEAK_SYMBOL Dmod_FileSize(void *File)
+{
+    if( File == NULL )
+    {
+        return 0;
+    }
+
+    // Seek to end of file
+    Dmod_FileSeek( File, 0, DMOD_SEEK_END );
+
+    // Get current position
+    size_t size = Dmod_FileSeek( File, 0, DMOD_SEEK_CUR );
+
+    // Seek back to start
+    Dmod_FileSeek( File, 0, DMOD_SEEK_SET );
+
+    return size;
 }
 
 /**

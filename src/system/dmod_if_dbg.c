@@ -30,7 +30,7 @@
  * @version 0.1
  */
 
-#include "dmod_if.h"
+#include "dmod_sal.h"
 #if defined(DMOD_USE_STDIO)
 #   include <stdarg.h>
 #   include <stdio.h>

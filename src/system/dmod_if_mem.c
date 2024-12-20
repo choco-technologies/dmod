@@ -29,7 +29,7 @@
  * 
  */
 
-#include "dmod_if.h"
+#include "dmod_sal.h"
 #ifdef DMOD_USE_STDLIB
 #   include <stdlib.h>
 #endif

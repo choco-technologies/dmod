@@ -1,2 +1,3 @@
 #define dmod_VERSION_MAJOR @dmod_VERSION_MAJOR@
 #define dmod_VERSION_MINOR @dmod_VERSION_MINOR@
+#define DMOD_VERSION        ((@dmod_VERSION_MAJOR@ << 8) (@dmod_VERSION_MINOR@))
