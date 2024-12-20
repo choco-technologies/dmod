@@ -45,12 +45,12 @@ SECTIONS
         __bss_end = .;
     } : bss
 
-    .rodata : 
+    .got : 
     {
-        __rodata_start = .;
-        *(.rodata)
-        __rodata_end = .;
-    } : rodata
+        __got_start = .;
+        *(.got)
+        __got_end = .;
+    } : got
 
     __bin_end = .;
     __bin_size = __bin_end - __bin_start;
@@ -69,8 +69,8 @@ SECTIONS
         LONG(SIZEOF(.data))
         LONG(__bss_start)
         LONG(SIZEOF(.bss))
-        LONG(__rodata_start)
-        LONG(SIZEOF(.rodata))
+        LONG(__got_start)
+        LONG(SIZEOF(.got))
         LONG(__bin_start)
         LONG(__bin_size)
     } : footer

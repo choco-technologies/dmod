@@ -1,5 +1,16 @@
 cmake_minimum_required(VERSION 3.18)
 
+# ===========================================================================
+# 						Configuration options
+# ===========================================================================
+
+option(DMOD_USE_STDLIB "Use stdlib for memory allocations" 	ON)
+option(DMOD_USE_STDIO  "Use stdio for file operations" 		ON)
+option(DMOD_USE_ASSERT "Use assert for error handling" 		ON)
+
+# ===========================================================================
+# 						Project definition
+# ===========================================================================
 # Set some basic project attributes
 project (dmod
 	VERSION 0.1

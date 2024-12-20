@@ -2,6 +2,9 @@ set(MODULE_NAME dmod_system)
 
 add_library(${MODULE_NAME} STATIC
     dmod_system.c
+    dmod_if_file.c
+    dmod_if_mem.c
+    dmod_if_dbg.c
 )
 
 target_include_directories(${MODULE_NAME} 
@@ -14,3 +17,27 @@ target_link_libraries(${MODULE_NAME}
     PRIVATE    
         dmod_inc
     )
+
+# ===========================================================================
+# 						Definitions from configuration options
+# ===========================================================================
+if(DMOD_USE_STDLIB)
+    target_compile_definitions(${MODULE_NAME} 
+        PRIVATE
+            DMOD_USE_STDLIB
+    )
+endif()
+
+if(DMOD_USE_STDIO)
+    target_compile_definitions(${MODULE_NAME} 
+        PRIVATE
+            DMOD_USE_STDIO
+    )
+endif()
+
+if(DMOD_USE_ASSERT)
+    target_compile_definitions(${MODULE_NAME} 
+        PRIVATE
+            DMOD_USE_ASSERT
+    )
+endif()
