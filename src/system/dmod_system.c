@@ -11,6 +11,7 @@
 static Dmod_Context_t*  Context_New( size_t FileSize );
 static bool             Context_IsValid( Dmod_Context_t* Context );
 static void             Context_Delete( Dmod_Context_t* Context );
+static const char*      Context_GetModuleName( Dmod_Context_t* Context );
 static bool             ReadFile( Dmod_Context_t* Context, void* File );
 static bool             LoadHeader( Dmod_Context_t* Context );
 static bool             LoadFooter( Dmod_Context_t* Context );
@@ -96,6 +97,10 @@ Dmod_Context_t* Dmod_Load( const char* Path )
         return NULL;
     }
 
+    Dmod_FileClose( file );
+
+    DMOD_LOG_INFO("Module loaded: %s\n", Context_GetModuleName( context ));
+
     return context;
 }
 
@@ -106,7 +111,7 @@ Dmod_Context_t* Dmod_Load( const char* Path )
  */
 void Dmod_Unload( Dmod_Context_t* Context )
 {
-    if( Context == NULL || !Context_IsValid( Context ) )
+    if( !Context_IsValid( Context ) )
     {
         DMOD_LOG_ERROR("Cannot unload module - invalid context\n");
         return;
@@ -151,6 +156,75 @@ bool Dmod_ConnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
 }
 
 /**
+ * @brief Disconnect API
+ * 
+ * @param Outputs Outputs section
+ * @param Inputs Inputs section
+ */
+bool Dmod_DisconnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
+{
+    if( OutputsApi == NULL || InputsApi == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot disconnect API - invalid API pointers\n");
+        return false;
+    }
+    
+    size_t numberOfOutputs = Dmod_Api_GetNumberOfEntries( OutputsApi );
+    size_t numberOfInputs = Dmod_Api_GetNumberOfEntries( InputsApi );
+
+    for(size_t i = 0; i < numberOfOutputs; i++)
+    {
+        for(size_t j = 0; j < numberOfInputs; j++)
+        {
+            if( !Dmod_ApiSignature_IsValid( OutputsApi->OutputSection->Entries[i] ) )
+            {
+                continue;
+            }
+            else if( OutputsApi->OutputSection->Entries[i] == InputsApi->InputSection->Entries[j].Function )
+            {
+                DMOD_LOG_VERBOSE("Disconnected: %s\n", InputsApi->InputSection->Entries[j].Signature);
+                OutputsApi->OutputSection->Entries[i] = (void*)InputsApi->InputSection->Entries[j].Signature;
+            }
+        }
+    }
+    return true;
+}
+
+/**
+ * @brief Connect all APIs
+ * 
+ * @param Context Context to connect APIs
+ */
+bool Dmod_ConnectAllApis( Dmod_Context_t* Context )
+{
+    if( !Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot connect APIs - invalid context\n");
+        return false;
+    }
+
+    DMOD_LOG_ERROR("Cannot connect APIs - not implemented\n");
+    return false;
+}
+
+/**
+ * @brief Disconnect all APIs
+ * 
+ * @param Context Context to disconnect APIs
+ */
+bool Dmod_DisconnectAllApis( Dmod_Context_t* Context )
+{
+    if( !Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot disconnect APIs - invalid context\n");
+        return false;
+    }
+
+    DMOD_LOG_ERROR("Cannot disconnect APIs - not implemented\n");
+    return false;
+}
+
+/**
  * @brief Get function
  * 
  * @param Context Context to get function from
@@ -160,7 +234,7 @@ bool Dmod_ConnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
  */
 void* Dmod_GetFunction( Dmod_Context_t* Context, const char* Signature )
 {
-    if( Context == NULL || !Context_IsValid( Context ) || !Dmod_ApiSignature_IsValid( Signature ) )
+    if( !Context_IsValid( Context ) || !Dmod_ApiSignature_IsValid( Signature ) )
     {
         DMOD_LOG_ERROR("Cannot get function - invalid context or signature\n");
         return NULL;
@@ -305,7 +379,7 @@ int Dmod_Irq( Dmod_Context_t* Context, const char* Signature )
         void (*function)() = Dmod_GetFunction( Context, Signature );
         if( function != NULL )
         {
-            DMOD_LOG_VERBOSE("Calling IRQ %s for %s\n", Signature, Context->Header != NULL ? Context->Header->Name : "Unknown");
+            DMOD_LOG_VERBOSE("Calling IRQ %s for %s\n", Signature, Context_GetModuleName( Context ));
             function();
         }
         result = 0;
@@ -322,13 +396,131 @@ int Dmod_Irq( Dmod_Context_t* Context, const char* Signature )
  */
 uint64_t Dmod_GetStackSize( Dmod_Context_t* Context )
 {
-    if( Context == NULL || !Context_IsValid( Context ) )
+    if( !Context_IsValid( Context ) )
     {
         DMOD_LOG_ERROR("Cannot get stack size - invalid context\n");
         return 0;
     }
 
     return Context->Header->RequiredStackSize;
+}
+
+/**
+ * @brief Get module type
+ * 
+ * @param Context Context to get module type from
+ * 
+ * @return Module type
+ */
+Dmod_ModuleType_t Dmod_GetModuleType( Dmod_Context_t* Context )
+{
+    if( !Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot get module type - invalid context\n");
+        return Dmod_ModuleType_Unknown;
+    }
+    if( Context->Header == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot get module type - header not set\n");
+        return Dmod_ModuleType_Unknown;
+    }
+
+    return Context->Header->ModuleType;
+}
+
+/**
+ * @brief Enable module
+ * 
+ * @param Context Context to enable
+ * 
+ * @return true on success, false on error
+ */
+bool Dmod_Enable( Dmod_Context_t* Context )
+{
+    Dmod_ModuleType_t moduleType = Dmod_GetModuleType(Context);
+    if( moduleType != Dmod_ModuleType_Module )
+    {
+        DMOD_LOG_ERROR("Cannot enable module - invalid module type: %d\n", moduleType);
+        return false;
+    }
+
+    if( Context->Enabled )
+    {
+        DMOD_LOG_WARN("Module already enabled\n");
+        return true;
+    }
+
+    if( !Dmod_ConnectAllApis( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot enable module - cannot connect APIs\n");
+        return false;
+    }
+
+    int result = Dmod_Init( Context, NULL );
+    if( result != 0 )
+    {
+        DMOD_LOG_ERROR("Cannot enable module - init failed: %d\n", result);
+        Dmod_DisconnectAllApis( Context );
+        return false;
+    }
+
+    Context->Enabled = true;
+
+    DMOD_LOG_INFO("Module enabled: %s\n", Context_GetModuleName( Context ));
+    return true;
+}
+
+/**
+ * @brief Disable module
+ * 
+ * @param Context Context to disable
+ * 
+ * @return true on success, false on error
+ */
+bool Dmod_Disable( Dmod_Context_t* Context )
+{
+    Dmod_ModuleType_t moduleType = Dmod_GetModuleType(Context);
+    if( moduleType != Dmod_ModuleType_Module )
+    {
+        DMOD_LOG_ERROR("Cannot disable module - invalid module type: %d\n", moduleType);
+        return false;
+    }
+
+    if( !Context->Enabled )
+    {
+        DMOD_LOG_WARN("Module already disabled\n");
+        return true;
+    }
+
+    Context->Enabled = false;
+
+    int result = Dmod_Deinit( Context );
+    if( result != 0 )
+    {
+        DMOD_LOG_ERROR("Cannot disable module - deinit failed: %d\n", result);
+    }
+
+    if( !Dmod_DisconnectAllApis( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot disable module - cannot disconnect APIs\n");
+        return false;
+    }
+
+    DMOD_LOG_INFO("Module disabled: %s\n", Context_GetModuleName( Context ));
+
+    return true;
+}
+
+/**
+ * @brief Check if module is enabled
+ * 
+ * @param Context Context to check
+ * 
+ * @return true if module is enabled, false otherwise
+ */
+bool Dmod_IsEnabled( Dmod_Context_t* Context )
+{
+    return Context_IsValid(Context) && Context->Enabled;
 }
 
 //==============================================================================
@@ -413,6 +605,28 @@ static void Context_Delete( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Get module name
+ * 
+ * @param Context Context to get module name from
+ * 
+ * @return Module name
+ */
+static const char* Context_GetModuleName( Dmod_Context_t* Context )
+{
+    if( Context == NULL || !Context_IsValid( Context ) )
+    {
+        return "Invalid";
+    }
+
+    if( Context->Header == NULL )
+    {
+        return "Unknown";
+    }
+
+    return Context->Header->Name;
+}
+
+/**
  * @brief Read file
  * 
  * @param Context Context to read file to
@@ -488,11 +702,34 @@ static bool LoadHeader( Dmod_Context_t* Context )
         return false;
     }
 
+    switch( header->ModuleType )
+    {
+        case Dmod_ModuleType_Module:
+            if( header->Init == NULL || header->Deinit == NULL )
+            {
+                DMOD_LOG_ERROR("Cannot load header - missing Init or Deinit function\n");
+                return false;
+            }
+            break;
+        case Dmod_ModuleType_Application:
+            if( header->Main == NULL )
+            {
+                DMOD_LOG_ERROR("Cannot load header - missing Main function\n");
+                return false;
+            }
+            break;
+        default:
+            DMOD_LOG_ERROR("Cannot load header - invalid module type: %d\n", header->ModuleType);
+            return false;
+    }
+
     Context->Header = header;
 
     return InitPointer( Context, (void**)&header->Init,     "Init"   ) 
         && InitPointer( Context, (void**)&header->Main,     "Main"   ) 
-        && InitPointer( Context, (void**)&header->Deinit,   "Deinit" );
+        && InitPointer( Context, (void**)&header->Deinit,   "Deinit" )
+        && InitPointer( Context, (void**)&header->Signal,   "Signal" );
+        ;
 }
 
 /**

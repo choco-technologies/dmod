@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include "dmod_defs.h"
 
 typedef enum 
@@ -15,10 +16,11 @@ typedef enum
 
 typedef enum 
 {
+    Dmod_ModuleType_Unknown,
     Dmod_ModuleType_Module, 
     Dmod_ModuleType_Application, 
 
-    Dmod_ModuleType_Count
+    Dmod_ModuleType_Count,
 } Dmod_ModuleType_t;
 
 typedef struct 
@@ -118,6 +120,7 @@ typedef struct
     Dmod_Api_t               Outputs;
     void*                    Data;
     size_t                   Size;
+    bool                     Enabled;
 } Dmod_Context_t;
 
 
