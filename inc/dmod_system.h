@@ -54,7 +54,11 @@ extern Dmod_Context_t*  Dmod_Load               ( const char* Path );
 extern void             Dmod_Unload             ( Dmod_Context_t* Context );
 extern bool             Dmod_ConnectApi         ( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi );
 extern bool             Dmod_DisconnectApi      ( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi );
+extern bool             Dmod_ConnectOutputApis  ( Dmod_Context_t* Context );
+extern bool             Dmod_ConnectInputApis   ( Dmod_Context_t* Context );
 extern bool             Dmod_ConnectAllApis     ( Dmod_Context_t* Context );
+extern bool             Dmod_DisconnectOutputApis( Dmod_Context_t* Context );
+extern bool             Dmod_DisconnectInputApis ( Dmod_Context_t* Context );
 extern bool             Dmod_DisconnectAllApis  ( Dmod_Context_t* Context );
 extern void*            Dmod_GetFunction        ( Dmod_Context_t* Context, const char* Signature );
 extern int              Dmod_Init               ( Dmod_Context_t* Context, Dmod_Config_t* Config );
@@ -67,6 +71,8 @@ extern Dmod_ModuleType_t Dmod_GetModuleType     ( Dmod_Context_t* Context );
 extern bool             Dmod_Enable             ( Dmod_Context_t* Context );
 extern bool             Dmod_Disable            ( Dmod_Context_t* Context );
 extern bool             Dmod_IsEnabled          ( Dmod_Context_t* Context );
+extern int              Dmod_Run                ( Dmod_Context_t* Context, int argc, char *argv[] );
+extern bool             Dmod_IsRunning          ( Dmod_Context_t* Context );
 //! @}
 
 #endif // DMOD_SYSTEM_H

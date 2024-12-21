@@ -191,6 +191,40 @@ bool Dmod_DisconnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
 }
 
 /**
+ * @brief Connect output APIs
+ * 
+ * @param Context Context to connect APIs
+ */
+bool Dmod_ConnectOutputApis( Dmod_Context_t* Context )
+{
+    if( !Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot connect APIs - invalid context\n");
+        return false;
+    }
+
+    DMOD_LOG_ERROR("Cannot connect APIs - not implemented\n");
+    return false;
+}
+
+/**
+ * @brief Connect input APIs
+ * 
+ * @param Context Context to connect APIs
+ */
+bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
+{
+    if( !Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot connect APIs - invalid context\n");
+        return false;
+    }
+
+    DMOD_LOG_ERROR("Cannot connect APIs - not implemented\n");
+    return false;
+}
+
+/**
  * @brief Connect all APIs
  * 
  * @param Context Context to connect APIs
@@ -203,7 +237,40 @@ bool Dmod_ConnectAllApis( Dmod_Context_t* Context )
         return false;
     }
 
-    DMOD_LOG_ERROR("Cannot connect APIs - not implemented\n");
+    return Dmod_ConnectOutputApis( Context ) && Dmod_ConnectInputApis( Context );
+}
+
+/**
+ * @brief Disconnect output APIs
+ * 
+ * @param Context Context to disconnect APIs
+ */
+bool Dmod_DisconnectOutputApis( Dmod_Context_t* Context )
+{
+    if( !Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot disconnect APIs - invalid context\n");
+        return false;
+    }
+
+    DMOD_LOG_ERROR("Cannot disconnect APIs - not implemented\n");
+    return false;
+}
+
+/**
+ * @brief Disconnect input APIs
+ * 
+ * @param Context Context to disconnect APIs
+ */
+bool Dmod_DisconnectInputApis( Dmod_Context_t* Context )
+{
+    if( !Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot disconnect APIs - invalid context\n");
+        return false;
+    }
+
+    DMOD_LOG_ERROR("Cannot disconnect APIs - not implemented\n");
     return false;
 }
 
@@ -220,8 +287,13 @@ bool Dmod_DisconnectAllApis( Dmod_Context_t* Context )
         return false;
     }
 
-    DMOD_LOG_ERROR("Cannot disconnect APIs - not implemented\n");
-    return false;
+    if( !Dmod_DisconnectOutputApis( Context ) || !Dmod_DisconnectInputApis( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot disconnect APIs - failed to disconnect\n");
+        return false;
+    }
+
+    return true;
 }
 
 /**
@@ -521,6 +593,50 @@ bool Dmod_Disable( Dmod_Context_t* Context )
 bool Dmod_IsEnabled( Dmod_Context_t* Context )
 {
     return Context_IsValid(Context) && Context->Enabled;
+}
+
+/**
+ * @brief Run application
+ * 
+ * @param Context Context to run
+ * @param argc Number of arguments
+ * @param argv Arguments
+ * 
+ * @return Return value of the main function
+ */
+int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
+{
+    if( !Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot run module - invalid context\n");
+        return -EINVAL;
+    }
+
+    if( Dmod_GetModuleType( Context ) != Dmod_ModuleType_Application )
+    {
+        DMOD_LOG_ERROR("Cannot run module - invalid module type\n");
+        return -EINVAL;
+    }
+
+    if( Dmod_IsRunning( Context ) )
+    {
+        DMOD_LOG_ERROR("Module %s already running\n", Context_GetModuleName( Context ));
+        return -EEXIST;
+    }
+
+    if(!Dmod_ConnectOutputApis(Context))
+    {
+        DMOD_LOG_ERROR("Cannot run module - cannot connect output APIs\n");
+        return -ENOEXEC;
+    }
+
+    Context->Running = true;
+    int result = Dmod_Main( Context, argc, argv );
+    Context->Running = false;
+
+    Dmod_DisconnectOutputApis(Context);
+
+    return result;
 }
 
 //==============================================================================

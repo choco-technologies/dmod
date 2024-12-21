@@ -121,6 +121,7 @@ typedef struct
     void*                    Data;
     size_t                   Size;
     bool                     Enabled;
+    bool                     Running;
 } Dmod_Context_t;
 
 
