@@ -62,6 +62,8 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
         return NULL;
     }
 
+    Dmod_Event_ModuleLoadingInProgress( Path, 10 );
+
     // Open file
     void* file = Dmod_FileOpen( Path, "rb" );
     if( file == NULL )
@@ -77,7 +79,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
         Dmod_FileClose( file );
         return NULL;
     }
-
+    Dmod_Event_ModuleLoadingInProgress( Path, 15 );
     void* buffer = Dmod_AlignedMalloc( fileSize, DMOD_STACK_ALIGNMENT );
     if( buffer == NULL )
     {
@@ -86,12 +88,15 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
         return NULL;
     }
 
+    Dmod_Event_ModuleLoadingInProgress( Path, 20 );
+
     if(!ReadFile( buffer, fileSize, file ))
     {
         Dmod_FileClose( file );
         return NULL;
     }
 
+    Dmod_Event_ModuleLoadingInProgress( Path, 75 );
     Dmod_Context_t* context = Context_New( buffer, fileSize );
     Dmod_FileClose( file );
     if( context == NULL )
@@ -104,6 +109,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
         return NULL;
     }
 
+    Dmod_Event_ModuleLoadingInProgress( Path, 100 );
     DMOD_LOG_INFO("Module loaded: %s\n", Context_GetModuleName( context ));
 
     return context;
@@ -125,6 +131,8 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
         return NULL;
     }
 
+    Dmod_Event_ModuleLoadingInProgress( "Unknown", 10 );
+
     Dmod_Context_t* context = Context_New( NULL, Size );
     if( context == NULL )
     {
@@ -133,13 +141,17 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
 
     memcpy( context->Data, Data, Size );
 
+    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(context), 50 );
+
     if(!Load(context) || !AddContext(context))
     {
         Context_Delete( context );
         return NULL;
     }
+    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(context), 100 );
 
     DMOD_LOG_INFO("Module loaded: %s\n", Context_GetModuleName( context ));
+    Dmod_Event_ModuleLoaded( context );
 
     return context;
 }
@@ -157,12 +169,29 @@ void Dmod_Unload( Dmod_Context_t* Context )
         return;
     }
 
+    Dmod_EnterCritical();
+    if(Context->Enabled)
+    {
+        DMOD_LOG_ERROR("Module %s cannot be unloaded - it has to be disabled first\n", Context_GetModuleName( Context ));
+        Dmod_ExitCritical();
+        return;
+    }
+    if(Context->Running)
+    {
+        DMOD_LOG_ERROR("Module %s cannot be unloaded - it has to be stopped first\n", Context_GetModuleName( Context ));
+        Dmod_ExitCritical();
+        return;
+    }
+
+    Dmod_Event_ModuleUnloaded( Context );
+
     if( !RemoveContext( Context ) )
     {
         DMOD_LOG_WARN("Unloading module %s failed - not found\n", Context_GetModuleName( Context ));
     }
-
-    Context_Delete( Context );
+    Context->Signature = 0;
+    Dmod_ExitCritical();
+    Context_Delete( Context );    
 }
 
 /**
@@ -247,10 +276,12 @@ bool Dmod_ConnectOutputApis( Dmod_Context_t* Context )
         DMOD_LOG_ERROR("Cannot connect APIs - invalid context\n");
         return false;
     }
+    Dmod_EnterCritical();
 
     if( !Dmod_ConnectApi( &Context->Outputs, &__dmod_input_api ) )
     {
         DMOD_LOG_ERROR("Cannot connect system API to '%s' APIs\n", Context_GetModuleName( Context ));
+        Dmod_ExitCritical();
         return false;
     }
 
@@ -274,6 +305,7 @@ bool Dmod_ConnectOutputApis( Dmod_Context_t* Context )
         Dmod_DisconnectOutputApis( Context );
     }
     
+    Dmod_ExitCritical();
     return result;
 }
 
@@ -290,9 +322,12 @@ bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
         return false;
     }
 
+    Dmod_EnterCritical();
+
     if( !Dmod_ConnectApi( &__dmod_output_api, &Context->Inputs ) )
     {
         DMOD_LOG_ERROR("Cannot connect API '%s' to system\n", Context_GetModuleName( Context ));
+        Dmod_ExitCritical();
         return false;
     }
 
@@ -317,6 +352,8 @@ bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
         Dmod_DisconnectInputApis( Context );
     }
 
+    Dmod_ExitCritical();
+
     return result;
 }
 
@@ -333,7 +370,11 @@ bool Dmod_ConnectAllApis( Dmod_Context_t* Context )
         return false;
     }
 
-    return Dmod_ConnectOutputApis( Context ) && Dmod_ConnectInputApis( Context );
+    Dmod_EnterCritical();
+    bool result = Dmod_ConnectOutputApis( Context ) && Dmod_ConnectInputApis( Context );
+    Dmod_ExitCritical();
+
+    return result;
 }
 
 /**
@@ -349,8 +390,31 @@ bool Dmod_DisconnectOutputApis( Dmod_Context_t* Context )
         return false;
     }
 
-    DMOD_LOG_ERROR("Cannot disconnect APIs - not implemented\n");
-    return false;
+    Dmod_EnterCritical();
+    bool result = true;
+
+    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    {
+        if( Dmod_Contexts[i] == NULL )
+        {
+            continue;
+        }
+
+        if( !Dmod_DisconnectApi( &Context->Outputs, &Dmod_Contexts[i]->Inputs ) )
+        {
+            DMOD_LOG_ERROR("Cannot disconnect %s's API from '%s'\n", Context_GetModuleName( Dmod_Contexts[i] ), Context_GetModuleName( Context ));
+            result = false;
+        }
+    }
+
+    if( !Dmod_DisconnectApi( &Context->Outputs, &__dmod_input_api ) )
+    {
+        DMOD_LOG_ERROR("Cannot disconnect system API from '%s'\n", Context_GetModuleName( Context ));
+        result = false;
+    }
+    Dmod_ExitCritical();
+
+    return result;
 }
 
 /**
@@ -366,8 +430,32 @@ bool Dmod_DisconnectInputApis( Dmod_Context_t* Context )
         return false;
     }
 
-    DMOD_LOG_ERROR("Cannot disconnect APIs - not implemented\n");
-    return false;
+    Dmod_EnterCritical();
+    bool result = true;
+
+    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    {
+        if( Dmod_Contexts[i] == NULL )
+        {
+            continue;
+        }
+
+        if( !Dmod_DisconnectApi( &Dmod_Contexts[i]->Outputs, &Context->Inputs ) )
+        {
+            DMOD_LOG_ERROR("Cannot disconnect %s's API from '%s'\n", Context_GetModuleName( Context ), Context_GetModuleName( Dmod_Contexts[i] ));
+            result = false;
+        }
+    }
+
+    if( !Dmod_DisconnectApi( &__dmod_output_api, &Context->Inputs ) )
+    {
+        DMOD_LOG_ERROR("Cannot disconnect %s's API from system\n", Context_GetModuleName( Context ));
+        result = false;
+    }
+
+    Dmod_ExitCritical();
+
+    return result;
 }
 
 /**
@@ -383,7 +471,10 @@ bool Dmod_DisconnectAllApis( Dmod_Context_t* Context )
         return false;
     }
 
-    if( !Dmod_DisconnectOutputApis( Context ) || !Dmod_DisconnectInputApis( Context ) )
+    Dmod_EnterCritical();
+    bool result = Dmod_DisconnectInputApis( Context ) && Dmod_DisconnectOutputApis( Context );
+    Dmod_ExitCritical();
+    if( !result )
     {
         DMOD_LOG_ERROR("Cannot disconnect APIs - failed to disconnect\n");
         return false;
@@ -632,9 +723,11 @@ bool Dmod_Enable( Dmod_Context_t* Context )
         return false;
     }
 
+    DMOD_LOG_INFO("Module enabled: %s\n", Context_GetModuleName( Context ));
     Context->Enabled = true;
 
-    DMOD_LOG_INFO("Module enabled: %s\n", Context_GetModuleName( Context ));
+    Dmod_Event_ModuleEnabled( Context );
+
     return true;
 }
 
@@ -654,9 +747,11 @@ bool Dmod_Disable( Dmod_Context_t* Context )
         return false;
     }
 
+    Dmod_EnterCritical();
     if( !Context->Enabled )
     {
         DMOD_LOG_WARN("Module already disabled\n");
+        Dmod_ExitCritical();
         return true;
     }
 
@@ -673,8 +768,10 @@ bool Dmod_Disable( Dmod_Context_t* Context )
         DMOD_LOG_ERROR("Cannot disable module - cannot disconnect APIs\n");
         return false;
     }
+    Dmod_ExitCritical();
 
     DMOD_LOG_INFO("Module disabled: %s\n", Context_GetModuleName( Context ));
+    Dmod_Event_ModuleDisabled( Context );
 
     return true;
 }
@@ -727,7 +824,9 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
     }
 
     Context->Running = true;
+    Dmod_Event_ModuleRunning( Context );
     int result = Dmod_Main( Context, argc, argv );
+    Dmod_Event_ModuleStopped( Context );
     Context->Running = false;
 
     Dmod_DisconnectOutputApis(Context);
@@ -883,9 +982,25 @@ static bool ReadFile( void* Data, size_t Size, void* File )
         return false;
     }
 
-    // Read file
-    size_t read = Dmod_FileRead( Data, 1, Size, File );
-    if( read != Size )
+    size_t segmentSize = 1000;
+    size_t segments = Size / segmentSize;
+    size_t remainder = Size % segmentSize;
+    size_t progress = 20;
+    size_t progressRange = 60;
+
+    for(size_t i = 0; i < segments; i++)
+    {
+        size_t read = Dmod_FileRead( Data + i * segmentSize, 1, segmentSize, File );
+        if( read != segmentSize )
+        {
+            DMOD_LOG_ERROR("Cannot read file - not all data read: %d\n", read);
+            return false;
+        }
+        Dmod_Event_ModuleLoadingInProgress( "Unknown", progress + ((progressRange * (i+1))/segments) );
+    }
+
+    size_t read = Dmod_FileRead( Data + segments * segmentSize, 1, remainder, File );
+    if( read != remainder )
     {
         DMOD_LOG_ERROR("Cannot read file - not all data read: %d\n", read);
         return false;
@@ -907,6 +1022,8 @@ static bool LoadHeader( Dmod_Context_t* Context )
     {
         return false;
     }
+
+    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 80 );
 
     // Check signature
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)Context->Data;
@@ -960,11 +1077,13 @@ static bool LoadHeader( Dmod_Context_t* Context )
 
     Context->Header = header;
 
-    return InitPointer( Context, (void**)&header->Init,     "Init"   ) 
-        && InitPointer( Context, (void**)&header->Main,     "Main"   ) 
-        && InitPointer( Context, (void**)&header->Deinit,   "Deinit" )
-        && InitPointer( Context, (void**)&header->Signal,   "Signal" );
-        ;
+    bool result = InitPointer( Context, (void**)&header->Init,     "Init"   ) 
+               && InitPointer( Context, (void**)&header->Main,     "Main"   ) 
+               && InitPointer( Context, (void**)&header->Deinit,   "Deinit" )
+               && InitPointer( Context, (void**)&header->Signal,   "Signal" );
+               ;
+    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 85 );
+    return result;
 }
 
 /**
@@ -990,6 +1109,7 @@ static bool LoadFooter( Dmod_Context_t* Context )
     }
 
     Context->Footer = footer;
+    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 88 );
 
     return true;
 }
@@ -1056,6 +1176,8 @@ static bool LoadOutput( Dmod_Context_t* Context )
     Context->Outputs.OutputSection      = outputSection;
     Context->Outputs.SectionSize        = output->SectionSize;
     Context->Outputs.ApiType            = Dmod_ApiType_Output;
+
+    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 90 );
 
     return true;
 }
@@ -1138,6 +1260,8 @@ static bool LoadInput( Dmod_Context_t* Context )
     Context->Inputs.SectionSize     = input->SectionSize;
     Context->Inputs.ApiType         = Dmod_ApiType_Input;
 
+    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 90 );
+
     return true;
 }
 
@@ -1182,6 +1306,8 @@ static bool LoadGot( Dmod_Context_t* Context )
         }
     }
 
+    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 95 );
+
     return true;
 }
 
@@ -1215,6 +1341,8 @@ static bool LoadBss( Dmod_Context_t* Context )
     }
 
     memset( Context->Data + bss->SectionStart, 0, bss->SectionSize );
+
+    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 97 );
 
     return true;
 }

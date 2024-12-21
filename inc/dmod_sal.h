@@ -129,4 +129,39 @@ extern void    Dmod_Assert( int Condition, const char* Message, const char* File
 
 //! @}
 
+/**
+ * @defgroup DMOD_SAL_IRQ IRQ Interface
+ * @ingroup DMOD_SAL
+ * 
+ * This interface is used to handle interrupts in the system.
+ * 
+ * @addtogroup DMOD_SAL_CONTEXT
+ * @{
+ */
+
+extern void Dmod_EnterCritical( void );
+extern void Dmod_ExitCritical( void );
+
+//! @}
+
+/**
+ * @defgroup DMOD_SAL_EVENT Events Interface
+ * @ingroup DMOD_SAL
+ * 
+ * 
+ * 
+ * @addtogroup DMOD_SAL_CONTEXT
+ * @{
+ */
+
+extern void Dmod_Event_ModuleLoaded( Dmod_Context_t* Context );
+extern void Dmod_Event_ModuleUnloaded( Dmod_Context_t* Context );
+extern void Dmod_Event_ModuleLoadingInProgress( const char* Name, uint16_t Progress );
+extern void Dmod_Event_ModuleEnabled( Dmod_Context_t* Context );
+extern void Dmod_Event_ModuleDisabled( Dmod_Context_t* Context );
+extern void Dmod_Event_ModuleRunning( Dmod_Context_t* Context );
+extern void Dmod_Event_ModuleStopped( Dmod_Context_t* Context );
+
+//! @}
+
 #endif /* INC_DMOD_SAL_H_ */

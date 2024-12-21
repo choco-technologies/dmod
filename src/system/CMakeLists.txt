@@ -5,6 +5,8 @@ add_library(${MODULE_NAME} STATIC
     dmod_if_file.c
     dmod_if_mem.c
     dmod_if_dbg.c
+    dmod_if_irq.c
+    dmod_if_events.c
 )
 
 target_include_directories(${MODULE_NAME} 
