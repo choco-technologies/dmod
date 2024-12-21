@@ -1005,6 +1005,7 @@ static bool ReadFile( void* Data, size_t Size, void* File )
         DMOD_LOG_ERROR("Cannot read file - not all data read: %d\n", read);
         return false;
     }
+    Dmod_Event_ModuleLoadingInProgress( "Unknown", progress + progressRange );
 
     return true;
 }
