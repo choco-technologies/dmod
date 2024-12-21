@@ -50,7 +50,8 @@
  * @addtogroup DMOD-System
  * @{
  */
-extern Dmod_Context_t*  Dmod_Load               ( const char* Path );
+extern Dmod_Context_t*  Dmod_LoadFile           ( const char* Path );
+extern Dmod_Context_t*  Dmod_Load               ( const void* Data, size_t Size );
 extern void             Dmod_Unload             ( Dmod_Context_t* Context );
 extern bool             Dmod_ConnectApi         ( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi );
 extern bool             Dmod_DisconnectApi      ( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi );

@@ -8,11 +8,12 @@
 //                              LOCAL FUNCTION PROTOTYPES
 //==============================================================================
 
-static Dmod_Context_t*  Context_New( size_t FileSize );
+static Dmod_Context_t*  Context_New( void* Data, size_t FileSize );
 static bool             Context_IsValid( Dmod_Context_t* Context );
 static void             Context_Delete( Dmod_Context_t* Context );
 static const char*      Context_GetModuleName( Dmod_Context_t* Context );
-static bool             ReadFile( Dmod_Context_t* Context, void* File );
+static bool             Load( Dmod_Context_t* Context );
+static bool             ReadFile( void* Data, size_t Size, void* File );
 static bool             LoadHeader( Dmod_Context_t* Context );
 static bool             LoadFooter( Dmod_Context_t* Context );
 static bool             LoadOutput( Dmod_Context_t* Context );
@@ -50,7 +51,7 @@ static Dmod_Api_t __dmod_output_api = {
  * 
  * @return Pointer to the context
  */
-Dmod_Context_t* Dmod_Load( const char* Path )
+Dmod_Context_t* Dmod_LoadFile( const char* Path )
 {
     if( Path == NULL )
     {
@@ -74,30 +75,66 @@ Dmod_Context_t* Dmod_Load( const char* Path )
         return NULL;
     }
 
-    Dmod_Context_t* context = Context_New( fileSize );
-    if( context == NULL )
+    void* buffer = Dmod_AlignedMalloc( fileSize, DMOD_STACK_ALIGNMENT );
+    if( buffer == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load module - cannot allocate memory\n");
+        Dmod_FileClose( file );
+        return NULL;
+    }
+
+    if(!ReadFile( buffer, fileSize, file ))
     {
         Dmod_FileClose( file );
         return NULL;
     }
 
-    // Load header
-    if( 
-        !ReadFile( context, file ) 
-     || !LoadHeader( context ) 
-     || !LoadFooter( context )
-     || !LoadOutput( context )
-     || !LoadInput( context )
-     || !LoadGot( context )
-     || !LoadBss( context )
-        )
+    Dmod_Context_t* context = Context_New( buffer, fileSize );
+    Dmod_FileClose( file );
+    if( context == NULL )
     {
-        Dmod_FileClose( file );
+        return NULL;
+    }
+    if( !Load( context ) )
+    {
         Context_Delete( context );
         return NULL;
     }
 
-    Dmod_FileClose( file );
+    DMOD_LOG_INFO("Module loaded: %s\n", Context_GetModuleName( context ));
+
+    return context;
+}
+
+/**
+ * @brief Load module
+ * 
+ * @param Data Data of the module (aligned to 16 bytes)
+ * @param Size Size of the data
+ * 
+ * @return Pointer to the context
+ */
+Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
+{
+    if( Data == NULL || Size == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot load module - invalid data\n");
+        return NULL;
+    }
+
+    Dmod_Context_t* context = Context_New( NULL, Size );
+    if( context == NULL )
+    {
+        return NULL;
+    }
+
+    memcpy( context->Data, Data, Size );
+
+    if(!Load(context))
+    {
+        Context_Delete( context );
+        return NULL;
+    }
 
     DMOD_LOG_INFO("Module loaded: %s\n", Context_GetModuleName( context ));
 
@@ -652,7 +689,7 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
  * 
  * @note This function creates a new context and initializes it
  */
-static Dmod_Context_t*  Context_New( size_t FileSize )
+static Dmod_Context_t*  Context_New( void* Data, size_t FileSize )
 {
     Dmod_Context_t* Context = Dmod_Malloc( sizeof( Dmod_Context_t ) );
     if( Context == NULL )
@@ -664,7 +701,7 @@ static Dmod_Context_t*  Context_New( size_t FileSize )
     Context->Signature  = DMOD_CONTEXT_SIGNATURE;
     Context->Header     = NULL;
     Context->Footer     = NULL;
-    Context->Data       = Dmod_AlignedMalloc( FileSize, DMOD_STACK_ALIGNMENT );
+    Context->Data       = Data != NULL ? Data : Dmod_AlignedMalloc( FileSize, DMOD_STACK_ALIGNMENT );
     Context->Size       = FileSize;
 
     if( Context->Data == NULL )
@@ -743,16 +780,39 @@ static const char* Context_GetModuleName( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Load module
+ * 
+ * @param Context Context to load
+ * 
+ * @return True if module was loaded successfully, false otherwise
+ */
+static bool Load( Dmod_Context_t* Context )
+{
+    if( Context == NULL )
+    {
+        return false;
+    }
+
+    return LoadHeader( Context ) 
+        && LoadFooter( Context )
+        && LoadOutput( Context )
+        && LoadInput( Context )
+        && LoadGot( Context )
+        && LoadBss( Context );
+}
+
+/**
  * @brief Read file
  * 
- * @param Context Context to read file to
+ * @param Data Destination for data to read
+ * @param Size Size of the buffer 
  * @param File File to read
  * 
  * @return True if file was read successfully, false otherwise
  */
-static bool ReadFile( Dmod_Context_t* Context, void* File )
+static bool ReadFile( void* Data, size_t Size, void* File )
 {
-    if( Context == NULL || File == NULL )
+    if( Data == NULL || File == NULL )
     {
         return false;
     }
@@ -765,8 +825,8 @@ static bool ReadFile( Dmod_Context_t* Context, void* File )
     }
 
     // Read file
-    size_t read = Dmod_FileRead( Context->Data, 1, Context->Size, File );
-    if( read != Context->Size )
+    size_t read = Dmod_FileRead( Data, 1, Size, File );
+    if( read != Size )
     {
         DMOD_LOG_ERROR("Cannot read file - not all data read: %d\n", read);
         return false;
