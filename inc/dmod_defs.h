@@ -17,6 +17,10 @@
 #   define DMOD_VERSION		0x00010000
 #endif
 
+#ifndef DMOD_MAX_MODULES
+#   define DMOD_MAX_MODULES		50
+#endif
+
 /**
  * @brief Check if the version is compatible
  */

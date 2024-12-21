@@ -34,6 +34,23 @@
             },
             "problemMatcher": [],
             "detail": "Build the project in current mode"
+        },
+        {
+            "label": "Clean",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build",
+                "--target",
+                "clean"
+            ],
+            "group": "build",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "detail": "Clean the project"
         }
     ],
     "inputs" : [

@@ -21,6 +21,8 @@ static bool             LoadInput( Dmod_Context_t* Context );
 static bool             LoadGot( Dmod_Context_t* Context );
 static bool             LoadBss( Dmod_Context_t* Context );
 static bool             InitPointer( Dmod_Context_t* Context, void** PointerRef, const char* PointerName );
+static bool             AddContext( Dmod_Context_t* Context );
+static bool             RemoveContext( Dmod_Context_t* Context );
 
 //==============================================================================
 //                              GLOBAL VARIABLES
@@ -39,6 +41,7 @@ static Dmod_Api_t __dmod_output_api = {
     .SectionSize     = (size_t)&__dmod_outputs_size,
     .ApiType         = Dmod_ApiType_Output
 };
+static Dmod_Context_t* Dmod_Contexts[DMOD_MAX_MODULES] = {0};
 
 //==============================================================================
 //                              FUNCTION IMPLEMENTATIONS
@@ -95,7 +98,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
     {
         return NULL;
     }
-    if( !Load( context ) )
+    if( !Load( context ) || !AddContext( context ) )
     {
         Context_Delete( context );
         return NULL;
@@ -130,7 +133,7 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
 
     memcpy( context->Data, Data, Size );
 
-    if(!Load(context))
+    if(!Load(context) || !AddContext(context))
     {
         Context_Delete( context );
         return NULL;
@@ -152,6 +155,11 @@ void Dmod_Unload( Dmod_Context_t* Context )
     {
         DMOD_LOG_ERROR("Cannot unload module - invalid context\n");
         return;
+    }
+
+    if( !RemoveContext( Context ) )
+    {
+        DMOD_LOG_WARN("Unloading module %s failed - not found\n", Context_GetModuleName( Context ));
     }
 
     Context_Delete( Context );
@@ -240,8 +248,33 @@ bool Dmod_ConnectOutputApis( Dmod_Context_t* Context )
         return false;
     }
 
-    DMOD_LOG_ERROR("Cannot connect APIs - not implemented\n");
-    return false;
+    if( !Dmod_ConnectApi( &Context->Outputs, &__dmod_input_api ) )
+    {
+        DMOD_LOG_ERROR("Cannot connect system API to '%s' APIs\n", Context_GetModuleName( Context ));
+        return false;
+    }
+
+    bool result = true;
+    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    {
+        if( Dmod_Contexts[i] == NULL )
+        {
+            continue;
+        }
+
+        if( !Dmod_ConnectApi( &Context->Outputs, &Dmod_Contexts[i]->Inputs ) )
+        {
+            DMOD_LOG_ERROR("Cannot connect API from '%s' to '%s'\n", Context_GetModuleName( Dmod_Contexts[i] ), Context_GetModuleName( Context ));
+            result = false;
+        }
+    }
+
+    if(!result)
+    {
+        Dmod_DisconnectOutputApis( Context );
+    }
+    
+    return result;
 }
 
 /**
@@ -257,8 +290,34 @@ bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
         return false;
     }
 
-    DMOD_LOG_ERROR("Cannot connect APIs - not implemented\n");
-    return false;
+    if( !Dmod_ConnectApi( &__dmod_output_api, &Context->Inputs ) )
+    {
+        DMOD_LOG_ERROR("Cannot connect API '%s' to system\n", Context_GetModuleName( Context ));
+        return false;
+    }
+
+    bool result = true;
+
+    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    {
+        if( Dmod_Contexts[i] == NULL )
+        {
+            continue;
+        }
+
+        if( !Dmod_ConnectApi( &Dmod_Contexts[i]->Outputs, &Context->Inputs ) )
+        {
+            DMOD_LOG_ERROR("Cannot connect API from '%s' to '%s'\n", Context_GetModuleName( Context ), Context_GetModuleName( Dmod_Contexts[i] ));
+            result = false;
+        }
+    }
+
+    if(!result)
+    {
+        Dmod_DisconnectInputApis( Context );
+    }
+
+    return result;
 }
 
 /**
@@ -1190,5 +1249,59 @@ static bool InitPointer( Dmod_Context_t* Context, void** PointerRef, const char*
     }
 
     *PointerRef = Context->Data + offset;
+    return true;
+}
+
+/**
+ * @brief Add context
+ * 
+ * @param Context Context to add
+ * 
+ * @return True if context was added successfully, false otherwise
+ */
+static bool AddContext( Dmod_Context_t* Context )
+{
+    if( Context == NULL )
+    {
+        return false;
+    }
+
+    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    {
+        if( Dmod_Contexts[i] == NULL )
+        {
+            Dmod_Contexts[i] = Context;
+            return true;
+        }
+    }
+
+    DMOD_LOG_ERROR("Cannot add context '%s' - no space left\n", Context_GetModuleName( Context ));
+    return false;
+}
+
+/**
+ * @brief Remove context
+ * 
+ * @param Context Context to remove
+ * 
+ * @return True if context was removed successfully, false otherwise
+ */
+static bool RemoveContext( Dmod_Context_t* Context )
+{
+    if( Context == NULL )
+    {
+        return false;
+    }
+
+    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    {
+        if( Dmod_Contexts[i] == Context )
+        {
+            Dmod_Contexts[i] = NULL;
+            return true;
+        }
+    }
+
+    DMOD_LOG_WARN("Cannot remove context '%s' - not found\n", Context_GetModuleName( Context ));
     return true;
 }

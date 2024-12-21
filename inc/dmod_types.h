@@ -124,5 +124,17 @@ typedef struct
     bool                     Running;
 } Dmod_Context_t;
 
+/**
+ * @brief List handle
+ * 
+ * @note This handle is used to store the list of elements
+ */
+typedef void* Dmod_List_t;
+
+/**
+ * @brief List element handle
+ */
+typedef void* Dmod_ListElement_t;
+
 
 #endif /* INC_DMOD_TYPES_H_ */
