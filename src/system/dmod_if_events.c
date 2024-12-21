@@ -59,7 +59,7 @@ void DMOD_WEAK_SYMBOL Dmod_Event_ModuleUnloaded( Dmod_Context_t* Context )
  */
 void DMOD_WEAK_SYMBOL Dmod_Event_ModuleLoadingInProgress( const char* Name, uint16_t Progress )
 {
-
+    DMOD_LOG_INFO("Loading module %s in progress: %d\n", Name, Progress);
 }
 
 /**
