@@ -268,6 +268,7 @@ static bool ApiSignature_AreVersionsEqual( const char* Signature1, const char* S
     {
         if( *version1 != *version2 )
         {
+            DMOD_LOG_ERROR("Version mismatch: %s != %s\n", version1, version2);
             return false;
         }
         version1++;
