@@ -21,7 +21,10 @@
 //                              SIGNATURE definitions
 //==============================================================================
 #define DMOD_SIGNATURE_PREFIX		"\021DMOD\022"
-#define DMOD_MAKE_SIGNATURE( MODULE, VERSION, NAME )		    DMOD_SIGNATURE_PREFIX #NAME "@" #MODULE ":" #VERSION 
+#define DMOD_IRQ_SIGNATURE_PREFIX	"\021DIRQ\022"
+#define DMOD_SIGNATURE_SUFFIX           "\0"       
+#define DMOD_MAKE_SIGNATURE( MODULE, VERSION, NAME )		    DMOD_SIGNATURE_PREFIX #NAME "@" #MODULE ":" #VERSION DMOD_SIGNATURE_SUFFIX
+#define DMOD_MAKE_IRQ_SIGNATURE( NAME )		                    DMOD_IRQ_SIGNATURE_PREFIX #NAME 
 
 //==============================================================================
 //                              DMOD_API definitions
@@ -35,9 +38,28 @@
             .Function = (void*)DMOD_MAKE_API_FUNCTION_NAME(MODULE,NAME), \
             .Signature = DMOD_MAKE_SIGNATURE(MODULE, VERSION, NAME) \
         };
-
 #define DMOD_OUTPUT_API( MODULE, VERSION, RET, NAME, PARAMS )       \
         static RET (*DMOD_MAKE_API_FUNCTION_NAME(MODULE,NAME)) PARAMS DMOD_SECTION(.outputs) = DMOD_MAKE_SIGNATURE(MODULE, VERSION, NAME);\
+
+#define DMOD_IRQ_MAKE_HANDLER_NAME(NAME)                __irq_##NAME
+#define DMOD_IRQ_MAKE_REG_NAME(NAME)                    __irq_##NAME##_registration
+
+/**
+ * @brief Macro for IRQ handling
+ * 
+ * @param NAME Name of the IRQ handler
+ * 
+ * @note This macro defines the IRQ handler function and registers it in the DMOD
+ */
+#define DMOD_IRQ_HANDLER( NAME )        \
+        static void DMOD_IRQ_MAKE_HANDLER_NAME(NAME)(void);\
+        static Dmod_ApiRegistration_t DMOD_IRQ_MAKE_REG_NAME(NAME) DMOD_SECTION(.inputs) = \
+        { \
+            .Function = (void*)DMOD_IRQ_MAKE_HANDLER_NAME(NAME), \
+            .Signature = DMOD_MAKE_IRQ_SIGNATURE(NAME) \
+        };\
+        static void DMOD_IRQ_MAKE_HANDLER_NAME(NAME)(void)
+
 
 //==============================================================================
 //                              ARCHITECTURE DEFINITIONS

@@ -75,8 +75,12 @@
  * @{
  */
 
-extern bool         Dmod_IsApiSignatureValid( const char* Signature );
 extern size_t       Dmod_Api_GetNumberOfEntries( Dmod_Api_t* Api );
+extern bool         Dmod_ApiSignature_IsValid( const char* Signature );
+extern const char*  Dmod_ApiSignature_GetName( const char *Signature );
+extern const char*  Dmod_ApiSignature_GetVersion( const char* Signature );
+extern const char*  Dmod_ApiSignature_GetModule( const char* Signature );
+extern bool         Dmod_ApiSignature_AreEqual( const char* Signature1, const char* Signature2 );
 
 //! @}
 

@@ -7,11 +7,19 @@
 
 typedef enum 
 {
-    DMOD_API_TYPE_INPUT,
-    DMOD_API_TYPE_OUTPUT,
+    Dmod_ApiType_Input,
+    Dmod_ApiType_Output,
 
-    DMOD_API_TYPE_COUNT
+    Dmod_ApiType_Count
 } Dmod_ApiType_t;
+
+typedef enum 
+{
+    Dmod_ModuleType_Module, 
+    Dmod_ModuleType_Application, 
+
+    Dmod_ModuleType_Count
+} Dmod_ModuleType_t;
 
 typedef struct 
 {
@@ -24,19 +32,22 @@ typedef struct
 typedef int (*Dmod_Init_t)(Dmod_Config_t *Config);
 typedef int (*Dmod_Main_t)(int argc, char *argv[]);
 typedef int (*Dmod_Deinit_t)(void);
+typedef int (*Dmod_Signal_t)( int SignalNumber );
 
 typedef struct 
 {
-    uint32_t        Signature;  // DMOD
-    uint32_t        HeaderSize;
-    uint32_t        Version;
-    char            Arch[DMOD_MAX_ARCH_NAME_LENGTH];
-    char            Name[DMOD_MAX_MODULE_NAME_LENGTH];
-    Dmod_Init_t     Init;
-    Dmod_Main_t     Main;
-    Dmod_Deinit_t   Deinit;
-    uint64_t        RequiredStackSize;
-    uint32_t        Priority;    
+    uint32_t            Signature;  // DMOD
+    uint32_t            HeaderSize;
+    uint32_t            Version;
+    char                Arch[DMOD_MAX_ARCH_NAME_LENGTH];
+    char                Name[DMOD_MAX_MODULE_NAME_LENGTH];
+    Dmod_Init_t         Init;
+    Dmod_Main_t         Main;
+    Dmod_Deinit_t       Deinit;
+    Dmod_Signal_t       Signal;
+    uint64_t            RequiredStackSize;
+    uint32_t            Priority;
+    uint8_t             ModuleType;
 } Dmod_ModuleHeader_t;
 
 typedef struct 

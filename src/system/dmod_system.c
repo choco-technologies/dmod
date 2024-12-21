@@ -30,12 +30,12 @@ extern void* __dmod_outputs_size;
 static Dmod_Api_t __dmod_input_api = {
     .InputSection    = (void*)&__dmod_inputs_start,
     .SectionSize     = (size_t)&__dmod_inputs_size,
-    .ApiType         = DMOD_API_TYPE_INPUT
+    .ApiType         = Dmod_ApiType_Input
 };
 static Dmod_Api_t __dmod_output_api = {
     .OutputSection    = (void*)&__dmod_outputs_start,
     .SectionSize     = (size_t)&__dmod_outputs_size,
-    .ApiType         = DMOD_API_TYPE_OUTPUT
+    .ApiType         = Dmod_ApiType_Output
 };
 
 //==============================================================================
@@ -136,11 +136,11 @@ bool Dmod_ConnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
     {
         for(size_t j = 0; j < numberOfInputs; j++)
         {
-            if( !Dmod_IsApiSignatureValid( OutputsApi->OutputSection->Entries[i] ) )
+            if( !Dmod_ApiSignature_IsValid( OutputsApi->OutputSection->Entries[i] ) )
             {
                 continue;
             }
-            else if( strcmp( OutputsApi->OutputSection->Entries[i], InputsApi->InputSection->Entries[j].Signature ) == 0 )
+            else if( Dmod_ApiSignature_AreEqual( OutputsApi->OutputSection->Entries[i], InputsApi->InputSection->Entries[j].Signature ) )
             {
                 DMOD_LOG_VERBOSE("Connected: %s\n", InputsApi->InputSection->Entries[j].Signature);
                 OutputsApi->OutputSection->Entries[i] = InputsApi->InputSection->Entries[j].Function;
@@ -160,7 +160,7 @@ bool Dmod_ConnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
  */
 void* Dmod_GetFunction( Dmod_Context_t* Context, const char* Signature )
 {
-    if( Context == NULL || !Context_IsValid( Context ) || !Dmod_IsApiSignatureValid( Signature ) )
+    if( Context == NULL || !Context_IsValid( Context ) || !Dmod_ApiSignature_IsValid( Signature ) )
     {
         DMOD_LOG_ERROR("Cannot get function - invalid context or signature\n");
         return NULL;
@@ -175,7 +175,7 @@ void* Dmod_GetFunction( Dmod_Context_t* Context, const char* Signature )
     size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        if( strcmp( Context->Inputs.InputSection->Entries[i].Signature, Signature ) == 0 )
+        if( Dmod_ApiSignature_AreEqual( Context->Inputs.InputSection->Entries[i].Signature, Signature ) )
         {
             return Context->Inputs.InputSection->Entries[i].Function;
         }
@@ -259,6 +259,56 @@ int Dmod_Deinit( Dmod_Context_t* Context )
         {
             result = Context->Header->Deinit();
         }
+    }
+    return result;
+}
+
+/**
+ * @brief Call signal's handler
+ * 
+ * @param Context Context to signal
+ * @param SignalNumber Signal number
+ * 
+ * @return 0 on success, errno on error
+ */
+int Dmod_Signal( Dmod_Context_t* Context, int SignalNumber )
+{
+    int result = -EINVAL;
+    if( Context_IsValid( Context ) )
+    {
+        if( Context->Header->Signal == NULL )
+        {
+            DMOD_LOG_INFO("Signal function not set\n");
+            result = 0;
+        }
+        else 
+        {
+            result = Context->Header->Signal( SignalNumber );
+        }
+    }
+    return result;
+}
+
+/**
+ * @brief Call IRQ handler
+ * 
+ * @param Context Context to IRQ
+ * @param IrqNumber IRQ number
+ * 
+ * @return 0 on success, errno on error
+ */
+int Dmod_Irq( Dmod_Context_t* Context, const char* Signature )
+{
+    int result = -EINVAL;
+    if( Context_IsValid( Context ) )
+    {
+        void (*function)() = Dmod_GetFunction( Context, Signature );
+        if( function != NULL )
+        {
+            DMOD_LOG_VERBOSE("Calling IRQ %s for %s\n", Signature, Context->Header != NULL ? Context->Header->Name : "Unknown");
+            function();
+        }
+        result = 0;
     }
     return result;
 }
@@ -533,7 +583,7 @@ static bool LoadOutput( Dmod_Context_t* Context )
 
     Context->Outputs.OutputSection      = outputSection;
     Context->Outputs.SectionSize        = output->SectionSize;
-    Context->Outputs.ApiType            = DMOD_API_TYPE_OUTPUT;
+    Context->Outputs.ApiType            = Dmod_ApiType_Output;
 
     return true;
 }
@@ -614,7 +664,7 @@ static bool LoadInput( Dmod_Context_t* Context )
 
     Context->Inputs.InputSection    = inputSection;
     Context->Inputs.SectionSize     = input->SectionSize;
-    Context->Inputs.ApiType         = DMOD_API_TYPE_INPUT;
+    Context->Inputs.ApiType         = Dmod_ApiType_Input;
 
     return true;
 }
