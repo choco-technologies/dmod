@@ -853,14 +853,14 @@ static bool LoadHeader( Dmod_Context_t* Context )
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)Context->Data;
     if( header->Signature != DMOD_HEADER_SIGNATURE )
     {
-        DMOD_LOG_ERROR("Cannot load header - invalid signature\n");
+        DMOD_LOG_ERROR("Cannot load header - invalid signature: %s\n", header->Signature);
         return false;
     }
 
     // Check version
-    if( header->Version != DMOD_VERSION )
+    if( !DMOD_COMPATIBLE_VERSION(header->Version) )
     {
-        DMOD_LOG_ERROR("Cannot load header - invalid version\n");
+        DMOD_LOG_ERROR("Cannot load header - incompatible version: %s != %s\n", header->Version, DMOD_VERSION);
         return false;
     }
 

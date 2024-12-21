@@ -17,6 +17,11 @@
 #   define DMOD_VERSION		0x00010000
 #endif
 
+/**
+ * @brief Check if the version is compatible
+ */
+#define DMOD_COMPATIBLE_VERSION( VERSION )		( (VERSION) & 0xFFFF0000 ) == ( DMOD_VERSION & 0xFFFF0000 )
+
 //==============================================================================
 //                              SIGNATURE definitions
 //==============================================================================
