@@ -13,7 +13,7 @@ static bool             Context_IsValid( Dmod_Context_t* Context );
 static void             Context_Delete( Dmod_Context_t* Context );
 static const char*      Context_GetModuleName( Dmod_Context_t* Context );
 static bool             Load( Dmod_Context_t* Context );
-static bool             ReadFile( void* Data, size_t Size, void* File );
+static bool             ReadFile( const char* ModuleName, void* Data, size_t Size, void* File );
 static bool             LoadHeader( Dmod_Context_t* Context );
 static bool             LoadFooter( Dmod_Context_t* Context );
 static bool             LoadOutput( Dmod_Context_t* Context );
@@ -90,7 +90,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
 
     Dmod_Event_ModuleLoadingInProgress( Path, 20 );
 
-    if(!ReadFile( buffer, fileSize, file ))
+    if(!ReadFile( Path, buffer, fileSize, file ))
     {
         Dmod_FileClose( file );
         return NULL;
@@ -962,13 +962,14 @@ static bool Load( Dmod_Context_t* Context )
 /**
  * @brief Read file
  * 
+ * @param ModuleName Name of the module (just for event logging)
  * @param Data Destination for data to read
  * @param Size Size of the buffer 
  * @param File File to read
  * 
  * @return True if file was read successfully, false otherwise
  */
-static bool ReadFile( void* Data, size_t Size, void* File )
+static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* File )
 {
     if( Data == NULL || File == NULL )
     {
@@ -996,7 +997,7 @@ static bool ReadFile( void* Data, size_t Size, void* File )
             DMOD_LOG_ERROR("Cannot read file - not all data read: %d\n", read);
             return false;
         }
-        Dmod_Event_ModuleLoadingInProgress( "Unknown", progress + ((progressRange * (i+1))/segments) );
+        Dmod_Event_ModuleLoadingInProgress( ModuleName, progress + ((progressRange * (i+1))/segments) );
     }
 
     size_t read = Dmod_FileRead( Data + segments * segmentSize, 1, remainder, File );
@@ -1005,7 +1006,7 @@ static bool ReadFile( void* Data, size_t Size, void* File )
         DMOD_LOG_ERROR("Cannot read file - not all data read: %d\n", read);
         return false;
     }
-    Dmod_Event_ModuleLoadingInProgress( "Unknown", progress + progressRange );
+    Dmod_Event_ModuleLoadingInProgress( ModuleName, progress + progressRange );
 
     return true;
 }
