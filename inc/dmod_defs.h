@@ -23,6 +23,10 @@
 #   define DMOD_MAX_MODULES		50
 #endif
 
+#ifndef DMOD_MAX_VERSION_LENGTH
+#   define DMOD_MAX_VERSION_LENGTH		16
+#endif
+
 /**
  * @brief Check if the version is compatible
  */

@@ -107,14 +107,15 @@ typedef struct
     Dmod_ApiType_t      ApiType;
 } Dmod_Api_t;
 
-
+/**
+ * @brief Required module
+ */
 typedef struct 
 {
     char           Name[DMOD_MAX_MODULE_NAME_LENGTH];
-    uint32_t       Version;
+    char           Version[DMOD_MAX_VERSION_LENGTH];
     void*          Context;    
 } Dmod_RequiredModule_t;
-
 
 /**
  * @brief Context handle

@@ -76,6 +76,43 @@ bool Dmod_ApiSignature_IsValid( const char* Signature )
 }
 
 /**
+ * @brief Check if module in the API signature equals to the given module name
+ * 
+ * @param Signature API signature
+ * @param ModuleName Module name to compare
+ * 
+ * @return true if signature is a module, false otherwise
+ */
+bool Dmod_ApiSignature_IsModule( const char* Signature, const char* ModuleName  )
+{
+    if( Dmod_ApiSignature_IsValid( Signature ) == false )
+    {
+        return false;
+    }
+
+    if(strncmp( Signature, DMOD_SIGNATURE_PREFIX, sizeof( DMOD_SIGNATURE_PREFIX ) - 1 ) != 0 )
+    {
+        return false;
+    }
+
+    const char* module = ApiSignature_GetModule( Signature );
+    if( module == NULL )
+    {
+        return false;
+    }
+    size_t length = strlen( ModuleName ); 
+    for( size_t i = 0; i < length; i++ )
+    {
+        if( module[i] != ModuleName[i] )
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
  * @brief Get API signature name
  * 
  * @param Signature API signature
@@ -124,6 +161,80 @@ const char* Dmod_ApiSignature_GetModule( const char* Signature )
     }
 
     return ApiSignature_GetModule( Signature );
+}
+
+/**
+ * @brief Reads module name from the API signature
+ * 
+ * @param Signature API signature
+ * @param ModuleName Buffer to store module name
+ * @param MaxLength Maximum length of the module name
+ * 
+ * @return true if module name was read successfully, false otherwise
+ */
+bool Dmod_ApiSignature_ReadModuleName( const char* Signature, char* ModuleName, size_t MaxLength )
+{
+    if(MaxLength == 0)
+    {
+        return false;
+    }
+    if( !Dmod_ApiSignature_IsValid( Signature ) )
+    {
+        return false;
+    }
+
+    const char* module = ApiSignature_GetModule( Signature );
+    if( module == NULL )
+    {
+        return false;
+    }
+
+    while( *module != '\0' && *module != ':' )
+    {
+        if( MaxLength == 0 )
+        {
+            return false;
+        }
+        *ModuleName = *module;
+        ModuleName++;
+        module++;
+        MaxLength--;
+    }
+    if(MaxLength > 0)
+    {
+        *ModuleName = '\0';
+    }
+
+    return true;
+}
+
+/**
+ * @brief Reads version from the API signature
+ * 
+ * @param Signature API signature
+ * @param Version Buffer to store version
+ * @param MaxLength Maximum length of the version
+ * 
+ * @return true if version was read successfully, false otherwise
+ */
+bool Dmod_ApiSignature_ReadVersion( const char* Signature, char* Version, size_t MaxLength )
+{
+    if(MaxLength == 0)
+    {
+        return false;
+    }
+    if( !Dmod_ApiSignature_IsValid( Signature ) )
+    {
+        return false;
+    }
+
+    const char* version = ApiSignature_GetVersion( Signature );
+    if( version == NULL )
+    {
+        return false;
+    }
+
+    return strncpy( Version, version, MaxLength ) != NULL;
 }
 
 /**

@@ -8,21 +8,26 @@
 //                              LOCAL FUNCTION PROTOTYPES
 //==============================================================================
 
-static Dmod_Context_t*  Context_New( void* Data, size_t FileSize );
-static bool             Context_IsValid( Dmod_Context_t* Context );
-static void             Context_Delete( Dmod_Context_t* Context );
-static const char*      Context_GetModuleName( Dmod_Context_t* Context );
-static bool             Load( Dmod_Context_t* Context );
-static bool             ReadFile( const char* ModuleName, void* Data, size_t Size, void* File );
-static bool             LoadHeader( Dmod_Context_t* Context );
-static bool             LoadFooter( Dmod_Context_t* Context );
-static bool             LoadOutput( Dmod_Context_t* Context );
-static bool             LoadInput( Dmod_Context_t* Context );
-static bool             LoadGot( Dmod_Context_t* Context );
-static bool             LoadBss( Dmod_Context_t* Context );
-static bool             InitPointer( Dmod_Context_t* Context, void** PointerRef, const char* PointerName );
-static bool             AddContext( Dmod_Context_t* Context );
-static bool             RemoveContext( Dmod_Context_t* Context );
+static Dmod_Context_t*          Context_New( void* Data, size_t FileSize );
+static bool                     Context_IsValid( Dmod_Context_t* Context );
+static void                     Context_Delete( Dmod_Context_t* Context );
+static const char*              Context_GetModuleName( Dmod_Context_t* Context );
+static bool                     Load( Dmod_Context_t* Context );
+static bool                     ReadFile( const char* ModuleName, void* Data, size_t Size, void* File );
+static bool                     LoadHeader( Dmod_Context_t* Context );
+static bool                     LoadFooter( Dmod_Context_t* Context );
+static bool                     LoadOutput( Dmod_Context_t* Context );
+static bool                     LoadInput( Dmod_Context_t* Context );
+static bool                     LoadGot( Dmod_Context_t* Context );
+static bool                     LoadBss( Dmod_Context_t* Context );
+static bool                     InitPointer( Dmod_Context_t* Context, void** PointerRef, const char* PointerName );
+static bool                     AddContext( Dmod_Context_t* Context );
+static bool                     RemoveContext( Dmod_Context_t* Context );
+static Dmod_RequiredModule_t*   FindRequiredModule( Dmod_Context_t* Context, const char* ModuleName );
+static Dmod_RequiredModule_t*   FindEmptyRequiredModule( Dmod_Context_t* Context );
+static bool                     IsModuleRequired( Dmod_Context_t* Context, const char* ModuleName );
+static bool                     ReadRequiredModules( Dmod_Context_t* Context );
+static bool                     AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature );
 
 //==============================================================================
 //                              GLOBAL VARIABLES
@@ -956,7 +961,8 @@ static bool Load( Dmod_Context_t* Context )
         && LoadOutput( Context )
         && LoadInput( Context )
         && LoadGot( Context )
-        && LoadBss( Context );
+        && LoadBss( Context )
+        && ReadRequiredModules( Context );
 }
 
 /**
@@ -1433,5 +1439,149 @@ static bool RemoveContext( Dmod_Context_t* Context )
     }
 
     DMOD_LOG_WARN("Cannot remove context '%s' - not found\n", Context_GetModuleName( Context ));
+    return true;
+}
+
+/**
+ * @brief Find context
+ * 
+ * @param ModuleName Name of the module to find
+ * 
+ * @return Pointer to the context
+ */
+static Dmod_RequiredModule_t*   FindRequiredModule( Dmod_Context_t* Context, const char* ModuleName )
+{
+    if( Context == NULL || ModuleName == NULL )
+    {
+        return NULL;
+    }
+
+    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    {
+        if( Context->RequiredModules[i].Name[0] == 0 )
+        {
+            continue;
+        }
+
+        if( strcmp( Context->RequiredModules[i].Name, ModuleName ) == 0 )
+        {
+            return &Context->RequiredModules[i];
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief Find empty required module
+ * 
+ * @param Context Context to find empty required module in
+ * 
+ * @return Pointer to the empty required module
+ */
+static Dmod_RequiredModule_t*   FindEmptyRequiredModule( Dmod_Context_t* Context )
+{
+    if( Context == NULL )
+    {
+        return NULL;
+    }
+
+    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    {
+        if( Context->RequiredModules[i].Name[0] == 0 )
+        {
+            return &Context->RequiredModules[i];
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief checks if the given module is required by the current module
+ * 
+ * @param Context Context to check
+ * @param ModuleName Name of the module to check
+ * 
+ * @return True if module is required, false otherwise
+ */
+static bool IsModuleRequired( Dmod_Context_t* Context, const char* ModuleName )
+{
+    return FindRequiredModule( Context, ModuleName ) != NULL;
+}
+
+/**
+ * @brief Read required modules
+ * 
+ * @param Context Context to read required modules to
+ * 
+ * @return True if required modules were read successfully, false otherwise
+ */
+static bool ReadRequiredModules( Dmod_Context_t* Context )
+{
+    if( Context == NULL )
+    {
+        return false;
+    }
+
+    size_t numberOfOuptuts = Dmod_Api_GetNumberOfEntries( &Context->Outputs );
+    for(size_t outputIndex = 0; outputIndex < numberOfOuptuts; outputIndex++)
+    {
+        const char* apiSignature = Context->Outputs.OutputSection->Entries[outputIndex];
+        if(apiSignature == NULL)
+        {
+            continue;
+        }
+        if(!AddRequiredModule( Context, apiSignature ))
+        {
+            DMOD_LOG_ERROR("Cannot read required modules for %s - cannot add required module\n", Context_GetModuleName( Context ));
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Add required module
+ * 
+ * @param Context Context to add required module to
+ * @param ApiSignature Signature of the API
+ * 
+ * @return True if required module was added successfully, false otherwise
+ */
+static bool AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature )
+{
+    if( Context == NULL || ApiSignature == NULL )
+    {
+        return false;
+    }
+
+    char moduleName[DMOD_MAX_MODULE_NAME_LENGTH] = {0};
+    if( !Dmod_ApiSignature_ReadModuleName( ApiSignature, moduleName, sizeof(moduleName) ) )
+    {
+        DMOD_LOG_ERROR("Cannot add required module - cannot read module name\n");
+        return false;
+    }
+
+    if(IsModuleRequired( Context, moduleName ))
+    {
+        return true;
+    }
+
+    Dmod_RequiredModule_t* requiredModule = FindEmptyRequiredModule( Context );
+    if( requiredModule == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot add required module - no space left\n");
+        return false;
+    }
+
+    strncpy( requiredModule->Name, moduleName, sizeof(requiredModule->Name) );
+    if(Dmod_ApiSignature_ReadVersion( ApiSignature, requiredModule->Version, sizeof(requiredModule->Version) ) == false)
+    {
+        DMOD_LOG_ERROR("Cannot add required module - cannot read version\n");
+        return false;
+    }
+
     return true;
 }
