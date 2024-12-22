@@ -8,8 +8,9 @@ option(DMOD_USE_STDLIB 	"Use stdlib for memory allocations" 	ON)
 option(DMOD_USE_STDIO  	"Use stdio for file operations" 		ON)
 option(DMOD_USE_ASSERT 	"Use assert for error handling" 		ON)
 
-set(DMOD_MAX_MODULES 	30 		  	  CACHE STRING "Maximum number of modules")
-set(DMOD_MODE  			"DMOD_SYSTEM" CACHE STRING "Type of the module: DMOD_SYSTEM or DMOD_MODULE")
+set(DMOD_MAX_MODULES 			30            CACHE STRING "Maximum number of modules")
+set(DMOD_MAX_REQUIRED_MODULES 	10            CACHE STRING "Maximum number of required modules")
+set(DMOD_MODE  			        "DMOD_SYSTEM" CACHE STRING "Type of the module: DMOD_SYSTEM or DMOD_MODULE")
 
 # ===========================================================================
 # 						Project definition

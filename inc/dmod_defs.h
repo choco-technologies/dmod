@@ -1,6 +1,8 @@
 #ifndef INC_DMOD_DEFS_H_
 #define INC_DMOD_DEFS_H_
 
+#include "config.h"
+
 #define DMOD_HEADER_SIGNATURE           0x444D4F44
 #define DMOD_CONTEXT_SIGNATURE          0x646D6F64
 #define DMOD_MAX_ARCH_NAME_LENGTH       10
@@ -24,7 +26,7 @@
 /**
  * @brief Check if the version is compatible
  */
-#define DMOD_COMPATIBLE_VERSION( VERSION )		( (VERSION) & 0xFFFF0000 ) == ( DMOD_VERSION & 0xFFFF0000 )
+#define DMOD_COMPATIBLE_VERSION( version )		(( (version) & 0xFFFF0000 ) == ( (DMOD_VERSION) & 0xFFFF0000 ))
 
 //==============================================================================
 //                              SIGNATURE definitions

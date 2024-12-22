@@ -1038,7 +1038,7 @@ static bool LoadHeader( Dmod_Context_t* Context )
     // Check version
     if( !DMOD_COMPATIBLE_VERSION(header->Version) )
     {
-        DMOD_LOG_ERROR("Cannot load header - incompatible version: %s != %s\n", header->Version, DMOD_VERSION);
+        DMOD_LOG_ERROR("Cannot load header - incompatible version: 0x%08X != 0x%08X "DMOD_VERSION_STRING"\n", header->Version, (uint32_t)DMOD_VERSION );
         return false;
     }
 

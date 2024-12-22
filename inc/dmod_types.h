@@ -28,6 +28,7 @@ typedef struct
     uint32_t       Size;
     uint32_t       Version;
     uint32_t       Flags;
+    char           Name[DMOD_MAX_MODULE_NAME_LENGTH];
     char           Data[0];
 } Dmod_Config_t;
 
@@ -106,6 +107,15 @@ typedef struct
     Dmod_ApiType_t      ApiType;
 } Dmod_Api_t;
 
+
+typedef struct 
+{
+    char           Name[DMOD_MAX_MODULE_NAME_LENGTH];
+    uint32_t       Version;
+    void*          Context;    
+} Dmod_RequiredModule_t;
+
+
 /**
  * @brief Context handle
  * 
@@ -120,6 +130,7 @@ typedef struct
     Dmod_Api_t               Outputs;
     void*                    Data;
     size_t                   Size;
+    Dmod_RequiredModule_t    RequiredModules[DMOD_MAX_REQUIRED_MODULES];
     bool                     Enabled;
     bool                     Running;
 } Dmod_Context_t;
