@@ -133,6 +133,7 @@ typedef struct
     void*                    Data;
     size_t                   Size;
     void*                    Mutex;
+    int                      UseCount;
     Dmod_RequiredModule_t    RequiredModules[DMOD_MAX_REQUIRED_MODULES];
     bool                     Enabled;
     bool                     Running;

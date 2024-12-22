@@ -25,8 +25,12 @@ project (dmod
 # 						Configuration file
 # ===========================================================================
 if(DMOD_MODE STREQUAL "DMOD_SYSTEM")
+	set(DMOD_SYSTEM ON)
+	set(DMOD_MODULE OFF)
 	add_definitions(-DDMOD_SYSTEM)	
 elseif(DMOD_MODE STREQUAL "DMOD_MODULE")
+	set(DMOD_SYSTEM OFF)
+	set(DMOD_MODULE ON)
 	add_definitions(-DDMOD_MODULE)
 else()
 	message(FATAL_ERROR "Unknown DMOD_MODE: ${DMOD_MODE}")

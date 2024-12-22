@@ -44,17 +44,17 @@
 //==============================================================================
 //                              DMOD_API definitions
 //==============================================================================
-#define DMOD_MAKE_API_FUNCTION_NAME( MODULE, NAME )		        MODULE##NAME
-#define DMOD_MAKE_API_REG_NAME( MODULE, NAME )			        MODULE##NAME##_registration
+#define DMOD_MAKE_API_FUNCTION_NAME( MODULE, NAME )		        MODULE##_##NAME
+#define DMOD_MAKE_API_REG_NAME( MODULE, NAME )			        MODULE##_##NAME##_registration
 #define DMOD_INPUT_API( MODULE, VERSION, RET, NAME, PARAMS )        \
         extern RET DMOD_MAKE_API_FUNCTION_NAME(MODULE,NAME) PARAMS;\
-        static Dmod_ApiRegistration_t DMOD_MAKE_API_REG_NAME(MODULE,NAME) DMOD_SECTION(.inputs) = \
+        static Dmod_ApiRegistration_t DMOD_MAKE_API_REG_NAME(MODULE,NAME) DMOD_SECTION(".inputs") = \
         { \
             .Function = (void*)DMOD_MAKE_API_FUNCTION_NAME(MODULE,NAME), \
             .Signature = DMOD_MAKE_SIGNATURE(MODULE, VERSION, NAME) \
         };
 #define DMOD_OUTPUT_API( MODULE, VERSION, RET, NAME, PARAMS )       \
-        static RET (*DMOD_MAKE_API_FUNCTION_NAME(MODULE,NAME)) PARAMS DMOD_SECTION(.outputs) = DMOD_MAKE_SIGNATURE(MODULE, VERSION, NAME);\
+        static RET (*DMOD_MAKE_API_FUNCTION_NAME(MODULE,NAME)) PARAMS DMOD_SECTION(".outputs") = DMOD_MAKE_SIGNATURE(MODULE, VERSION, NAME);\
 
 #define DMOD_IRQ_MAKE_HANDLER_NAME(NAME)                __irq_##NAME
 #define DMOD_IRQ_MAKE_REG_NAME(NAME)                    __irq_##NAME##_registration

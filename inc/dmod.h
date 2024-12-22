@@ -55,12 +55,13 @@
 #define INC_DMOD_H_
 
 #include <stdbool.h>
+#include "config.h"
 #include "dmod_types.h"
 #include "dmod_sal.h"
 
-#ifdef DMOD_MODULE
+#if DMOD_MODULE_EN
 #   include "dmod_module.h"
-#elif defined(DMOD_SYSTEM)
+#elif DMOD_SYSTEM_EN
 #   include "dmod_system.h"
 #else 
 #   error "DMOD_MODULE or DMOD_SYSTEM must be defined"
@@ -84,6 +85,8 @@ extern const char*  Dmod_ApiSignature_GetModule( const char* Signature );
 extern bool         Dmod_ApiSignature_ReadModuleName( const char* Signature, char* ModuleName, size_t MaxLength );
 extern bool         Dmod_ApiSignature_ReadVersion( const char* Signature, char* Version, size_t MaxLength );
 extern bool         Dmod_ApiSignature_AreEqual( const char* Signature1, const char* Signature2 );
+
+DMOD_BUILTIN_API( DMOD, 1.0, void, BeginUsage, (void) );
 
 //! @}
 
