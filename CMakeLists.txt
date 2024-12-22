@@ -14,6 +14,7 @@ set(DMOD_MAX_REQUIRED_MODULES 	10            CACHE STRING "Maximum number of req
 set(DMOD_MODE  			        "DMOD_SYSTEM" CACHE STRING "Type of the module: DMOD_SYSTEM or DMOD_MODULE")
 set(DMOD_SYSTEM_VERSION_MAJOR 	0             CACHE STRING "Version major")
 set(DMOD_SYSTEM_VERSION_MINOR 	1             CACHE STRING "Version minor")
+set(DMOD_BUILD_TESTS 			ON            CACHE BOOL   "Build tests")
 
 # ===========================================================================
 # 						Project definition
@@ -48,5 +49,8 @@ configure_file(config.h.in config.h)
 # ===========================================================================
 add_subdirectory(inc)
 add_subdirectory(src)
+if (DMOD_BUILD_TESTS)
+	add_subdirectory(tests)
+endif()
 
 
