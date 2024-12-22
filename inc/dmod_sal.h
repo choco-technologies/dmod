@@ -164,4 +164,22 @@ extern void Dmod_Event_ModuleStopped( Dmod_Context_t* Context );
 
 //! @}
 
+/**
+ * @defgroup DMOD_SAL_RTOS RTOS Interface
+ * @ingroup DMOD_SAL
+ * 
+ * This interface is used to handle real-time operating system (RTOS) in the system.
+ * 
+ * @addtogroup DMOD_SAL_RTOS
+ * @{
+ */
+
+extern void* Dmod_Mutex_New( void );
+extern int   Dmod_Mutex_Lock( void* Mutex );
+extern int   Dmod_Mutex_Unlock( void* Mutex );
+extern void  Dmod_Mutex_Delete( void* Mutex );
+
+//! @}
+
+
 #endif /* INC_DMOD_SAL_H_ */

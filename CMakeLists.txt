@@ -7,6 +7,7 @@ cmake_minimum_required(VERSION 3.18)
 option(DMOD_USE_STDLIB 	"Use stdlib for memory allocations" 	ON)
 option(DMOD_USE_STDIO  	"Use stdio for file operations" 		ON)
 option(DMOD_USE_ASSERT 	"Use assert for error handling" 		ON)
+option(DMOD_USE_PTHREAD "Use pthread for threading" 			ON)
 
 set(DMOD_MAX_MODULES 			30            CACHE STRING "Maximum number of modules")
 set(DMOD_MAX_REQUIRED_MODULES 	10            CACHE STRING "Maximum number of required modules")
@@ -20,7 +21,9 @@ project (dmod
 	VERSION 0.1
 	DESCRIPTION "Library for managing of dynamic modules")
 
-
+# ===========================================================================
+# 						Configuration file
+# ===========================================================================
 if(DMOD_MODE STREQUAL "DMOD_SYSTEM")
 	add_definitions(-DDMOD_SYSTEM)	
 elseif(DMOD_MODE STREQUAL "DMOD_MODULE")
@@ -29,10 +32,15 @@ else()
 	message(FATAL_ERROR "Unknown DMOD_MODE: ${DMOD_MODE}")
 endif()
 
-add_subdirectory(inc)
-add_subdirectory(src)
+add_definitions(-DON=1 -DOFF=0)
 
 # Create a simple configuration header
 configure_file(config.h.in config.h)
+
+# ===========================================================================
+# 						Subdirectories
+# ===========================================================================
+add_subdirectory(inc)
+add_subdirectory(src)
 
 

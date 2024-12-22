@@ -62,6 +62,7 @@ extern bool             Dmod_DisconnectOutputApis( Dmod_Context_t* Context );
 extern bool             Dmod_DisconnectInputApis ( Dmod_Context_t* Context );
 extern bool             Dmod_DisconnectAllApis  ( Dmod_Context_t* Context );
 extern void*            Dmod_GetFunction        ( Dmod_Context_t* Context, const char* Signature );
+extern void             Dmod_Preinit            ( Dmod_Context_t* Context );
 extern int              Dmod_Init               ( Dmod_Context_t* Context, Dmod_Config_t* Config );
 extern int              Dmod_Main               ( Dmod_Context_t* Context, int argc, char *argv[] );
 extern int              Dmod_Deinit             ( Dmod_Context_t* Context );
@@ -69,8 +70,8 @@ extern int              Dmod_Signal             ( Dmod_Context_t* Context, int S
 extern int              Dmod_Irq                ( Dmod_Context_t* Context, const char* Signature );
 extern uint64_t         Dmod_GetStackSize       ( Dmod_Context_t* Context );
 extern Dmod_ModuleType_t Dmod_GetModuleType     ( Dmod_Context_t* Context );
-extern bool             Dmod_Enable             ( Dmod_Context_t* Context );
-extern bool             Dmod_Disable            ( Dmod_Context_t* Context );
+extern bool             Dmod_Enable             ( Dmod_Context_t* Context, bool Force );
+extern bool             Dmod_Disable            ( Dmod_Context_t* Context, bool Force );
 extern bool             Dmod_IsEnabled          ( Dmod_Context_t* Context );
 extern int              Dmod_Run                ( Dmod_Context_t* Context, int argc, char *argv[] );
 extern bool             Dmod_IsRunning          ( Dmod_Context_t* Context );

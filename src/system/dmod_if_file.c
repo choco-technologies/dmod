@@ -34,7 +34,7 @@
  */
 
 #include "dmod_sal.h"
-#ifdef DMOD_USE_STDIO
+#if DMOD_USE_STDIO
 #   include <stdio.h>
 #endif
 
@@ -51,7 +51,7 @@
  */
 void* DMOD_WEAK_SYMBOL Dmod_FileOpen(const char *Path, const char *Mode)
 {
-    #if defined(DMOD_USE_STDIO)
+    #if DMOD_USE_STDIO
     return fopen(Path, Mode);
     #else 
     DMOD_ERROR("Dmod_FileOpen interface not implemented");
@@ -71,7 +71,7 @@ void* DMOD_WEAK_SYMBOL Dmod_FileOpen(const char *Path, const char *Mode)
  */
 size_t DMOD_WEAK_SYMBOL Dmod_FileRead(void *Buffer, size_t Size, size_t Count, void *File)
 {
-    #if defined(DMOD_USE_STDIO)
+    #if DMOD_USE_STDIO
     return fread(Buffer, Size, Count, File);
     #else
     DMOD_ERROR("Dmod_FileRead interface not implemented");
@@ -90,7 +90,7 @@ size_t DMOD_WEAK_SYMBOL Dmod_FileRead(void *Buffer, size_t Size, size_t Count, v
  */
 int DMOD_WEAK_SYMBOL Dmod_FileSeek(void *File, long Offset, int Origin)
 {
-    #if defined(DMOD_USE_STDIO)
+    #if DMOD_USE_STDIO
     return fseek(File, Offset, Origin);
     #else 
     DMOD_ERROR("Dmod_FileSeek interface not implemented");
@@ -131,7 +131,7 @@ size_t DMOD_WEAK_SYMBOL Dmod_FileSize(void *File)
  */
 void DMOD_WEAK_SYMBOL Dmod_FileClose(void *File)
 {
-    #if defined(DMOD_USE_STDIO)
+    #if DMOD_USE_STDIO
     fclose(File);
     #else 
     DMOD_ERROR("Dmod_FileClose interface not implemented");

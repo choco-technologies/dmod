@@ -30,7 +30,7 @@
  */
 
 #include "dmod_sal.h"
-#ifdef DMOD_USE_STDLIB
+#if DMOD_USE_STDLIB
 #   include <stdlib.h>
 #endif
 
@@ -47,7 +47,7 @@
  */
 void* DMOD_WEAK_SYMBOL Dmod_Malloc(size_t Size)        
 {
-    #if defined(DMOD_USE_STDLIB)
+    #if DMOD_USE_STDLIB
     return malloc(Size);
     #else
     DMOD_ERROR("Dmod_Malloc interface not implemented");
@@ -67,7 +67,7 @@ void* DMOD_WEAK_SYMBOL Dmod_Malloc(size_t Size)
  */
 void* DMOD_WEAK_SYMBOL Dmod_AlignedMalloc(size_t Size, size_t Alignment)
 {
-    #if defined(DMOD_USE_STDLIB)
+    #if DMOD_USE_STDLIB
     return aligned_alloc(Alignment, Size);
     #else
     DMOD_ERROR("Dmod_AlignedMalloc interface not implemented");
@@ -82,7 +82,7 @@ void* DMOD_WEAK_SYMBOL Dmod_AlignedMalloc(size_t Size, size_t Alignment)
  */
 void DMOD_WEAK_SYMBOL Dmod_Free(void *ptr)
 {
-    #if defined(DMOD_USE_STDLIB)
+    #if DMOD_USE_STDLIB
     free(ptr);
     #else 
     DMOD_ERROR("Dmod_Free interface not implemented");

@@ -32,6 +32,7 @@ typedef struct
     char           Data[0];
 } Dmod_Config_t;
 
+typedef void (*Dmod_Preinit_t)(void);
 typedef int (*Dmod_Init_t)(Dmod_Config_t *Config);
 typedef int (*Dmod_Main_t)(int argc, char *argv[]);
 typedef int (*Dmod_Deinit_t)(void);
@@ -44,6 +45,7 @@ typedef struct
     uint32_t            Version;
     char                Arch[DMOD_MAX_ARCH_NAME_LENGTH];
     char                Name[DMOD_MAX_MODULE_NAME_LENGTH];
+    Dmod_Preinit_t      Preinit;
     Dmod_Init_t         Init;
     Dmod_Main_t         Main;
     Dmod_Deinit_t       Deinit;
@@ -114,7 +116,6 @@ typedef struct
 {
     char           Name[DMOD_MAX_MODULE_NAME_LENGTH];
     char           Version[DMOD_MAX_VERSION_LENGTH];
-    void*          Context;    
 } Dmod_RequiredModule_t;
 
 /**
@@ -131,6 +132,7 @@ typedef struct
     Dmod_Api_t               Outputs;
     void*                    Data;
     size_t                   Size;
+    void*                    Mutex;
     Dmod_RequiredModule_t    RequiredModules[DMOD_MAX_REQUIRED_MODULES];
     bool                     Enabled;
     bool                     Running;

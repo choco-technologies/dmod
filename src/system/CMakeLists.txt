@@ -7,6 +7,7 @@ add_library(${MODULE_NAME} STATIC
     dmod_if_dbg.c
     dmod_if_irq.c
     dmod_if_events.c
+    dmod_if_rtos.c
 )
 
 target_include_directories(${MODULE_NAME} 
@@ -19,27 +20,3 @@ target_link_libraries(${MODULE_NAME}
     PRIVATE    
         dmod_inc
     )
-
-# ===========================================================================
-# 						Definitions from configuration options
-# ===========================================================================
-if(DMOD_USE_STDLIB)
-    target_compile_definitions(${MODULE_NAME} 
-        PRIVATE
-            DMOD_USE_STDLIB
-    )
-endif()
-
-if(DMOD_USE_STDIO)
-    target_compile_definitions(${MODULE_NAME} 
-        PRIVATE
-            DMOD_USE_STDIO
-    )
-endif()
-
-if(DMOD_USE_ASSERT)
-    target_compile_definitions(${MODULE_NAME} 
-        PRIVATE
-            DMOD_USE_ASSERT
-    )
-endif()

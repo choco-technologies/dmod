@@ -31,11 +31,11 @@
  */
 
 #include "dmod_sal.h"
-#if defined(DMOD_USE_STDIO)
+#if DMOD_USE_STDIO
 #   include <stdarg.h>
 #   include <stdio.h>
 #endif
-#if defined(DMOD_USE_ASSERT)
+#if DMOD_USE_ASSERT
 #   include <assert.h>
 #endif
 
@@ -52,7 +52,7 @@
  */
 int DMOD_WEAK_SYMBOL Dmod_Printf( const char* Format, ... )
 {
-    #if defined(DMOD_USE_STDIO)
+    #if DMOD_USE_STDIO
     int Ret = 0;
     va_list Args;
     va_start( Args, Format );
@@ -75,7 +75,7 @@ int DMOD_WEAK_SYMBOL Dmod_Printf( const char* Format, ... )
  */
 void  DMOD_WEAK_SYMBOL Dmod_Assert( int Condition, const char* Message, const char* File, int Line, const char* Function )
 {
-    #if defined(DMOD_USE_ASSERT)
+    #if DMOD_USE_ASSERT
     if( !Condition )
     {
         __assert_fail( Message, File, Line, Function );

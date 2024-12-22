@@ -4,3 +4,15 @@
 #define DMOD_VERSION        ((uint32_t)((@dmod_VERSION_MAJOR@ << 8) | (@dmod_VERSION_MINOR@)))
 #define DMOD_MAX_MODULES    @DMOD_MAX_MODULES@
 #define DMOD_MAX_REQUIRED_MODULES @DMOD_MAX_REQUIRED_MODULES@
+#define DMOD_USE_STDLIB     @DMOD_USE_STDLIB@
+#define DMOD_USE_STDIO      @DMOD_USE_STDIO@
+#define DMOD_USE_ASSERT     @DMOD_USE_ASSERT@
+#define DMOD_USE_PTHREAD    @DMOD_USE_PTHREAD@
+
+#ifndef ON 
+#   define ON 1
+#endif
+
+#ifndef OFF
+#   define OFF 0
+#endif

@@ -23,11 +23,15 @@ static bool                     LoadBss( Dmod_Context_t* Context );
 static bool                     InitPointer( Dmod_Context_t* Context, void** PointerRef, const char* PointerName );
 static bool                     AddContext( Dmod_Context_t* Context );
 static bool                     RemoveContext( Dmod_Context_t* Context );
+static Dmod_Context_t*          GetContext( const char* ModuleName );
 static Dmod_RequiredModule_t*   FindRequiredModule( Dmod_Context_t* Context, const char* ModuleName );
 static Dmod_RequiredModule_t*   FindEmptyRequiredModule( Dmod_Context_t* Context );
 static bool                     IsModuleRequired( Dmod_Context_t* Context, const char* ModuleName );
 static bool                     ReadRequiredModules( Dmod_Context_t* Context );
 static bool                     AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature );
+static bool                     AreRequiredModulesLoaded( Dmod_Context_t* Context );
+static bool                     AreRequiredModulesEnabled( Dmod_Context_t* Context );
+static Dmod_Context_t*          FindDependentModule( Dmod_Context_t* Context, bool OnlyEnabled );
 
 //==============================================================================
 //                              GLOBAL VARIABLES
@@ -524,6 +528,28 @@ void* Dmod_GetFunction( Dmod_Context_t* Context, const char* Signature )
 }
 
 /**
+ * @brief Preinitialize module
+ * 
+ * @param Context Context to preinitialize
+ */
+void Dmod_Preinit( Dmod_Context_t* Context )
+{
+    if( !Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot preinit module - invalid context\n");
+        return;
+    }
+
+    if( Context->Header->Preinit == NULL )
+    {
+        DMOD_LOG_INFO("Preinit function not set\n");
+        return;
+    }
+
+    Context->Header->Preinit();
+}
+
+/**
  * @brief Initialize module
  * 
  * @param Context Context to initialize
@@ -696,10 +722,11 @@ Dmod_ModuleType_t Dmod_GetModuleType( Dmod_Context_t* Context )
  * @brief Enable module
  * 
  * @param Context Context to enable
+ * @param Force If true, the module will be enabled even if it is already enabled or if not all required modules are enabled
  * 
  * @return true on success, false on error
  */
-bool Dmod_Enable( Dmod_Context_t* Context )
+bool Dmod_Enable( Dmod_Context_t* Context, bool Force )
 {
     Dmod_ModuleType_t moduleType = Dmod_GetModuleType(Context);
     if( moduleType != Dmod_ModuleType_Module )
@@ -708,23 +735,48 @@ bool Dmod_Enable( Dmod_Context_t* Context )
         return false;
     }
 
-    if( Context->Enabled )
+    if(Dmod_Mutex_Lock(Context->Mutex) != 0)
+    {
+        DMOD_LOG_ERROR("Cannot enable module - cannot lock mutex\n");
+        return false;
+    }
+
+    if( Context->Enabled && !Force )
     {
         DMOD_LOG_WARN("Module already enabled\n");
+        Dmod_Mutex_Unlock(Context->Mutex);
         return true;
     }
+    if( !AreRequiredModulesEnabled( Context ) )
+    {
+        if( !Force )
+        {
+            DMOD_LOG_ERROR("Cannot enable module - not all required modules are enabled\n");
+            Dmod_Mutex_Unlock(Context->Mutex);
+            return false;
+        }
+        else 
+        {
+            DMOD_LOG_WARN("Not all required modules are enabled for %s\n", Context_GetModuleName( Context ));
+        }
+    }
+
 
     if( !Dmod_ConnectAllApis( Context ) )
     {
         DMOD_LOG_ERROR("Cannot enable module - cannot connect APIs\n");
+        Dmod_Mutex_Unlock(Context->Mutex);
         return false;
     }
+
+    Dmod_Preinit( Context );
 
     int result = Dmod_Init( Context, NULL );
     if( result != 0 )
     {
         DMOD_LOG_ERROR("Cannot enable module - init failed: %d\n", result);
         Dmod_DisconnectAllApis( Context );
+        Dmod_Mutex_Unlock(Context->Mutex);
         return false;
     }
 
@@ -733,6 +785,7 @@ bool Dmod_Enable( Dmod_Context_t* Context )
 
     Dmod_Event_ModuleEnabled( Context );
 
+    Dmod_Mutex_Unlock(Context->Mutex);
     return true;
 }
 
@@ -740,10 +793,11 @@ bool Dmod_Enable( Dmod_Context_t* Context )
  * @brief Disable module
  * 
  * @param Context Context to disable
+ * @param Force If true, the module will be disabled even if it is already disabled
  * 
  * @return true on success, false on error
  */
-bool Dmod_Disable( Dmod_Context_t* Context )
+bool Dmod_Disable( Dmod_Context_t* Context, bool Force )
 {
     Dmod_ModuleType_t moduleType = Dmod_GetModuleType(Context);
     if( moduleType != Dmod_ModuleType_Module )
@@ -752,12 +806,31 @@ bool Dmod_Disable( Dmod_Context_t* Context )
         return false;
     }
 
-    Dmod_EnterCritical();
-    if( !Context->Enabled )
+    if(Dmod_Mutex_Lock(Context->Mutex) != 0)
+    {
+        DMOD_LOG_ERROR("Cannot disable module - cannot lock mutex\n");
+        return false;
+    }
+
+    if( !Context->Enabled && !Force )
     {
         DMOD_LOG_WARN("Module already disabled\n");
-        Dmod_ExitCritical();
+        Dmod_Mutex_Unlock(Context->Mutex);
         return true;
+    }
+    Dmod_Context_t* dependentModule = FindDependentModule( Context, true );
+    if( dependentModule != NULL )
+    {
+        if( !Force )
+        {
+            DMOD_LOG_ERROR("Cannot disable module '%s' - required by module '%s'\n", Context_GetModuleName(Context), Context_GetModuleName( dependentModule ));
+            Dmod_Mutex_Unlock(Context->Mutex);
+            return false;
+        }
+        else 
+        {
+            DMOD_LOG_WARN("'%s' is required by: %s\n", Context_GetModuleName( Context ), Context_GetModuleName( dependentModule ));
+        }
     }
 
     Context->Enabled = false;
@@ -771,13 +844,14 @@ bool Dmod_Disable( Dmod_Context_t* Context )
     if( !Dmod_DisconnectAllApis( Context ) )
     {
         DMOD_LOG_ERROR("Cannot disable module - cannot disconnect APIs\n");
+        Dmod_Mutex_Unlock(Context->Mutex);
         return false;
     }
-    Dmod_ExitCritical();
 
     DMOD_LOG_INFO("Module disabled: %s\n", Context_GetModuleName( Context ));
     Dmod_Event_ModuleDisabled( Context );
 
+    Dmod_Mutex_Unlock(Context->Mutex);
     return true;
 }
 
@@ -816,26 +890,36 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
         return -EINVAL;
     }
 
+    if( Dmod_Mutex_Lock(Context->Mutex) != 0 )
+    {
+        DMOD_LOG_ERROR("Cannot run module - cannot lock mutex\n");
+        return -EINVAL;
+    }
+
     if( Dmod_IsRunning( Context ) )
     {
         DMOD_LOG_ERROR("Module %s already running\n", Context_GetModuleName( Context ));
+        Dmod_Mutex_Unlock(Context->Mutex);
         return -EEXIST;
     }
 
     if(!Dmod_ConnectOutputApis(Context))
     {
         DMOD_LOG_ERROR("Cannot run module - cannot connect output APIs\n");
+        Dmod_Mutex_Unlock(Context->Mutex);
         return -ENOEXEC;
     }
 
     Context->Running = true;
     Dmod_Event_ModuleRunning( Context );
+    Dmod_Preinit( Context );
     int result = Dmod_Main( Context, argc, argv );
     Dmod_Event_ModuleStopped( Context );
     Context->Running = false;
 
     Dmod_DisconnectOutputApis(Context);
 
+    Dmod_Mutex_Unlock(Context->Mutex);
     return result;
 }
 
@@ -866,12 +950,18 @@ static Dmod_Context_t*  Context_New( void* Data, size_t FileSize )
     Context->Footer     = NULL;
     Context->Data       = Data != NULL ? Data : Dmod_AlignedMalloc( FileSize, DMOD_STACK_ALIGNMENT );
     Context->Size       = FileSize;
+    Context->Mutex      = Dmod_Mutex_New();
 
     if( Context->Data == NULL )
     {
         DMOD_LOG_ERROR("Cannot create new context - cannot allocate memory for file data. The required size: %d\n", FileSize);
         Context_Delete( Context );
         return NULL;
+    }
+
+    if( Context->Mutex == NULL )
+    {
+        DMOD_LOG_WARN("Could not create mutex\n");
     }
 
     return Context;
@@ -913,6 +1003,7 @@ static void Context_Delete( Dmod_Context_t* Context )
         return;
     }
 
+    Dmod_Mutex_Delete( Context->Mutex );
     if( Context->Data != NULL )
     {
         Dmod_Free( Context->Data );
@@ -1085,10 +1176,11 @@ static bool LoadHeader( Dmod_Context_t* Context )
 
     Context->Header = header;
 
-    bool result = InitPointer( Context, (void**)&header->Init,     "Init"   ) 
-               && InitPointer( Context, (void**)&header->Main,     "Main"   ) 
-               && InitPointer( Context, (void**)&header->Deinit,   "Deinit" )
-               && InitPointer( Context, (void**)&header->Signal,   "Signal" );
+    bool result = InitPointer( Context, (void**)&header->Preinit,  "Preinit"    ) 
+               && InitPointer( Context, (void**)&header->Init,     "Init"       ) 
+               && InitPointer( Context, (void**)&header->Main,     "Main"       ) 
+               && InitPointer( Context, (void**)&header->Deinit,   "Deinit"     )
+               && InitPointer( Context, (void**)&header->Signal,   "Signal"     );
                ;
     Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 85 );
     return result;
@@ -1443,6 +1535,36 @@ static bool RemoveContext( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Get context
+ * 
+ * @param ModuleName Name of the module to find
+ * 
+ * @return Pointer to the context
+ */
+static Dmod_Context_t* GetContext( const char* ModuleName )
+{
+    if( ModuleName == NULL )
+    {
+        return NULL;
+    }
+
+    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    {
+        if( Dmod_Contexts[i] == NULL )
+        {
+            continue;
+        }
+
+        if( strcmp( Dmod_Contexts[i]->Header->Name, ModuleName ) == 0 )
+        {
+            return Dmod_Contexts[i];
+        }
+    }
+
+    return NULL;
+}
+
+/**
  * @brief Find context
  * 
  * @param ModuleName Name of the module to find
@@ -1584,4 +1706,106 @@ static bool AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature
     }
 
     return true;
+}
+
+/**
+ * @brief Are required modules loaded
+ * 
+ * @param Context Context to check
+ * 
+ * @return True if required modules are loaded, false otherwise
+ */
+static bool AreRequiredModulesLoaded( Dmod_Context_t* Context )
+{
+    if( Context == NULL )
+    {
+        return false;
+    }
+
+    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    {
+        if( Context->RequiredModules[i].Name[0] == 0 )
+        {
+            continue;
+        }
+
+        if( GetContext( Context->RequiredModules[i].Name ) == NULL )
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Are required modules enabled
+ * 
+ * @param Context Context to check
+ * 
+ * @return True if required modules are enabled, false otherwise
+ */
+static bool AreRequiredModulesEnabled( Dmod_Context_t* Context )
+{
+    if( Context == NULL )
+    {
+        return false;
+    }
+
+    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    {
+        if( Context->RequiredModules[i].Name[0] == 0 )
+        {
+            continue;
+        }
+
+        Dmod_Context_t* requiredModule = GetContext( Context->RequiredModules[i].Name );
+        if( requiredModule == NULL || !Dmod_IsEnabled( requiredModule ) )
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Checks if the given module is required by another module
+ * 
+ * @param Context Context to check
+ * @param OnlyEnabled If true, only enabled modules will be checked
+ * 
+ * @return Pointer to the module that requires the given module
+ */
+static Dmod_Context_t* FindDependentModule( Dmod_Context_t* Context, bool OnlyEnabled )
+{
+    if( Context == NULL )
+    {
+        return NULL;
+    }
+
+    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    {
+        if( Dmod_Contexts[i] == NULL )
+        {
+            continue;
+        }
+
+        if( Dmod_Contexts[i] == Context )
+        {
+            continue;
+        }
+
+        if( OnlyEnabled && !Dmod_IsEnabled( Dmod_Contexts[i] ) )
+        {
+            continue;
+        }
+
+        if( IsModuleRequired( Dmod_Contexts[i], Context_GetModuleName( Context ) ) )
+        {
+            return Dmod_Contexts[i];
+        }
+    }
+
+    return NULL;
 }
