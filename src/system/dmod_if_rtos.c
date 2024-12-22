@@ -39,9 +39,11 @@
 /**
  * @brief Create new mutex
  * 
+ * @param Recursive Recursive mutex
+ * 
  * @return Pointer to new mutex
  */
-void* DMOD_WEAK_SYMBOL Dmod_Mutex_New( void )
+void* DMOD_WEAK_SYMBOL Dmod_Mutex_New( bool Recursive )
 {
     #if DMOD_USE_PTHREAD
     pthread_mutex_t* Mutex = Dmod_Malloc( sizeof( pthread_mutex_t ) );
@@ -51,7 +53,25 @@ void* DMOD_WEAK_SYMBOL Dmod_Mutex_New( void )
         return NULL;
     }
 
-    if( pthread_mutex_init( Mutex, NULL ) != 0 )
+    pthread_mutexattr_t Attr;
+    if( pthread_mutexattr_init( &Attr ) != 0 )
+    {
+        DMOD_LOG_ERROR("Cannot create new mutex - cannot initialize mutex attribute\n");
+        Dmod_Free( Mutex );
+        return NULL;
+    }
+
+    if( Recursive )
+    {
+        if( pthread_mutexattr_settype( &Attr, PTHREAD_MUTEX_RECURSIVE_NP ) != 0 )
+        {
+            DMOD_LOG_ERROR("Cannot create new mutex - cannot set mutex attribute\n");
+            Dmod_Free( Mutex );
+            return NULL;
+        }
+    }
+
+    if( pthread_mutex_init( Mutex, &Attr ) != 0 )
     {
         DMOD_LOG_ERROR("Cannot create new mutex - cannot initialize mutex\n");
         Dmod_Free( Mutex );

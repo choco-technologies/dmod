@@ -60,9 +60,9 @@
  * @addtogroup DMOD_SAL_MEM
  * @{
  */ 
-extern void*    Dmod_Malloc( size_t Size );
-extern void     Dmod_Free( void* Ptr );
-extern void*    Dmod_AlignedMalloc( size_t Size, size_t Alignment );
+DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Malloc ,           ( size_t Size )                     );
+DMOD_BUILTIN_API(Dmod, 1.0, void ,  _Free   ,           ( void* Ptr )                       );
+DMOD_BUILTIN_API(Dmod, 1.0, void*,  _AlignedMalloc,     ( size_t Size, size_t Alignment )   );
 //! @}
 
 /**
@@ -76,11 +76,11 @@ extern void*    Dmod_AlignedMalloc( size_t Size, size_t Alignment );
  * @addtogroup DMOD_SAL_FILE
  * @{
  */
-extern void*    Dmod_FileOpen( const char* Path, const char* Mode );
-extern size_t   Dmod_FileRead( void* Buffer, size_t Size, size_t Count, void* File );
-extern int      Dmod_FileSeek( void* File, long Offset, int Origin );
-extern size_t   Dmod_FileSize( void* File );
-extern void     Dmod_FileClose( void* File );
+DMOD_BUILTIN_API(Dmod, 1.0, void* , _FileOpen,  ( const char* Path, const char* Mode ) );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t, _FileRead,  ( void* Buffer, size_t Size, size_t Count, void* File ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int   , _FileSeek,  ( void* File, long Offset, int Origin ) );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t, _FileSize,  ( void* File ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void  , _FileClose, ( void* File ) );
 
 #ifndef DMOD_SEEK_SET
 #   define DMOD_SEEK_SET   0
@@ -100,8 +100,8 @@ extern void     Dmod_FileClose( void* File );
  * @addtogroup DMOD_SAL_DEBUG
  * @{
  */
-extern int     Dmod_Printf( const char* Format, ... );
-extern void    Dmod_Assert( int Condition, const char* Message, const char* File, int Line, const char* Function );
+DMOD_BUILTIN_API( Dmod, 1.0, int  ,_Printf, ( const char* Format, ... ) );
+DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message, const char* File, int Line, const char* Function ) );
 
 #ifdef NDEBUG
 #   define DMOD_ASSERT_MSG( Condition, Message )           ((void)0)
@@ -139,8 +139,8 @@ extern void    Dmod_Assert( int Condition, const char* Message, const char* File
  * @{
  */
 
-extern void Dmod_EnterCritical( void );
-extern void Dmod_ExitCritical( void );
+DMOD_BUILTIN_API( Dmod, 1.0, void, _EnterCritical   , ( void ) );
+DMOD_BUILTIN_API( Dmod, 1.0, void, _ExitCritical    , ( void ) );
 
 //! @}
 
@@ -154,13 +154,13 @@ extern void Dmod_ExitCritical( void );
  * @{
  */
 
-extern void Dmod_Event_ModuleLoaded( Dmod_Context_t* Context );
-extern void Dmod_Event_ModuleUnloaded( Dmod_Context_t* Context );
-extern void Dmod_Event_ModuleLoadingInProgress( const char* Name, uint16_t Progress );
-extern void Dmod_Event_ModuleEnabled( Dmod_Context_t* Context );
-extern void Dmod_Event_ModuleDisabled( Dmod_Context_t* Context );
-extern void Dmod_Event_ModuleRunning( Dmod_Context_t* Context );
-extern void Dmod_Event_ModuleStopped( Dmod_Context_t* Context );
+DMOD_BUILTIN_API(Dmod, 1.0, void, _Event_ModuleLoaded, ( Dmod_Context_t* Context ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void, _Event_ModuleUnloaded, ( Dmod_Context_t* Context ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void, _Event_ModuleLoadingInProgress, ( const char* Name, uint16_t Progress ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void, _Event_ModuleEnabled, ( Dmod_Context_t* Context ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void, _Event_ModuleDisabled, ( Dmod_Context_t* Context ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void, _Event_ModuleRunning, ( Dmod_Context_t* Context ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void, _Event_ModuleStopped, ( Dmod_Context_t* Context ) );
 
 //! @}
 
@@ -174,10 +174,10 @@ extern void Dmod_Event_ModuleStopped( Dmod_Context_t* Context );
  * @{
  */
 
-extern void* Dmod_Mutex_New( void );
-extern int   Dmod_Mutex_Lock( void* Mutex );
-extern int   Dmod_Mutex_Unlock( void* Mutex );
-extern void  Dmod_Mutex_Delete( void* Mutex );
+DMOD_BUILTIN_API(Dmod, 1.0, void*, _Mutex_New, ( bool Recursive ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int  , _Mutex_Lock, ( void* Mutex ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int  , _Mutex_Unlock, ( void* Mutex ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void , _Mutex_Delete, ( void* Mutex ) );
 
 //! @}
 

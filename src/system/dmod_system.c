@@ -29,9 +29,12 @@ static Dmod_RequiredModule_t*   FindEmptyRequiredModule( Dmod_Context_t* Context
 static bool                     IsModuleRequired( Dmod_Context_t* Context, const char* ModuleName );
 static bool                     ReadRequiredModules( Dmod_Context_t* Context );
 static bool                     AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature );
+static bool                     IsLoaded( const char* ModuleName );
+static bool                     IsEnabled( const char* ModuleName );
 static bool                     AreRequiredModulesLoaded( Dmod_Context_t* Context );
 static bool                     AreRequiredModulesEnabled( Dmod_Context_t* Context );
 static Dmod_Context_t*          FindDependentModule( Dmod_Context_t* Context, bool OnlyEnabled );
+static bool                     IsSystemModule( const char* ModuleName );
 
 //==============================================================================
 //                              GLOBAL VARIABLES
@@ -40,12 +43,12 @@ extern void* __dmod_inputs_start;
 extern void* __dmod_inputs_size;
 extern void* __dmod_outputs_start;
 extern void* __dmod_outputs_size;
-static Dmod_Api_t __dmod_input_api = {
+static Dmod_Api_t Dmod_BuiltinInputApi = {
     .InputSection    = (void*)&__dmod_inputs_start,
     .SectionSize     = (size_t)&__dmod_inputs_size,
     .ApiType         = Dmod_ApiType_Input
 };
-static Dmod_Api_t __dmod_output_api = {
+static Dmod_Api_t Dmod_BuiltinOutputApi = {
     .OutputSection    = (void*)&__dmod_outputs_start,
     .SectionSize     = (size_t)&__dmod_outputs_size,
     .ApiType         = Dmod_ApiType_Output
@@ -170,26 +173,26 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
  * 
  * @param Context Context to unload
  */
-void Dmod_Unload( Dmod_Context_t* Context )
+bool Dmod_Unload( Dmod_Context_t* Context, bool Force )
 {
     if( !Context_IsValid( Context ) )
     {
         DMOD_LOG_ERROR("Cannot unload module - invalid context\n");
-        return;
+        return false;
     }
 
     Dmod_EnterCritical();
-    if(Context->Enabled)
+    if(Context->Enabled && !Force)
     {
         DMOD_LOG_ERROR("Module %s cannot be unloaded - it has to be disabled first\n", Context_GetModuleName( Context ));
         Dmod_ExitCritical();
-        return;
+        return false;
     }
-    if(Context->Running)
+    if(Context->Running && !Force)
     {
         DMOD_LOG_ERROR("Module %s cannot be unloaded - it has to be stopped first\n", Context_GetModuleName( Context ));
         Dmod_ExitCritical();
-        return;
+        return false;
     }
 
     Dmod_Event_ModuleUnloaded( Context );
@@ -201,6 +204,8 @@ void Dmod_Unload( Dmod_Context_t* Context )
     Context->Signature = 0;
     Dmod_ExitCritical();
     Context_Delete( Context );    
+
+    return true;
 }
 
 /**
@@ -287,7 +292,7 @@ bool Dmod_ConnectOutputApis( Dmod_Context_t* Context )
     }
     Dmod_EnterCritical();
 
-    if( !Dmod_ConnectApi( &Context->Outputs, &__dmod_input_api ) )
+    if( !Dmod_ConnectApi( &Context->Outputs, &Dmod_BuiltinInputApi ) )
     {
         DMOD_LOG_ERROR("Cannot connect system API to '%s' APIs\n", Context_GetModuleName( Context ));
         Dmod_ExitCritical();
@@ -333,7 +338,7 @@ bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
 
     Dmod_EnterCritical();
 
-    if( !Dmod_ConnectApi( &__dmod_output_api, &Context->Inputs ) )
+    if( !Dmod_ConnectApi( &Dmod_BuiltinOutputApi, &Context->Inputs ) )
     {
         DMOD_LOG_ERROR("Cannot connect API '%s' to system\n", Context_GetModuleName( Context ));
         Dmod_ExitCritical();
@@ -416,7 +421,7 @@ bool Dmod_DisconnectOutputApis( Dmod_Context_t* Context )
         }
     }
 
-    if( !Dmod_DisconnectApi( &Context->Outputs, &__dmod_input_api ) )
+    if( !Dmod_DisconnectApi( &Context->Outputs, &Dmod_BuiltinInputApi ) )
     {
         DMOD_LOG_ERROR("Cannot disconnect system API from '%s'\n", Context_GetModuleName( Context ));
         result = false;
@@ -456,7 +461,7 @@ bool Dmod_DisconnectInputApis( Dmod_Context_t* Context )
         }
     }
 
-    if( !Dmod_DisconnectApi( &__dmod_output_api, &Context->Inputs ) )
+    if( !Dmod_DisconnectApi( &Dmod_BuiltinOutputApi, &Context->Inputs ) )
     {
         DMOD_LOG_ERROR("Cannot disconnect %s's API from system\n", Context_GetModuleName( Context ));
         result = false;
@@ -557,7 +562,7 @@ void Dmod_Preinit( Dmod_Context_t* Context )
  * 
  * @return 0 on success, errno on error
  */
-int Dmod_Init( Dmod_Context_t* Context, Dmod_Config_t* Config )
+int Dmod_Init( Dmod_Context_t* Context, const Dmod_Config_t* Config )
 {
     int result = -EINVAL;
     if( Context_IsValid( Context ) )
@@ -723,10 +728,11 @@ Dmod_ModuleType_t Dmod_GetModuleType( Dmod_Context_t* Context )
  * 
  * @param Context Context to enable
  * @param Force If true, the module will be enabled even if it is already enabled or if not all required modules are enabled
+ * @param Config Configuration to pass to the module
  * 
  * @return true on success, false on error
  */
-bool Dmod_Enable( Dmod_Context_t* Context, bool Force )
+bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Config )
 {
     Dmod_ModuleType_t moduleType = Dmod_GetModuleType(Context);
     if( moduleType != Dmod_ModuleType_Module )
@@ -771,7 +777,7 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force )
 
     Dmod_Preinit( Context );
 
-    int result = Dmod_Init( Context, NULL );
+    int result = Dmod_Init( Context, Config );
     if( result != 0 )
     {
         DMOD_LOG_ERROR("Cannot enable module - init failed: %d\n", result);
@@ -809,6 +815,13 @@ bool Dmod_Disable( Dmod_Context_t* Context, bool Force )
     if(Dmod_Mutex_Lock(Context->Mutex) != 0)
     {
         DMOD_LOG_ERROR("Cannot disable module - cannot lock mutex\n");
+        return false;
+    }
+
+    if( Context->UsageCounter > 0 && !Force )
+    {
+        DMOD_LOG_ERROR("Cannot disable module %s - it is used\n", Context_GetModuleName( Context ));
+        Dmod_Mutex_Unlock(Context->Mutex);
         return false;
     }
 
@@ -923,6 +936,294 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
     return result;
 }
 
+/**
+ * @brief Check if module is running
+ * 
+ * @param Context Context to check
+ * 
+ * @return true if module is running, false otherwise
+ */
+bool Dmod_IsRunning( Dmod_Context_t* Context )
+{
+    return Context_IsValid(Context) && Context->Running;
+}
+
+/**
+ * @brief Get context by module name
+ * 
+ * @param ModuleName Name of the module
+ * 
+ * @return Pointer to the context
+ */
+void Dmod_BeginUsage( const char* ModuleName )
+{
+    if(IsSystemModule(ModuleName))
+    {
+        return;
+    }
+
+    Dmod_Context_t* context = GetContext( ModuleName );
+    if( context == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot begin usage - module not found: %s\n", ModuleName);
+        return;
+    }
+
+    if( Dmod_Mutex_Lock(context->Mutex) != 0 )
+    {
+        DMOD_LOG_ERROR("Cannot begin usage - cannot lock mutex\n");
+        return;
+    }
+
+    context->UsageCounter++;
+    Dmod_Mutex_Unlock(context->Mutex);
+}
+
+/**
+ * @brief End usage of the module
+ * 
+ * @param ModuleName Name of the module
+ */
+void Dmod_EndUsage( const char* ModuleName )
+{
+    if(IsSystemModule(ModuleName))
+    {
+        return;
+    }
+
+    Dmod_Context_t* context = GetContext( ModuleName );
+    if( context == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot end usage - module not found: %s\n", ModuleName);
+        return;
+    }
+
+    if( Dmod_Mutex_Lock(context->Mutex) != 0 )
+    {
+        DMOD_LOG_ERROR("Cannot end usage - cannot lock mutex\n");
+        return;
+    }
+
+    if( context->UsageCounter > 0 )
+    {
+        context->UsageCounter--;
+    }
+    else 
+    {
+        DMOD_LOG_WARN("Usage counter is already 0\n");
+    }
+
+    Dmod_Mutex_Unlock(context->Mutex);
+}
+
+/**
+ * @brief Check if module is used
+ * 
+ * @param ModuleName Name of the module
+ * 
+ * @return true if module is used, false otherwise
+ */
+bool Dmod_IsModuleUsed( const char* ModuleName )
+{
+    if(IsSystemModule(ModuleName))
+    {
+        return true;
+    }
+
+    Dmod_Context_t* context = GetContext( ModuleName );
+    if( context == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot check if module is used - module not found: %s\n", ModuleName);
+        return false;
+    }
+
+    if( Dmod_Mutex_Lock(context->Mutex) != 0 )
+    {
+        DMOD_LOG_ERROR("Cannot check if module is used - cannot lock mutex\n");
+        return false;
+    }
+
+    bool result = context->UsageCounter > 0;
+
+    Dmod_Mutex_Unlock(context->Mutex);
+    return result;
+}
+
+/**
+ * @brief Check if module is loaded
+ * 
+ * @param ModuleName Name of the module
+ * 
+ * @return true if module is loaded, false otherwise
+ */
+bool Dmod_IsModuleLoaded(const char* ModuleName)
+{
+    return IsLoaded(ModuleName);
+}
+
+/**
+ * @brief Check if module is enabled
+ * 
+ * @param ModuleName Name of the module
+ * 
+ * @return true if module is enabled, false otherwise
+ */
+bool Dmod_IsModuleEnabled(const char* ModuleName)
+{
+    return IsEnabled(ModuleName);
+}
+
+/**
+ * @brief Check if module is required
+ * 
+ * @param ModuleName Name of the module
+ * @param RequiredModuleName Name of the required module
+ * 
+ * @return true if module is required, false otherwise
+ */
+bool Dmod_IsModuleRequired(const char* ModuleName, const char* RequiredModuleName)
+{
+    if( ModuleName == NULL || RequiredModuleName == NULL )
+    {
+        return false;
+    }
+
+    Dmod_Context_t* context = GetContext( ModuleName );
+    if( context == NULL )
+    {
+        return false;
+    }
+
+    return IsModuleRequired( context, RequiredModuleName );
+}
+
+/**
+ * @brief Get module version
+ * 
+ * @param ModuleName Name of the module
+ * 
+ * @return Module type
+ */
+uint32_t Dmod_GetModuleVersion(const char* ModuleName)
+{
+    if( IsSystemModule( ModuleName ) )
+    {
+        return DMOD_SYSTEM_VERSION;
+    }
+
+    Dmod_Context_t* context = GetContext( ModuleName );
+    if( context == NULL )
+    {
+        return 0;
+    }
+
+    return context->Header->Version;
+}
+
+/**
+ * @brief loads module
+ * 
+ * @param ModuleName Name of the module
+ * 
+ * @return true if module was loaded successfully, false otherwise
+ */
+bool Dmod_LoadModule(const char* FilePath)
+{
+    if( FilePath == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load module - invalid module name\n");
+        return false;
+    }
+
+    Dmod_Context_t* context = Dmod_LoadFile( FilePath );
+    if( context == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load module: %s\n", FilePath);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Unload module
+ * 
+ * @param ModuleName Name of the module
+ * 
+ * @return true if module was unloaded successfully, false otherwise
+ */
+bool Dmod_UnloadModule(const char* ModuleName, bool Force)
+{
+    if( ModuleName == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot unload module - invalid module name\n");
+        return false;
+    }
+
+    Dmod_Context_t* context = GetContext( ModuleName );
+    if( context == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot unload module - module not found: %s\n", ModuleName);
+        return false;
+    }
+
+    return Dmod_Unload( context, Force );
+}
+
+/**
+ * @brief Enable module
+ * 
+ * @param ModuleName Name of the module
+ * @param Force If true, the module will be enabled even if it is already enabled or if not all required modules are enabled
+ * @param Config Configuration to pass to the module
+ * 
+ * @return true if module was enabled successfully, false otherwise
+ */
+bool Dmod_EnableModule(const char* ModuleName, bool Force, const Dmod_Config_t* Config)
+{
+    if( ModuleName == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot enable module - invalid module name\n");
+        return false;
+    }
+
+    Dmod_Context_t* context = GetContext( ModuleName );
+    if( context == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot enable module - module not found: %s\n", ModuleName);
+        return false;
+    }
+
+    return Dmod_Enable( context, Force, Config );
+}
+
+/**
+ * @brief Disable module
+ * 
+ * @param ModuleName Name of the module
+ * @param Force If true, the module will be disabled even if it is already disabled
+ * 
+ * @return true if module was disabled successfully, false otherwise
+ */
+bool Dmod_DisableModule(const char* ModuleName, bool Force)
+{
+    if( ModuleName == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot disable module - invalid module name\n");
+        return false;
+    }
+
+    Dmod_Context_t* context = GetContext( ModuleName );
+    if( context == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot disable module - module not found: %s\n", ModuleName);
+        return false;
+    }
+
+    return Dmod_Disable( context, Force );
+}
+
+
 //==============================================================================
 //                              LOCAL FUNCTIONS IMPLEMENTATIONS
 //==============================================================================
@@ -950,7 +1251,10 @@ static Dmod_Context_t*  Context_New( void* Data, size_t FileSize )
     Context->Footer     = NULL;
     Context->Data       = Data != NULL ? Data : Dmod_AlignedMalloc( FileSize, DMOD_STACK_ALIGNMENT );
     Context->Size       = FileSize;
-    Context->Mutex      = Dmod_Mutex_New();
+    Context->Mutex      = Dmod_Mutex_New(true);
+    Context->Enabled    = false;
+    Context->Running    = false;
+    Context->UsageCounter = 0;
 
     if( Context->Data == NULL )
     {
@@ -1150,6 +1454,12 @@ static bool LoadHeader( Dmod_Context_t* Context )
     if( strlen( header->Name ) > DMOD_MAX_MODULE_NAME_LENGTH )
     {
         DMOD_LOG_ERROR("Cannot load header - The given name is too long: %s\n", header->Name);
+        return false;
+    }
+
+    if(IsLoaded(header->Name))
+    {
+        DMOD_LOG_ERROR("Cannot load header - module already loaded: %s\n", header->Name);
         return false;
     }
 
@@ -1709,6 +2019,40 @@ static bool AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature
 }
 
 /**
+ * @brief Checks if the given module is loaded
+ * 
+ * @param ModuleName Name of the module to check
+ * 
+ * @return True if module is loaded, false otherwise
+ */
+static bool IsLoaded( const char* ModuleName )
+{
+    if(IsSystemModule( ModuleName ))
+    {
+        return true; 
+    }
+
+    return GetContext( ModuleName ) != NULL;
+}
+
+/**
+ * @brief Checks if the given module is enabled
+ * 
+ * @param ModuleName Name of the module to check
+ * 
+ * @return True if module is enabled, false otherwise
+ */
+static bool IsEnabled( const char* ModuleName )
+{
+    if(IsSystemModule( ModuleName ))
+    {
+        return true; 
+    }
+    Dmod_Context_t* context = GetContext( ModuleName );
+    return context != NULL && Dmod_IsEnabled( context );
+}
+
+/**
  * @brief Are required modules loaded
  * 
  * @param Context Context to check
@@ -1719,6 +2063,7 @@ static bool AreRequiredModulesLoaded( Dmod_Context_t* Context )
 {
     if( Context == NULL )
     {
+        DMOD_LOG_ERROR("Cannot check required modules - invalid context\n");
         return false;
     }
 
@@ -1729,8 +2074,9 @@ static bool AreRequiredModulesLoaded( Dmod_Context_t* Context )
             continue;
         }
 
-        if( GetContext( Context->RequiredModules[i].Name ) == NULL )
+        if( !IsLoaded( Context->RequiredModules[i].Name ) )
         {
+            DMOD_LOG_VERBOSE("Required module '%s' is not loaded\n", Context->RequiredModules[i].Name);
             return false;
         }
     }
@@ -1749,6 +2095,7 @@ static bool AreRequiredModulesEnabled( Dmod_Context_t* Context )
 {
     if( Context == NULL )
     {
+        DMOD_LOG_ERROR("Cannot check required modules - invalid context\n");
         return false;
     }
 
@@ -1759,9 +2106,9 @@ static bool AreRequiredModulesEnabled( Dmod_Context_t* Context )
             continue;
         }
 
-        Dmod_Context_t* requiredModule = GetContext( Context->RequiredModules[i].Name );
-        if( requiredModule == NULL || !Dmod_IsEnabled( requiredModule ) )
+        if( !IsEnabled( Context->RequiredModules[i].Name ) )
         {
+            DMOD_LOG_VERBOSE("Required module '%s' is not enabled\n", Context->RequiredModules[i].Name);
             return false;
         }
     }
@@ -1808,4 +2155,28 @@ static Dmod_Context_t* FindDependentModule( Dmod_Context_t* Context, bool OnlyEn
     }
 
     return NULL;
+}
+
+/**
+ * @brief checks if the given module is a system module
+ * 
+ * @param ModuleName Name of the module to check
+ * 
+ * @return True if module is a system module, false otherwise
+ */
+static bool IsSystemModule( const char* ModuleName )
+{
+    if(ModuleName == NULL || ModuleName[0] == 0)
+    {
+        return true;
+    }
+    size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Dmod_BuiltinInputApi );
+    for(size_t i = 0; i < numberOfEntries; i++)
+    {
+        if( Dmod_ApiSignature_IsModule(Dmod_BuiltinInputApi.InputSection->Entries[i].Signature, ModuleName) )
+        {
+            return true;
+        }
+    }
+    return false;
 }

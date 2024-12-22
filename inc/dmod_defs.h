@@ -44,8 +44,8 @@
 //==============================================================================
 //                              DMOD_API definitions
 //==============================================================================
-#define DMOD_MAKE_API_FUNCTION_NAME( MODULE, NAME )		        MODULE##_##NAME
-#define DMOD_MAKE_API_REG_NAME( MODULE, NAME )			        MODULE##_##NAME##_registration
+#define DMOD_MAKE_API_FUNCTION_NAME( MODULE, NAME )		        MODULE##NAME
+#define DMOD_MAKE_API_REG_NAME( MODULE, NAME )			        MODULE##NAME##_registration
 #define DMOD_INPUT_API( MODULE, VERSION, RET, NAME, PARAMS )        \
         extern RET DMOD_MAKE_API_FUNCTION_NAME(MODULE,NAME) PARAMS;\
         static Dmod_ApiRegistration_t DMOD_MAKE_API_REG_NAME(MODULE,NAME) DMOD_SECTION(".inputs") = \
@@ -75,6 +75,43 @@
         };\
         static void DMOD_IRQ_MAKE_HANDLER_NAME(NAME)(void)
 
+#ifdef DOXYGEN
+/**
+ * @brief Defines Builtin API
+ * 
+ * Use this macro to define the builtin API function. The function will be
+ * available in the DMOD system and can be used by the modules.
+ * 
+ * @param MODULE Module name
+ * @param VERSION Module version
+ * @param RET Return type
+ * @param NAME Function name
+ * 
+ * @note This macro defines the builtin API function
+ */
+#define DMOD_BUILTIN_API( MODULE, VERSION, RET, NAME, PARAMS )      RET NAME PARAMS
+
+/**
+ * @brief Defines Module API
+ * 
+ * Use this macro to define the module API function. The function will be
+ * available in the DMOD module and can be used by the system and other modules.
+ * 
+ * @param MODULE Module name
+ * @param VERSION Module version
+ * @param RET Return type
+ * @param NAME Function name
+ * 
+ * @note This macro defines the module API function
+ */
+#define DMOD_MODULE_API( MODULE, VERSION, RET, NAME, PARAMS )       RET NAME PARAMS
+#elif DMOD_SYSTEM_EN
+#define DMOD_BUILTIN_API( MODULE, VERSION, RET, NAME, PARAMS )      DMOD_INPUT_API( MODULE, VERSION, RET, NAME, PARAMS )
+#define DMOD_MODULE_API( MODULE, VERSION, RET, NAME, PARAMS )       DMOD_OUTPUT_API( MODULE, VERSION, RET, NAME, PARAMS )
+#elif DMOD_MODULE_EN
+#define DMOD_BUILTIN_API( MODULE, VERSION, RET, NAME, PARAMS )      DMOD_OUTPUT_API( MODULE, VERSION, RET, NAME, PARAMS )
+#define DMOD_MODULE_API( MODULE, VERSION, RET, NAME, PARAMS )       DMOD_INPUT_API( MODULE, VERSION, RET, NAME, PARAMS )
+#endif
 
 //==============================================================================
 //                              ARCHITECTURE DEFINITIONS

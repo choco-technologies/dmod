@@ -33,7 +33,7 @@ typedef struct
 } Dmod_Config_t;
 
 typedef void (*Dmod_Preinit_t)(void);
-typedef int (*Dmod_Init_t)(Dmod_Config_t *Config);
+typedef int (*Dmod_Init_t)(const Dmod_Config_t *Config);
 typedef int (*Dmod_Main_t)(int argc, char *argv[]);
 typedef int (*Dmod_Deinit_t)(void);
 typedef int (*Dmod_Signal_t)( int SignalNumber );
@@ -133,7 +133,7 @@ typedef struct
     void*                    Data;
     size_t                   Size;
     void*                    Mutex;
-    int                      UseCount;
+    int                      UsageCounter;
     Dmod_RequiredModule_t    RequiredModules[DMOD_MAX_REQUIRED_MODULES];
     bool                     Enabled;
     bool                     Running;

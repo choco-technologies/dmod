@@ -12,6 +12,8 @@ option(DMOD_USE_PTHREAD "Use pthread for threading" 			ON)
 set(DMOD_MAX_MODULES 			30            CACHE STRING "Maximum number of modules")
 set(DMOD_MAX_REQUIRED_MODULES 	10            CACHE STRING "Maximum number of required modules")
 set(DMOD_MODE  			        "DMOD_SYSTEM" CACHE STRING "Type of the module: DMOD_SYSTEM or DMOD_MODULE")
+set(DMOD_SYSTEM_VERSION_MAJOR 	0             CACHE STRING "Version major")
+set(DMOD_SYSTEM_VERSION_MINOR 	1             CACHE STRING "Version minor")
 
 # ===========================================================================
 # 						Project definition
