@@ -1539,6 +1539,11 @@ static bool LoadHeader( Dmod_Context_t* Context )
         DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize license pointer\n", header->Name);
         return false;
     }
+    if(header->License != NULL && !InitPointer(Context, (void**)&header->License->Text, "License Text"))
+    {
+        DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize license text pointer\n", header->Name);
+        return false;
+    }
 
     Context->Header = header;
 

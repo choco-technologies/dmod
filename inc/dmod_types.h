@@ -52,6 +52,7 @@ typedef struct
     uint32_t            Version;
     char                Arch[DMOD_MAX_ARCH_NAME_LENGTH];
     char                Name[DMOD_MAX_MODULE_NAME_LENGTH];
+    char                Company[DMOD_MAX_COMPANY_NAME_LENGTH];
     Dmod_Preinit_t      Preinit;
     Dmod_Init_t         Init;
     Dmod_Main_t         Main;

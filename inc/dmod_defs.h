@@ -35,6 +35,10 @@
 #   define DMOD_MAX_URL_LENGTH		128
 #endif
 
+#ifndef DMOD_MAX_COMPANY_NAME_LENGTH
+#   define DMOD_MAX_COMPANY_NAME_LENGTH		32
+#endif
+
 /**
  * @brief Check if the version is compatible
  */

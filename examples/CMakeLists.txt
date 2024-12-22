@@ -1,0 +1,6 @@
+if(DMOD_SYSTEM)
+    add_subdirectory(system)
+endif()
+if(DMOD_MODULE)
+    add_subdirectory(module)
+endif()

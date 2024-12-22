@@ -15,6 +15,7 @@ set(DMOD_MODE  			        "DMOD_SYSTEM" CACHE STRING "Type of the module: DMOD_S
 set(DMOD_SYSTEM_VERSION_MAJOR 	0             CACHE STRING "Version major")
 set(DMOD_SYSTEM_VERSION_MINOR 	1             CACHE STRING "Version minor")
 set(DMOD_BUILD_TESTS 			ON            CACHE BOOL   "Build tests")
+set(DMOD_BUILD_EXAMPLES 		ON            CACHE BOOL   "Build examples")
 
 # ===========================================================================
 # 						Project definition
@@ -23,6 +24,8 @@ set(DMOD_BUILD_TESTS 			ON            CACHE BOOL   "Build tests")
 project (dmod
 	VERSION 0.1
 	DESCRIPTION "Library for managing of dynamic modules")
+
+set(DMOD_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 # ===========================================================================
 # 						Configuration file
@@ -49,8 +52,22 @@ configure_file(config.h.in config.h)
 # ===========================================================================
 add_subdirectory(inc)
 add_subdirectory(src)
+add_subdirectory(scripts)
 if (DMOD_BUILD_TESTS)
 	add_subdirectory(tests)
 endif()
+if (DMOD_BUILD_EXAMPLES)
+	add_subdirectory(examples)
+endif()
 
+# ===========================================================================
+#       				Main library
+# ===========================================================================
+add_library(dmod INTERFACE)
 
+target_link_libraries(dmod INTERFACE dmod_inc dmod_common)
+if (DMOD_SYSTEM)
+	target_link_libraries(dmod INTERFACE dmod_system)
+elseif (DMOD_MODULE)
+	target_link_libraries(dmod INTERFACE dmod_module)
+endif()
