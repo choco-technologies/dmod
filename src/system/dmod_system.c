@@ -949,6 +949,30 @@ bool Dmod_IsRunning( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Returns license of the module
+ * 
+ * @param Context Context to get license from
+ * 
+ * @return Pointer to the license
+ */
+Dmod_License_t* Dmod_GetLicense( Dmod_Context_t* Context )
+{
+    if( !Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot get license - invalid context\n");
+        return NULL;
+    }
+
+    if( Context->Header == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot get license - header not set\n");
+        return NULL;
+    }
+
+    return Context->Header->License;
+}
+
+/**
  * @brief Get context by module name
  * 
  * @param ModuleName Name of the module
@@ -1223,6 +1247,32 @@ bool Dmod_DisableModule(const char* ModuleName, bool Force)
     return Dmod_Disable( context, Force );
 }
 
+/**
+ * @brief Run application
+ * 
+ * @param ModuleName Name of the module
+ * @param argc Number of arguments
+ * @param argv Arguments
+ * 
+ * @return Return value of the main function
+ */
+int Dmod_RunModule(const char* ModuleName, int argc, char *argv[])
+{
+    if( ModuleName == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot run module - invalid module name\n");
+        return -EINVAL;
+    }
+
+    Dmod_Context_t* context = GetContext( ModuleName );
+    if( context == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot run module - module not found: %s\n", ModuleName);
+        return -EINVAL;
+    }
+
+    return Dmod_Run( context, argc, argv );
+}
 
 //==============================================================================
 //                              LOCAL FUNCTIONS IMPLEMENTATIONS
@@ -1482,6 +1532,12 @@ static bool LoadHeader( Dmod_Context_t* Context )
         default:
             DMOD_LOG_ERROR("Cannot load header - invalid module type: %d\n", header->ModuleType);
             return false;
+    }
+
+    if( !InitPointer(Context, (void**)&header->License, "License") )
+    {
+        DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize license pointer\n", header->Name);
+        return false;
     }
 
     Context->Header = header;

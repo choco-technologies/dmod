@@ -75,6 +75,7 @@ extern bool             Dmod_Disable            ( Dmod_Context_t* Context, bool 
 extern bool             Dmod_IsEnabled          ( Dmod_Context_t* Context );
 extern int              Dmod_Run                ( Dmod_Context_t* Context, int argc, char *argv[] );
 extern bool             Dmod_IsRunning          ( Dmod_Context_t* Context );
+extern Dmod_License_t*  Dmod_GetLicense         ( Dmod_Context_t* Context );
 
 //! @}
 

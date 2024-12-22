@@ -27,6 +27,14 @@
 #   define DMOD_MAX_VERSION_LENGTH		16
 #endif
 
+#ifndef DMOD_MAX_LICENSE_NAME_LENGTH
+#   define DMOD_MAX_LICENSE_NAME_LENGTH		32
+#endif
+
+#ifndef DMOD_MAX_URL_LENGTH
+#   define DMOD_MAX_URL_LENGTH		128
+#endif
+
 /**
  * @brief Check if the version is compatible
  */

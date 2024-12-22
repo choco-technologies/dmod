@@ -40,6 +40,13 @@ typedef int (*Dmod_Signal_t)( int SignalNumber );
 
 typedef struct 
 {
+    char           Name[DMOD_MAX_LICENSE_NAME_LENGTH];
+    char           Url[DMOD_MAX_URL_LENGTH];
+    char*          Text;
+} Dmod_License_t;
+
+typedef struct 
+{
     uint32_t            Signature;  // DMOD
     uint32_t            HeaderSize;
     uint32_t            Version;
@@ -53,6 +60,7 @@ typedef struct
     uint64_t            RequiredStackSize;
     uint32_t            Priority;
     uint8_t             ModuleType;
+    Dmod_License_t*     License;
 } Dmod_ModuleHeader_t;
 
 typedef struct 

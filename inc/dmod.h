@@ -97,6 +97,7 @@ DMOD_BUILTIN_API( Dmod, 1.0, bool     , _LoadModule, (const char* FilePath) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool     , _UnloadModule, (const char* ModuleName, bool Force) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool     , _EnableModule, (const char* ModuleName, bool Force, const Dmod_Config_t* Config) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool     , _DisableModule, (const char* ModuleName, bool Force ) );
+DMOD_BUILTIN_API( Dmod, 1.0, int      , _RunModule, (const char* ModuleName, int argc, char *argv[]) );
 
 //! @}
 
