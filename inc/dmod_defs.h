@@ -11,6 +11,7 @@
 #define DMOD_WEAK_SYMBOL		__attribute__((weak))
 #define DMOD_SECTION( NAME )	__attribute__((section(NAME)))
 #define DMOD_USED                        __attribute__((used))
+#define DMOD_GLOBAL_POINTER             DMOD_SECTION(".got")
 
 #ifndef DMOD_STACK_ALIGNMENT
 #   define DMOD_STACK_ALIGNMENT		16
