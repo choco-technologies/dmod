@@ -49,10 +49,11 @@ typedef struct
 {
     uint32_t            Signature;  // DMOD
     uint32_t            HeaderSize;
-    uint32_t            Version;
+    uint32_t            DmodVersion;
     char                Arch[DMOD_MAX_ARCH_NAME_LENGTH];
     char                Name[DMOD_MAX_MODULE_NAME_LENGTH];
-    char                Company[DMOD_MAX_COMPANY_NAME_LENGTH];
+    char                Author[DMOD_MAX_AUTHOR_NAME_LENGTH];
+    char                Version[DMOD_MAX_VERSION_LENGTH];   //!< Module Version
     Dmod_Preinit_t      Preinit;
     Dmod_Init_t         Init;
     Dmod_Main_t         Main;

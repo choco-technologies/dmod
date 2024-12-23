@@ -1130,11 +1130,11 @@ bool Dmod_IsModuleRequired(const char* ModuleName, const char* RequiredModuleNam
  * 
  * @return Module type
  */
-uint32_t Dmod_GetModuleVersion(const char* ModuleName)
+const char* Dmod_GetModuleVersion(const char* ModuleName)
 {
     if( IsSystemModule( ModuleName ) )
     {
-        return DMOD_SYSTEM_VERSION;
+        return DMOD_SYSTEM_VERSION_STRING;
     }
 
     Dmod_Context_t* context = GetContext( ModuleName );
@@ -1488,7 +1488,7 @@ static bool LoadHeader( Dmod_Context_t* Context )
     Dmod_Event_ModuleLoadingInProgress( header->Name, 80 );
 
     // Check version
-    if( !DMOD_COMPATIBLE_VERSION(header->Version) )
+    if( !DMOD_COMPATIBLE_VERSION(header->DmodVersion) )
     {
         DMOD_LOG_ERROR("Cannot load header - incompatible version: 0x%08X != 0x%08X "DMOD_VERSION_STRING"\n", header->Version, (uint32_t)DMOD_VERSION );
         return false;

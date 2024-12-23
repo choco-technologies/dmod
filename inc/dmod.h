@@ -86,18 +86,18 @@ extern bool         Dmod_ApiSignature_ReadModuleName( const char* Signature, cha
 extern bool         Dmod_ApiSignature_ReadVersion( const char* Signature, char* Version, size_t MaxLength );
 extern bool         Dmod_ApiSignature_AreEqual( const char* Signature1, const char* Signature2 );
 
-DMOD_BUILTIN_API( Dmod, 1.0, void     , _BeginUsage, (const char* ModuleName) );
-DMOD_BUILTIN_API( Dmod, 1.0, void     , _EndUsage, (const char* ModuleName) );
-DMOD_BUILTIN_API( Dmod, 1.0, bool     , _IsModuleUsed, (const char* ModuleName) );
-DMOD_BUILTIN_API( Dmod, 1.0, bool     , _IsModuleLoaded, (const char* ModuleName) );
-DMOD_BUILTIN_API( Dmod, 1.0, bool     , _IsModuleEnabled, (const char* ModuleName) );
-DMOD_BUILTIN_API( Dmod, 1.0, bool     , _IsModuleRequired, (const char* ModuleName, const char* RequiredModuleName) );
-DMOD_BUILTIN_API( Dmod, 1.0, uint32_t , _GetModuleVersion, (const char* ModuleName) );
-DMOD_BUILTIN_API( Dmod, 1.0, bool     , _LoadModule, (const char* FilePath) );
-DMOD_BUILTIN_API( Dmod, 1.0, bool     , _UnloadModule, (const char* ModuleName, bool Force) );
-DMOD_BUILTIN_API( Dmod, 1.0, bool     , _EnableModule, (const char* ModuleName, bool Force, const Dmod_Config_t* Config) );
-DMOD_BUILTIN_API( Dmod, 1.0, bool     , _DisableModule, (const char* ModuleName, bool Force ) );
-DMOD_BUILTIN_API( Dmod, 1.0, int      , _RunModule, (const char* ModuleName, int argc, char *argv[]) );
+DMOD_BUILTIN_API( Dmod, 1.0, void       , _BeginUsage, (const char* ModuleName) );
+DMOD_BUILTIN_API( Dmod, 1.0, void       , _EndUsage, (const char* ModuleName) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsModuleUsed, (const char* ModuleName) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsModuleLoaded, (const char* ModuleName) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsModuleEnabled, (const char* ModuleName) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsModuleRequired, (const char* ModuleName, const char* RequiredModuleName) );
+DMOD_BUILTIN_API( Dmod, 1.0, const char*, _GetModuleVersion, (const char* ModuleName) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _LoadModule, (const char* FilePath) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _UnloadModule, (const char* ModuleName, bool Force) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _EnableModule, (const char* ModuleName, bool Force, const Dmod_Config_t* Config) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _DisableModule, (const char* ModuleName, bool Force ) );
+DMOD_BUILTIN_API( Dmod, 1.0, int        , _RunModule, (const char* ModuleName, int argc, char *argv[]) );
 
 //! @}
 
