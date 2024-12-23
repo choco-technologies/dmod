@@ -32,6 +32,8 @@
 #include "dmod_sal.h"
 #if DMOD_USE_STDLIB
 #   include <stdlib.h>
+#   include <sys/mman.h>
+#   include <unistd.h>
 #endif
 
 //==============================================================================
@@ -68,7 +70,15 @@ void* DMOD_WEAK_SYMBOL Dmod_Malloc(size_t Size)
 void* DMOD_WEAK_SYMBOL Dmod_AlignedMalloc(size_t Size, size_t Alignment)
 {
     #if DMOD_USE_STDLIB
-    return aligned_alloc(Alignment, Size);
+    size_t pagesize = sysconf(_SC_PAGESIZE);
+    void* mem = aligned_alloc(pagesize, Size);
+    if (mprotect(mem, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) 
+    {
+        DMOD_LOG_ERROR("Cannot set memory protection. Pagesize: %d\n", pagesize);
+        free(mem);
+        return NULL;
+    }
+    return mem;
     #else
     DMOD_ERROR("Dmod_AlignedMalloc interface not implemented");
     return NULL;

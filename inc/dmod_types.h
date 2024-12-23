@@ -62,6 +62,7 @@ typedef struct
     uint32_t            Priority;
     uint8_t             ModuleType;
     Dmod_License_t*     License;
+    void*               Footer;
 } Dmod_ModuleHeader_t;
 
 typedef struct 
@@ -99,7 +100,7 @@ typedef struct
 
 typedef struct 
 {
-    Dmod_ApiRegistration_t* Entries;
+    Dmod_ApiRegistration_t Entries[2];
 } Dmod_InputsSection_t;
 
 typedef struct 

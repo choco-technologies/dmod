@@ -1,4 +1,5 @@
 set(MODULE_NAME dmod_module)
+set(DMOD_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_library(${MODULE_NAME} STATIC
     dmod_module.c

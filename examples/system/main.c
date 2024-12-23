@@ -60,6 +60,8 @@ int main( int argc, char *argv[] )
         return -1;
     }
 
+    Dmod_Run( context, argc, argv );
+
     return 0;
 }
 

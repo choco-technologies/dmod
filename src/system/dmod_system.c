@@ -40,8 +40,10 @@ static bool                     IsSystemModule( const char* ModuleName );
 //                              GLOBAL VARIABLES
 //==============================================================================
 extern void* __dmod_inputs_start;
+extern void* __dmod_inputs_end;
 extern void* __dmod_inputs_size;
 extern void* __dmod_outputs_start;
+extern void* __dmod_outputs_end;
 extern void* __dmod_outputs_size;
 static Dmod_Api_t Dmod_BuiltinInputApi = {
     .InputSection    = (void*)&__dmod_inputs_start,
@@ -108,7 +110,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
         return NULL;
     }
 
-    Dmod_Event_ModuleLoadingInProgress( Path, 75 );
+    Dmod_Event_ModuleLoadingInProgress( Path, 78 );
     Dmod_Context_t* context = Context_New( buffer, fileSize );
     Dmod_FileClose( file );
     if( context == NULL )
@@ -235,7 +237,7 @@ bool Dmod_ConnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
             }
             else if( Dmod_ApiSignature_AreEqual( OutputsApi->OutputSection->Entries[i], InputsApi->InputSection->Entries[j].Signature ) )
             {
-                DMOD_LOG_VERBOSE("Connected: %s\n", InputsApi->InputSection->Entries[j].Signature);
+                DMOD_LOG_VERBOSE("Connected: %s 0x%08X\n", InputsApi->InputSection->Entries[j].Signature, InputsApi->InputSection->Entries[j].Function);
                 OutputsApi->OutputSection->Entries[i] = InputsApi->InputSection->Entries[j].Function;
             }
         }
@@ -1438,7 +1440,7 @@ static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* Fil
     size_t segments = Size / segmentSize;
     size_t remainder = Size % segmentSize;
     size_t progress = 20;
-    size_t progressRange = 60;
+    size_t progressRange = 55;
 
     for(size_t i = 0; i < segments; i++)
     {
@@ -1476,15 +1478,14 @@ static bool LoadHeader( Dmod_Context_t* Context )
         return false;
     }
 
-    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 80 );
-
     // Check signature
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)Context->Data;
     if( header->Signature != DMOD_HEADER_SIGNATURE )
     {
-        DMOD_LOG_ERROR("Cannot load header - invalid signature: %s\n", header->Signature);
+        DMOD_LOG_ERROR("Cannot load header - invalid signature: 0x%08x\n", header->Signature);
         return false;
     }
+    Dmod_Event_ModuleLoadingInProgress( header->Name, 80 );
 
     // Check version
     if( !DMOD_COMPATIBLE_VERSION(header->Version) )
@@ -1534,6 +1535,12 @@ static bool LoadHeader( Dmod_Context_t* Context )
             return false;
     }
 
+    if(InitPointer(Context, (void**)&header->Footer, "Footer") == false)
+    {
+        DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize footer pointer\n", header->Name);
+        return false;
+    }
+
     if( !InitPointer(Context, (void**)&header->License, "License") )
     {
         DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize license pointer\n", header->Name);
@@ -1571,7 +1578,7 @@ static bool LoadFooter( Dmod_Context_t* Context )
         return false;
     }
 
-    Dmod_ModuleFooter_t* footer = Context->Data + Context->Size - sizeof( Dmod_ModuleFooter_t );
+    Dmod_ModuleFooter_t* footer = Context->Header->Footer;
     
     if( footer->Header.SectionStart != 0 || footer->Header.SectionSize != sizeof( Dmod_ModuleHeader_t ) )
     {
@@ -2231,6 +2238,7 @@ static bool IsSystemModule( const char* ModuleName )
     {
         return true;
     }
+    Dmod_BuiltinInputApi.SectionSize = (size_t)((void*)&__dmod_inputs_end - (void*)&__dmod_inputs_start);
     size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Dmod_BuiltinInputApi );
     for(size_t i = 0; i < numberOfEntries; i++)
     {

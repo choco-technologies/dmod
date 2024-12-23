@@ -1,3 +1,13 @@
+PHDRS
+{
+  header       PT_LOAD;
+  text         PT_LOAD;
+  data         PT_LOAD;
+  bss          PT_LOAD;
+  got          PT_LOAD;
+  footer       PT_LOAD;
+}
+
 SECTIONS
 {
     . = 0x0000;
@@ -10,14 +20,15 @@ SECTIONS
         __header_end = .;
     } : header
 
-    INCLUDE scripts/common.ld
+    INCLUDE common.ld
 
     . = ALIGN(8);
 
     .text : 
     {
         __text_start = .;
-        *(.text)
+        KEEP(*(.text))
+        KEEP(*(.strtab))
         __text_end = .;
     } : text
 
@@ -47,6 +58,7 @@ SECTIONS
 
     .footer : 
     {
+        PROVIDE(__footer_start = .);
         LONG(__header_start)
         LONG(SIZEOF(.header))
         LONG(__inputs_start)
@@ -64,4 +76,7 @@ SECTIONS
         LONG(__bin_start)
         LONG(__bin_size)
     } : footer
+
+    . = ALIGN(8);
+    .unwanted_sections : { *(.unwanted) }
 }

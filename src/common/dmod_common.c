@@ -48,6 +48,7 @@ size_t Dmod_Api_GetNumberOfEntries( Dmod_Api_t* Api )
         DMOD_LOG_ERROR("Cannot get number of entries - invalid API type\n");
         return 0;
     }
+    return Api->SectionSize / elementSize;
 }
 
 /**

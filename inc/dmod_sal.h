@@ -79,6 +79,7 @@ DMOD_BUILTIN_API(Dmod, 1.0, void*,  _AlignedMalloc,     ( size_t Size, size_t Al
 DMOD_BUILTIN_API(Dmod, 1.0, void* , _FileOpen,  ( const char* Path, const char* Mode ) );
 DMOD_BUILTIN_API(Dmod, 1.0, size_t, _FileRead,  ( void* Buffer, size_t Size, size_t Count, void* File ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int   , _FileSeek,  ( void* File, long Offset, int Origin ) );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t, _FileTell,  ( void* File ) );
 DMOD_BUILTIN_API(Dmod, 1.0, size_t, _FileSize,  ( void* File ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void  , _FileClose, ( void* File ) );
 

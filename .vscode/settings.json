@@ -6,6 +6,8 @@
         "initializer_list": "c",
         "ranges": "c",
         "utility": "c",
-        "*.in": "cpp"
+        "*.in": "cpp",
+        "stdio.h": "c",
+        "dmod.h": "c"
     }
 }

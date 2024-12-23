@@ -99,6 +99,23 @@ int DMOD_WEAK_SYMBOL Dmod_FileSeek(void *File, long Offset, int Origin)
 }
 
 /**
+ * @brief Tell file
+ * 
+ * @param File Pointer to file
+ * 
+ * @return Current position in file
+ */
+size_t DMOD_WEAK_SYMBOL Dmod_FileTell(void *File)
+{
+    #if DMOD_USE_STDIO
+    return ftell(File);
+    #else 
+    DMOD_ERROR("Dmod_FileTell interface not implemented");
+    return 0;
+    #endif
+}
+
+/**
  * @brief Get file size
  * 
  * @param File Pointer to file
@@ -113,13 +130,13 @@ size_t DMOD_WEAK_SYMBOL Dmod_FileSize(void *File)
     }
 
     // Seek to end of file
-    Dmod_FileSeek( File, 0, DMOD_SEEK_END );
+    Dmod_FileSeek( File, 0, SEEK_END );
 
     // Get current position
-    size_t size = Dmod_FileSeek( File, 0, DMOD_SEEK_CUR );
+    size_t size = Dmod_FileTell( File );
 
     // Seek back to start
-    Dmod_FileSeek( File, 0, DMOD_SEEK_SET );
+    Dmod_FileSeek( File, 0, SEEK_SET );
 
     return size;
 }
