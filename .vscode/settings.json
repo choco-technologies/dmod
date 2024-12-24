@@ -8,6 +8,7 @@
         "utility": "c",
         "*.in": "cpp",
         "stdio.h": "c",
-        "dmod.h": "c"
+        "dmod.h": "c",
+        "dmod_mod_defs.h": "c"
     }
 }

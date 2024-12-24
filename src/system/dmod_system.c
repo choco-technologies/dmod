@@ -737,7 +737,7 @@ Dmod_ModuleType_t Dmod_GetModuleType( Dmod_Context_t* Context )
 bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Config )
 {
     Dmod_ModuleType_t moduleType = Dmod_GetModuleType(Context);
-    if( moduleType != Dmod_ModuleType_Module )
+    if( moduleType != Dmod_ModuleType_Library )
     {
         DMOD_LOG_ERROR("Cannot enable module - invalid module type: %d\n", moduleType);
         return false;
@@ -808,7 +808,7 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
 bool Dmod_Disable( Dmod_Context_t* Context, bool Force )
 {
     Dmod_ModuleType_t moduleType = Dmod_GetModuleType(Context);
-    if( moduleType != Dmod_ModuleType_Module )
+    if( moduleType != Dmod_ModuleType_Library )
     {
         DMOD_LOG_ERROR("Cannot disable module - invalid module type: %d\n", moduleType);
         return false;
@@ -1516,7 +1516,7 @@ static bool LoadHeader( Dmod_Context_t* Context )
 
     switch( header->ModuleType )
     {
-        case Dmod_ModuleType_Module:
+        case Dmod_ModuleType_Library:
             if( header->Init == NULL || header->Deinit == NULL )
             {
                 DMOD_LOG_ERROR("Cannot load header - missing Init or Deinit function\n");

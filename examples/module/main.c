@@ -3,7 +3,7 @@
 
 extern Dmod_ModuleHeader_t ModuleHeader;
 
-const char* HelloWorld DMOD_GLOBAL_POINTER = "Some global pointer";
+extern void HelloWorld();
 
 int main(int argc, char** argv)
 {
@@ -11,6 +11,8 @@ int main(int argc, char** argv)
     Dmod_Printf("Version: %s\n", ModuleHeader.Version);
     Dmod_Printf("Author: %s\n", ModuleHeader.Author);
     Dmod_Printf("Arch: %s\n", ModuleHeader.Arch);
-    Dmod_Printf("Hello World: %s\n", HelloWorld);
+
+    HelloWorld();
+
     return 0;
 }

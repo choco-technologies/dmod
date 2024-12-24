@@ -17,7 +17,7 @@ typedef enum
 typedef enum 
 {
     Dmod_ModuleType_Unknown,
-    Dmod_ModuleType_Module, 
+    Dmod_ModuleType_Library, 
     Dmod_ModuleType_Application, 
 
     Dmod_ModuleType_Count,

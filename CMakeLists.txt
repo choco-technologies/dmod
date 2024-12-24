@@ -16,6 +16,7 @@ set(DMOD_SYSTEM_VERSION_MAJOR 	0             CACHE STRING "Version major")
 set(DMOD_SYSTEM_VERSION_MINOR 	1             CACHE STRING "Version minor")
 set(DMOD_BUILD_TESTS 			ON            CACHE BOOL   "Build tests")
 set(DMOD_BUILD_EXAMPLES 		ON            CACHE BOOL   "Build examples")
+set(DMOD_DMF_DIR                "${CMAKE_CURRENT_BINARY_DIR}/dmf" CACHE STRING "Directory for DMF files")
 
 # ===========================================================================
 # 						Project definition

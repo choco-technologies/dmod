@@ -9,7 +9,7 @@
 #define DMOD_MAX_MODULE_NAME_LENGTH		32
 
 #define DMOD_WEAK_SYMBOL		__attribute__((weak))
-#define DMOD_SECTION( NAME )	__attribute__((section(NAME)))
+#define DMOD_SECTION( NAME )	        __attribute__((section(NAME)))
 #define DMOD_USED                        __attribute__((used))
 #define DMOD_GLOBAL_POINTER             DMOD_SECTION(".got")
 
