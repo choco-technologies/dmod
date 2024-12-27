@@ -1,7 +1,7 @@
 # ##############################################################################
-#  Makefile for the system module
+#  Makefile for the @DMOD_LIB_NAME@ module
 #
-#     This Makefile is used to build the system module library
+#     This Makefile is used to build the @DMOD_LIB_NAME@ module library
 #
 #   DONT EDIT THIS FILE - it is automatically generated. Edit the Makefile.in
 #   file instead.
@@ -41,6 +41,11 @@ DMOD_INC_DIRS = @DMOD_INC_DIRS@
 DMOD_LIBS = @DMOD_LIBS@
 
 #
+#   Definitions
+#
+DMOD_DEFINITIONS = @DMOD_DEFINITIONS@
+
+#
 #  Add -I prefix to each include directory
 #
 CFLAGS_INC = $(addprefix -I,$(DMOD_INC_DIRS))
@@ -49,6 +54,11 @@ CFLAGS_INC = $(addprefix -I,$(DMOD_INC_DIRS))
 #  Add -L prefix to each library file
 #
 CFLAGS_LIB = $(addprefix -L,$(DMOD_LIBS))
+
+#
+#  Add -D prefix to each definition
+#
+CFLAGS_DEF = $(addprefix -D,$(DMOD_DEFINITIONS))
 
 #
 #  Compiler flags

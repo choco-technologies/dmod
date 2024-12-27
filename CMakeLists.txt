@@ -53,9 +53,9 @@ configure_file(config.h.in config.h)
 # ===========================================================================
 # 						Subdirectories
 # ===========================================================================
+add_subdirectory(scripts)
 add_subdirectory(inc)
 add_subdirectory(src)
-add_subdirectory(scripts)
 if (DMOD_BUILD_TESTS)
 	add_subdirectory(tests)
 endif()

@@ -17,6 +17,8 @@ target_link_libraries(${MODULE_NAME}
         dmod_inc
     )
 
+create_library_makefile(${MODULE_NAME})
+
 function(to_snake_case INPUT_STRING OUTPUT_VARIABLE)
     # Zamiana myślników na podkreślenia
     string(REPLACE "-" "_" INTERMEDIATE_STRING "${INPUT_STRING}")

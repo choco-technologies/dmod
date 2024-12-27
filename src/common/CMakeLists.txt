@@ -14,3 +14,5 @@ target_link_libraries(${MODULE_NAME}
     PRIVATE    
         dmod_inc
     )
+
+create_library_makefile(${MODULE_NAME})

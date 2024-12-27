@@ -1,7 +1,7 @@
 # ##############################################################################
-#  Makefile for the dmod_system module
+#  Makefile for the dmod_common module
 #
-#     This Makefile is used to build the dmod_system module library
+#     This Makefile is used to build the dmod_common module library
 #
 #   DONT EDIT THIS FILE - it is automatically generated. Edit the Makefile.in
 #   file instead.
@@ -11,9 +11,9 @@
 #
 #  Name of the module
 #
-DMOD_LIB_NAME=libdmod_system.a
+DMOD_LIB_NAME=libdmod_common.a
 DMOD_PROJECT_DIR=../../
-OUTPUT_DIR=../../build/src/system
+OUTPUT_DIR=../../build/src/common
 
 #
 #  Include project configuration
@@ -23,13 +23,7 @@ include $(DMOD_PROJECT_DIR)/cfg.mk
 #
 #  List of source files
 #
-DMOD_SOURCES=dmod_system.c\
-		dmod_if_file.c\
-		dmod_if_mem.c\
-		dmod_if_dbg.c\
-		dmod_if_irq.c\
-		dmod_if_events.c\
-		dmod_if_rtos.c
+DMOD_SOURCES=dmod_common.c
 
 #
 #  List of object files
@@ -39,16 +33,14 @@ DMOD_OBJECTS = $(addprefix $(OUTPUT_DIR)/, $(DMOD_SOURCES:.c=.o))
 #
 #  List of header directories
 #
-DMOD_INC_DIRS = ../..//src/system\
+DMOD_INC_DIRS = ../..//src/common\
 		../..//inc\
-		../..//build\
-		../..//src/common
+		../..//build
 
 #
 #   Linked libraries
 # 
-DMOD_LIBS = dmod_inc\
-		dmod_common
+DMOD_LIBS = dmod_inc
 
 #
 #   Definitions
