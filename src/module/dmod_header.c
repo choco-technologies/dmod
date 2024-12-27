@@ -1,5 +1,4 @@
 #include "dmod.h"
-#include "dmod_mod_defs.h"
 
 #ifndef DMOD_MODULE_NAME
 #   define DMOD_MODULE_NAME "<Unnamed module>"

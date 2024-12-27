@@ -1,4 +1,5 @@
 #include "dmod.h"
+#include "example_lib.h"
 #include <stdio.h>
 
 extern Dmod_ModuleHeader_t ModuleHeader;
@@ -13,6 +14,8 @@ int main(int argc, char** argv)
     Dmod_Printf("Arch: %s\n", ModuleHeader.Arch);
 
     HelloWorld();
+
+    example_lib_foo("Hello from main");
 
     return 0;
 }

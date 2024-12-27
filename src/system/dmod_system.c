@@ -35,6 +35,7 @@ static bool                     AreRequiredModulesLoaded( Dmod_Context_t* Contex
 static bool                     AreRequiredModulesEnabled( Dmod_Context_t* Context );
 static Dmod_Context_t*          FindDependentModule( Dmod_Context_t* Context, bool OnlyEnabled );
 static bool                     IsSystemModule( const char* ModuleName );
+static bool                     IsAllApiConnected( Dmod_Context_t* Context );
 
 //==============================================================================
 //                              GLOBAL VARIABLES
@@ -921,6 +922,14 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
     if(!Dmod_ConnectOutputApis(Context))
     {
         DMOD_LOG_ERROR("Cannot run module - cannot connect output APIs\n");
+        Dmod_Mutex_Unlock(Context->Mutex);
+        return -ENOEXEC;
+    }
+
+    if(!IsAllApiConnected(Context))
+    {
+        DMOD_LOG_ERROR("Cannot run module - not all APIs are connected\n");
+        Dmod_DisconnectOutputApis(Context);
         Dmod_Mutex_Unlock(Context->Mutex);
         return -ENOEXEC;
     }
@@ -2248,4 +2257,32 @@ static bool IsSystemModule( const char* ModuleName )
         }
     }
     return false;
+}
+
+/**
+ * @brief checks if all output API is connected
+ * 
+ * @param Context Context to check
+ * 
+ * @return True if all output API is connected, false otherwise
+ */
+static bool IsAllApiConnected( Dmod_Context_t* Context )
+{
+    if( Context == NULL )
+    {
+        return false;
+    }
+
+    size_t numberOfOuptuts = Dmod_Api_GetNumberOfEntries( &Context->Outputs );
+    for(size_t outputIndex = 0; outputIndex < numberOfOuptuts; outputIndex++)
+    {
+        const char* apiSignature = Context->Outputs.OutputSection->Entries[outputIndex];
+        if(Dmod_ApiSignature_IsValid(apiSignature))
+        {
+            DMOD_LOG_VERBOSE("API '%s' is not connected\n", apiSignature);
+            return false;
+        }
+    }
+
+    return true;
 }
