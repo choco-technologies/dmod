@@ -51,6 +51,7 @@ typedef struct
     uint32_t            HeaderSize;
     uint32_t            DmodVersion;
     char                Arch[DMOD_MAX_ARCH_NAME_LENGTH];
+    char                CpuName[DMOD_MAX_CPU_NAME_LENGTH];
     char                Name[DMOD_MAX_MODULE_NAME_LENGTH];
     char                Author[DMOD_MAX_AUTHOR_NAME_LENGTH];
     char                Version[DMOD_MAX_VERSION_LENGTH];   //!< Module Version

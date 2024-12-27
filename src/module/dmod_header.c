@@ -41,6 +41,7 @@ volatile const Dmod_ModuleHeader_t ModuleHeader DMOD_SECTION(".header") DMOD_USE
     .Signature          = DMOD_HEADER_SIGNATURE,
     .DmodVersion        = DMOD_VERSION,
     .Arch               = DMOD_ARCH,
+    .CpuName            = DMOD_CPU_NAME,
     .Name               = DMOD_MODULE_NAME,
     .Author             = DMOD_AUTHOR_NAME,
     .Version            = DMOD_MODULE_VERSION,

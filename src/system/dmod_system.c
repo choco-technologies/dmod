@@ -818,7 +818,7 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
             return -ENOEXEC;
         }
     }
-    
+
     if( !AreRequiredModulesEnabled( Context ) )
     {
         if( !Force )
@@ -1614,6 +1614,13 @@ static bool LoadHeader( Dmod_Context_t* Context )
     if( strcmp( header->Arch, DMOD_ARCH ) != 0 )
     {
         DMOD_LOG_ERROR("Cannot load header - invalid architecture: %s != %s\n", header->Arch, DMOD_ARCH);
+        return false;
+    }
+
+    // Check target cpu 
+    if( header->CpuName[0] != 0 && strcmp( header->CpuName, DMOD_CPU_NAME ) != 0 )
+    {
+        DMOD_LOG_ERROR("Cannot load header - invalid target cpu: %s != %s\n", header->CpuName, DMOD_CPU_NAME);
         return false;
     }
 

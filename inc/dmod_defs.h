@@ -45,6 +45,10 @@
 #   define DMOD_MAX_PATH_LENGTH		256
 #endif
 
+#ifndef DMOD_MAX_CPU_NAME_LENGTH
+#   define DMOD_MAX_CPU_NAME_LENGTH		32
+#endif
+
 /**
  * @brief Check if the version is compatible
  */
