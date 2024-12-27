@@ -1,7 +1,7 @@
 # ##############################################################################
-#  Makefile for the dmod_common module
+#  Makefile for the @DMOD_LIB_NAME@ module
 #
-#     This Makefile is used to build the dmod_common module library
+#     This Makefile is used to build the @DMOD_LIB_NAME@ module library
 #
 #   DONT EDIT THIS FILE - it is automatically generated. Edit the Makefile.in
 #   file instead.
@@ -11,9 +11,9 @@
 #
 #  Name of the module
 #
-DMOD_LIB_NAME=libdmod_common.a
-DMOD_PROJECT_DIR=../../
-OUTPUT_DIR=../../build/src/common
+DMOD_LIB_NAME=lib@DMOD_LIB_NAME@.a
+DMOD_PROJECT_DIR=@DMOD_PROJECT_DIR@
+OUTPUT_DIR=@DMOD_OUTPUT_DIR@
 
 #
 #  Include project configuration
@@ -23,7 +23,7 @@ include $(DMOD_PROJECT_DIR)/cfg.mk
 #
 #  List of source files
 #
-DMOD_SOURCES=dmod_common.c
+DMOD_SOURCES=@DMOD_SOURCES@
 
 #
 #  List of object files
@@ -33,20 +33,18 @@ DMOD_OBJECTS = $(addprefix $(OUTPUT_DIR)/, $(DMOD_SOURCES:.c=.o))
 #
 #  List of header directories
 #
-DMOD_INC_DIRS = ../..//src/common\
-		../..//inc\
-		../..//build
+DMOD_INC_DIRS = @DMOD_INC_DIRS@
 
 #
 #   Linked libraries
 # 
-DMOD_LIBS = dmod_inc
+DMOD_LIBS = @DMOD_LIBS@
 
 #
 #   Definitions
 #
 DEFS = $(foreach v,$(filter VAR%,$(.VARIABLES)),-D$(v)=$($(v)))
-DMOD_DEFINITIONS =  $(DEFS)
+DMOD_DEFINITIONS = @DMOD_DEFINITIONS@ $(DEFS)
 
 #
 #  Add -I prefix to each include directory

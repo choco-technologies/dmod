@@ -29,6 +29,7 @@ DMOD_CPU_NAME=""
 #
 CC=gcc
 AR=ar
+MAKE=make
 
 #
 #	Compiler flags

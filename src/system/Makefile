@@ -53,7 +53,8 @@ DMOD_LIBS = dmod_inc\
 #
 #   Definitions
 #
-DMOD_DEFINITIONS = DMOD_COMPILE_DEFINITIONS-NOTFOUND
+DEFS = $(foreach v,$(filter VAR%,$(.VARIABLES)),-D$(v)=$($(v)))
+DMOD_DEFINITIONS = DMOD_SYSTEM $(DEFS)
 
 #
 #  Add -I prefix to each include directory
@@ -73,7 +74,7 @@ CFLAGS_DEF = $(addprefix -D,$(DMOD_DEFINITIONS))
 #
 #  Compiler flags
 #
-CFLAGS += $(CFLAGS_INC) $(CFLAGS_LIB)
+CFLAGS += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 
 #
 #  List of targets

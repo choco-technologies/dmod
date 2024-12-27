@@ -22,4 +22,9 @@ target_link_libraries(${MODULE_NAME}
         dmod_common
     )
 
+target_compile_definitions(${MODULE_NAME} 
+    PUBLIC
+        DMOD_SYSTEM
+    )
+
 create_library_makefile(${MODULE_NAME})

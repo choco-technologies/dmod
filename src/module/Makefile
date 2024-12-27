@@ -1,7 +1,7 @@
 # ##############################################################################
-#  Makefile for the @DMOD_LIB_NAME@ module
+#  Makefile for the dmod_module module
 #
-#     This Makefile is used to build the @DMOD_LIB_NAME@ module library
+#     This Makefile is used to build the dmod_module module library
 #
 #   DONT EDIT THIS FILE - it is automatically generated. Edit the Makefile.in
 #   file instead.
@@ -11,9 +11,9 @@
 #
 #  Name of the module
 #
-DMOD_LIB_NAME=lib@DMOD_LIB_NAME@.a
-DMOD_PROJECT_DIR=@DMOD_PROJECT_DIR@
-OUTPUT_DIR=@DMOD_OUTPUT_DIR@
+DMOD_LIB_NAME=libdmod_module.a
+DMOD_PROJECT_DIR=../../
+OUTPUT_DIR=../../build/src/module
 
 #
 #  Include project configuration
@@ -23,7 +23,7 @@ include $(DMOD_PROJECT_DIR)/cfg.mk
 #
 #  List of source files
 #
-DMOD_SOURCES=@DMOD_SOURCES@
+DMOD_SOURCES=dmod_module.c
 
 #
 #  List of object files
@@ -33,17 +33,20 @@ DMOD_OBJECTS = $(addprefix $(OUTPUT_DIR)/, $(DMOD_SOURCES:.c=.o))
 #
 #  List of header directories
 #
-DMOD_INC_DIRS = @DMOD_INC_DIRS@
+DMOD_INC_DIRS = ../..//src/module\
+		../..//inc\
+		../..//build
 
 #
 #   Linked libraries
 # 
-DMOD_LIBS = @DMOD_LIBS@
+DMOD_LIBS = dmod_inc
 
 #
 #   Definitions
 #
-DMOD_DEFINITIONS = @DMOD_DEFINITIONS@
+DEFS = $(foreach v,$(filter VAR%,$(.VARIABLES)),-D$(v)=$($(v)))
+DMOD_DEFINITIONS = DMOD_MODULE $(DEFS)
 
 #
 #  Add -I prefix to each include directory
@@ -63,7 +66,7 @@ CFLAGS_DEF = $(addprefix -D,$(DMOD_DEFINITIONS))
 #
 #  Compiler flags
 #
-CFLAGS += $(CFLAGS_INC) $(CFLAGS_LIB)
+CFLAGS += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 
 #
 #  List of targets
