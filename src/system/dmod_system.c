@@ -797,6 +797,28 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
         Dmod_Mutex_Unlock(Context->Mutex);
         return true;
     }
+
+    if(!LoadRequiredModules(Context))
+    {
+        DMOD_LOG_ERROR("Cannot run module - cannot load required modules\n");
+        Dmod_Mutex_Unlock(Context->Mutex);
+        return -ENOEXEC;
+    }
+
+    if(!EnableRequiredModules(Context))
+    {
+        if(Context->Header->ManualLoad)
+        {
+            DMOD_LOG_WARN("Running module without all required modules enabled\n");
+        }
+        else 
+        {
+            DMOD_LOG_ERROR("Cannot run module - not all required modules are enabled\n");
+            Dmod_Mutex_Unlock(Context->Mutex);
+            return -ENOEXEC;
+        }
+    }
+    
     if( !AreRequiredModulesEnabled( Context ) )
     {
         if( !Force )
@@ -820,6 +842,21 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
     }
 
     Dmod_Preinit( Context );
+
+    if(!IsAllApiConnected(Context))
+    {
+        if(Context->Header->ManualLoad)
+        {
+            DMOD_LOG_WARN("Running module without all APIs connected\n");
+        }
+        else 
+        {
+            DMOD_LOG_ERROR("Cannot run module - not all APIs are connected\n");
+            Dmod_DisconnectOutputApis(Context);
+            Dmod_Mutex_Unlock(Context->Mutex);
+            return -ENOEXEC;
+        }
+    }
 
     int result = Dmod_Init( Context, Config );
     if( result != 0 )
@@ -988,6 +1025,10 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
         return -ENOEXEC;
     }
 
+    Context->Running = true;
+    Dmod_Event_ModuleRunning( Context );
+    Dmod_Preinit( Context );
+
     if(!IsAllApiConnected(Context))
     {
         if(Context->Header->ManualLoad)
@@ -1003,9 +1044,6 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
         }
     }
 
-    Context->Running = true;
-    Dmod_Event_ModuleRunning( Context );
-    Dmod_Preinit( Context );
     int result = Dmod_Main( Context, argc, argv );
     Dmod_Event_ModuleStopped( Context );
     Context->Running = false;
