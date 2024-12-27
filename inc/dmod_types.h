@@ -64,6 +64,7 @@ typedef struct
     uint8_t             ModuleType;
     Dmod_License_t*     License;
     void*               Footer;
+    bool                ManualLoad;  
 } Dmod_ModuleHeader_t;
 
 typedef struct 

@@ -53,5 +53,6 @@ volatile const Dmod_ModuleHeader_t ModuleHeader DMOD_SECTION(".header") DMOD_USE
     .Priority           = DMOD_PRIORITY,
     .ModuleType         = DMOD_MODULE_TYPE,
     .License            = &License,
-    .Footer             = &__footer_start
+    .Footer             = &__footer_start,
+    .ManualLoad         = DMOD_MANUAL_LOAD,
 };

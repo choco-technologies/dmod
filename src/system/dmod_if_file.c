@@ -154,3 +154,13 @@ void DMOD_WEAK_SYMBOL Dmod_FileClose(void *File)
     DMOD_ERROR("Dmod_FileClose interface not implemented");
     #endif
 }
+
+/**
+ * @brief Get repository path
+ * 
+ * @return Path to repository
+ */
+const char* DMOD_WEAK_SYMBOL Dmod_GetRepoPath(void)
+{
+    return DMOD_REPO_DIR;
+}

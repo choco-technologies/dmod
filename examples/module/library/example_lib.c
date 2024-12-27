@@ -1,6 +1,6 @@
 #include "example_lib.h"
 
-void ExampleLib_Foo(const char* str)
+void example_lib_foo(const char* str)
 {
     Dmod_Printf("Foo: %s\n", str);
 }

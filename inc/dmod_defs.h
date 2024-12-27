@@ -41,6 +41,10 @@
 #   define DMOD_MAX_AUTHOR_NAME_LENGTH		32
 #endif
 
+#ifndef DMOD_MAX_PATH_LENGTH
+#   define DMOD_MAX_PATH_LENGTH		256
+#endif
+
 /**
  * @brief Check if the version is compatible
  */
@@ -62,7 +66,7 @@
 #define DMOD_MAKE_API_REG_NAME( MODULE, NAME )			        MODULE##NAME##_registration
 #define DMOD_INPUT_API( MODULE, VERSION, RET, NAME, PARAMS )        \
         extern RET DMOD_MAKE_API_FUNCTION_NAME(MODULE,NAME) PARAMS;\
-        static Dmod_ApiRegistration_t DMOD_MAKE_API_REG_NAME(MODULE,NAME) DMOD_SECTION(".dmod.inputs") = \
+        static Dmod_ApiRegistration_t DMOD_MAKE_API_REG_NAME(MODULE,NAME) DMOD_SECTION(".dmod.inputs") DMOD_USED = \
         { \
             .Function = (void*)DMOD_MAKE_API_FUNCTION_NAME(MODULE,NAME), \
             .Signature = DMOD_MAKE_SIGNATURE(MODULE, VERSION, NAME) \

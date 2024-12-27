@@ -36,6 +36,8 @@ static bool                     AreRequiredModulesEnabled( Dmod_Context_t* Conte
 static Dmod_Context_t*          FindDependentModule( Dmod_Context_t* Context, bool OnlyEnabled );
 static bool                     IsSystemModule( const char* ModuleName );
 static bool                     IsAllApiConnected( Dmod_Context_t* Context );
+static bool                     LoadRequiredModules( Dmod_Context_t* Context );
+static bool                     EnableRequiredModules( Dmod_Context_t* Context );
 
 //==============================================================================
 //                              GLOBAL VARIABLES
@@ -172,6 +174,43 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
 }
 
 /**
+ * @brief Load module by name
+ * 
+ * @param ModuleName Name of the module
+ * 
+ * @return True if module was loaded
+ */
+bool Dmod_LoadModuleByName(const char* ModuleName)
+{
+    if( ModuleName == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load module by name - invalid name\n");
+        return false;
+    }
+
+    if(IsLoaded(ModuleName))
+    {
+        DMOD_LOG_INFO("Module %s is already loaded\n", ModuleName);
+        return true;
+    }
+    
+    char path[DMOD_MAX_PATH_LENGTH] = {0};
+    const char* repoPath = Dmod_GetRepoPath();
+    if( repoPath == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load module by name - repository path is not set\n");
+        return false;
+    }
+
+    strncpy(path, repoPath, DMOD_MAX_PATH_LENGTH);
+    strncat(path, "/", DMOD_MAX_PATH_LENGTH - strlen(path));
+    strncat(path, ModuleName, DMOD_MAX_PATH_LENGTH - strlen(path));
+    strncat(path, ".dmf", DMOD_MAX_PATH_LENGTH - strlen(path));
+
+    return Dmod_LoadFile(path);
+}
+
+/**
  * @brief Unload module
  * 
  * @param Context Context to unload
@@ -295,6 +334,7 @@ bool Dmod_ConnectOutputApis( Dmod_Context_t* Context )
     }
     Dmod_EnterCritical();
 
+    Dmod_BuiltinInputApi.SectionSize = (size_t)((void*)&__dmod_inputs_end - (void*)&__dmod_inputs_start);
     if( !Dmod_ConnectApi( &Context->Outputs, &Dmod_BuiltinInputApi ) )
     {
         DMOD_LOG_ERROR("Cannot connect system API to '%s' APIs\n", Context_GetModuleName( Context ));
@@ -305,7 +345,7 @@ bool Dmod_ConnectOutputApis( Dmod_Context_t* Context )
     bool result = true;
     for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
     {
-        if( Dmod_Contexts[i] == NULL )
+        if( Dmod_Contexts[i] == NULL || Context == Dmod_Contexts[i] )
         {
             continue;
         }
@@ -341,6 +381,7 @@ bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
 
     Dmod_EnterCritical();
 
+    Dmod_BuiltinOutputApi.SectionSize = (size_t)((void*)&__dmod_outputs_end - (void*)&__dmod_outputs_start);
     if( !Dmod_ConnectApi( &Dmod_BuiltinOutputApi, &Context->Inputs ) )
     {
         DMOD_LOG_ERROR("Cannot connect API '%s' to system\n", Context_GetModuleName( Context ));
@@ -919,6 +960,27 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
         return -EEXIST;
     }
 
+    if(!LoadRequiredModules(Context))
+    {
+        DMOD_LOG_ERROR("Cannot run module - cannot load required modules\n");
+        Dmod_Mutex_Unlock(Context->Mutex);
+        return -ENOEXEC;
+    }
+
+    if(!EnableRequiredModules(Context))
+    {
+        if(Context->Header->ManualLoad)
+        {
+            DMOD_LOG_WARN("Running module without all required modules enabled\n");
+        }
+        else 
+        {
+            DMOD_LOG_ERROR("Cannot run module - not all required modules are enabled\n");
+            Dmod_Mutex_Unlock(Context->Mutex);
+            return -ENOEXEC;
+        }
+    }
+
     if(!Dmod_ConnectOutputApis(Context))
     {
         DMOD_LOG_ERROR("Cannot run module - cannot connect output APIs\n");
@@ -928,10 +990,17 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
 
     if(!IsAllApiConnected(Context))
     {
-        DMOD_LOG_ERROR("Cannot run module - not all APIs are connected\n");
-        Dmod_DisconnectOutputApis(Context);
-        Dmod_Mutex_Unlock(Context->Mutex);
-        return -ENOEXEC;
+        if(Context->Header->ManualLoad)
+        {
+            DMOD_LOG_WARN("Running module without all APIs connected\n");
+        }
+        else 
+        {
+            DMOD_LOG_ERROR("Cannot run module - not all APIs are connected\n");
+            Dmod_DisconnectOutputApis(Context);
+            Dmod_Mutex_Unlock(Context->Mutex);
+            return -ENOEXEC;
+        }
     }
 
     Context->Running = true;
@@ -1716,12 +1785,7 @@ static bool LoadInput( Dmod_Context_t* Context )
 
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        if( !InitPointer( Context, &inputSection->Entries[i].Function, "Input Function" ) )
-        {
-            DMOD_LOG_ERROR("Cannot load input - cannot initialize input entry at index %d\n", i);
-            return false;
-        }
-        else if( inputSection->Entries[i].Function == NULL )
+        if( inputSection->Entries[i].Function == NULL )
         {
             DMOD_LOG_WARN("Empty input entry at index: %d\n", i);
             continue;
@@ -2033,6 +2097,9 @@ static bool ReadRequiredModules( Dmod_Context_t* Context )
         return false;
     }
 
+    // Clear required modules
+    memset( Context->RequiredModules, 0, sizeof(Context->RequiredModules) );
+
     size_t numberOfOuptuts = Dmod_Api_GetNumberOfEntries( &Context->Outputs );
     for(size_t outputIndex = 0; outputIndex < numberOfOuptuts; outputIndex++)
     {
@@ -2091,6 +2158,8 @@ static bool AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature
         DMOD_LOG_ERROR("Cannot add required module - cannot read version\n");
         return false;
     }
+
+    DMOD_LOG_VERBOSE("Required module '%s' added to '%s'\n", requiredModule->Name, Context_GetModuleName( Context ));
 
     return true;
 }
@@ -2280,6 +2349,79 @@ static bool IsAllApiConnected( Dmod_Context_t* Context )
         if(Dmod_ApiSignature_IsValid(apiSignature))
         {
             DMOD_LOG_VERBOSE("API '%s' is not connected\n", apiSignature);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Load required modules
+ * 
+ * @param Context Context to load required modules to
+ * 
+ * @return True if required modules were loaded successfully, false otherwise
+ */
+static bool LoadRequiredModules( Dmod_Context_t* Context )
+{
+    if( Context == NULL )
+    {
+        return false;
+    }
+
+    for(size_t i = 0; i < DMOD_MAX_REQUIRED_MODULES; i++)
+    {
+        if( Context->RequiredModules[i].Name[0] == 0 )
+        {
+            continue;
+        }
+
+        if(IsSystemModule(Context->RequiredModules[i].Name))
+        {
+            continue;
+        }
+
+        if( !Dmod_LoadModuleByName( Context->RequiredModules[i].Name ) )
+        {
+            DMOD_LOG_ERROR("Cannot load required module '%s'\n", Context->RequiredModules[i].Name);
+            return false;
+        }
+    }
+
+    DMOD_LOG_VERBOSE("All required modules loaded for '%s'\n", Context_GetModuleName( Context ));
+    return true;
+}
+
+/**
+ * @brief Enable required modules
+ * 
+ * @param Context Context to enable required modules to
+ * 
+ * @return True if required modules were enabled successfully, false otherwise
+ */
+static bool EnableRequiredModules( Dmod_Context_t* Context )
+{
+    if( Context == NULL )
+    {
+        return false;
+    }
+
+    for(size_t i = 0; i < DMOD_MAX_REQUIRED_MODULES; i++)
+    {
+        if( Context->RequiredModules[i].Name[0] == 0 )
+        {
+            continue;
+        }
+
+        if(IsSystemModule(Context->RequiredModules[i].Name))
+        {
+            continue;
+        }
+
+        if( !Dmod_EnableModule( Context->RequiredModules[i].Name, false, NULL ) )
+        {
+            DMOD_LOG_ERROR("Cannot enable required module '%s'\n", Context->RequiredModules[i].Name);
             return false;
         }
     }
