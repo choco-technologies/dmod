@@ -9,6 +9,7 @@
 DMOD_PROJECT_DIR=../..
 SCRIPTS_DIR=$(DMOD_PROJECT_DIR)/scripts
 MAIN_LD=main.ld
+LIBS_DIR=$(DMOD_PROJECT_DIR)/build/libs
 OUTPUT_DIR=$(DMOD_PROJECT_DIR)/build/examples/system
 
 include $(DMOD_PROJECT_DIR)/dmod-cfg.mk
@@ -37,9 +38,9 @@ CFLAGS_INC = $(addprefix -I,$(DMOD_INC_DIRS))
 # ##############################################################################
 #  Linked libraries
 # ##############################################################################
-DMOD_LIBS = dmod_common dmod_system
+DMOD_LIBS = dmod_system dmod_common 
 
-CFLAGS_LIB = $(addprefix -L,$(DMOD_LIBS))
+CFLAGS_LIB = $(addprefix -l,$(DMOD_LIBS)) -L $(LIBS_DIR)
 
 # ##############################################################################
 #  Definitions
@@ -59,4 +60,5 @@ $(PROJECT_NAME): $(DMOD_OBJECTS)
 	$(CC) $(CFLAGS) -L $(SCRIPTS_DIR) -T $(MAIN_LD) -o $(OUTPUT_DIR)/$(PROJECT_NAME) $(DMOD_OBJECTS) $(CFLAGS_LIB) $(CFLAGS_DEF)
 
 $(OUTPUT_DIR)/%.o: %.c
+	@mkdir -p $(OUTPUT_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
