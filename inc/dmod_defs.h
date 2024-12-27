@@ -11,6 +11,7 @@
 #define DMOD_WEAK_SYMBOL		__attribute__((weak))
 #define DMOD_SECTION( NAME )	        __attribute__((section(NAME)))
 #define DMOD_USED                        __attribute__((used))
+#define DMOD_UNUSED                      __attribute__((unused))
 #define DMOD_GLOBAL_POINTER             DMOD_SECTION(".got")
 
 #ifndef DMOD_STACK_ALIGNMENT
@@ -76,7 +77,7 @@
             .Signature = DMOD_MAKE_SIGNATURE(MODULE, VERSION, NAME) \
         };
 #define DMOD_OUTPUT_API( MODULE, VERSION, RET, NAME, PARAMS )       \
-        static RET (*DMOD_MAKE_API_FUNCTION_NAME(MODULE,NAME)) PARAMS DMOD_SECTION(".dmod.outputs") = (void*)DMOD_MAKE_SIGNATURE(MODULE, VERSION, NAME);\
+        static RET (*DMOD_MAKE_API_FUNCTION_NAME(MODULE,NAME)) PARAMS DMOD_SECTION(".dmod.outputs") DMOD_UNUSED = (void*)DMOD_MAKE_SIGNATURE(MODULE, VERSION, NAME);\
         
 #define DMOD_INPUT_API_DECLARATION( MODULE, VERSION, RET, NAME, PARAMS )        \
         RET DMOD_MAKE_API_FUNCTION_NAME(MODULE,NAME) PARAMS

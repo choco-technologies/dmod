@@ -14,11 +14,12 @@
 DMOD_LIB_NAME=lib@DMOD_LIB_NAME@.a
 DMOD_PROJECT_DIR=@DMOD_PROJECT_DIR@
 OUTPUT_DIR=@DMOD_OUTPUT_DIR@
+LIBS_DIR=@DMOD_LIBS_DIR@
 
 #
 #  Include project configuration
 #
-include $(DMOD_PROJECT_DIR)/cfg.mk
+include $(DMOD_PROJECT_DIR)/dmod-cfg.mk
 
 #
 #  List of source files
@@ -72,9 +73,11 @@ CFLAGS += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 all: $(DMOD_LIB_NAME)
 
 $(DMOD_LIB_NAME): $(DMOD_OBJECTS)
-	$(AR) rcs $(OUTPUT_DIR)/$(DMOD_LIB_NAME) $(DMOD_OBJECTS)
+	$(AR) rcs $(LIBS_DIR)/$(DMOD_LIB_NAME) $(DMOD_OBJECTS)
 
 $(OUTPUT_DIR)/%.o: %.c
+	$(MKDIR) -p $(OUTPUT_DIR)
+	$(MKDIR) -p $(LIBS_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:

@@ -14,11 +14,12 @@
 DMOD_LIB_NAME=libdmod_common.a
 DMOD_PROJECT_DIR=../../
 OUTPUT_DIR=../../build/src/common
+LIBS_DIR=../../build/libs
 
 #
 #  Include project configuration
 #
-include $(DMOD_PROJECT_DIR)/cfg.mk
+include $(DMOD_PROJECT_DIR)/dmod-cfg.mk
 
 #
 #  List of source files
@@ -74,9 +75,11 @@ CFLAGS += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 all: $(DMOD_LIB_NAME)
 
 $(DMOD_LIB_NAME): $(DMOD_OBJECTS)
-	$(AR) rcs $(OUTPUT_DIR)/$(DMOD_LIB_NAME) $(DMOD_OBJECTS)
+	$(AR) rcs $(LIBS_DIR)/$(DMOD_LIB_NAME) $(DMOD_OBJECTS)
 
 $(OUTPUT_DIR)/%.o: %.c
+	$(MKDIR) -p $(OUTPUT_DIR)
+	$(MKDIR) -p $(LIBS_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
