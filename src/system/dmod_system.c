@@ -31,7 +31,6 @@ static bool                     ReadRequiredModules( Dmod_Context_t* Context );
 static bool                     AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature );
 static bool                     IsLoaded( const char* ModuleName );
 static bool                     IsEnabled( const char* ModuleName );
-static bool                     AreRequiredModulesLoaded( Dmod_Context_t* Context );
 static bool                     AreRequiredModulesEnabled( Dmod_Context_t* Context );
 static Dmod_Context_t*          FindDependentModule( Dmod_Context_t* Context, bool OnlyEnabled );
 static bool                     IsSystemModule( const char* ModuleName );
@@ -2241,38 +2240,6 @@ static bool IsEnabled( const char* ModuleName )
     }
     Dmod_Context_t* context = GetContext( ModuleName );
     return context != NULL && Dmod_IsEnabled( context );
-}
-
-/**
- * @brief Are required modules loaded
- * 
- * @param Context Context to check
- * 
- * @return True if required modules are loaded, false otherwise
- */
-static bool AreRequiredModulesLoaded( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        DMOD_LOG_ERROR("Cannot check required modules - invalid context\n");
-        return false;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Context->RequiredModules[i].Name[0] == 0 )
-        {
-            continue;
-        }
-
-        if( !IsLoaded( Context->RequiredModules[i].Name ) )
-        {
-            DMOD_LOG_VERBOSE("Required module '%s' is not loaded\n", Context->RequiredModules[i].Name);
-            return false;
-        }
-    }
-
-    return true;
 }
 
 /**
