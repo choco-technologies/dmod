@@ -7,29 +7,29 @@
 #   file instead.
 #       
 # ##############################################################################
-
-#
-# Path to the DMOD project directory
-#
-ifeq ($(DMOD_DIR),)
-	DMOD_DIR = ../..
-endif
-
-#
-#	Include the paths
-#
-include $(DMOD_DIR)/paths.mk
-include $(DMOD_CFG_FILE_PATH)
-include $(DMOD_TOOLS_FILE_PATH)
+DMOD_DIR = ../../
 
 #
 #  Name of the module
 #
 DMOD_LIB_NAME=libdmod_system.a
 
-#
-#  List of source files
-#
+# -----------------------------------------------------------------------------
+#  Main rule 
+# -----------------------------------------------------------------------------
+all: create_dirs $(DMOD_LIB_NAME)
+	@echo "$(DMOD_LIB_NAME) is built"
+
+# -----------------------------------------------------------------------------
+# 	Initialization of paths
+# -----------------------------------------------------------------------------
+include $(DMOD_DIR)/paths.mk
+include $(DMOD_CFG)
+include $(DMOD_TOOLS)
+
+# -----------------------------------------------------------------------------
+# 	List of sources
+# -----------------------------------------------------------------------------
 DMOD_SOURCES=dmod_system.c\
 		dmod_if_file.c\
 		dmod_if_mem.c\
@@ -38,65 +38,55 @@ DMOD_SOURCES=dmod_system.c\
 		dmod_if_events.c\
 		dmod_if_rtos.c
 
-#
-#  List of object files
-#
-DMOD_OBJECTS = $(addprefix $(DMOD_OBJS_DIR)/, $(DMOD_SOURCES:.c=.o))
+# -----------------------------------------------------------------------------
+# 	List of objects
+# -----------------------------------------------------------------------------
+DMOD_OBJECTS = $(addprefix $(DMOD_OBJS_DIR)/dmod_system/, $(DMOD_SOURCES:.c=.o))
 
-#
-#  List of header directories
-#
+# -----------------------------------------------------------------------------
+# 	List of include directories
+# -----------------------------------------------------------------------------
 DMOD_INC_DIRS = ../..//src/system\
 		../..//inc\
 		../..//build\
 		../..//src/common
-
-#
-#   Linked libraries
-# 
-DMOD_LIBS = dmod_inc\
-		dmod_common
-
-#
-#   Definitions
-#
-DEFS = $(foreach v,$(filter VAR%,$(.VARIABLES)),-D$(v)=$($(v)))
-DMOD_DEFINITIONS = DMOD_SYSTEM $(DEFS)
-
-#
-#  Add -I prefix to each include directory
-#
 CFLAGS_INC = $(addprefix -I,$(DMOD_INC_DIRS))
 
-#
-#  Add -L prefix to each library file
-#
+# -----------------------------------------------------------------------------
+# 	List of linked libraries
+# -----------------------------------------------------------------------------
+DMOD_LIBS = dmod_inc\
+		dmod_common
 CFLAGS_LIB = $(addprefix -L,$(DMOD_LIBS))
 
-#
-#  Add -D prefix to each definition
-#
+# -----------------------------------------------------------------------------
+# 	List of compile definitions
+# -----------------------------------------------------------------------------
+DEFS = $(foreach v,$(filter VAR%,$(.VARIABLES)),-D$(v)=$($(v)))
+DMOD_DEFINITIONS = DMOD_SYSTEM $(DEFS)
 CFLAGS_DEF = $(addprefix -D,$(DMOD_DEFINITIONS))
 
-#
-#  Compiler flags
-#
+# -----------------------------------------------------------------------------
+# 	List of compiler flags
+# -----------------------------------------------------------------------------
 CFLAGS += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 
-#
-#  List of targets
-#
-dmod_system: $(DMOD_LIB_NAME)
+# -----------------------------------------------------------------------------
+#   Rules
+# -----------------------------------------------------------------------------
+create_dirs: dmod_create_out_dirs
+	@echo "Creating directories"
+	@$(MKDIR) -p $(DMOD_OBJS_DIR)/dmod_system
+	@$(MKDIR) -p $(DMOD_LIBS_DIR)
 
 $(DMOD_LIB_NAME): $(DMOD_OBJECTS)
+	@echo "Linking $(DMOD_LIB_NAME)"
 	@$(AR) rcs $(DMOD_LIBS_DIR)/$(DMOD_LIB_NAME) $(DMOD_OBJECTS)
 
-$(DMOD_OBJS_DIR)/%.o: %.c
-	@$(MKDIR) -p $(DMOD_OBJS_DIR)
-	@$(MKDIR) -p $(DMOD_LIBS_DIR)
+$(DMOD_OBJS_DIR)/dmod_system/%.o: %.c
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	@$(RM) -f $(DMOD_OBJECTS) $(DMOD_LIB_NAME)
 
-.PHONY: all clean
+.PHONY: all clean create_dirs

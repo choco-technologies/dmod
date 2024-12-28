@@ -5,6 +5,9 @@ ifeq ($(DMOD_DIR),)
 	DMOD_DIR=.
 endif
 
+# Disable echoing of commands
+MAKEFLAGS += --no-print-directory
+
 # -----------------------------------------------------------------------------
 # 	Output directories
 # -----------------------------------------------------------------------------
@@ -29,27 +32,15 @@ DMOD_TESTS_DIR=$(DMOD_DIR)/tests
 # -----------------------------------------------------------------------------
 DMOD_TOOLS_FILE_NAME=tools-cfg.mk
 DMOD_CFG_FILE_NAME=dmod-cfg.mk
+DMOD_SUBDIRS_FILE_NAME=subdirs.mk
 
 # -----------------------------------------------------------------------------
 #   Makefile file paths
 # -----------------------------------------------------------------------------
-ifeq ($(DMOD_TOOLS_FILE_PATH),)
-	DMOD_TOOLS_FILE_PATH=$(DMOD_DIR)/$(DMOD_TOOLS_FILE_NAME)
+ifeq ($(DMOD_TOOLS),)
+	DMOD_TOOLS=$(DMOD_DIR)/$(DMOD_TOOLS_FILE_NAME)
 endif
-ifeq ($(DMOD_CFG_FILE_PATH),)
-	DMOD_CFG_FILE_PATH=$(DMOD_DIR)/$(DMOD_CFG_FILE_NAME)
+ifeq ($(DMOD_CFG),)
+	DMOD_CFG=$(DMOD_DIR)/$(DMOD_CFG_FILE_NAME)
 endif
-
-# -----------------------------------------------------------------------------
-#   Rules
-# -----------------------------------------------------------------------------
-dmod_create_out_dirs:
-	@echo "Creating output directories..."
-	@mkdir -p $(DMOD_BUILD_DIR)
-	@mkdir -p $(DMOD_OBJS_DIR)
-	@mkdir -p $(DMOD_DMF_DIR)
-	@mkdir -p $(DMOD_LIBS_DIR)
-
-dmod_clean_out_dirs:
-	@echo "Cleaning output directories..."
-	@rm -rf $(DMOD_BUILD_DIR)
+DMOD_SUBDIRS_FILE_PATH=$(DMOD_SCRIPTS_DIR)/$(DMOD_SUBDIRS_FILE_NAME)

@@ -1,14 +1,13 @@
 #
 # 	Main Makefile for the dmod project. You can include this file in your project Makefile
 #
-DMOD_DIR=.
+DMOD_DIR=../..
 
 # -----------------------------------------------------------------------------
 #   Subdirectories
 # -----------------------------------------------------------------------------
-SUBDIRS := src \
-	  examples \
-	  tests
+SUBDIRS := application \
+	  library
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths
