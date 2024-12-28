@@ -16,6 +16,7 @@ DMOD_LIB_NAME=lib@DMOD_LIB_NAME@.a
 DMOD_SOURCES=@DMOD_SOURCES@
 DMOD_INC_DIRS = @DMOD_INC_DIRS@
 DMOD_LIBS = @DMOD_LIBS@
+DMOD_GEN_HEADERS_IN = @DMOD_GEN_HEADERS_IN@
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths

@@ -18,6 +18,7 @@ DMOD_INC_DIRS = ../..//src/module\
 		../..//inc\
 		../..//build
 DMOD_LIBS = dmod_inc
+DMOD_GEN_HEADERS_IN = config.h.in
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths

@@ -1,5 +1,4 @@
 set(MODULE_NAME dmod_module)
-
 set(DMOD_HEADER_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE STRING "Path to the module header template")
 
 add_library(${MODULE_NAME} STATIC

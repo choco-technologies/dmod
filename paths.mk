@@ -33,6 +33,7 @@ DMOD_TESTS_DIR=$(DMOD_DIR)/tests
 DMOD_TOOLS_FILE_NAME=tools-cfg.mk
 DMOD_CFG_FILE_NAME=dmod-cfg.mk
 DMOD_SUBDIRS_FILE_NAME=subdirs.mk
+DMOD_CONFIGURE_FILE_NAME=configure_file.mk
 
 # -----------------------------------------------------------------------------
 #   Makefile file paths
@@ -45,3 +46,5 @@ ifeq ($(DMOD_CFG),)
 endif
 DMOD_SUBDIRS_FILE_PATH=$(DMOD_SCRIPTS_DIR)/$(DMOD_SUBDIRS_FILE_NAME)
 DMOD_SLIB_FILE_PATH=$(DMOD_SCRIPTS_DIR)/staticlib.mk
+DMOD_CONFIGURE_FILE_PATH=$(DMOD_SCRIPTS_DIR)/$(DMOD_CONFIGURE_FILE_NAME)
+
