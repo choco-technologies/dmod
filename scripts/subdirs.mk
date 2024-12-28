@@ -16,10 +16,10 @@ include $(DMOD_TOOLS)
 # -----------------------------------------------------------------------------
 create_dirs:
 	@echo "Creating output directories..."
-	@mkdir -p $(DMOD_BUILD_DIR)
-	@mkdir -p $(DMOD_OBJS_DIR)
-	@mkdir -p $(DMOD_DMF_DIR)
-	@mkdir -p $(DMOD_LIBS_DIR)
+	@$(MKDIR) -p $(DMOD_BUILD_DIR)
+	@$(MKDIR) -p $(DMOD_OBJS_DIR)
+	@$(MKDIR) -p $(DMOD_DMF_DIR)
+	@$(MKDIR) -p $(DMOD_LIBS_DIR)
 
 build_subdirs: $(SUBDIRS)
 
