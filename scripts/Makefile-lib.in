@@ -17,6 +17,9 @@ DMOD_SOURCES=@DMOD_SOURCES@
 DMOD_INC_DIRS = @DMOD_INC_DIRS@
 DMOD_LIBS = @DMOD_LIBS@
 DMOD_GEN_HEADERS_IN = @DMOD_GEN_HEADERS_IN@
+DMOD_MODE = @DMOD_MODE@
+DMOD_SYSTEM = @DMOD_SYSTEM@
+DMOD_MODULE = @DMOD_MODULE@
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths

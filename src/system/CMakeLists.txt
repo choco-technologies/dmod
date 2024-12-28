@@ -1,4 +1,5 @@
 set(MODULE_NAME dmod_system)
+set(DMOD_MODE "DMOD_SYSTEM")
 add_library(${MODULE_NAME} STATIC
     dmod_system.c
     dmod_if_file.c

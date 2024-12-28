@@ -3,6 +3,16 @@
 #
 function( create_library_makefile targetName )
     # Configure the Makefile
+    if(DMOD_MODE STREQUAL "DMOD_SYSTEM")
+        set(DMOD_SYSTEM ON)
+        set(DMOD_MODULE OFF)
+    elseif(DMOD_MODE STREQUAL "DMOD_MODULE")
+        set(DMOD_SYSTEM OFF)
+        set(DMOD_MODULE ON)
+    else()
+        set(DMOD_SYSTEM OFF)
+        set(DMOD_MODULE OFF)
+    endif()
     file(RELATIVE_PATH DMOD_PROJECT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}")
     set(DMOD_LIB_NAME ${targetName})
     file(RELATIVE_PATH DMOD_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}")

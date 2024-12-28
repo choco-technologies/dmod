@@ -1,5 +1,5 @@
 set(MODULE_NAME dmod_common)
-
+set(DMOD_MODE "DMOD_NONE")
 add_library(${MODULE_NAME} STATIC
     dmod_common.c
 )

@@ -26,7 +26,10 @@ DMOD_INC_DIRS = ../..//src/system\
 		../..//src/common
 DMOD_LIBS = dmod_inc\
 		dmod_common
-DMOD_GEN_HEADERS_IN = config.h.in
+DMOD_GEN_HEADERS_IN = 
+DMOD_MODE = DMOD_SYSTEM
+DMOD_SYSTEM = ON
+DMOD_MODULE = OFF
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths
