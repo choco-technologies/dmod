@@ -11,6 +11,10 @@
         "dmod.h": "c",
         "dmod_mod_defs.h": "c",
         "example_lib.h": "c",
-        "example_lib_defs.h": "c"
+        "example_lib_defs.h": "c",
+        "dmod_module.h": "c",
+        "dmod_sal.h": "c",
+        "config.h": "c",
+        "random": "cpp"
     }
 }

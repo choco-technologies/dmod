@@ -10,6 +10,7 @@ endif
 # -----------------------------------------------------------------------------
 DMOD_BUILD_DIR=$(DMOD_DIR)/build
 DMOD_OBJS_DIR=$(DMOD_BUILD_DIR)/objs
+DMOD_LIBS_DIR=$(DMOD_BUILD_DIR)/libs
 ifeq ($(DMOD_DMF_DIR),)
 	DMOD_DMF_DIR=$(DMOD_BUILD_DIR)/dmf
 endif
@@ -47,6 +48,7 @@ dmod_create_out_dirs:
 	@mkdir -p $(DMOD_BUILD_DIR)
 	@mkdir -p $(DMOD_OBJS_DIR)
 	@mkdir -p $(DMOD_DMF_DIR)
+	@mkdir -p $(DMOD_LIBS_DIR)
 
 dmod_clean_out_dirs:
 	@echo "Cleaning output directories..."

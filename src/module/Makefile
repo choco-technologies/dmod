@@ -9,17 +9,23 @@
 # ##############################################################################
 
 #
+# Path to the DMOD project directory
+#
+ifeq ($(DMOD_DIR),)
+	DMOD_DIR = ../..
+endif
+
+#
+#	Include the paths
+#
+include $(DMOD_DIR)/paths.mk
+include $(DMOD_CFG_FILE_PATH)
+include $(DMOD_TOOLS_FILE_PATH)
+
+#
 #  Name of the module
 #
 DMOD_LIB_NAME=libdmod_module.a
-DMOD_PROJECT_DIR=../../
-OUTPUT_DIR=../../build/src/module
-LIBS_DIR=../../build/libs
-
-#
-#  Include project configuration
-#
-include $(DMOD_PROJECT_DIR)/dmod-cfg.mk
 
 #
 #  List of source files
@@ -29,7 +35,7 @@ DMOD_SOURCES=dmod_module.c
 #
 #  List of object files
 #
-DMOD_OBJECTS = $(addprefix $(OUTPUT_DIR)/, $(DMOD_SOURCES:.c=.o))
+DMOD_OBJECTS = $(addprefix $(DMOD_OBJS_DIR)/, $(DMOD_SOURCES:.c=.o))
 
 #
 #  List of header directories
@@ -72,17 +78,17 @@ CFLAGS += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 #
 #  List of targets
 #
-all: $(DMOD_LIB_NAME)
+dmod_module: $(DMOD_LIB_NAME)
 
 $(DMOD_LIB_NAME): $(DMOD_OBJECTS)
-	$(AR) rcs $(LIBS_DIR)/$(DMOD_LIB_NAME) $(DMOD_OBJECTS)
+	@$(AR) rcs $(DMOD_LIBS_DIR)/$(DMOD_LIB_NAME) $(DMOD_OBJECTS)
 
-$(OUTPUT_DIR)/%.o: %.c
-	$(MKDIR) -p $(OUTPUT_DIR)
-	$(MKDIR) -p $(LIBS_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+$(DMOD_OBJS_DIR)/%.o: %.c
+	@$(MKDIR) -p $(DMOD_OBJS_DIR)
+	@$(MKDIR) -p $(DMOD_LIBS_DIR)
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(DMOD_OBJECTS) $(DMOD_LIB_NAME)
+	@$(RM) -f $(DMOD_OBJECTS) $(DMOD_LIB_NAME)
 
 .PHONY: all clean
