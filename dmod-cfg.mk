@@ -1,10 +1,4 @@
 #
-#  Paths
-#
-PROJECT_DIR=.
-BUILD_DIR=$(PROJECT_DIR)/build
-
-#
 #  Project configuration
 #
 ON=1
@@ -22,19 +16,5 @@ DMOD_SYSTEM_VERSION_MAJOR=0
 DMOD_SYSTEM_VERSION_MINOR=1
 DMOD_BUILD_TESTS=ON
 DMOD_BUILD_EXAMPLES=ON
-DMOD_DMF_DIR=${BUILD_DIR}/dmf
 DMOD_REPO_DIR=${DMOD_DMF_DIR}
 DMOD_CPU_NAME=
-
-#
-#	Toolchain configuration
-#
-CC=gcc
-AR=ar
-MAKE=make
-MKDIR=mkdir
-
-#
-#	Compiler flags
-#
-CFLAGS=-Wall 
