@@ -15,6 +15,8 @@
         "dmod_module.h": "c",
         "dmod_sal.h": "c",
         "config.h": "c",
-        "random": "cpp"
+        "random": "cpp",
+        "dmod_types.h": "c",
+        "dmod_defs.h": "c"
     }
 }

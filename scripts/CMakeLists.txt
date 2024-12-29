@@ -113,6 +113,9 @@ function(dmod_create_module moduleName version moduleType)
         PUBLIC
             DMOD_MODULE_NAME="${DMOD_MODULE_NAME}"
             DMOD_${moduleName}
+            DMOD_MODE="DMOD_MODULE"
+            DMOD_MODULE=1
+            DMOD_SYSTEM=0
         )
 
     target_include_directories(${moduleName} 

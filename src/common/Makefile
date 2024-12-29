@@ -19,9 +19,7 @@ DMOD_INC_DIRS = ../..//src/common\
 		../..//build
 DMOD_LIBS = dmod_inc
 DMOD_GEN_HEADERS_IN = 
-DMOD_MODE = DMOD_NONE
-DMOD_SYSTEM = OFF
-DMOD_MODULE = OFF
+DMOD_DEFINITIONS = 
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths

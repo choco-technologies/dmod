@@ -16,6 +16,5 @@ define configure_file
 	@$(RM) -f $2
 	@echo "Configuring file $<"
 	@echo "Generating file $@"
-	@echo "List of definitions: $(.VARIABLES)"
 	@sed $(call generate_sed_commands) $< > $@
 endef

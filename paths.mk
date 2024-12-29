@@ -34,6 +34,7 @@ DMOD_TOOLS_FILE_NAME=tools-cfg.mk
 DMOD_CFG_FILE_NAME=dmod-cfg.mk
 DMOD_SUBDIRS_FILE_NAME=subdirs.mk
 DMOD_CONFIGURE_FILE_NAME=configure_file.mk
+DMOD_CONFIG_H_IN_FILE_NAME=config.h.in
 
 # -----------------------------------------------------------------------------
 #   Makefile file paths
@@ -47,4 +48,21 @@ endif
 DMOD_SUBDIRS_FILE_PATH=$(DMOD_SCRIPTS_DIR)/$(DMOD_SUBDIRS_FILE_NAME)
 DMOD_SLIB_FILE_PATH=$(DMOD_SCRIPTS_DIR)/staticlib.mk
 DMOD_CONFIGURE_FILE_PATH=$(DMOD_SCRIPTS_DIR)/$(DMOD_CONFIGURE_FILE_NAME)
+DMOD_CONFIG_H_IN_FILE_PATH=$(DMOD_SCRIPTS_DIR)/$(DMOD_CONFIG_H_IN_FILE_NAME)
 
+# -----------------------------------------------------------------------------
+#   Include the dmod configuration
+# -----------------------------------------------------------------------------
+include $(DMOD_CFG)
+include $(DMOD_TOOLS)
+
+# -----------------------------------------------------------------------------
+#   List of extra definitions
+# -----------------------------------------------------------------------------
+ifeq ($(DMOD_MODE),DMOD_SYSTEM)
+	DMOD_SYSTEM=1
+	DMOD_MODULE=0
+else
+	DMOD_SYSTEM=0
+	DMOD_MODULE=1
+endif

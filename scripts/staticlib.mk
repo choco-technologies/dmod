@@ -8,7 +8,6 @@
 # 	Initialization of paths
 # -----------------------------------------------------------------------------
 include $(DMOD_DIR)/paths.mk
-include $(DMOD_CFG)
 include $(DMOD_TOOLS)
 include $(DMOD_CONFIGURE_FILE_PATH)
 
@@ -16,7 +15,6 @@ include $(DMOD_CONFIGURE_FILE_PATH)
 # 	List of objects
 # -----------------------------------------------------------------------------
 DMOD_OBJECTS := $(addprefix $(DMOD_LIB_OBJS_DIR)/, $(DMOD_SOURCES:.c=.o))
-DMOD_GEN_HEADERS_IN := $(wildcard ./*.h.in)
 DMOD_GEN_HEADERS    := $(addprefix $(DMOD_BUILD_DIR)/, $(DMOD_GEN_HEADERS_IN:.in=))
 
 # -----------------------------------------------------------------------------
@@ -24,9 +22,8 @@ DMOD_GEN_HEADERS    := $(addprefix $(DMOD_BUILD_DIR)/, $(DMOD_GEN_HEADERS_IN:.in
 # -----------------------------------------------------------------------------
 CFLAGS_INC 			= $(addprefix -I,$(DMOD_INC_DIRS))
 CFLAGS_LIB 			= $(addprefix -L,$(DMOD_LIBS))
-DEFS 				= $(foreach v,$(filter VAR%,$(.VARIABLES)),-D$(v)=$($(v)))
-DMOD_DEFINITIONS 	= $(DEFS)
-CFLAGS_DEF 			= $(addprefix -D,$(DMOD_DEFINITIONS))
+DEFINITIONS 	   := $(foreach v,$(DMOD_DEFINITIONS),-D$(v)=$($(v)))
+CFLAGS_DEF 			= $(addprefix -D,$(DEFINITIONS))
 CFLAGS 			   += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 
 # -----------------------------------------------------------------------------
@@ -52,9 +49,10 @@ $(DMOD_LIB_NAME): $(DMOD_OBJECTS)
 	@$(AR) rcs $(DMOD_LIBS_DIR)/$(DMOD_LIB_NAME) $(DMOD_OBJECTS)
 
 $(DMOD_LIB_OBJS_DIR)/%.o: %.c
-	@$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(DMOD_BUILD_DIR)/%.h: %.h.in
+	@echo "Generating header $@"
 	@$(call configure_file) $< $@
 
 clean:

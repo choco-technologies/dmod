@@ -9,6 +9,7 @@ DMOD_DIR=.
 SUBDIRS := src \
 	  examples \
 	  tests
+DMOD_GEN_HEADERS_IN := config.h.in
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths

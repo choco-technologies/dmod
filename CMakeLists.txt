@@ -47,9 +47,6 @@ endif()
 
 add_definitions(-DON=1 -DOFF=0)
 
-# Create a simple configuration header
-configure_file(config.h.in config.h)
-
 # ===========================================================================
 # 						Subdirectories
 # ===========================================================================
@@ -62,6 +59,9 @@ endif()
 if (DMOD_BUILD_EXAMPLES)
 	add_subdirectory(examples)
 endif()
+
+# Create a simple configuration header
+configure_file(config.h.in config.h)
 
 # ===========================================================================
 #       				Main library

@@ -8,14 +8,12 @@ all: create_dirs generate_headers build_subdirs
 # 	Initialization of paths
 # -----------------------------------------------------------------------------
 include $(DMOD_DIR)/paths.mk
-include $(DMOD_CFG)
 include $(DMOD_TOOLS)
 include $(DMOD_CONFIGURE_FILE_PATH)
 
 # -----------------------------------------------------------------------------
 #   List of headers to be generated
 # -----------------------------------------------------------------------------
-DMOD_GEN_HEADERS_IN := $(wildcard *.h.in)
 DMOD_GEN_HEADERS := $(addprefix $(DMOD_BUILD_DIR)/, $(DMOD_GEN_HEADERS_IN:.in=))
 
 # -----------------------------------------------------------------------------
@@ -35,6 +33,7 @@ generate_headers: $(DMOD_GEN_HEADERS)
 build_subdirs: $(SUBDIRS)
 
 $(DMOD_BUILD_DIR)/%.h: %.h.in
+	@echo "Generating header $@"
 	@$(call configure_file) $< $@
 
 $(SUBDIRS):
