@@ -12,6 +12,16 @@ include $(DMOD_TOOLS)
 include $(DMOD_CONFIGURE_FILE_PATH)
 
 # -----------------------------------------------------------------------------
+# 	Selection of subdirectories depending on the value of DMOD_MODE
+# -----------------------------------------------------------------------------
+ifeq ($(DMOD_SYSTEM),ON)
+	SUBDIRS += $(SYSTEM_SUBDIRS)
+endif
+ifeq ($(DMOD_MODULE),ON)
+	SUBDIRS += $(MODULE_SUBDIRS)
+endif
+
+# -----------------------------------------------------------------------------
 #   List of headers to be generated
 # -----------------------------------------------------------------------------
 DMOD_GEN_HEADERS := $(addprefix $(DMOD_BUILD_DIR)/, $(DMOD_GEN_HEADERS_IN:.in=))

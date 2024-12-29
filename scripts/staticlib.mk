@@ -30,7 +30,7 @@ CFLAGS 			   += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 #   Rules
 # -----------------------------------------------------------------------------
 all: create_dirs generate_headers $(DMOD_LIB_NAME)
-	@echo "$(DMOD_LIB_NAME) is built"
+	@printf "==== \033[32;1m$(DMOD_LIB_NAME) has been built\033[0m ===\n"
 
 create_dirs: 
 	@echo "Creating output directories"
@@ -52,7 +52,6 @@ $(DMOD_LIB_OBJS_DIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(DMOD_BUILD_DIR)/%.h: %.h.in
-	@echo "Generating header $@"
 	@$(call configure_file) $< $@
 
 clean:

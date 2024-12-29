@@ -6,9 +6,10 @@ DMOD_DIR=..
 # -----------------------------------------------------------------------------
 #   Subdirectories
 # -----------------------------------------------------------------------------
-SUBDIRS := common \
-	  module \
-	  system
+SUBDIRS = common
+SYSTEM_SUBDIRS = system
+MODULE_SUBDIRS = module
+
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths

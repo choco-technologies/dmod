@@ -60,9 +60,9 @@ include $(DMOD_TOOLS)
 #   List of extra definitions
 # -----------------------------------------------------------------------------
 ifeq ($(DMOD_MODE),DMOD_SYSTEM)
-	DMOD_SYSTEM=1
-	DMOD_MODULE=0
+	DMOD_SYSTEM=ON
+	DMOD_MODULE=OFF
 else
-	DMOD_SYSTEM=0
-	DMOD_MODULE=1
+	DMOD_SYSTEM=OFF
+	DMOD_MODULE=ON
 endif

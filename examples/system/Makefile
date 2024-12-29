@@ -62,3 +62,7 @@ $(PROJECT_NAME): $(DMOD_OBJECTS)
 $(OUTPUT_DIR)/%.o: %.c
 	@mkdir -p $(OUTPUT_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	@rm -rf $(OUTPUT_DIR)
+	@rm -rf $(OUTPUT_DIR)/$(PROJECT_NAME)
