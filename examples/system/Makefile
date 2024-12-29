@@ -3,66 +3,55 @@
 # It is used to build the dmod loader example.
 #
 
-# ##############################################################################
-#  Project paths
-# ##############################################################################
-DMOD_PROJECT_DIR=../..
-SCRIPTS_DIR=$(DMOD_PROJECT_DIR)/scripts
+# -----------------------------------------------------------------------------
+# 	Paths configuration
+# -----------------------------------------------------------------------------
+DMOD_DIR=../..
+DMOD_CFG=dmod-cfg.mk
 MAIN_LD=main.ld
-LIBS_DIR=$(DMOD_PROJECT_DIR)/build/libs
-OUTPUT_DIR=$(DMOD_PROJECT_DIR)/build/examples/system
 
-include $(DMOD_PROJECT_DIR)/dmod-cfg.mk
+# -----------------------------------------------------------------------------
+# 	Initialization of paths
+# -----------------------------------------------------------------------------
+include $(DMOD_DIR)/paths.mk
 
-# ##############################################################################
-#  Project configuration
-# ##############################################################################
-PROJECT_NAME=dmod_loader
-DMOD_SOURCES=main.c
+# -----------------------------------------------------------------------------
+# 	Project's definitions
+# -----------------------------------------------------------------------------
+PROJECT_NAME    = dmod_loader
+OUTPUT_DIR		= $(DMOD_BUILD_DIR)/examples/system
+DMOD_SOURCES	= main.c
+DMOD_INC_DIRS 	= $(DMOD_INC_DIR) \
+				  $(DMOD_BUILD_DIR) 
+DMOD_LIBS 	  	= dmod_system\
+				  dmod_common 
+DEFINITIONS 	= 
 
-# ##############################################################################
-#  List of object files
-# ##############################################################################
+# -----------------------------------------------------------------------------
+# 	List of objects
+# -----------------------------------------------------------------------------
 DMOD_OBJECTS = $(addprefix $(OUTPUT_DIR)/, $(DMOD_SOURCES:.c=.o))
 
-# ##############################################################################
-#  Include directories
-# ##############################################################################
-DMOD_INC_DIRS = $(DMOD_PROJECT_DIR)/inc \
-		$(DMOD_PROJECT_DIR)/build \
-		$(DMOD_PROJECT_DIR)/src/common \
-		$(DMOD_PROJECT_DIR)/src/system 
-
+# -----------------------------------------------------------------------------
+# 	Preparation of C flags
+# -----------------------------------------------------------------------------
 CFLAGS_INC = $(addprefix -I,$(DMOD_INC_DIRS))
+CFLAGS_LIB 	= $(addprefix -l,$(DMOD_LIBS)) -L $(DMOD_LIBS_DIR)
+CFLAGS_DEF = $(addprefix -D,$(DEFINITIONS))
+CFLAGS    += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 
-# ##############################################################################
-#  Linked libraries
-# ##############################################################################
-DMOD_LIBS = dmod_system dmod_common 
-
-CFLAGS_LIB = $(addprefix -l,$(DMOD_LIBS)) -L $(LIBS_DIR)
-
-# ##############################################################################
-#  Definitions
-# ##############################################################################
-DEFS = $(foreach v,$(filter VAR%,$(.VARIABLES)),-D$(v)=$($(v)))
-DMOD_DEFINITIONS =  $(DEFS)
-CFLAGS_DEF = $(addprefix -D,$(DMOD_DEFINITIONS))
-
-# ##############################################################################
-#  Configuration of C flags
-# ##############################################################################
-CFLAGS+= $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
-
+# -----------------------------------------------------------------------------
+# 	Build rules
+# -----------------------------------------------------------------------------
 all: $(PROJECT_NAME)
 
 $(PROJECT_NAME): $(DMOD_OBJECTS)
-	$(CC) $(CFLAGS) -L $(SCRIPTS_DIR) -T $(MAIN_LD) -o $(OUTPUT_DIR)/$(PROJECT_NAME) $(DMOD_OBJECTS) $(CFLAGS_LIB) $(CFLAGS_DEF)
+	$(CC) $(CFLAGS) -L $(DMOD_SCRIPTS_DIR) -T $(MAIN_LD) -o $(OUTPUT_DIR)/$(PROJECT_NAME) $(DMOD_OBJECTS) $(CFLAGS_LIB) $(CFLAGS_DEF)
 
 $(OUTPUT_DIR)/%.o: %.c
-	@mkdir -p $(OUTPUT_DIR)
+	@$(MKDIR) -p $(OUTPUT_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	@rm -rf $(OUTPUT_DIR)
-	@rm -rf $(OUTPUT_DIR)/$(PROJECT_NAME)
+	@$(RM) -rf $(OUTPUT_DIR)
+	@$(RM) -rf $(OUTPUT_DIR)/$(PROJECT_NAME)
