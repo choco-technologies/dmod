@@ -2,7 +2,7 @@
 # 	Script with paths of the project
 #================================================================================================================================
 ifeq ($(DMOD_DIR),)
-	DMOD_DIR=.
+	DMOD_DIR=$(shell pwd)
 endif
 
 # Disable echoing of commands

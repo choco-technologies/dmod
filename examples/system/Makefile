@@ -7,8 +7,9 @@
 # 	Paths configuration
 # -----------------------------------------------------------------------------
 DMOD_DIR=../..
-DMOD_CFG=dmod-cfg.mk
 MAIN_LD=main.ld
+THIS_DIR=$(shell pwd)
+DMOD_CFG=$(THIS_DIR)/dmod-cfg.mk
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths
@@ -35,16 +36,23 @@ DMOD_OBJECTS = $(addprefix $(OUTPUT_DIR)/, $(DMOD_SOURCES:.c=.o))
 # -----------------------------------------------------------------------------
 # 	Preparation of C flags
 # -----------------------------------------------------------------------------
-CFLAGS_INC = $(addprefix -I,$(DMOD_INC_DIRS))
+CFLAGS_INC  = $(addprefix -I,$(DMOD_INC_DIRS))
 CFLAGS_LIB 	= $(addprefix -l,$(DMOD_LIBS)) -L $(DMOD_LIBS_DIR)
-CFLAGS_DEF = $(addprefix -D,$(DEFINITIONS))
-CFLAGS    += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
+CFLAGS_DEF  = $(addprefix -D,$(DEFINITIONS))
+CFLAGS     += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 
 # -----------------------------------------------------------------------------
 # 	Build rules
 # -----------------------------------------------------------------------------
-all: $(PROJECT_NAME)
+all: dmod $(PROJECT_NAME)
 
+ifeq ($(DMOD_BUILD_EXAMPLES),ON)
+dmod:
+	@echo "Skipping dmod build"
+else
+dmod:
+	$(MAKE) -C $(DMOD_DIR) DMOD_CFG="$(DMOD_CFG)"
+endif
 $(PROJECT_NAME): $(DMOD_OBJECTS)
 	$(CC) $(CFLAGS) -L $(DMOD_SCRIPTS_DIR) -T $(MAIN_LD) -o $(OUTPUT_DIR)/$(PROJECT_NAME) $(DMOD_OBJECTS) $(CFLAGS_LIB) $(CFLAGS_DEF)
 
@@ -55,3 +63,5 @@ $(OUTPUT_DIR)/%.o: %.c
 clean:
 	@$(RM) -rf $(OUTPUT_DIR)
 	@$(RM) -rf $(OUTPUT_DIR)/$(PROJECT_NAME)
+
+.PHONY: all clean

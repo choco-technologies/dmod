@@ -47,9 +47,10 @@ $(DMOD_BUILD_DIR)/%.h: %.h.in
 	@$(call configure_file) $< $@
 
 $(SUBDIRS):
+	@echo "-----------------------------------------"
+	@printf "Building \033[34;1m$@\033[0m\n"
 	@$(MKDIR) -p $(DMOD_BUILD_DIR)/$@
-	@echo "Building $@..."
-	@$(MAKE) -C $@
+	@$(MAKE) -C $@ DMOD_CFG=$(DMOD_CFG)
 
 clean: 
 	@echo "Cleaning all modules..."
