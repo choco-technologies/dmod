@@ -41,6 +41,7 @@ DMOD_DMF_APP_FILE_NAME=dmf-app.mk
 DMOD_MODULE_LD_FILE_NAME=module.ld
 DMOD_API_HEADER_IN_FILE_NAME=api.h.in
 DMOD_MODULE_HEADER_SOURCE_FILE_NAME=dmod_header.c
+DMOD_INFO_MK_FILE_NAME=dmod-info.mk
 
 # -----------------------------------------------------------------------------
 #   Makefile file paths
@@ -61,11 +62,13 @@ DMOD_DMF_APP_FILE_PATH=$(DMOD_SCRIPTS_DIR)/$(DMOD_DMF_APP_FILE_NAME)
 DMOD_MODULE_LD_FILE_PATH=$(DMOD_SCRIPTS_DIR)/$(DMOD_MODULE_LD_FILE_NAME)
 DMOD_API_HEADER_IN_FILE_PATH=$(DMOD_SCRIPTS_DIR)/$(DMOD_API_HEADER_IN_FILE_NAME)
 DMOD_MODULE_HEADER_SOURCE_FILE_PATH=$(DMOD_SCRIPTS_DIR)/$(DMOD_MODULE_HEADER_SOURCE_FILE_NAME)
+DMOD_INFO_MK_FILE_PATH=$(DMOD_DIR)/$(DMOD_INFO_MK_FILE_NAME)
 
 # -----------------------------------------------------------------------------
 #   Include the dmod configuration
 # -----------------------------------------------------------------------------
 include $(DMOD_CFG)
+include $(DMOD_INFO_MK_FILE_PATH)
 include $(DMOD_TOOLS)
 
 # -----------------------------------------------------------------------------

@@ -8,6 +8,7 @@ option(DMOD_USE_STDLIB 	"Use stdlib for memory allocations" 	ON)
 option(DMOD_USE_STDIO  	"Use stdio for file operations" 		ON)
 option(DMOD_USE_ASSERT 	"Use assert for error handling" 		ON)
 option(DMOD_USE_PTHREAD "Use pthread for threading" 			ON)
+option(DMOD_USE_MMAN   	"Use mman for memory mapping" 			ON)
 
 set(DMOD_MAX_MODULES 			30            CACHE STRING "Maximum number of modules")
 set(DMOD_MAX_REQUIRED_MODULES 	10            CACHE STRING "Maximum number of required modules")
@@ -62,6 +63,8 @@ endif()
 
 # Create a simple configuration header
 configure_file(config.h.in config.h)
+# Prepare the info file for the makefiles
+configure_file(scripts/dmod-info.mk.in ${CMAKE_SOURCE_DIR}/dmod-info.mk)
 
 # ===========================================================================
 #       				Main library

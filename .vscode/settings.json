@@ -17,6 +17,7 @@
         "config.h": "c",
         "random": "cpp",
         "dmod_types.h": "c",
-        "dmod_defs.h": "c"
+        "dmod_defs.h": "c",
+        "pthread.h": "c"
     }
 }

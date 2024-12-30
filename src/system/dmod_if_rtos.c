@@ -29,6 +29,7 @@
 #include <errno.h>
 #include "dmod.h"
 #if DMOD_USE_PTHREAD
+#   define __USE_UNIX98
 #   include <pthread.h>
 #endif
 

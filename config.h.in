@@ -11,6 +11,7 @@
 #define DMOD_USE_STDIO      @DMOD_USE_STDIO@
 #define DMOD_USE_ASSERT     @DMOD_USE_ASSERT@
 #define DMOD_USE_PTHREAD    @DMOD_USE_PTHREAD@
+#define DMOD_USE_MMAN       @DMOD_USE_MMAN@
 #define DMOD_MODE           "@DMOD_MODE@"
 #define DMOD_SYSTEM_EN      @DMOD_SYSTEM@
 #define DMOD_MODULE_EN      @DMOD_MODULE@
