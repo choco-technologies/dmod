@@ -54,7 +54,7 @@ void* DMOD_WEAK_SYMBOL Dmod_FileOpen(const char *Path, const char *Mode)
     #if DMOD_USE_STDIO
     return fopen(Path, Mode);
     #else 
-    DMOD_ERROR("Dmod_FileOpen interface not implemented");
+    DMOD_LOG_ERROR("Dmod_FileOpen interface not implemented");
     return NULL;
     #endif
 }
@@ -74,7 +74,7 @@ size_t DMOD_WEAK_SYMBOL Dmod_FileRead(void *Buffer, size_t Size, size_t Count, v
     #if DMOD_USE_STDIO
     return fread(Buffer, Size, Count, File);
     #else
-    DMOD_ERROR("Dmod_FileRead interface not implemented");
+    DMOD_LOG_ERROR("Dmod_FileRead interface not implemented");
     return 0;
     #endif
 }
@@ -93,7 +93,7 @@ int DMOD_WEAK_SYMBOL Dmod_FileSeek(void *File, long Offset, int Origin)
     #if DMOD_USE_STDIO
     return fseek(File, Offset, Origin);
     #else 
-    DMOD_ERROR("Dmod_FileSeek interface not implemented");
+    DMOD_LOG_ERROR("Dmod_FileSeek interface not implemented");
     return -1;
     #endif
 }
@@ -110,7 +110,7 @@ size_t DMOD_WEAK_SYMBOL Dmod_FileTell(void *File)
     #if DMOD_USE_STDIO
     return ftell(File);
     #else 
-    DMOD_ERROR("Dmod_FileTell interface not implemented");
+    DMOD_LOG_ERROR("Dmod_FileTell interface not implemented");
     return 0;
     #endif
 }
@@ -130,13 +130,13 @@ size_t DMOD_WEAK_SYMBOL Dmod_FileSize(void *File)
     }
 
     // Seek to end of file
-    Dmod_FileSeek( File, 0, SEEK_END );
+    Dmod_FileSeek( File, 0, DMOD_SEEK_END );
 
     // Get current position
     size_t size = Dmod_FileTell( File );
 
     // Seek back to start
-    Dmod_FileSeek( File, 0, SEEK_SET );
+    Dmod_FileSeek( File, 0, DMOD_SEEK_SET );
 
     return size;
 }
@@ -151,7 +151,7 @@ void DMOD_WEAK_SYMBOL Dmod_FileClose(void *File)
     #if DMOD_USE_STDIO
     fclose(File);
     #else 
-    DMOD_ERROR("Dmod_FileClose interface not implemented");
+    DMOD_LOG_ERROR("Dmod_FileClose interface not implemented");
     #endif
 }
 
