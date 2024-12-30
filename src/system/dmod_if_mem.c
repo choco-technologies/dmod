@@ -54,7 +54,7 @@ void* DMOD_WEAK_SYMBOL Dmod_Malloc(size_t Size)
     #if DMOD_USE_STDLIB
     return malloc(Size);
     #else
-    DMOD_ERROR("Dmod_Malloc interface not implemented");
+    DMOD_LOG_ERROR("Dmod_Malloc interface not implemented");
     return NULL;
     #endif
 }
@@ -87,7 +87,7 @@ void* DMOD_WEAK_SYMBOL Dmod_AlignedMalloc(size_t Size, size_t Alignment)
     #endif
     return mem;
     #else
-    DMOD_ERROR("Dmod_AlignedMalloc interface not implemented");
+    DMOD_LOG_ERROR("Dmod_AlignedMalloc interface not implemented");
     return NULL;
     #endif
 }
@@ -102,6 +102,6 @@ void DMOD_WEAK_SYMBOL Dmod_Free(void *ptr)
     #if DMOD_USE_STDLIB
     free(ptr);
     #else 
-    DMOD_ERROR("Dmod_Free interface not implemented");
+    DMOD_LOG_ERROR("Dmod_Free interface not implemented");
     #endif
 }
