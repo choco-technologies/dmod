@@ -1,7 +1,9 @@
 #
 # 	Main Makefile for the dmod project. You can include this file in your project Makefile
 #
-DMOD_DIR=$(shell pwd)
+ifeq ($(DMOD_DIR),)
+	DMOD_DIR=$(shell pwd)
+endif
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths
