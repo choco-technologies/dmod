@@ -11,7 +11,9 @@ MAKEFLAGS += --no-print-directory
 # -----------------------------------------------------------------------------
 # 	Output directories
 # -----------------------------------------------------------------------------
-DMOD_BUILD_DIR=$(DMOD_DIR)/build
+ifeq ($(DMOD_BUILD_DIR),)
+	DMOD_BUILD_DIR=$(DMOD_DIR)/build
+endif
 DMOD_OBJS_DIR=$(DMOD_BUILD_DIR)/objs
 DMOD_LIBS_DIR=$(DMOD_BUILD_DIR)/libs
 ifeq ($(DMOD_DMF_DIR),)
