@@ -17,3 +17,5 @@ AR=$(CROSS_COMPILE)ar
 MAKE=make
 MKDIR=mkdir
 RM=rm
+CFLAGS=-Wall -std=c99
+CXXFLAGS=-Wall -std=c++17

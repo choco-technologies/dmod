@@ -1,0 +1,28 @@
+# #############################################################################
+# 
+# 	This is an example of a simple library module.
+#
+# #############################################################################
+DMOD_DIR=../../..
+
+# -----------------------------------------------------------------------------
+#  Paths initialization
+# -----------------------------------------------------------------------------
+include $(DMOD_DIR)/paths.mk
+
+# -----------------------------------------------------------------------------
+#   Module configuration
+# -----------------------------------------------------------------------------
+DMOD_MODULE_NAME=@DMOD_MODULE_NAME@
+DMOD_MODULE_VERSION=@DMOD_MODULE_VERSION@
+DMOD_AUTHOR_NAME=@DMOD_AUTHOR_NAME@
+DMOD_CSOURCES=@DMOD_SOURCES@
+DMOD_CXXSOURCES=
+DMOD_INC_DIRS=.
+DMOD_LIBS=
+DMOD_DEFINITIONS=
+
+# -----------------------------------------------------------------------------
+#   Include the dmod lib makefile
+# -----------------------------------------------------------------------------
+include $(DMOD_DMF_LIB_FILE_PATH)
