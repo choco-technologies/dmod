@@ -1,3 +1,5 @@
+set(DMOD_SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE STRING "Path to the scripts directory")
+
 #
 #   Creates makefile for the given library.
 #
@@ -95,11 +97,11 @@ function(dmod_create_module moduleName version moduleType)
     endif()
     set(DMOD_MODULE_TYPE ${moduleType})
 
-    configure_file(${DMOD_HEADER_DIR}/dmod_mod_defs.h.in ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_defs.h)
+    configure_file(${DMOD_SCRIPTS_DIR}/dmod_module_api.h.in ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_defs.h)
     
     add_executable(${moduleName} 
         ${SOURCES}
-        ${DMOD_HEADER_DIR}/dmod_header.c
+        ${DMOD_SCRIPTS_DIR}/dmod_header.c
         )
     
     add_library(${moduleName}_if INTERFACE

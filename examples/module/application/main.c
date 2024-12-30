@@ -3,7 +3,6 @@
 #include <stdio.h>
 
 extern Dmod_ModuleHeader_t ModuleHeader;
-
 extern void HelloWorld();
 
 int main(int argc, char** argv)

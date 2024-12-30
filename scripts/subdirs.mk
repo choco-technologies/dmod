@@ -44,7 +44,7 @@ build_subdirs: $(SUBDIRS)
 
 $(DMOD_BUILD_DIR)/%.h: %.h.in
 	@echo "Generating header $@"
-	@$(call configure_file) $< $@
+	@$(call configure_file,$<,$@)
 
 $(SUBDIRS):
 	@echo "-----------------------------------------"
