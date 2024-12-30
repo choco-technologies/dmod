@@ -71,7 +71,6 @@ DMOD_INFO_MK_FILE_PATH=$(DMOD_DIR)/$(DMOD_INFO_MK_FILE_NAME)
 # -----------------------------------------------------------------------------
 include $(DMOD_CFG)
 include $(DMOD_INFO_MK_FILE_PATH)
-include $(DMOD_TOOLS)
 
 # -----------------------------------------------------------------------------
 #   List of extra definitions

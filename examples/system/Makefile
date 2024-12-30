@@ -15,6 +15,7 @@ DMOD_CFG=$(THIS_DIR)/dmod-cfg.mk
 # 	Initialization of paths
 # -----------------------------------------------------------------------------
 include $(DMOD_DIR)/paths.mk
+include $(DMOD_TOOLS)
 
 # -----------------------------------------------------------------------------
 # 	Project's definitions
