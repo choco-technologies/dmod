@@ -18,6 +18,7 @@
         "random": "cpp",
         "dmod_types.h": "c",
         "dmod_defs.h": "c",
-        "pthread.h": "c"
+        "pthread.h": "c",
+        "dmod_system.h": "c"
     }
 }

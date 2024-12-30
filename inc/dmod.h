@@ -59,9 +59,9 @@
 #include "dmod_types.h"
 #include "dmod_sal.h"
 
-#if DMOD_MODULE_EN
+#if DMOD_MODULE_EN == ON
 #   include "dmod_module.h"
-#elif DMOD_SYSTEM_EN
+#elif DMOD_SYSTEM_EN == ON
 #   include "dmod_system.h"
 #else 
 #   error "DMOD_MODULE or DMOD_SYSTEM must be defined"
