@@ -20,7 +20,7 @@ SECTIONS
         __header_end = .;
     } : header
 
-    INCLUDE common.ld
+    INCLUDE dmod-common.ld
 
     . = ALIGN(8);
 

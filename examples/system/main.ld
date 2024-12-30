@@ -7,7 +7,7 @@ SECTIONS
     }
 
     /* Include the common linker script for DMOD */
-    INCLUDE common.ld
+    INCLUDE dmod-common.ld
     
     .rodata : {
         *(.rodata)
