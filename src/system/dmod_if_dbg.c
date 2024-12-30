@@ -83,10 +83,10 @@ void  DMOD_WEAK_SYMBOL Dmod_Assert( int Condition, const char* Message, const ch
     #else
     if( !Condition )
     {
-        DMOD_ERROR( "Assertion failed: %s\n", Message );
-        DMOD_ERROR( "File: %s\n", File );
-        DMOD_ERROR( "Line: %d\n", Line );
-        DMOD_ERROR( "Function: %s\n", Function );
+        DMOD_LOG_ERROR( "Assertion failed: %s\n", Message );
+        DMOD_LOG_ERROR( "File: %s\n", File );
+        DMOD_LOG_ERROR( "Line: %d\n", Line );
+        DMOD_LOG_ERROR( "Function: %s\n", Function );
 
         while(1);
     }
