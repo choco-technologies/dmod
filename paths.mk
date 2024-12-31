@@ -12,7 +12,11 @@ MAKEFLAGS += --no-print-directory
 # 	Output directories
 # -----------------------------------------------------------------------------
 ifeq ($(DMOD_BUILD_DIR),)
-	DMOD_BUILD_DIR=$(DMOD_DIR)/build
+	ifeq ($(DMOD_TOOLS_NAME),)
+		DMOD_BUILD_DIR=$(DMOD_DIR)/build
+	else
+		DMOD_BUILD_DIR=$(DMOD_DIR)/build/$(DMOD_TOOLS_NAME)
+	endif
 endif
 DMOD_OBJS_DIR=$(DMOD_BUILD_DIR)/objs
 DMOD_LIBS_DIR=$(DMOD_BUILD_DIR)/libs
