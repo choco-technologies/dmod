@@ -28,6 +28,7 @@ DMOD_SRC_DIR=$(DMOD_DIR)/src
 DMOD_SCRIPTS_DIR=$(DMOD_DIR)/scripts
 DMOD_EXAMPLES_DIR=$(DMOD_DIR)/examples
 DMOD_TESTS_DIR=$(DMOD_DIR)/tests
+DMOD_CONFIGS_DIR=$(DMOD_DIR)/configs
 
 # -----------------------------------------------------------------------------
 #   Makefile file names
@@ -49,7 +50,11 @@ DMOD_INFO_MK_FILE_NAME=dmod-info.mk
 #   Makefile file paths
 # -----------------------------------------------------------------------------
 ifeq ($(DMOD_TOOLS),)
-	DMOD_TOOLS=$(DMOD_DIR)/$(DMOD_TOOLS_FILE_NAME)
+	ifeq ($(DMOD_TOOLS_NAME),)
+		DMOD_TOOLS=$(DMOD_DIR)/$(DMOD_TOOLS_FILE_NAME)
+	else
+		DMOD_TOOLS=$(DMOD_CONFIGS_DIR)/$(DMOD_TOOLS_NAME)/$(DMOD_TOOLS_FILE_NAME)
+	endif
 endif
 ifeq ($(DMOD_CFG),)
 	DMOD_CFG=$(DMOD_DIR)/$(DMOD_CFG_FILE_NAME)
