@@ -73,6 +73,9 @@ CFLAGS             += -fPIC -fPIE -ffunction-sections -include $(DMOD_MODULE_DEF
 CFLAGS             += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 CXXFLAGS           += $(CFLAGS)
 LFLAGS 			   += -L $(DMOD_SCRIPTS_DIR) -T $(DMOD_MODULE_LD_FILE_NAME) -pie -nostartfiles -nostdlib -Xlinker --discard-all -static
+ifeq ($(DMOD_DEBUG),ON)
+	CFLAGS += -g
+endif
 
 # -----------------------------------------------------------------------------
 #   Rules

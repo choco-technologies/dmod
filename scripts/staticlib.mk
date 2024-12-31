@@ -25,6 +25,9 @@ CFLAGS_LIB 			= $(addprefix -L,$(DMOD_LIBS))
 DEFINITIONS 	   := $(foreach v,$(DMOD_DEFINITIONS),-D$(v)=$($(v)))
 CFLAGS_DEF 			= $(addprefix -D,$(DEFINITIONS))
 CFLAGS 			   += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
+ifeq ($(DMOD_DEBUG),ON)
+	CFLAGS += -g
+endif
 
 # -----------------------------------------------------------------------------
 #   Rules
