@@ -12,6 +12,11 @@ include $(DMOD_TOOLS)
 include $(DMOD_CONFIGURE_FILE_PATH)
 
 # -----------------------------------------------------------------------------
+# 	List of parameters to pass to subdirectories
+# -----------------------------------------------------------------------------
+DMOD_PARAMS := DMOD_DIR=$(DMOD_DIR) DMOD_BUILD_DIR=$(DMOD_BUILD_DIR) DMOD_OBJS_DIR=$(DMOD_OBJS_DIR) DMOD_DMF_DIR=$(DMOD_DMF_DIR) DMOD_LIBS_DIR=$(DMOD_LIBS_DIR) DMOD_CFG=$(DMOD_CFG)
+
+# -----------------------------------------------------------------------------
 # 	Selection of subdirectories depending on the value of DMOD_MODE
 # -----------------------------------------------------------------------------
 ifeq ($(DMOD_SYSTEM),ON)
@@ -50,12 +55,12 @@ $(SUBDIRS):
 	@echo "-----------------------------------------"
 	@printf "Building \033[34;1m$@\033[0m\n"
 	@$(MKDIR) -p $(DMOD_BUILD_DIR)/$@
-	@$(MAKE) -C $@ DMOD_CFG=$(DMOD_CFG)
+	@$(MAKE) -C $@ $(DMOD_PARAMS)
 
 clean: 
 	@echo "Cleaning all modules..."
 	@for dir in $(SUBDIRS); do \
-		$(MAKE) -C $$dir clean; \
+		$(MAKE) -C $$dir $(DMOD_PARAMS) clean; \
 	done
 	@$(RM) -rf $(DMOD_BUILD_DIR)
 	@echo "All modules cleaned..."
