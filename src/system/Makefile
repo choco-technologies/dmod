@@ -7,7 +7,7 @@
 #   Edit the scripts/Makefile-lib.in file instead.
 #       
 # ##############################################################################
-DMOD_DIR = ../../
+DMOD_DIR = $(DMOD_DIR)
 
 #
 #  Name of the module
@@ -20,10 +20,10 @@ DMOD_SOURCES=dmod_system.c\
 		dmod_if_irq.c\
 		dmod_if_events.c\
 		dmod_if_rtos.c
-DMOD_INC_DIRS = ../..//src/system\
-		../..//inc\
-		../..//build\
-		../..//src/common
+DMOD_INC_DIRS = $(DMOD_DIR)/src/system\
+		$(DMOD_DIR)/inc\
+		$(DMOD_BUILD_DIR)\
+		$(DMOD_DIR)/src/common
 DMOD_LIBS = dmod_inc\
 		dmod_common
 DMOD_GEN_HEADERS_IN = 

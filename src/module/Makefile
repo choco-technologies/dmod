@@ -7,16 +7,16 @@
 #   Edit the scripts/Makefile-lib.in file instead.
 #       
 # ##############################################################################
-DMOD_DIR = ../../
+DMOD_DIR = $(DMOD_DIR)
 
 #
 #  Name of the module
 #
 DMOD_LIB_NAME=libdmod_module.a
 DMOD_SOURCES=dmod_module.c
-DMOD_INC_DIRS = ../..//src/module\
-		../..//inc\
-		../..//build
+DMOD_INC_DIRS = $(DMOD_DIR)/src/module\
+		$(DMOD_DIR)/inc\
+		$(DMOD_BUILD_DIR)
 DMOD_LIBS = dmod_inc
 DMOD_GEN_HEADERS_IN = 
 DMOD_DEFINITIONS = 
