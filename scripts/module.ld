@@ -27,29 +27,49 @@ SECTIONS
     .text : 
     {
         __text_start = .;
-        KEEP(*(.text))
-        KEEP(*(.strtab))
+        *(.text .text.* .gnu.linkonce.t.*);
+        
+        . = ALIGN(4);
+        KEEP(*(.init));
+        . = ALIGN(4);
+        __preinit_array_start = .;
+        KEEP(*(.preinit_array));
+        . = ALIGN(4);
+        __preinit_array_end = .;
+        __init_array_start = .;
+        KEEP(*(SORT(.init_array.*)));
+        . = ALIGN(4);
+        KEEP(*(.init_array));
+        . = ALIGN(4);
+        __init_array_end = .;
+        KEEP(*(.fini));
+        . = ALIGN(4);
+        __fini_array_start = .;
+        KEEP(*(.fini_array));
+        . = ALIGN(4);
+        KEEP(*(SORT(.fini_array.*)));
+        . = ALIGN(4);
         __text_end = .;
     } : text
 
     .data : 
     {
         __data_start = .;
-        *(.data)
+        *(.data .data.* .gnu.linkonce.d.*)
         __data_end = .;
     } : data
 
     .bss : 
     {
         __bss_start = .;
-        *(.bss)
+        *(.bss .bss.* .gnu.linkonce.b.*)
         __bss_end = .;
     } : bss
 
     .got : 
     {
         __got_start = .;
-        *(.got)
+        *(.got .got.*)
         __got_end = .;
     } : got
 
