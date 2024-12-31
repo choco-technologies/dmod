@@ -2,15 +2,15 @@
 #include "example_lib.h"
 #include <stdio.h>
 
-extern Dmod_ModuleHeader_t ModuleHeader;
+extern const Dmod_ModuleHeader_t* DMOD_Header;
 extern void HelloWorld();
 
 int main(int argc, char** argv)
 {
-    Dmod_Printf("Hello from module: %s\n", ModuleHeader.Name);
-    Dmod_Printf("Version: %s\n", ModuleHeader.Version);
-    Dmod_Printf("Author: %s\n", ModuleHeader.Author);
-    Dmod_Printf("Arch: %s\n", ModuleHeader.Arch);
+    Dmod_Printf("Hello from module: %s\n", DMOD_Header->Name);
+    Dmod_Printf("Version: %s\n", DMOD_Header->Version);
+    Dmod_Printf("Author: %s\n", DMOD_Header->Author);
+    Dmod_Printf("Arch: %s\n", DMOD_Header->Arch);
 
     HelloWorld();
 

@@ -1894,11 +1894,7 @@ static bool LoadGot( Dmod_Context_t* Context )
 
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        if( !InitPointer( Context, &gotSection->Entries[i], "Got Entry" ) )
-        {
-            DMOD_LOG_ERROR("Cannot load got - cannot initialize got entry at index %d\n", i);
-            return false;
-        }
+        gotSection->Entries[i] += (size_t)Context->Data;
     }
 
     Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 95 );

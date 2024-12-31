@@ -9,10 +9,10 @@ ifeq ($(CROSS_COMPILE),)
 	CROSS_COMPILE=arm-none-eabi-
 endif
 ifeq ($(CPUCONFIG_CFLAGS),)
-	CPUCONFIG_CFLAGS=-mcpu=cortex-m7 -mthumb -mno-unaligned-access -DGCC_ARMCM7
+	CPUCONFIG_CFLAGS=-mcpu=cortex-m7 -mthumb -mno-unaligned-access -DGCC_ARMCM7 -mpic-data-is-text-relative
 endif
 ifeq ($(CPUCONFIG_CXXFLAGS),)
-	CPUCONFIG_CXXFLAGS=-mcpu=cortex-m7 -mthumb -mno-unaligned-access -DGCC_ARMCM7
+	CPUCONFIG_CXXFLAGS=-mcpu=cortex-m7 -mthumb -mno-unaligned-access -DGCC_ARMCM7 -mpic-data-is-text-relative
 endif
 CC=$(CROSS_COMPILE)gcc
 CXX=$(CROSS_COMPILE)g++

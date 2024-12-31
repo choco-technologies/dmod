@@ -46,7 +46,9 @@ endef
 define generate_cobject_rule
 $2: $1
 	@echo "Compiling $1 to $2..."
-	@$(CC) $(CFLAGS) -c $1 -o $2
+	$(CC) $(CFLAGS) -c $1 -o $2
+	@echo "Listing generation for $2..."
+	$(CC) $(CFLAGS) -g -S -fverbose-asm -c $1 -o $(basename $2).lst
 endef
 
 #
@@ -55,7 +57,9 @@ endef
 define generate_cxxobject_rule
 $2: $1
 	@echo "Compiling $1 to $2..."
-	@$(CXX) $(CXXFLAGS) -c $1 -o $2
+	$(CXX) $(CXXFLAGS) -c $1 -o $2
+	@echo "Listing generation for $2..."
+	$(OBJDUMP) -d $2 > $(basename $2).lst
 endef
 
 #

@@ -57,3 +57,5 @@ volatile const Dmod_ModuleHeader_t ModuleHeader DMOD_SECTION(".header") DMOD_USE
     .Footer             = &__footer_start,
     .ManualLoad         = DMOD_MANUAL_LOAD,
 };
+
+volatile const Dmod_ModuleHeader_t* DMOD_Header DMOD_GLOBAL_POINTER = &ModuleHeader;
