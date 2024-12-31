@@ -1090,6 +1090,40 @@ Dmod_License_t* Dmod_GetLicense( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Read module header
+ * 
+ * @param FilePath Path to the module file
+ * @param Header Buffer to store module header
+ * 
+ * @return true if header was read successfully, false otherwise
+ */
+bool Dmod_ReadModuleHeader(const char* FilePath, Dmod_ModuleHeader_t* Header)
+{
+    if( FilePath == NULL || Header == NULL )
+    {
+        return false;
+    }
+
+    void* file = Dmod_FileOpen( FilePath, "rb" );
+    if( file == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot read module header - cannot open file\n");
+        return false;
+    }
+
+    if( Dmod_FileRead( Header, sizeof(Dmod_ModuleHeader_t), 1, file ) != 1 )
+    {
+        DMOD_LOG_ERROR("Cannot read module header - cannot read header\n");
+        Dmod_FileClose( file );
+        return false;
+    }
+
+    Dmod_FileClose( file );
+
+    return true;
+}
+
+/**
  * @brief Get context by module name
  * 
  * @param ModuleName Name of the module
@@ -1200,6 +1234,40 @@ bool Dmod_IsModuleUsed( const char* ModuleName )
 bool Dmod_IsModuleLoaded(const char* ModuleName)
 {
     return IsLoaded(ModuleName);
+}
+
+/**
+ * @brief Check if module is enabled
+ * 
+ * @param ModuleName Name of the module
+ * 
+ * @return true if module is enabled, false otherwise
+ */
+bool Dmod_IsApplicationModuleFile(const char* FilePath)
+{
+    Dmod_ModuleHeader_t header;
+    if( !Dmod_ReadModuleHeader( FilePath, &header ) )
+    {
+        DMOD_LOG_ERROR("Cannot check if module file is application - cannot read header\n");
+        return false;
+    }
+
+    return header.ModuleType == Dmod_ModuleType_Application;
+}
+
+/**
+ * @brief Check if module file is loaded
+ */
+bool Dmod_IsModuleFileLoaded(const char* FilePath)
+{
+    Dmod_ModuleHeader_t header;
+    if( !Dmod_ReadModuleHeader( FilePath, &header ) )
+    {
+        DMOD_LOG_ERROR("Cannot check if module file is loaded - cannot read header\n");
+        return false;
+    }
+
+    return IsLoaded( header.Name );
 }
 
 /**
