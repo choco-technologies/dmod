@@ -10,8 +10,9 @@
                 ".",
                 "-B",
                 "build",
-                "-DCMAKE_BUILD_TYPE=${input:buildType}",
-                "-DDMOD_MODE=${input:mode}"
+                "-DDMOD_TOOLS_NAME=${input:architecture}",
+                "-DDMOD_MODE=${input:mode}",
+                "-DCMAKE_BUILD_TYPE=${input:buildType}"
             ],
             "group": "build",
             "options": {
@@ -70,6 +71,15 @@
             "options": [
                 "DMOD_SYSTEM",
                 "DMOD_MODULE"
+            ]
+        },
+        {
+            "id": "architecture",
+            "type": "pickString",
+            "description": "Select the architecture",
+            "options": [
+                "arch/x86_64",
+                "arch/armv7"
             ]
         }
     ],
