@@ -2,6 +2,7 @@
 #define INC_DMOD_DEFS_H_
 
 #include "config.h"
+#include "dmod_arch_defs.h"
 
 #define DMOD_HEADER_SIGNATURE           0x444D4F44
 #define DMOD_CONTEXT_SIGNATURE          0x646D6F64
@@ -135,36 +136,6 @@
 #define DMOD_BUILTIN_API( MODULE, VERSION, RET, NAME, PARAMS )      DMOD_INPUT_API( MODULE, VERSION, RET, NAME, PARAMS )
 #elif DMOD_MODULE_EN == ON
 #define DMOD_BUILTIN_API( MODULE, VERSION, RET, NAME, PARAMS )      DMOD_OUTPUT_API( MODULE, VERSION, RET, NAME, PARAMS )
-#endif
-
-//==============================================================================
-//                              ARCHITECTURE DEFINITIONS
-//==============================================================================
-#ifndef DMOD_ARCH
-#   if defined(__x86_64__) || defined(_M_X64)
-#       define DMOD_ARCH	"x86_64"
-#   elif defined(__i386__) || defined(_M_IX86)
-#       define DMOD_ARCH	"x86"
-#   elif defined(__arm__) || defined(_M_ARM)
-#       define DMOD_ARCH	"ARM"
-#   elif defined(__aarch64__) || defined(_M_ARM64)
-#       define DMOD_ARCH	"ARM64"
-#   elif defined(__ppc__) || defined(__powerpc__) || defined(__ppc64__) || defined(__powerpc64__)
-#       define DMOD_ARCH	"PPC"    
-#   elif defined(__mips__)
-#       define DMOD_ARCH	"MIPS"
-#   elif defined(__riscv)
-#       if __riscv_xlen == 32
-#           define DMOD_ARCH	"RISC-V (32-bit)"
-#       elif __riscv_xlen == 64
-#           define DMOD_ARCH	"RISC-V (64-bit)"
-#       else
-#           define DMOD_ARCH	"RISC-V"
-#       endif
-#   else
-#       error "Unknown architecture. Please define DMOD_ARCH"
-#       define DMOD_ARCH	"Unknown"
-#   endif
 #endif
 
 #endif /* INC_DMOD_DEFS_H_ */

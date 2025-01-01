@@ -20,6 +20,7 @@ set(DMOD_BUILD_EXAMPLES 		ON            CACHE BOOL   "Build examples")
 set(DMOD_DMF_DIR                "${CMAKE_CURRENT_BINARY_DIR}/dmf" CACHE STRING "Directory for DMF files")
 set(DMOD_REPO_DIR               "${DMOD_DMF_DIR}" 				  CACHE STRING "Directory for DMF files inside the system")
 set(DMOD_CPU_NAME			    "" 						  	      CACHE STRING "Name of the target cpu, if empty, the target is generic")
+set(DMOD_TOOLS_NAME			    "arch/x86_64" 					  CACHE STRING "Name of the tools configuration")
 
 # ===========================================================================
 # 						Project definition
@@ -30,6 +31,10 @@ project (dmod
 	DESCRIPTION "Library for managing of dynamic modules")
 
 set(DMOD_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+if (NOT DEFINED DMOD_TOOLS)
+	set(DMOD_TOOLS ${DMOD_PROJECT_DIR}/configs/${DMOD_TOOLS_NAME}/tools-cfg.cmake)
+endif()
+include(${DMOD_TOOLS})
 
 # ===========================================================================
 # 						Configuration file
