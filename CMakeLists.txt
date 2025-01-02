@@ -10,6 +10,8 @@ option(DMOD_USE_ASSERT 	"Use assert for error handling" 		ON)
 option(DMOD_USE_PTHREAD "Use pthread for threading" 			ON)
 option(DMOD_USE_MMAN   	"Use mman for memory mapping" 			ON)
 
+set(DMOD_DIR                    "${CMAKE_CURRENT_SOURCE_DIR}")
+set(DMOD_BUILD_DIR              "${CMAKE_CURRENT_BINARY_DIR}")
 set(DMOD_MAX_MODULES 			30            CACHE STRING "Maximum number of modules")
 set(DMOD_MAX_REQUIRED_MODULES 	10            CACHE STRING "Maximum number of required modules")
 set(DMOD_MODE  			        "DMOD_SYSTEM" CACHE STRING "Type of the module: DMOD_SYSTEM or DMOD_MODULE")
@@ -69,7 +71,7 @@ endif()
 # Create a simple configuration header
 configure_file(config.h.in config.h)
 # Prepare the info file for the makefiles
-configure_file(scripts/dmod-info.mk.in ${CMAKE_SOURCE_DIR}/dmod-info.mk)
+configure_file(scripts/dmod-info.mk.in ${DMOD_DIR}/dmod-info.mk)
 
 # ===========================================================================
 #       				Main library
