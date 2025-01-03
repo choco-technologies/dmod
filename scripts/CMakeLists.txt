@@ -15,6 +15,7 @@ function( create_library_makefile targetName )
         set(DMOD_SYSTEM OFF)
         set(DMOD_MODULE OFF)
     endif()
+    file(RELATIVE_PATH DMOD_PROJECT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" "${DMOD_DIR}")
     string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" DMOD_PROJECT_DIR "${DMOD_PROJECT_DIR}")
     
     set(DMOD_LIB_NAME ${targetName})
