@@ -8,6 +8,7 @@ add_library(${MODULE_NAME} STATIC
     dmod_if_irq.c
     dmod_if_events.c
     dmod_if_rtos.c
+    Dmod.cpp
 )
 
 target_include_directories(${MODULE_NAME} 

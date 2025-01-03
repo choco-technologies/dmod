@@ -7,7 +7,9 @@
 #   Edit the scripts/Makefile-lib.in file instead.
 #       
 # ##############################################################################
-DMOD_DIR = $(DMOD_DIR)
+ifeq ($(DMOD_DIR),)
+    DMOD_DIR = ../../
+endif
 
 #
 #  Name of the module

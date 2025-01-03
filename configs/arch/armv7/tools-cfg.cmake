@@ -11,7 +11,11 @@ set(DMOD_USE_ASSERT 	        OFF )
 set(DMOD_USE_PTHREAD            OFF )
 set(DMOD_USE_MMAN   	        OFF )
 set(DMOD_BUILD_TESTS            OFF )
-set(DMOD_BUILD_EXAMPLES         OFF )
+if (DMOD_MODE STREQUAL "DMOD_SYSTEM")
+    set(DMOD_BUILD_EXAMPLES         OFF )
+else()
+    set(DMOD_BUILD_EXAMPLES         ON )
+endif()
 
 #
 #	Toolchain configuration

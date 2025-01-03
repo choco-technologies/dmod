@@ -39,12 +39,10 @@
         {
             "label": "Clean",
             "type": "shell",
-            "command": "cmake",
+            "command": "rm",
             "args": [
-                "--build",
-                "build",
-                "--target",
-                "clean"
+                "-rf",
+                "build"
             ],
             "group": "build",
             "options": {

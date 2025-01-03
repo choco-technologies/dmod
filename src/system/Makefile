@@ -21,7 +21,8 @@ DMOD_SOURCES=dmod_system.c\
 		dmod_if_dbg.c\
 		dmod_if_irq.c\
 		dmod_if_events.c\
-		dmod_if_rtos.c
+		dmod_if_rtos.c\
+		Dmod.cpp
 DMOD_INC_DIRS = $(DMOD_DIR)/src/system\
 		$(DMOD_DIR)/inc\
 		$(DMOD_BUILD_DIR)\
