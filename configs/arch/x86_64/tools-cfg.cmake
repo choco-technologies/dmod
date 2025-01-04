@@ -3,8 +3,22 @@
 #================================================================================================================================
 
 #
+#   Default configuration options
+#
+set(DMOD_USE_STDLIB 	        ON )
+set(DMOD_USE_STDIO  	        ON )
+set(DMOD_USE_ASSERT 	        ON )
+set(DMOD_USE_PTHREAD            ON )
+set(DMOD_USE_MMAN   	        ON )
+set(DMOD_BUILD_TESTS            ON )
+set(DMOD_BUILD_EXAMPLES         ON )
+
+#
 #	Toolchain configuration
 #
+if(NOT DEFINED COMPILER_PATH)
+	set(COMPILER_PATH "")
+endif()
 if(NOT DEFINED CROSS_COMPILE)
 	set(CROSS_COMPILE "")
 endif()

@@ -15,6 +15,7 @@ function( create_library_makefile targetName )
         set(DMOD_SYSTEM OFF)
         set(DMOD_MODULE OFF)
     endif()
+    file(RELATIVE_PATH DMOD_PROJECT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" "${DMOD_DIR}")
     string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" DMOD_PROJECT_DIR "${DMOD_PROJECT_DIR}")
     
     set(DMOD_LIB_NAME ${targetName})
@@ -141,8 +142,8 @@ function(dmod_create_module moduleName version moduleType)
     
     target_compile_options(${moduleName} PRIVATE -fPIC -fPIE -ffunction-sections -fdata-sections )
     
-    target_link_options(${moduleName} PRIVATE -L ${DMOD_PROJECT_DIR}/scripts -pie -nostartfiles -nostdlib -Xlinker --discard-all )
-    target_link_options(${moduleName} PRIVATE -T ${DMOD_PROJECT_DIR}/scripts/module.ld  -static)
+    target_link_options(${moduleName} PRIVATE -L ${DMOD_SCRIPTS_DIR} -pie -nostartfiles -nostdlib -Xlinker --discard-all )
+    target_link_options(${moduleName} PRIVATE -T ${DMOD_SCRIPTS_DIR}/module.ld  -static)
     
     set(ELF_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${moduleName}")
     set(BIN_OUTPUT "${DMOD_DMF_DIR}/${moduleName}.dmf")

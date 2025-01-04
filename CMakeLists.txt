@@ -1,42 +1,38 @@
 cmake_minimum_required(VERSION 3.18)
 
 # ===========================================================================
-# 						Configuration options
+# 						Paths and directories
 # ===========================================================================
 
-option(DMOD_USE_STDLIB 	"Use stdlib for memory allocations" 	ON)
-option(DMOD_USE_STDIO  	"Use stdio for file operations" 		ON)
-option(DMOD_USE_ASSERT 	"Use assert for error handling" 		ON)
-option(DMOD_USE_PTHREAD "Use pthread for threading" 			ON)
-option(DMOD_USE_MMAN   	"Use mman for memory mapping" 			ON)
+if (NOT DEFINED DMOD_DIR)
+	set(DMOD_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
 
-set(DMOD_DIR                    "${CMAKE_CURRENT_SOURCE_DIR}")
-set(DMOD_BUILD_DIR              "${CMAKE_CURRENT_BINARY_DIR}")
-set(DMOD_MAX_MODULES 			30            CACHE STRING "Maximum number of modules")
-set(DMOD_MAX_REQUIRED_MODULES 	10            CACHE STRING "Maximum number of required modules")
-set(DMOD_MODE  			        "DMOD_SYSTEM" CACHE STRING "Type of the module: DMOD_SYSTEM or DMOD_MODULE")
-set(DMOD_SYSTEM_VERSION_MAJOR 	0             CACHE STRING "Version major")
-set(DMOD_SYSTEM_VERSION_MINOR 	1             CACHE STRING "Version minor")
-set(DMOD_BUILD_TESTS 			ON            CACHE BOOL   "Build tests")
-set(DMOD_BUILD_EXAMPLES 		ON            CACHE BOOL   "Build examples")
-set(DMOD_DMF_DIR                "${CMAKE_CURRENT_BINARY_DIR}/dmf" CACHE STRING "Directory for DMF files")
-set(DMOD_REPO_DIR               "${DMOD_DMF_DIR}" 				  CACHE STRING "Directory for DMF files inside the system")
-set(DMOD_CPU_NAME			    "" 						  	      CACHE STRING "Name of the target cpu, if empty, the target is generic")
-set(DMOD_TOOLS_NAME			    "arch/x86_64" 					  CACHE STRING "Name of the tools configuration")
+if (NOT DEFINED DMOD_BUILD_DIR)
+	set(DMOD_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+endif()
+
+if (NOT DEFINED DMOD_TOOLS_NAME)
+	message(STATUS "DMOD_TOOLS_NAME not defined, using default: arch/x86_64")
+	set(DMOD_TOOLS_NAME "arch/x86_64")
+endif()
+
+set(DMOD_PATHS "${DMOD_DIR}/paths.cmake")
+
+# ===========================================================================
+# 						Include the configurations
+# ===========================================================================
+include(${DMOD_PATHS})
+message(STATUS "Using DMOD_TOOLS: ${DMOD_TOOLS}")
+include(${DMOD_TOOLS})
 
 # ===========================================================================
 # 						Project definition
 # ===========================================================================
 # Set some basic project attributes
 project (dmod
-	VERSION 0.1
+	VERSION ${dmod_VERSION_MAJOR}.${dmod_VERSION_MINOR}
 	DESCRIPTION "Library for managing of dynamic modules")
-
-set(DMOD_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-if (NOT DEFINED DMOD_TOOLS)
-	set(DMOD_TOOLS ${DMOD_PROJECT_DIR}/configs/${DMOD_TOOLS_NAME}/tools-cfg.cmake)
-endif()
-include(${DMOD_TOOLS})
 
 # ===========================================================================
 # 						Configuration file
