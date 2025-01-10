@@ -23,4 +23,13 @@ target_link_libraries(${MODULE_NAME}
         dmod_common
     )
 
+if (DMOD_USE_PTHREAD)
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+    target_link_libraries(${MODULE_NAME} 
+        PRIVATE
+        Threads::Threads
+    )
+endif()
+
 create_library_makefile(${MODULE_NAME})

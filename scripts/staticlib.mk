@@ -12,9 +12,17 @@ include $(DMOD_TOOLS)
 include $(DMOD_CONFIGURE_FILE_PATH)
 
 # -----------------------------------------------------------------------------
+#   List of sources
+# -----------------------------------------------------------------------------
+DMOD_CSOURCES       = $(filter %.c, $(DMOD_SOURCES))
+DMOD_CXXSOURCES     = $(filter %.cpp, $(DMOD_SOURCES))
+
+# -----------------------------------------------------------------------------
 # 	List of objects
 # -----------------------------------------------------------------------------
-DMOD_OBJECTS := $(addprefix $(DMOD_LIB_OBJS_DIR)/, $(DMOD_SOURCES:.c=.o))
+DMOD_COBJECTS       := $(addprefix $(DMOD_LIB_OBJS_DIR)/, $(DMOD_CSOURCES:.c=.o))
+DMOD_CXXOBJECTS     := $(addprefix $(DMOD_LIB_OBJS_DIR)/, $(DMOD_CXXSOURCES:.cpp=.o))
+DMOD_OBJECTS        := $(DMOD_COBJECTS) $(DMOD_CXXOBJECTS)
 DMOD_GEN_HEADERS    := $(addprefix $(DMOD_BUILD_DIR)/, $(DMOD_GEN_HEADERS_IN:.in=))
 
 # -----------------------------------------------------------------------------
@@ -25,6 +33,7 @@ CFLAGS_LIB 			= $(addprefix -L,$(DMOD_LIBS))
 DEFINITIONS 	   := $(foreach v,$(DMOD_DEFINITIONS),-D$(v)=$($(v)))
 CFLAGS_DEF 			= $(addprefix -D,$(DEFINITIONS))
 CFLAGS 			   += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
+CXXFLAGS 		   += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 ifeq ($(DMOD_DEBUG),ON)
 	CFLAGS += -g
 endif
@@ -32,8 +41,11 @@ endif
 # -----------------------------------------------------------------------------
 #   Rules
 # -----------------------------------------------------------------------------
-all: create_dirs generate_headers $(DMOD_LIB_NAME)
+all: create_dirs generate_headers print_objects $(DMOD_LIB_NAME)
 	@printf "==== \033[32;1m$(DMOD_LIB_NAME) has been built\033[0m ===\n"
+
+print_objects:
+	@echo "List of objects: $(DMOD_OBJECTS)"
 
 create_dirs: 
 	@echo "Creating output directories"
@@ -53,6 +65,9 @@ $(DMOD_LIB_NAME): $(DMOD_OBJECTS)
 
 $(DMOD_LIB_OBJS_DIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(DMOD_LIB_OBJS_DIR)/%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(DMOD_BUILD_DIR)/%.h: %.h.in
 	@$(call configure_file) $< $@
