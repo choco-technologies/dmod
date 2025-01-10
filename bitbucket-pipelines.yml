@@ -31,10 +31,10 @@ pipelines:
           - build
         script:
           - rm -rf build
-          - make -DDMOD_MODE=DMOD_SYSTEM
+          - make DMOD_MODE=DMOD_SYSTEM
     - step:
         name: 'MAKE: Build module mode for x86_64'
         caches:
           - build
         script:
-          - make -DDMOD_MODE=DMOD_MODULE
+          - make DMOD_MODE=DMOD_MODULE
