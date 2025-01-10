@@ -1,0 +1,42 @@
+definitions:
+  variables:
+    IMAGE_VERSION: 1.0.0
+  caches:
+    build: build
+
+image: chocotechnologies/dmod:${IMAGE_VERSION}
+
+pipelines:
+  default:
+    - step:
+        name: 'CMAKE: Build system mode for x86_64'
+        caches:
+          - build
+        script:
+          - rm -rf build
+          - mkdir -p build 
+          - cd build
+          - cmake .. -DDMOD_MODE=DMOD_SYSTEM
+          - cmake --build .
+    - step:
+        name: 'CMAKE: Build module mode for x86_64'
+        caches:
+          - build
+        script:
+          - mkdir -p build 
+          - cd build
+          - cmake .. -DDMOD_MODE=DMOD_MODULE
+          - cmake --build .
+    - step:
+        name: 'MAKE: Build system mode for x86_64'
+        caches:
+          - build
+        script:
+          - rm -rf build
+          - make -DDMOD_MODE=DMOD_SYSTEM
+    - step:
+        name: 'MAKE: Build module mode for x86_64'
+        caches:
+          - build
+        script:
+          - make -DDMOD_MODE=DMOD_MODULE
