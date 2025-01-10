@@ -26,6 +26,12 @@ pipelines:
           - cmake .. -DDMOD_MODE=DMOD_MODULE
           - cmake --build .
     - step:
+        name: 'CMAKE: Run the example app'
+        caches:
+          - build 
+        script:
+          - ./build/examples/system/dmod_loader build/dmf/example_app.dmf
+    - step:
         name: 'MAKE: Build system mode for x86_64'
         caches:
           - build
@@ -38,3 +44,9 @@ pipelines:
           - build
         script:
           - make DMOD_MODE=DMOD_MODULE
+    - step:
+        name: 'MAKE: Run the example app'
+        caches:
+          - build 
+        script:
+          - ./build/examples/system/dmod_loader build/dmf/example_app.dmf

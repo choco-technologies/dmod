@@ -26,7 +26,8 @@ DMOD_SOURCES	= main.c
 DMOD_INC_DIRS 	= $(DMOD_INC_DIR) \
 				  $(DMOD_BUILD_DIR) 
 DMOD_LIBS 	  	= dmod_system\
-				  dmod_common 
+				  dmod_common\
+				  pthread
 DEFINITIONS 	= 
 
 # -----------------------------------------------------------------------------
