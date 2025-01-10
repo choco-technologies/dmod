@@ -10,6 +10,8 @@ pipelines:
         name: 'CMAKE: Build system mode for x86_64'
         caches:
           - build
+        artifacts:
+          - ./build/examples/system/dmod_loader
         script:
           - rm -rf build
           - mkdir -p build 
@@ -20,6 +22,9 @@ pipelines:
         name: 'CMAKE: Build module mode for x86_64'
         caches:
           - build
+        artifacts:
+          - build/dmf/example_app.dmf
+          - build/dmf/example_lib.dmf
         script:
           - mkdir -p build 
           - cd build
@@ -30,7 +35,9 @@ pipelines:
         caches:
           - build 
         script:
-          - ./build/examples/system/dmod_loader build/dmf/example_app.dmf
+          - ls -la build/examples/system
+          - ls -la build/dmf
+          - ./build/examples/system/dmod_loader ./build/dmf/example_app.dmf
     - step:
         name: 'MAKE: Build system mode for x86_64'
         caches:
@@ -49,4 +56,6 @@ pipelines:
         caches:
           - build 
         script:
+          - ls -la build/examples/system
+          - ls -la build/dmf
           - ./build/examples/system/dmod_loader build/dmf/example_app.dmf
