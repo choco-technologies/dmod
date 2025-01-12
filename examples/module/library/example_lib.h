@@ -5,7 +5,8 @@
 #include "example_lib_defs.h"
 
 dmod_api_example_lib( 1.0, void, _foo, (const char* message) );
-dmod_api_example_lib_gen( 1.0, void, _print, (const char* message) );
+dmod_global_api_example_lib( 1.0, void, _print, (const char* message) );
 dmod_mal_example_lib( 1.0, void, _bar, (const char* message) );
+dmod_global_mal_example_lib( 1.0, void, _example, (const char* message) );
 
 #endif // EXAMPLE_LIB_H

@@ -3,7 +3,8 @@
 void example_lib_foo(const char* str)
 {
     Dmod_Printf("Foo: %s\n", str);
-    mal_example_lib_bar("Hello from example_lib");
+    example_lib_bar("Hello from example_lib - bar");
+    _example("Hello from example_lib - example");
 }
 
 void _print(const char* str)
