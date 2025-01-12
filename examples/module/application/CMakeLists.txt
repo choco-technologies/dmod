@@ -12,7 +12,7 @@ set(DMOD_PRIORITY           0)
 #
 # ##############################################################################
 set(DMOD_MAL_IMPLS
-    example_lib
+    dmodex
 )
 
 dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION} 
@@ -20,4 +20,4 @@ dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
     example.c
 )
 
-target_link_libraries(${DMOD_MODULE_NAME} example_lib_if )
+target_link_libraries(${DMOD_MODULE_NAME} dmodex_if )

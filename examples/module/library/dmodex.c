@@ -1,9 +1,9 @@
-#include "example_lib.h"
+#include "dmodex.h"
 
-void example_lib_foo(const char* str)
+void dmodex_foo(const char* str)
 {
     Dmod_Printf("Foo: %s\n", str);
-    example_lib_bar("Hello from example_lib - bar");
+    dmodex_bar("Hello from example_lib - bar");
     _example("Hello from example_lib - example");
 }
 

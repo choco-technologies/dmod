@@ -1,5 +1,5 @@
 #include "dmod.h"
-#include "example_lib.h"
+#include "dmodex.h"
 #include "example_app_defs.h"
 #include <stdio.h>
 
@@ -12,7 +12,7 @@ void global_print(const char* str)
     Dmod_Printf("Global print: %s\n", str);
 }
 
-DMOD_GLOBAL_CONNECT_API_TO_MAL_EX(global_print, example_lib, _bar);
+DMOD_GLOBAL_CONNECT_API_TO_MAL_EX(global_print, dmodex, _bar);
 
 /**
  * @brief example MAL function
@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 
     HelloWorld();
 
-    example_lib_foo("Hello from main");
+    dmodex_foo("Hello from main");
 
     _print("Hello from main using _print");
 

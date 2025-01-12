@@ -25,7 +25,7 @@ DMOD_DEFINITIONS=
 # -----------------------------------------------------------------------------
 #   List of MAL interfaces implemented by the module
 # -----------------------------------------------------------------------------
-DMOD_MAL_IMPLS=example_lib
+DMOD_MAL_IMPLS=dmodex
 
 # -----------------------------------------------------------------------------
 #   Include the dmod app makefile
