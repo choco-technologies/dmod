@@ -1,7 +1,7 @@
 # -----------------------------------------------------------------------------
 # 	Main rule
 # -----------------------------------------------------------------------------
-all: create_dirs generate_headers build_subdirs
+all: create_dirs update_cache generate_headers build_subdirs
 	@echo "All modules built..."
 
 # -----------------------------------------------------------------------------
@@ -29,7 +29,7 @@ endif
 # -----------------------------------------------------------------------------
 #   List of headers to be generated
 # -----------------------------------------------------------------------------
-DMOD_GEN_HEADERS := $(addprefix $(DMOD_BUILD_DIR)/, $(DMOD_GEN_HEADERS_IN:.in=))
+DMOD_GEN_HEADERS = $(foreach pair,$(DMOD_GEN_HEADERS_IN),$(word 2,$(subst =, ,$(pair))))
 
 # -----------------------------------------------------------------------------
 #   Rules
@@ -41,15 +41,17 @@ create_dirs:
 	@$(MKDIR) -p $(DMOD_DMF_DIR)
 	@$(MKDIR) -p $(DMOD_LIBS_DIR)
 
+update_cache:
+	$(call update_cache)
+	$(call touch_headers,$(DMOD_GEN_HEADERS_IN))
+
+$(call generate_headers_rules,$(DMOD_GEN_HEADERS_IN))
+
 generate_headers: $(DMOD_GEN_HEADERS)
 	@echo "All headers generated"
 	@echo "List of generated headers: $(DMOD_GEN_HEADERS)"
 
 build_subdirs: $(SUBDIRS)
-
-$(DMOD_BUILD_DIR)/%.h: %.h.in
-	@echo "Generating header $@"
-	@$(call configure_file,$<,$@)
 
 $(SUBDIRS):
 	@echo "-----------------------------------------"
@@ -66,4 +68,4 @@ clean:
 	@echo "All modules cleaned..."
 
 # Dont treat the following as files
-.PHONY: create_dirs generate_headers build_subdirs $(SUBDIRS) clean
+.PHONY: create_dirs generate_headers build_subdirs $(SUBDIRS) clean update_cache

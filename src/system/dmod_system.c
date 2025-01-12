@@ -193,7 +193,7 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
         return true;
     }
     
-    char path[DMOD_MAX_PATH_LENGTH] = {0};
+    char path[DMOD_MAX_PATH_LENGTH + 1] = {0};
     const char* repoPath = Dmod_GetRepoPath();
     if( repoPath == NULL )
     {
@@ -348,6 +348,7 @@ bool Dmod_ConnectOutputApis( Dmod_Context_t* Context )
         {
             continue;
         }
+        DMOD_LOG_INFO("Connecting API from %s to %s\n", Context_GetModuleName( Dmod_Contexts[i] ), Context_GetModuleName( Context ));
 
         if( !Dmod_ConnectApi( &Context->Outputs, &Dmod_Contexts[i]->Inputs ) )
         {
@@ -396,6 +397,8 @@ bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
         {
             continue;
         }
+
+        DMOD_LOG_INFO("Connecting API from %s to %s\n", Context_GetModuleName( Context ), Context_GetModuleName( Dmod_Contexts[i] ));
 
         if( !Dmod_ConnectApi( &Dmod_Contexts[i]->Outputs, &Context->Inputs ) )
         {
@@ -1833,7 +1836,7 @@ static bool LoadOutput( Dmod_Context_t* Context )
         else
         {
             const char* entrySignature = outputSection->Entries[i];
-            if( strncmp( entrySignature, DMOD_SIGNATURE_PREFIX, sizeof( DMOD_SIGNATURE_PREFIX ) - 1 ) != 0 )
+            if(!Dmod_ApiSignature_IsValid( entrySignature ))
             {
                 DMOD_LOG_ERROR("Cannot load output - Invalid output entry signature\n");
                 return false;
@@ -1911,7 +1914,7 @@ static bool LoadInput( Dmod_Context_t* Context )
                 DMOD_LOG_ERROR("Cannot load input - cannot initialize input entry at index %d\n", i);
                 return false;
             }
-            else if(strncmp( inputSection->Entries[i].Signature, DMOD_SIGNATURE_PREFIX, sizeof( DMOD_SIGNATURE_PREFIX ) - 1 ) != 0 )
+            else if(!Dmod_ApiSignature_IsValid(inputSection->Entries[i].Signature))
             {
                 DMOD_LOG_ERROR("Cannot load input - Invalid input entry signature: %s\n", inputSection->Entries[i].Signature);
                 return false;
@@ -2216,6 +2219,10 @@ static bool ReadRequiredModules( Dmod_Context_t* Context )
         {
             continue;
         }
+        if(!Dmod_ApiSignature_IsModuleNameGiven(apiSignature) || Dmod_ApiSignature_IsMal(apiSignature))
+        {
+            continue;
+        }
         if(!AddRequiredModule( Context, apiSignature ))
         {
             DMOD_LOG_ERROR("Cannot read required modules for %s - cannot add required module\n", Context_GetModuleName( Context ));
@@ -2245,6 +2252,12 @@ static bool AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature
     if( !Dmod_ApiSignature_ReadModuleName( ApiSignature, moduleName, sizeof(moduleName) ) )
     {
         DMOD_LOG_ERROR("Cannot add required module - cannot read module name\n");
+        return false;
+    }
+
+    if(strncmp(Context_GetModuleName(Context), moduleName, sizeof(moduleName)) == 0)
+    {
+        DMOD_LOG_ERROR("Cannot add required module - module cannot require itself\n");
         return false;
     }
 
@@ -2390,7 +2403,8 @@ static bool IsSystemModule( const char* ModuleName )
 {
     if(ModuleName == NULL || ModuleName[0] == 0)
     {
-        return true;
+        DMOD_LOG_ERROR("Cannot check if module is system module - invalid module name (empty or NULL)\n");
+        return false;
     }
     Dmod_BuiltinInputApi.SectionSize = (size_t)((void*)&__dmod_inputs_end - (void*)&__dmod_inputs_start);
     size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Dmod_BuiltinInputApi );

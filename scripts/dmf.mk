@@ -50,9 +50,11 @@ DMOD_MODULE_DMF_FILE_PATH = $(DMOD_DMF_DIR)/$(DMOD_MODULE_DMF_FILE_NAME)
 DMOD_INC_DIRS       += $(DMOD_INC_DIR) $(DMOD_BUILD_DIR) $(DMOD_SCRIPTS_DIR)
 DMOD_GEN_HEADERS_IN += $(DMOD_API_HEADER_IN_FILE_PATH)=$(DMOD_MODULE_DEFS_HEADER_FILE_PATH)
 DMOD_CSOURCES	    += $(DMOD_MODULE_HEADER_SOURCE_FILE_PATH)
+DMOD_MAL_DEFS       += $(foreach impl,$(DMOD_MAL_IMPLS),DMOD_MAL_$(impl))
 DMOD_DEFINITIONS    += DMOD_${DMOD_MODULE_NAME} \
             		   DMOD_MODULE=1 \
-            		   DMOD_SYSTEM=0
+            		   DMOD_SYSTEM=0 \
+					   $(DMOD_MAL_DEFS)
 
 # -----------------------------------------------------------------------------
 # 	List of objects
@@ -81,9 +83,13 @@ endif
 # -----------------------------------------------------------------------------
 #   Rules
 # -----------------------------------------------------------------------------
-all: create_dirs generate_headers $(DMOD_MODULE_DMF_FILE_PATH)
+all: create_dirs update_cache generate_headers $(DMOD_MODULE_DMF_FILE_PATH)
 	@echo "List of sources: $(DMOD_COBJECTS) $(DMOD_CXXOBJECTS)"
 	@printf "==== \033[32;1m$(DMOD_MODULE_DMF_FILE_PATH) has been built\033[0m ===\n"
+
+update_cache:
+	$(call update_cache)
+	$(call touch_headers,$(DMOD_GEN_HEADERS_IN))
 
 create_dirs: 
 	@echo "Creating output directories"
@@ -120,4 +126,4 @@ $(DMOD_LIB_OBJS_DIR)/%.o: %.cpp
 clean:
 	@$(RM) -f $(DMOD_OBJECTS) $(DMOD_LIB_NAME)
 
-.PHONY: all clean create_dirs generate_headers
+.PHONY: all clean create_dirs generate_headers update_cache

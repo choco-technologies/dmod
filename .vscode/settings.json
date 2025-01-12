@@ -19,6 +19,9 @@
         "dmod_types.h": "c",
         "dmod_defs.h": "c",
         "pthread.h": "c",
-        "dmod_system.h": "c"
+        "dmod_system.h": "c",
+        "example_app_defs.h": "c",
+        "dmodex.h": "c",
+        "dmodex_defs.h": "c"
     }
 }
