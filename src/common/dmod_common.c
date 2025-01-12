@@ -68,7 +68,31 @@ bool Dmod_ApiSignature_IsValid( const char* Signature )
     if( 
         strncmp( Signature, DMOD_SIGNATURE_PREFIX, sizeof( DMOD_SIGNATURE_PREFIX ) - 1 ) != 0 
      && strncmp( Signature, DMOD_IRQ_SIGNATURE_PREFIX, sizeof( DMOD_IRQ_SIGNATURE_PREFIX ) - 1 ) != 0
+     && strncmp( Signature, DMOD_MAL_SIGNATURE_PREFIX, sizeof( DMOD_MAL_SIGNATURE_PREFIX ) - 1 ) != 0
         )
+    {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Check if module name is given in the API signature
+ * 
+ * @param Signature API signature
+ * 
+ * @return true if module name is given, false otherwise
+ */
+bool Dmod_ApiSignature_IsModuleNameGiven( const char* Signature )
+{
+    if( Dmod_ApiSignature_IsValid( Signature ) == false )
+    {
+        return false;
+    }
+
+    const char* moduleName = ApiSignature_GetModule( Signature );
+    if( moduleName == NULL || moduleName[0] == '\0' || moduleName[0] == ':' )
     {
         return false;
     }
@@ -91,7 +115,10 @@ bool Dmod_ApiSignature_IsModule( const char* Signature, const char* ModuleName  
         return false;
     }
 
-    if(strncmp( Signature, DMOD_SIGNATURE_PREFIX, sizeof( DMOD_SIGNATURE_PREFIX ) - 1 ) != 0 )
+    if(
+        strncmp( Signature, DMOD_SIGNATURE_PREFIX, sizeof( DMOD_SIGNATURE_PREFIX ) - 1 ) != 0 
+     && strncmp( Signature, DMOD_MAL_SIGNATURE_PREFIX, sizeof( DMOD_MAL_SIGNATURE_PREFIX ) - 1 ) != 0
+        )
     {
         return false;
     }
@@ -256,6 +283,24 @@ bool Dmod_ApiSignature_AreEqual( const char* Signature1, const char* Signature2 
     return ApiSignature_AreNamesEqual( Signature1, Signature2 )
         && ApiSignature_AreModulesEqual( Signature1, Signature2 )
         && ApiSignature_AreVersionsEqual( Signature1, Signature2 );
+}
+
+/**
+ * @brief Check if API signature is MAL
+ * 
+ * @param Signature API signature
+ * 
+ * @return true if signature is MAL, false otherwise
+ */
+bool Dmod_ApiSignature_IsMal( const char* Signature )
+{
+    const char* module = ApiSignature_GetModule( Signature );
+    if( module == NULL )
+    {
+        return false;
+    }
+
+    return strncmp( module, DMOD_MAL_SIGNATURE_PREFIX, sizeof(DMOD_MAL_SIGNATURE_PREFIX) - 1 ) == 0;
 }
 
 //==============================================================================

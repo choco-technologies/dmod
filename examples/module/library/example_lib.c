@@ -3,6 +3,12 @@
 void example_lib_foo(const char* str)
 {
     Dmod_Printf("Foo: %s\n", str);
+    mal_example_lib_bar("Hello from example_lib");
+}
+
+void _print(const char* str)
+{
+    Dmod_Printf("Print: %s\n", str);
 }
 
 int dmod_init(const Dmod_Config_t *Config)

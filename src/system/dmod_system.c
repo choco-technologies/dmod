@@ -2216,6 +2216,10 @@ static bool ReadRequiredModules( Dmod_Context_t* Context )
         {
             continue;
         }
+        if(!Dmod_ApiSignature_IsModuleNameGiven(apiSignature))
+        {
+            continue;
+        }
         if(!AddRequiredModule( Context, apiSignature ))
         {
             DMOD_LOG_ERROR("Cannot read required modules for %s - cannot add required module\n", Context_GetModuleName( Context ));
@@ -2390,7 +2394,8 @@ static bool IsSystemModule( const char* ModuleName )
 {
     if(ModuleName == NULL || ModuleName[0] == 0)
     {
-        return true;
+        DMOD_LOG_ERROR("Cannot check if module is system module - invalid module name (empty or NULL)\n");
+        return false;
     }
     Dmod_BuiltinInputApi.SectionSize = (size_t)((void*)&__dmod_inputs_end - (void*)&__dmod_inputs_start);
     size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Dmod_BuiltinInputApi );

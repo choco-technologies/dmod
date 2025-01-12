@@ -118,6 +118,14 @@ function(dmod_create_module moduleName version moduleType)
         PRIVATE 
             ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_defs.h
         )
+
+    foreach(MAL ${DMOD_MAL_IMPLS})
+        target_compile_definitions(${moduleName} 
+            PRIVATE
+                DMOD_MAL_${MAL}
+                )
+    endforeach()
+
     target_compile_definitions(${moduleName} 
         PUBLIC
             DMOD_MODULE_NAME="${DMOD_MODULE_NAME}"

@@ -50,9 +50,11 @@ DMOD_MODULE_DMF_FILE_PATH = $(DMOD_DMF_DIR)/$(DMOD_MODULE_DMF_FILE_NAME)
 DMOD_INC_DIRS       += $(DMOD_INC_DIR) $(DMOD_BUILD_DIR) $(DMOD_SCRIPTS_DIR)
 DMOD_GEN_HEADERS_IN += $(DMOD_API_HEADER_IN_FILE_PATH)=$(DMOD_MODULE_DEFS_HEADER_FILE_PATH)
 DMOD_CSOURCES	    += $(DMOD_MODULE_HEADER_SOURCE_FILE_PATH)
+DMOD_MAL_DEFS       += $(foreach impl,$(DMOD_MAL_IMPLS),DMOD_MAL_$(impl))
 DMOD_DEFINITIONS    += DMOD_${DMOD_MODULE_NAME} \
             		   DMOD_MODULE=1 \
-            		   DMOD_SYSTEM=0
+            		   DMOD_SYSTEM=0 \
+					   $(DMOD_MAL_DEFS)
 
 # -----------------------------------------------------------------------------
 # 	List of objects
