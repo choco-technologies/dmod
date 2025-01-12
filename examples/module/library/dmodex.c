@@ -1,8 +1,12 @@
+#ifndef DMOD_dmodex
+#   define DMOD_dmodex
+#endif
+
 #include "dmodex.h"
 
-void dmodex_foo(const char* str)
+dmod_dmodex_api_declaration( 1.0, void, _foo, (const char* message) )
 {
-    Dmod_Printf("Foo: %s\n", str);
+    Dmod_Printf("Foo: %s\n", message);
     dmodex_bar("Hello from example_lib - bar");
     _example("Hello from example_lib - example");
 }

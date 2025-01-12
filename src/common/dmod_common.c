@@ -294,13 +294,7 @@ bool Dmod_ApiSignature_AreEqual( const char* Signature1, const char* Signature2 
  */
 bool Dmod_ApiSignature_IsMal( const char* Signature )
 {
-    const char* module = ApiSignature_GetModule( Signature );
-    if( module == NULL )
-    {
-        return false;
-    }
-
-    return strncmp( module, DMOD_MAL_SIGNATURE_PREFIX, sizeof(DMOD_MAL_SIGNATURE_PREFIX) - 1 ) == 0;
+    return strncmp( Signature, DMOD_MAL_SIGNATURE_PREFIX, sizeof(DMOD_MAL_SIGNATURE_PREFIX) - 1 ) == 0;
 }
 
 //==============================================================================
