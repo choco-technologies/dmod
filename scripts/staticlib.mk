@@ -41,8 +41,12 @@ endif
 # -----------------------------------------------------------------------------
 #   Rules
 # -----------------------------------------------------------------------------
-all: create_dirs generate_headers print_objects $(DMOD_LIB_NAME)
+all: create_dirs update_cache generate_headers print_objects $(DMOD_LIB_NAME)
 	@printf "==== \033[32;1m$(DMOD_LIB_NAME) has been built\033[0m ===\n"
+
+update_cache:
+	$(call update_cache)
+	$(call touch_headers,$(DMOD_GEN_HEADERS_IN))
 
 print_objects:
 	@echo "List of objects: $(DMOD_OBJECTS)"
@@ -75,4 +79,4 @@ $(DMOD_BUILD_DIR)/%.h: %.h.in
 clean:
 	@$(RM) -f $(DMOD_OBJECTS) $(DMOD_LIB_NAME)
 
-.PHONY: all clean create_dirs generate_headers
+.PHONY: all clean create_dirs generate_headers update_cache print_objects

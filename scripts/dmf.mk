@@ -83,9 +83,13 @@ endif
 # -----------------------------------------------------------------------------
 #   Rules
 # -----------------------------------------------------------------------------
-all: create_dirs generate_headers $(DMOD_MODULE_DMF_FILE_PATH)
+all: create_dirs update_cache generate_headers $(DMOD_MODULE_DMF_FILE_PATH)
 	@echo "List of sources: $(DMOD_COBJECTS) $(DMOD_CXXOBJECTS)"
 	@printf "==== \033[32;1m$(DMOD_MODULE_DMF_FILE_PATH) has been built\033[0m ===\n"
+
+update_cache:
+	$(call update_cache)
+	$(call touch_headers,$(DMOD_GEN_HEADERS_IN))
 
 create_dirs: 
 	@echo "Creating output directories"
@@ -122,4 +126,4 @@ $(DMOD_LIB_OBJS_DIR)/%.o: %.cpp
 clean:
 	@$(RM) -f $(DMOD_OBJECTS) $(DMOD_LIB_NAME)
 
-.PHONY: all clean create_dirs generate_headers
+.PHONY: all clean create_dirs generate_headers update_cache

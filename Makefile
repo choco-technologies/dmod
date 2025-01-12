@@ -13,7 +13,8 @@ include $(DMOD_DIR)/paths.mk
 # -----------------------------------------------------------------------------
 #   Subdirectories
 # -----------------------------------------------------------------------------
-DMOD_GEN_HEADERS_IN := config.h.in
+DMOD_GEN_HEADERS_IN := $(DMOD_CONFIG_H_IN_FILE_PATH)=$(DMOD_CONFIG_H_FILE_PATH)
+DMOD_UPDATE_CACHE := ON
 SUBDIRS = src 
 ifeq ($(DMOD_BUILD_EXAMPLES),ON)
 	SUBDIRS += examples
