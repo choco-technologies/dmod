@@ -16,7 +16,7 @@ pipelines:
           - cmake --build .
           - cmake .. -DDMOD_MODE=DMOD_MODULE
           - cmake --build .
-          - ./build/examples/system/dmod_loader ./build/dmf/example_app.dmf
+          - ./examples/system/dmod_loader ./dmf/example_app.dmf
     - step:
         name: 'MAKE: Build system mode for x86_64'
         artifacts:
