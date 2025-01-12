@@ -8,8 +8,6 @@ pipelines:
   default:
     - step:
         name: 'CMAKE: Build system mode for x86_64'
-        caches:
-          - build
         artifacts:
           - ./build/examples/system/dmod_loader
         script:
@@ -20,8 +18,6 @@ pipelines:
           - cmake --build .
     - step:
         name: 'CMAKE: Build module mode for x86_64'
-        caches:
-          - build
         artifacts:
           - build/dmf/example_app.dmf
           - build/dmf/example_lib.dmf
@@ -32,8 +28,6 @@ pipelines:
           - cmake --build .
     - step:
         name: 'CMAKE: Run the example app'
-        caches:
-          - build 
         script:
           - ls -la build/examples/system
           - ls -la build/dmf
