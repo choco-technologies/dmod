@@ -49,7 +49,7 @@ update_cache:
 $(call generate_headers_rules,$(DMOD_GEN_HEADERS_IN))
 else
 update_cache:
-	@echo "Make version is too old to support cache. Skipping cache update..."
+	@echo "Make version is too old ($(MAKE_VERSION)) to support cache. Skipping cache update..."
 
 $(DMOD_BUILD_DIR)/%.h: %.h.in
 	@echo "Generating header $@"

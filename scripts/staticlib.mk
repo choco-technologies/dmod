@@ -50,7 +50,7 @@ update_cache:
 	$(call touch_headers,$(DMOD_GEN_HEADERS_IN))
 else 
 update_cache:
-	@echo "Make version is too old to support cache. Skipping cache update..."
+	@echo "Make version is too old ($(MAKE_VERSION)) to support cache. Skipping cache update..."
 endif
 
 print_objects:
