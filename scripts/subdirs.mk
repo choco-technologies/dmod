@@ -41,16 +41,18 @@ create_dirs:
 	@$(MKDIR) -p $(DMOD_DMF_DIR)
 	@$(MKDIR) -p $(DMOD_LIBS_DIR)
 
-ifeq ($(shell expr $(MAKE_VERSION_MAJOR) \>= $(MIN_MAKE_VERSION_MAJOR) \& $(MAKE_VERSION_MINOR) \>= $(MIN_MAKE_VERSION_MINOR)),1)
+ifeq ($(DMOD_UPDATE_CACHE),ON)
 update_cache:
 	$(call update_cache)
 	$(call touch_headers,$(DMOD_GEN_HEADERS_IN))
-
-$(call generate_headers_rules,$(DMOD_GEN_HEADERS_IN))
-else
+else 
 update_cache:
 	@echo "Make version is too old ($(MAKE_VERSION)) to support cache. Skipping cache update..."
+endif
 
+ifeq ($(DMOD_CONFIGURE_FILE_RULES),ON)
+$(call generate_headers_rules,$(DMOD_GEN_HEADERS_IN))
+else
 $(DMOD_BUILD_DIR)/%.h: %.h.in
 	@echo "Generating header $@"
 	@$(call configure_file,$<,$@)

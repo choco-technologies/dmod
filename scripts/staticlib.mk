@@ -44,7 +44,7 @@ endif
 all: create_dirs update_cache generate_headers print_objects $(DMOD_LIB_NAME)
 	@printf "==== \033[32;1m$(DMOD_LIB_NAME) has been built\033[0m ===\n"
 
-ifeq ($(shell expr $(MAKE_VERSION_MAJOR) \>= $(MIN_MAKE_VERSION_MAJOR) \& $(MAKE_VERSION_MINOR) \>= $(MIN_MAKE_VERSION_MINOR)),1)
+ifeq ($(DMOD_UPDATE_CACHE),ON)
 update_cache:
 	$(call update_cache)
 	$(call touch_headers,$(DMOD_GEN_HEADERS_IN))
