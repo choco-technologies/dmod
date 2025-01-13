@@ -1,5 +1,18 @@
 ___DEFS = $(filter DMOD%,$(.VARIABLES)) $(filter dmod%,$(.VARIABLES))
 
+DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION = 4.2
+
+MAKE_VERSION_MAJOR = $(firstword $(subst ., ,$(MAKE_VERSION)))
+MAKE_VERSION_MINOR = $(word 2,$(subst ., ,$(MAKE_VERSION)))
+DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION_MAJOR = $(firstword $(subst ., ,$(DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION)))
+DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION_MINOR = $(word 2,$(subst ., ,$(DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION)))
+
+ifeq ($(shell expr $(MAKE_VERSION_MAJOR) \>= $(DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION_MAJOR) \& $(MAKE_VERSION_MINOR) \>= $(DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION_MINOR)),1)
+  DMOD_CONFIGURE_FILE_RULES = ON
+else
+  DMOD_CONFIGURE_FILE_RULES = OFF
+endif
+
 # Function to generate sed commands
 define generate_sed_commands
 $(foreach var, $(___DEFS), -e 's|@$(var)@|$($(var))|g')

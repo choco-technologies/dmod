@@ -7,6 +7,19 @@
 VARIABLES_LIST := $(filter DMOD% dmod%,$(.VARIABLES))
 CACHE_CONTENT := $(foreach var,$(VARIABLES_LIST),$(var)=$($(var))\n)
 
+DMOD_CACHE_MIN_MAKE_VERSION := 4.2
+
+MAKE_VERSION_MAJOR = $(firstword $(subst ., ,$(MAKE_VERSION)))
+MAKE_VERSION_MINOR = $(word 2,$(subst ., ,$(MAKE_VERSION)))
+DMOD_CACHE_MIN_MAKE_VERSION_MAJOR = $(firstword $(subst ., ,$(DMOD_CACHE_MIN_MAKE_VERSION)))
+DMOD_CACHE_MIN_MAKE_VERSION_MINOR = $(word 2,$(subst ., ,$(DMOD_CACHE_MIN_MAKE_VERSION)))
+
+ifeq ($(shell expr $(MAKE_VERSION_MAJOR) \>= $(DMOD_CACHE_MIN_MAKE_VERSION_MAJOR) \& $(MAKE_VERSION_MINOR) \>= $(DMOD_CACHE_MIN_MAKE_VERSION_MINOR)),1)
+  DMOD_UPDATE_CACHE = ON
+else
+  DMOD_UPDATE_CACHE = OFF
+endif
+
 # check if parent directory for tmp file exists
 ifeq ($(wildcard $(DMOD_BUILD_DIR)),$(DMOD_BUILD_DIR))
   TMP_FILE := $(shell echo "$(CACHE_CONTENT)" > $(DMOD_TMP_CACHE_MK_FILE_PATH))
