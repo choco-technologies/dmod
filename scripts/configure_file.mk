@@ -1,6 +1,6 @@
 ___DEFS = $(filter DMOD%,$(.VARIABLES)) $(filter dmod%,$(.VARIABLES))
 
-DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION = 4.3
+DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION = 4.2
 
 MAKE_VERSION_MAJOR = $(firstword $(subst ., ,$(MAKE_VERSION)))
 MAKE_VERSION_MINOR = $(word 2,$(subst ., ,$(MAKE_VERSION)))

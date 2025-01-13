@@ -108,6 +108,7 @@ ifeq ($(DMOD_CONFIGURE_FILE_RULES),ON)
 $(call generate_headers_rules,$(DMOD_GEN_HEADERS_IN))
 else
 $(DMOD_BUILD_DIR)/%.h: %.h.in
+	@echo "Your make version is too old ($(MAKE_VERSION)) to support rules for configure file. Using legacy rules..."
 	@$(call configure_file) $< $@
 endif
 
