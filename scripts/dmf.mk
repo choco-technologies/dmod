@@ -87,9 +87,14 @@ all: create_dirs update_cache generate_headers $(DMOD_MODULE_DMF_FILE_PATH)
 	@echo "List of sources: $(DMOD_COBJECTS) $(DMOD_CXXOBJECTS)"
 	@printf "==== \033[32;1m$(DMOD_MODULE_DMF_FILE_PATH) has been built\033[0m ===\n"
 
+ifeq ($(shell expr $(MAKE_VERSION_MAJOR) \>= $(MIN_MAKE_VERSION_MAJOR) \& $(MAKE_VERSION_MINOR) \>= $(MIN_MAKE_VERSION_MINOR)),1)
 update_cache:
 	$(call update_cache)
 	$(call touch_headers,$(DMOD_GEN_HEADERS_IN))
+else
+update_cache:
+	@echo "Make version is too old to support cache. Skipping cache update..."
+endif
 
 create_dirs: 
 	@echo "Creating output directories"
@@ -99,8 +104,12 @@ create_dirs:
 	@$(MKDIR) -p $(DMOD_LIBS_DIR)
 	@$(MKDIR) -p $(DMOD_LIB_OBJS_DIR)
 
-#$(call generate_header_rule,$(DMOD_API_HEADER_IN_FILE_PATH),$(DMOD_MODULE_DEFS_HEADER_FILE_PATH))
+ifeq ($(shell expr $(MAKE_VERSION_MAJOR) \>= $(MIN_MAKE_VERSION_MAJOR) \& $(MAKE_VERSION_MINOR) \>= $(MIN_MAKE_VERSION_MINOR)),1)
 $(call generate_headers_rules,$(DMOD_GEN_HEADERS_IN))
+else
+$(DMOD_BUILD_DIR)/%.h: %.h.in
+	@$(call configure_file) $< $@
+endif
 
 generate_headers: $(DMOD_GEN_HEADERS)
 	@echo "All headers generated"

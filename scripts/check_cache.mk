@@ -6,6 +6,7 @@
 
 VARIABLES_LIST := $(filter DMOD% dmod%,$(.VARIABLES))
 CACHE_CONTENT := $(foreach var,$(VARIABLES_LIST),$(var)=$($(var))\n)
+DMOD_DIFF_AVAILABLE := $(shell command -v diff >/dev/null 2>&1 && echo ON || echo OFF)
 
 # check if parent directory for tmp file exists
 ifeq ($(wildcard $(DMOD_BUILD_DIR)),$(DMOD_BUILD_DIR))
