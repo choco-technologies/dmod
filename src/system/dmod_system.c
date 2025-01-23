@@ -5,6 +5,7 @@
 #include "private/dmod_hlp.h"
 #include "private/dmod_ldr.h"
 #include "private/dmod_mgr.h"
+#include "private/dmod_rmod.h"
 #include "dmod_system.h"
 #include <stdbool.h>
 #include <string.h>
@@ -15,17 +16,7 @@
 //==============================================================================
 
 static bool                     ReadFile( const char* ModuleName, void* Data, size_t Size, void* File );
-static bool                     Load( Dmod_Context_t* Context );
-static Dmod_RequiredModule_t*   FindRequiredModule( Dmod_Context_t* Context, const char* ModuleName );
-static Dmod_RequiredModule_t*   FindEmptyRequiredModule( Dmod_Context_t* Context );
-static bool                     IsModuleRequired( Dmod_Context_t* Context, const char* ModuleName );
-static bool                     ReadRequiredModules( Dmod_Context_t* Context );
-static bool                     AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature );
-static bool                     AreRequiredModulesEnabled( Dmod_Context_t* Context );
-static Dmod_Context_t*          FindDependentModule( Dmod_Context_t* Context, bool OnlyEnabled );
 static bool                     IsAllApiConnected( Dmod_Context_t* Context );
-static bool                     LoadRequiredModules( Dmod_Context_t* Context );
-static bool                     EnableRequiredModules( Dmod_Context_t* Context );
 
 //==============================================================================
 //                              FUNCTION IMPLEMENTATIONS
@@ -87,7 +78,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
     {
         return NULL;
     }
-    if( !Load( context ) || !Dmod_Context_Add( context ) )
+    if( !Dmod_Ldr_Load( context ) || !Dmod_Context_Add( context ) )
     {
         Dmod_Context_Delete( context );
         return NULL;
@@ -127,7 +118,7 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
 
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(context), 50 );
 
-    if(!Load(context) || !Dmod_Context_Add(context))
+    if(!Dmod_Ldr_Load(context) || !Dmod_Context_Add(context))
     {
         Dmod_Context_Delete( context );
         return NULL;
@@ -768,14 +759,14 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
         return true;
     }
 
-    if(!LoadRequiredModules(Context))
+    if(!Dmod_RMod_LoadRequiredModules(Context))
     {
         DMOD_LOG_ERROR("Cannot run module - cannot load required modules\n");
         Dmod_Mutex_Unlock(Context->Mutex);
         return -ENOEXEC;
     }
 
-    if(!EnableRequiredModules(Context))
+    if(!Dmod_RMod_EnableRequiredModules(Context))
     {
         if(Context->Header->ManualLoad)
         {
@@ -789,7 +780,7 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
         }
     }
 
-    if( !AreRequiredModulesEnabled( Context ) )
+    if( !Dmod_RMod_AreRequiredModulesEnabled( Context ) )
     {
         if( !Force )
         {
@@ -882,7 +873,7 @@ bool Dmod_Disable( Dmod_Context_t* Context, bool Force )
         Dmod_Mutex_Unlock(Context->Mutex);
         return true;
     }
-    Dmod_Context_t* dependentModule = FindDependentModule( Context, true );
+    Dmod_Context_t* dependentModule = Dmod_RMod_FindDependentModule( Context, true );
     if( dependentModule != NULL )
     {
         if( !Force )
@@ -967,14 +958,14 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
         return -EEXIST;
     }
 
-    if(!LoadRequiredModules(Context))
+    if(!Dmod_RMod_LoadRequiredModules(Context))
     {
         DMOD_LOG_ERROR("Cannot run module - cannot load required modules\n");
         Dmod_Mutex_Unlock(Context->Mutex);
         return -ENOEXEC;
     }
 
-    if(!EnableRequiredModules(Context))
+    if(!Dmod_RMod_EnableRequiredModules(Context))
     {
         if(Context->Header->ManualLoad)
         {
@@ -1274,7 +1265,7 @@ bool Dmod_IsModuleRequired(const char* ModuleName, const char* RequiredModuleNam
         return false;
     }
 
-    return IsModuleRequired( context, RequiredModuleName );
+    return Dmod_RMod_IsModuleRequired( context, RequiredModuleName );
 }
 
 /**
@@ -1435,29 +1426,6 @@ int Dmod_RunModule(const char* ModuleName, int argc, char *argv[])
 //==============================================================================
 
 /**
- * @brief Load module
- * 
- * @param Context Context to load
- * 
- * @return True if module was loaded successfully, false otherwise
- */
-static bool Load( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    return Dmod_Ldr_LoadHeader( Context ) 
-        && Dmod_Ldr_LoadFooter( Context )
-        && Dmod_Ldr_LoadOutput( Context )
-        && Dmod_Ldr_LoadInput( Context )
-        && Dmod_Ldr_LoadGot( Context )
-        && Dmod_Ldr_LoadBss( Context )
-        && ReadRequiredModules( Context );
-}
-
-/**
  * @brief Read file
  * 
  * @param ModuleName Name of the module (just for event logging)
@@ -1510,238 +1478,6 @@ static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* Fil
 }
 
 /**
- * @brief Find context
- * 
- * @param ModuleName Name of the module to find
- * 
- * @return Pointer to the context
- */
-static Dmod_RequiredModule_t*   FindRequiredModule( Dmod_Context_t* Context, const char* ModuleName )
-{
-    if( Context == NULL || ModuleName == NULL )
-    {
-        return NULL;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Context->RequiredModules[i].Name[0] == 0 )
-        {
-            continue;
-        }
-
-        if( strcmp( Context->RequiredModules[i].Name, ModuleName ) == 0 )
-        {
-            return &Context->RequiredModules[i];
-        }
-    }
-
-    return NULL;
-}
-
-/**
- * @brief Find empty required module
- * 
- * @param Context Context to find empty required module in
- * 
- * @return Pointer to the empty required module
- */
-static Dmod_RequiredModule_t*   FindEmptyRequiredModule( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return NULL;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Context->RequiredModules[i].Name[0] == 0 )
-        {
-            return &Context->RequiredModules[i];
-        }
-    }
-
-    return NULL;
-}
-
-/**
- * @brief checks if the given module is required by the current module
- * 
- * @param Context Context to check
- * @param ModuleName Name of the module to check
- * 
- * @return True if module is required, false otherwise
- */
-static bool IsModuleRequired( Dmod_Context_t* Context, const char* ModuleName )
-{
-    return FindRequiredModule( Context, ModuleName ) != NULL;
-}
-
-/**
- * @brief Read required modules
- * 
- * @param Context Context to read required modules to
- * 
- * @return True if required modules were read successfully, false otherwise
- */
-static bool ReadRequiredModules( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    // Clear required modules
-    memset( Context->RequiredModules, 0, sizeof(Context->RequiredModules) );
-
-    size_t numberOfOuptuts = Dmod_Api_GetNumberOfEntries( &Context->Outputs );
-    for(size_t outputIndex = 0; outputIndex < numberOfOuptuts; outputIndex++)
-    {
-        const char* apiSignature = Context->Outputs.OutputSection->Entries[outputIndex];
-        if(apiSignature == NULL)
-        {
-            continue;
-        }
-        if(!Dmod_ApiSignature_IsModuleNameGiven(apiSignature) || Dmod_ApiSignature_IsMal(apiSignature))
-        {
-            continue;
-        }
-        if(!AddRequiredModule( Context, apiSignature ))
-        {
-            DMOD_LOG_ERROR("Cannot read required modules for %s - cannot add required module\n", Dmod_Context_GetModuleName( Context ));
-            return false;
-        }
-    }
-
-    return true;
-}
-
-/**
- * @brief Add required module
- * 
- * @param Context Context to add required module to
- * @param ApiSignature Signature of the API
- * 
- * @return True if required module was added successfully, false otherwise
- */
-static bool AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature )
-{
-    if( Context == NULL || ApiSignature == NULL )
-    {
-        return false;
-    }
-
-    char moduleName[DMOD_MAX_MODULE_NAME_LENGTH] = {0};
-    if( !Dmod_ApiSignature_ReadModuleName( ApiSignature, moduleName, sizeof(moduleName) ) )
-    {
-        DMOD_LOG_ERROR("Cannot add required module - cannot read module name\n");
-        return false;
-    }
-
-    if(strncmp(Dmod_Context_GetModuleName(Context), moduleName, sizeof(moduleName)) == 0)
-    {
-        DMOD_LOG_ERROR("Cannot add required module - module cannot require itself\n");
-        return false;
-    }
-
-    if(IsModuleRequired( Context, moduleName ))
-    {
-        return true;
-    }
-
-    Dmod_RequiredModule_t* requiredModule = FindEmptyRequiredModule( Context );
-    if( requiredModule == NULL )
-    {
-        DMOD_LOG_ERROR("Cannot add required module - no space left\n");
-        return false;
-    }
-
-    strncpy( requiredModule->Name, moduleName, sizeof(requiredModule->Name) );
-    if(Dmod_ApiSignature_ReadVersion( ApiSignature, requiredModule->Version, sizeof(requiredModule->Version) ) == false)
-    {
-        DMOD_LOG_ERROR("Cannot add required module - cannot read version\n");
-        return false;
-    }
-
-    DMOD_LOG_VERBOSE("Required module '%s' added to '%s'\n", requiredModule->Name, Dmod_Context_GetModuleName( Context ));
-
-    return true;
-}
-
-/**
- * @brief Are required modules enabled
- * 
- * @param Context Context to check
- * 
- * @return True if required modules are enabled, false otherwise
- */
-static bool AreRequiredModulesEnabled( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        DMOD_LOG_ERROR("Cannot check required modules - invalid context\n");
-        return false;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Context->RequiredModules[i].Name[0] == 0 )
-        {
-            continue;
-        }
-
-        if( !Dmod_Mgr_IsEnabled( Context->RequiredModules[i].Name ) )
-        {
-            DMOD_LOG_VERBOSE("Required module '%s' is not enabled\n", Context->RequiredModules[i].Name);
-            return false;
-        }
-    }
-
-    return true;
-}
-
-/**
- * @brief Checks if the given module is required by another module
- * 
- * @param Context Context to check
- * @param OnlyEnabled If true, only enabled modules will be checked
- * 
- * @return Pointer to the module that requires the given module
- */
-static Dmod_Context_t* FindDependentModule( Dmod_Context_t* Context, bool OnlyEnabled )
-{
-    if( Context == NULL )
-    {
-        return NULL;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Dmod_Contexts[i] == NULL )
-        {
-            continue;
-        }
-
-        if( Dmod_Contexts[i] == Context )
-        {
-            continue;
-        }
-
-        if( OnlyEnabled && !Dmod_IsEnabled( Dmod_Contexts[i] ) )
-        {
-            continue;
-        }
-
-        if( IsModuleRequired( Dmod_Contexts[i], Dmod_Context_GetModuleName( Context ) ) )
-        {
-            return Dmod_Contexts[i];
-        }
-    }
-
-    return NULL;
-}
-
-/**
  * @brief checks if all output API is connected
  * 
  * @param Context Context to check
@@ -1762,79 +1498,6 @@ static bool IsAllApiConnected( Dmod_Context_t* Context )
         if(Dmod_ApiSignature_IsValid(apiSignature))
         {
             DMOD_LOG_VERBOSE("API '%s' is not connected\n", apiSignature);
-            return false;
-        }
-    }
-
-    return true;
-}
-
-/**
- * @brief Load required modules
- * 
- * @param Context Context to load required modules to
- * 
- * @return True if required modules were loaded successfully, false otherwise
- */
-static bool LoadRequiredModules( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_REQUIRED_MODULES; i++)
-    {
-        if( Context->RequiredModules[i].Name[0] == 0 )
-        {
-            continue;
-        }
-
-        if(Dmod_Mgr_IsSystemModule(Context->RequiredModules[i].Name))
-        {
-            continue;
-        }
-
-        if( !Dmod_LoadModuleByName( Context->RequiredModules[i].Name ) )
-        {
-            DMOD_LOG_ERROR("Cannot load required module '%s'\n", Context->RequiredModules[i].Name);
-            return false;
-        }
-    }
-
-    DMOD_LOG_VERBOSE("All required modules loaded for '%s'\n", Dmod_Context_GetModuleName( Context ));
-    return true;
-}
-
-/**
- * @brief Enable required modules
- * 
- * @param Context Context to enable required modules to
- * 
- * @return True if required modules were enabled successfully, false otherwise
- */
-static bool EnableRequiredModules( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_REQUIRED_MODULES; i++)
-    {
-        if( Context->RequiredModules[i].Name[0] == 0 )
-        {
-            continue;
-        }
-
-        if(Dmod_Mgr_IsSystemModule(Context->RequiredModules[i].Name))
-        {
-            continue;
-        }
-
-        if( !Dmod_EnableModule( Context->RequiredModules[i].Name, false, NULL ) )
-        {
-            DMOD_LOG_ERROR("Cannot enable required module '%s'\n", Context->RequiredModules[i].Name);
             return false;
         }
     }

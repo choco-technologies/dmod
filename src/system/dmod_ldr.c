@@ -5,6 +5,7 @@
 #include "private/dmod_ldr.h"
 #include "private/dmod_mgr.h"
 #include "private/dmod_hlp.h"
+#include "private/dmod_rmod.h"
 
 #include <string.h>
 
@@ -365,4 +366,27 @@ bool Dmod_Ldr_LoadBss( Dmod_Context_t* Context )
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(Context), 97 );
 
     return true;
+}
+
+/**
+ * @brief Load module
+ * 
+ * @param Context Context to load
+ * 
+ * @return True if module was loaded successfully, false otherwise
+ */
+bool Dmod_Ldr_Load( Dmod_Context_t* Context )
+{
+    if( Context == NULL )
+    {
+        return false;
+    }
+
+    return Dmod_Ldr_LoadHeader( Context ) 
+        && Dmod_Ldr_LoadFooter( Context )
+        && Dmod_Ldr_LoadOutput( Context )
+        && Dmod_Ldr_LoadInput( Context )
+        && Dmod_Ldr_LoadGot( Context )
+        && Dmod_Ldr_LoadBss( Context )
+        && Dmod_RMod_ReadRequiredModules( Context );
 }

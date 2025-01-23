@@ -20,6 +20,7 @@ DMOD_SOURCES=dmod_vars.c\
 		dmod_hlp.c\
 		dmod_ldr.c\
 		dmod_mgr.c\
+		dmod_rmod.c\
 		dmod_system.c\
 		if/dmod_if_file.c\
 		if/dmod_if_mem.c\
