@@ -73,9 +73,11 @@ $(DMOD_LIB_NAME): $(DMOD_OBJECTS)
 	@$(AR) rcs $(DMOD_LIBS_DIR)/$(DMOD_LIB_NAME) $(DMOD_OBJECTS)
 
 $(DMOD_LIB_OBJS_DIR)/%.o: %.c
+	$(MKDIR) -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(DMOD_LIB_OBJS_DIR)/%.o: %.cpp
+	$(MKDIR) -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(DMOD_BUILD_DIR)/%.h: %.h.in
