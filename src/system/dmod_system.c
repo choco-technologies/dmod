@@ -1,7 +1,10 @@
 #define DMOD_PRIVATE
 #include "dmod.h"
-#include "private/dmod_ctx.h"
 #include "private/dmod_vars.h"
+#include "private/dmod_ctx.h"
+#include "private/dmod_hlp.h"
+#include "private/dmod_ldr.h"
+#include "private/dmod_mgr.h"
 #include "dmod_system.h"
 #include <stdbool.h>
 #include <string.h>
@@ -11,25 +14,21 @@
 //                              LOCAL FUNCTION PROTOTYPES
 //==============================================================================
 
-static bool                     Load( Dmod_Context_t* Context );
 static bool                     ReadFile( const char* ModuleName, void* Data, size_t Size, void* File );
+static bool                     Load( Dmod_Context_t* Context );
 static bool                     LoadHeader( Dmod_Context_t* Context );
 static bool                     LoadFooter( Dmod_Context_t* Context );
 static bool                     LoadOutput( Dmod_Context_t* Context );
 static bool                     LoadInput( Dmod_Context_t* Context );
 static bool                     LoadGot( Dmod_Context_t* Context );
 static bool                     LoadBss( Dmod_Context_t* Context );
-static bool                     InitPointer( Dmod_Context_t* Context, void** PointerRef, const char* PointerName );
 static Dmod_RequiredModule_t*   FindRequiredModule( Dmod_Context_t* Context, const char* ModuleName );
 static Dmod_RequiredModule_t*   FindEmptyRequiredModule( Dmod_Context_t* Context );
 static bool                     IsModuleRequired( Dmod_Context_t* Context, const char* ModuleName );
 static bool                     ReadRequiredModules( Dmod_Context_t* Context );
 static bool                     AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature );
-static bool                     IsLoaded( const char* ModuleName );
-static bool                     IsEnabled( const char* ModuleName );
 static bool                     AreRequiredModulesEnabled( Dmod_Context_t* Context );
 static Dmod_Context_t*          FindDependentModule( Dmod_Context_t* Context, bool OnlyEnabled );
-static bool                     IsSystemModule( const char* ModuleName );
 static bool                     IsAllApiConnected( Dmod_Context_t* Context );
 static bool                     LoadRequiredModules( Dmod_Context_t* Context );
 static bool                     EnableRequiredModules( Dmod_Context_t* Context );
@@ -162,7 +161,7 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
         return false;
     }
 
-    if(IsLoaded(ModuleName))
+    if(Dmod_Mgr_IsLoaded(ModuleName))
     {
         DMOD_LOG_INFO("Module %s is already loaded\n", ModuleName);
         return true;
@@ -1110,7 +1109,7 @@ bool Dmod_ReadModuleHeader(const char* FilePath, Dmod_ModuleHeader_t* Header)
  */
 void Dmod_BeginUsage( const char* ModuleName )
 {
-    if(IsSystemModule(ModuleName))
+    if(Dmod_Mgr_IsSystemModule(ModuleName))
     {
         return;
     }
@@ -1139,7 +1138,7 @@ void Dmod_BeginUsage( const char* ModuleName )
  */
 void Dmod_EndUsage( const char* ModuleName )
 {
-    if(IsSystemModule(ModuleName))
+    if(Dmod_Mgr_IsSystemModule(ModuleName))
     {
         return;
     }
@@ -1178,7 +1177,7 @@ void Dmod_EndUsage( const char* ModuleName )
  */
 bool Dmod_IsModuleUsed( const char* ModuleName )
 {
-    if(IsSystemModule(ModuleName))
+    if(Dmod_Mgr_IsSystemModule(ModuleName))
     {
         return true;
     }
@@ -1211,7 +1210,7 @@ bool Dmod_IsModuleUsed( const char* ModuleName )
  */
 bool Dmod_IsModuleLoaded(const char* ModuleName)
 {
-    return IsLoaded(ModuleName);
+    return Dmod_Mgr_IsLoaded(ModuleName);
 }
 
 /**
@@ -1245,7 +1244,7 @@ bool Dmod_IsModuleFileLoaded(const char* FilePath)
         return false;
     }
 
-    return IsLoaded( header.Name );
+    return Dmod_Mgr_IsLoaded( header.Name );
 }
 
 /**
@@ -1257,7 +1256,7 @@ bool Dmod_IsModuleFileLoaded(const char* FilePath)
  */
 bool Dmod_IsModuleEnabled(const char* ModuleName)
 {
-    return IsEnabled(ModuleName);
+    return Dmod_Mgr_IsEnabled(ModuleName);
 }
 
 /**
@@ -1293,7 +1292,7 @@ bool Dmod_IsModuleRequired(const char* ModuleName, const char* RequiredModuleNam
  */
 const char* Dmod_GetModuleVersion(const char* ModuleName)
 {
-    if( IsSystemModule( ModuleName ) )
+    if( Dmod_Mgr_IsSystemModule( ModuleName ) )
     {
         return DMOD_SYSTEM_VERSION_STRING;
     }
@@ -1567,7 +1566,7 @@ static bool LoadHeader( Dmod_Context_t* Context )
         return false;
     }
 
-    if(IsLoaded(header->Name))
+    if(Dmod_Mgr_IsLoaded(header->Name))
     {
         DMOD_LOG_ERROR("Cannot load header - module already loaded: %s\n", header->Name);
         return false;
@@ -1594,18 +1593,18 @@ static bool LoadHeader( Dmod_Context_t* Context )
             return false;
     }
 
-    if(InitPointer(Context, (void**)&header->Footer, "Footer") == false)
+    if(Dmod_Hlp_InitPointer(Context, (void**)&header->Footer, "Footer") == false)
     {
         DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize footer pointer\n", header->Name);
         return false;
     }
 
-    if( !InitPointer(Context, (void**)&header->License, "License") )
+    if( !Dmod_Hlp_InitPointer(Context, (void**)&header->License, "License") )
     {
         DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize license pointer\n", header->Name);
         return false;
     }
-    if(header->License != NULL && !InitPointer(Context, (void**)&header->License->Text, "License Text"))
+    if(header->License != NULL && !Dmod_Hlp_InitPointer(Context, (void**)&header->License->Text, "License Text"))
     {
         DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize license text pointer\n", header->Name);
         return false;
@@ -1613,11 +1612,11 @@ static bool LoadHeader( Dmod_Context_t* Context )
 
     Context->Header = header;
 
-    bool result = InitPointer( Context, (void**)&header->Preinit,  "Preinit"    ) 
-               && InitPointer( Context, (void**)&header->Init,     "Init"       ) 
-               && InitPointer( Context, (void**)&header->Main,     "Main"       ) 
-               && InitPointer( Context, (void**)&header->Deinit,   "Deinit"     )
-               && InitPointer( Context, (void**)&header->Signal,   "Signal"     );
+    bool result = Dmod_Hlp_InitPointer( Context, (void**)&header->Preinit,  "Preinit"    ) 
+               && Dmod_Hlp_InitPointer( Context, (void**)&header->Init,     "Init"       ) 
+               && Dmod_Hlp_InitPointer( Context, (void**)&header->Main,     "Main"       ) 
+               && Dmod_Hlp_InitPointer( Context, (void**)&header->Deinit,   "Deinit"     )
+               && Dmod_Hlp_InitPointer( Context, (void**)&header->Signal,   "Signal"     );
                ;
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(Context), 85 );
     return result;
@@ -1690,7 +1689,7 @@ static bool LoadOutput( Dmod_Context_t* Context )
 
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        if( !InitPointer( Context, &outputSection->Entries[i], "Output Entry" ) )
+        if( !Dmod_Hlp_InitPointer( Context, &outputSection->Entries[i], "Output Entry" ) )
         {
             DMOD_LOG_ERROR("Cannot load output - cannot initialize output entry at index %d\n", i);
             return false;
@@ -1773,8 +1772,8 @@ static bool LoadInput( Dmod_Context_t* Context )
         }
         else 
         {
-            if( !InitPointer( Context, (void**)&inputSection->Entries[i].Signature, "Input Signature" ) 
-             || !InitPointer( Context, (void**)&inputSection->Entries[i].Function , "Input Function"  ) 
+            if( !Dmod_Hlp_InitPointer( Context, (void**)&inputSection->Entries[i].Signature, "Input Signature" ) 
+             || !Dmod_Hlp_InitPointer( Context, (void**)&inputSection->Entries[i].Function , "Input Function"  ) 
                 )
             {
                 DMOD_LOG_ERROR("Cannot load input - cannot initialize input entry at index %d\n", i);
@@ -1872,39 +1871,6 @@ static bool LoadBss( Dmod_Context_t* Context )
 
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(Context), 97 );
 
-    return true;
-}
-
-/**
- * @brief Initialize pointer
- * 
- * @param Context       Context to initialize pointer in
- * @param Pointer       Pointer to initialize
- * @param PointerName   Name of the pointer
- * 
- * @return Initialized pointer
- */
-static bool InitPointer( Dmod_Context_t* Context, void** PointerRef, const char* PointerName )
-{
-    if(PointerRef == NULL || Context == NULL)
-    {
-        DMOD_LOG_ERROR("Cannot initialize pointer %s - unexpected NULL\n", PointerName);
-        return false;
-    }
-    void* pointer = *PointerRef;
-    if( pointer == NULL )
-    {
-        return true;
-    }
-
-    size_t offset = (size_t)pointer;
-    if( offset == 0 || offset > Context->Size )
-    {
-        DMOD_LOG_ERROR("Cannot initialize pointer %s - invalid offset: 0x%08X\n", PointerName, offset);
-        return NULL;
-    }
-
-    *PointerRef = Context->Data + offset;
     return true;
 }
 
@@ -2068,40 +2034,6 @@ static bool AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature
 }
 
 /**
- * @brief Checks if the given module is loaded
- * 
- * @param ModuleName Name of the module to check
- * 
- * @return True if module is loaded, false otherwise
- */
-static bool IsLoaded( const char* ModuleName )
-{
-    if(IsSystemModule( ModuleName ))
-    {
-        return true; 
-    }
-
-    return Dmod_Context_Get( ModuleName ) != NULL;
-}
-
-/**
- * @brief Checks if the given module is enabled
- * 
- * @param ModuleName Name of the module to check
- * 
- * @return True if module is enabled, false otherwise
- */
-static bool IsEnabled( const char* ModuleName )
-{
-    if(IsSystemModule( ModuleName ))
-    {
-        return true; 
-    }
-    Dmod_Context_t* context = Dmod_Context_Get( ModuleName );
-    return context != NULL && Dmod_IsEnabled( context );
-}
-
-/**
  * @brief Are required modules enabled
  * 
  * @param Context Context to check
@@ -2123,7 +2055,7 @@ static bool AreRequiredModulesEnabled( Dmod_Context_t* Context )
             continue;
         }
 
-        if( !IsEnabled( Context->RequiredModules[i].Name ) )
+        if( !Dmod_Mgr_IsEnabled( Context->RequiredModules[i].Name ) )
         {
             DMOD_LOG_VERBOSE("Required module '%s' is not enabled\n", Context->RequiredModules[i].Name);
             return false;
@@ -2175,32 +2107,6 @@ static Dmod_Context_t* FindDependentModule( Dmod_Context_t* Context, bool OnlyEn
 }
 
 /**
- * @brief checks if the given module is a system module
- * 
- * @param ModuleName Name of the module to check
- * 
- * @return True if module is a system module, false otherwise
- */
-static bool IsSystemModule( const char* ModuleName )
-{
-    if(ModuleName == NULL || ModuleName[0] == 0)
-    {
-        DMOD_LOG_ERROR("Cannot check if module is system module - invalid module name (empty or NULL)\n");
-        return false;
-    }
-    Dmod_BuiltinInputApi.SectionSize = (size_t)((void*)&__dmod_inputs_end - (void*)&__dmod_inputs_start);
-    size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Dmod_BuiltinInputApi );
-    for(size_t i = 0; i < numberOfEntries; i++)
-    {
-        if( Dmod_ApiSignature_IsModule(Dmod_BuiltinInputApi.InputSection->Entries[i].Signature, ModuleName) )
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-/**
  * @brief checks if all output API is connected
  * 
  * @param Context Context to check
@@ -2249,7 +2155,7 @@ static bool LoadRequiredModules( Dmod_Context_t* Context )
             continue;
         }
 
-        if(IsSystemModule(Context->RequiredModules[i].Name))
+        if(Dmod_Mgr_IsSystemModule(Context->RequiredModules[i].Name))
         {
             continue;
         }
@@ -2286,7 +2192,7 @@ static bool EnableRequiredModules( Dmod_Context_t* Context )
             continue;
         }
 
-        if(IsSystemModule(Context->RequiredModules[i].Name))
+        if(Dmod_Mgr_IsSystemModule(Context->RequiredModules[i].Name))
         {
             continue;
         }
