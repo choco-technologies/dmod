@@ -1,12 +1,12 @@
 set(MODULE_NAME dmod_system)
 set(DMOD_MODE "DMOD_SYSTEM")
 add_library(${MODULE_NAME} STATIC
-    dmod_vars.c
-    dmod_ctx.c
-    dmod_hlp.c
-    dmod_ldr.c
-    dmod_mgr.c
-    dmod_rmod.c
+    private/dmod_vars.c
+    private/dmod_ctx.c
+    private/dmod_hlp.c
+    private/dmod_ldr.c
+    private/dmod_mgr.c
+    private/dmod_rmod.c
     dmod_system.c
     if/dmod_if_file.c
     if/dmod_if_mem.c
