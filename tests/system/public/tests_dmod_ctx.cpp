@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <gtest/gtest.h>
 #include "private/dmod_ctx.h"
+#include "private/dmod_vars.h"
 #include "dmod.h"
 
 // ===============================================================
@@ -37,13 +38,26 @@ static bool LoadDmfTestFile( void** outData, size_t* outSize )
     return true;
 }
 
+class DmodContextTest : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        memset(Dmod_Contexts, 0, sizeof(Dmod_Contexts));
+    }
+
+    void TearDown() override
+    {
+    }
+};
+
 /**
  * @brief Test for Dmod_Context_New
  * 
  * The test checks if the function creates a new context with the given data, 
  * assuming that the data is not NULL.
  */
-TEST(DmodContextTest, NewWithData) 
+TEST_F(DmodContextTest, NewWithData) 
 {
     size_t fileSize = 1024;
     void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
@@ -58,7 +72,7 @@ TEST(DmodContextTest, NewWithData)
  * The test checks if the function creates a new context with the given data, 
  * assuming that the data is NULL.
  */
-TEST(DmodContextTest, NewWithoutData)
+TEST_F(DmodContextTest, NewWithoutData)
 {
     size_t fileSize = 1024;
     Dmod_Context_t* context = Dmod_Context_New(NULL, fileSize);
@@ -72,7 +86,7 @@ TEST(DmodContextTest, NewWithoutData)
  * The test checks if the function fails to create a new context with the given data, 
  * assuming that the data is NULL and the file size is 0.
  */
-TEST(DmodContextTest, NewWithoutDataAndZeroFileSize)
+TEST_F(DmodContextTest, NewWithoutDataAndZeroFileSize)
 {
     Dmod_Context_t* context = Dmod_Context_New(NULL, 0);
     ASSERT_EQ(context, nullptr);
@@ -86,7 +100,7 @@ TEST(DmodContextTest, NewWithoutDataAndZeroFileSize)
  * 
  * The test checks if the function returns true for a valid context.
  */
-TEST(DmodContextTest, IsValidTrue)
+TEST_F(DmodContextTest, IsValidTrue)
 {
     size_t fileSize = 1024;
     void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
@@ -100,7 +114,7 @@ TEST(DmodContextTest, IsValidTrue)
  * 
  * The test checks if the function returns false for an invalid context.
  */
-TEST(DmodContextTest, IsValidFalse)
+TEST_F(DmodContextTest, IsValidFalse)
 {
     Dmod_Context_t* context = nullptr;
     ASSERT_FALSE(Dmod_Context_IsValid(context));
@@ -114,7 +128,7 @@ TEST(DmodContextTest, IsValidFalse)
  * 
  * The test checks if the function deletes a valid context.
  */
-TEST(DmodContextTest, DeleteValidContext)
+TEST_F(DmodContextTest, DeleteValidContext)
 {
     size_t fileSize = 1024;
     void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
@@ -127,7 +141,7 @@ TEST(DmodContextTest, DeleteValidContext)
  * 
  * The test checks if the function deletes an invalid context.
  */
-TEST(DmodContextTest, DeleteInvalidContext)
+TEST_F(DmodContextTest, DeleteInvalidContext)
 {
     Dmod_Context_t* context = nullptr;
     Dmod_Context_Delete(context);
@@ -141,7 +155,7 @@ TEST(DmodContextTest, DeleteInvalidContext)
  * 
  * The test checks if the function returns the module name for a valid context.
  */
-TEST(DmodContextTest, GetModuleNameValidContext)
+TEST_F(DmodContextTest, GetModuleNameValidContext)
 {
     size_t fileSize = 1024;
     void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
@@ -155,7 +169,7 @@ TEST(DmodContextTest, GetModuleNameValidContext)
  * 
  * The test checks if the function returns "Invalid" for an invalid context.
  */
-TEST(DmodContextTest, GetModuleNameInvalidContext)
+TEST_F(DmodContextTest, GetModuleNameInvalidContext)
 {
     Dmod_Context_t* context = nullptr;
     ASSERT_STREQ(Dmod_Context_GetModuleName(context), "Invalid");
@@ -169,12 +183,27 @@ TEST(DmodContextTest, GetModuleNameInvalidContext)
  * 
  * The test checks if the function adds a valid context.
  */
-TEST(DmodContextTest, AddValidContext)
+TEST_F(DmodContextTest, AddValidContext)
 {
-    size_t fileSize = 1024;
-    void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
+    size_t fileSize = 0;
+    void* data = nullptr;
+    EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
+
     Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+
+    // Get the module name
+    ASSERT_NE(context, nullptr);
+    context->Header = reinterpret_cast<Dmod_ModuleHeader_t*>(data);
+    const char* moduleName = Dmod_Context_GetModuleName(context);
+    EXPECT_NE(moduleName, nullptr);
+    EXPECT_STREQ(moduleName, "example_app");
+
     ASSERT_TRUE(Dmod_Context_Add(context));
+
+    // Check if the context is added to the list
+    Dmod_Context_t* contextFromList = Dmod_Context_Get(moduleName);
+    EXPECT_EQ(context, contextFromList);
+
     Dmod_Context_Delete(context);
 }
 
@@ -183,7 +212,7 @@ TEST(DmodContextTest, AddValidContext)
  * 
  * The test checks if the function fails to add an invalid context.
  */
-TEST(DmodContextTest, AddInvalidContext)
+TEST_F(DmodContextTest, AddInvalidContext)
 {
     Dmod_Context_t* context = nullptr;
     ASSERT_FALSE(Dmod_Context_Add(context));
@@ -197,12 +226,33 @@ TEST(DmodContextTest, AddInvalidContext)
  * 
  * The test checks if the function removes a valid context.
  */
-TEST(DmodContextTest, RemoveValidContext)
+TEST_F(DmodContextTest, RemoveValidContext)
 {
-    size_t fileSize = 1024;
-    void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
+    size_t fileSize = 0;
+    void* data = nullptr;
+    EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
+
     Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+
+    // Get the module name
+    ASSERT_NE(context, nullptr);
+    context->Header = reinterpret_cast<Dmod_ModuleHeader_t*>(data);
+    const char* moduleName = Dmod_Context_GetModuleName(context);
+    EXPECT_NE(moduleName, nullptr);
+    EXPECT_STREQ(moduleName, "example_app");
+
+    ASSERT_TRUE(Dmod_Context_Add(context));
+
+    // Check if the context is added to the list
+    Dmod_Context_t* contextFromList = Dmod_Context_Get(moduleName);
+    EXPECT_EQ(context, contextFromList);
+
     ASSERT_TRUE(Dmod_Context_Remove(context));
+
+    // Check if the context is removed from the list
+    contextFromList = Dmod_Context_Get(moduleName);
+    EXPECT_EQ(contextFromList, nullptr);
+
     Dmod_Context_Delete(context);
 }
 
@@ -211,7 +261,7 @@ TEST(DmodContextTest, RemoveValidContext)
  * 
  * The test checks if the function removes an invalid context.
  */
-TEST(DmodContextTest, RemoveInvalidContext)
+TEST_F(DmodContextTest, RemoveInvalidContext)
 {
     Dmod_Context_t* context = nullptr;
     ASSERT_FALSE(Dmod_Context_Remove(context));
@@ -225,7 +275,7 @@ TEST(DmodContextTest, RemoveInvalidContext)
  * 
  * The test checks if the function returns a valid context.
  */
-TEST(DmodContextTest, GetValidContext)
+TEST_F(DmodContextTest, GetValidContext)
 {
     size_t fileSize = 0;
     void* data = nullptr;
@@ -253,7 +303,7 @@ TEST(DmodContextTest, GetValidContext)
  * 
  * The test checks if the function returns NULL for an invalid context.
  */
-TEST(DmodContextTest, GetInvalidContext)
+TEST_F(DmodContextTest, GetInvalidContext)
 {
     Dmod_Context_t* context = nullptr;
     ASSERT_EQ(Dmod_Context_Get("Unknown"), context);
