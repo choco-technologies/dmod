@@ -38,6 +38,7 @@ foreach(test_src ${TEST_SOURCES})
     target_link_options(${test_name} PRIVATE -T ${CMAKE_CURRENT_SOURCE_DIR}/main.ld)
 endforeach()
 
+
 # Check if TEST DMOD file exists and run the tests if it does
 file(GLOB DMF_FILE_FOUND ${DMOD_DMF_DIR}/example_app.dmf)
 if(NOT DMF_FILE_FOUND)
