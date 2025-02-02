@@ -38,4 +38,11 @@ foreach(test_src ${TEST_SOURCES})
     target_link_options(${test_name} PRIVATE -T ${CMAKE_CURRENT_SOURCE_DIR}/main.ld)
 endforeach()
 
-add_custom_target(check ALL COMMAND ctest --output-on-failure DEPENDS ${TEST_SOURCES})
+# Check if TEST DMOD file exists and run the tests if it does
+file(GLOB DMF_FILE_FOUND ${DMOD_DMF_DIR}/example_app.dmf)
+if(NOT DMF_FILE_FOUND)
+    message(WARNING "DMOD_TEST_DMF_FILE not found: ${DMOD_TEST_DMF_FILE} - tests will not be run. Build the DMOD_MODULE first.")
+else()
+    message(STATUS "DMOD_TEST_DMF_FILE found: ${DMOD_TEST_DMF_FILE}")
+    add_custom_target(check ALL COMMAND ctest --output-on-failure DEPENDS ${TEST_SOURCES} ${DMOD_TEST_DMF_FILE} )
+endif()
