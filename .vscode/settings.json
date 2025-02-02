@@ -23,6 +23,7 @@
         "example_app_defs.h": "c",
         "dmodex.h": "c",
         "dmodex_defs.h": "c",
-        "dmod_mgr.h": "c"
+        "dmod_mgr.h": "c",
+        "dmod_vars.h": "c"
     }
 }
