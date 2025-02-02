@@ -43,6 +43,10 @@
 #ifndef INC_DMOD_SAL_H_
 #define INC_DMOD_SAL_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "dmod_types.h"
 
 //==============================================================================
@@ -114,19 +118,19 @@ DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message
 #define DMOD_ASSERT( Condition )        DMOD_ASSERT_MSG( Condition, #Condition )
 
 #ifndef DMOD_LOG_VERBOSE
-#   define DMOD_LOG_VERBOSE(...)    Dmod_Printf( "\033[35;1m[VERBOSE] " __VA_ARGS__ )
+#   define DMOD_LOG_VERBOSE(...)    Dmod_Printf( "\033[35;1m[VERBOSE] " __VA_ARGS__ ); Dmod_Printf( "\033[0m" )
 #endif
 
 #ifndef DMOD_LOG_INFO
-#   define DMOD_LOG_INFO(...)      Dmod_Printf( "\033[34;1m[INFO] " __VA_ARGS__ )
+#   define DMOD_LOG_INFO(...)      Dmod_Printf( "\033[34;1m[INFO] " __VA_ARGS__ ); Dmod_Printf( "\033[0m" )
 #endif
 
 #ifndef DMOD_LOG_WARN
-#   define DMOD_LOG_WARN(...)      Dmod_Printf( "\033[33;1m[WARN] " __VA_ARGS__ )
+#   define DMOD_LOG_WARN(...)      Dmod_Printf( "\033[33;1m[WARN] " __VA_ARGS__ ); Dmod_Printf( "\033[0m" )
 #endif
 
 #ifndef DMOD_LOG_ERROR
-#   define DMOD_LOG_ERROR(...)     Dmod_Printf( "\033[31;1m[ERROR] " __VA_ARGS__ )
+#   define DMOD_LOG_ERROR(...)     Dmod_Printf( "\033[31;1m[ERROR] " __VA_ARGS__ ); Dmod_Printf( "\033[0m" )
 #endif
 
 //! @}
@@ -184,4 +188,7 @@ DMOD_BUILTIN_API(Dmod, 1.0, void , _Mutex_Delete, ( void* Mutex ) );
 //! @}
 
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* INC_DMOD_SAL_H_ */

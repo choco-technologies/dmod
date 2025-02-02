@@ -7,6 +7,7 @@
 /**
  * @brief Creates new context
  * 
+ * @param Data          Pointer to the data (if NULL, the data will be allocated)
  * @param FileSize      Size of the file
  * 
  * @return Pointer to new context
@@ -15,6 +16,12 @@
  */
 Dmod_Context_t* Dmod_Context_New( void* Data, size_t FileSize )
 {
+    if( FileSize == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot create new context - invalid file size\n");
+        return NULL;
+    }
+
     Dmod_Context_t* Context = Dmod_Malloc( sizeof( Dmod_Context_t ) );
     if( Context == NULL )
     {
@@ -183,7 +190,7 @@ Dmod_Context_t* Dmod_Context_Get( const char* ModuleName )
 
     for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
     {
-        if( Dmod_Contexts[i] == NULL )
+        if( Dmod_Contexts[i] == NULL || Dmod_Contexts[i]->Header == NULL )
         {
             continue;
         }

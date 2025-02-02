@@ -54,6 +54,10 @@
 #ifndef INC_DMOD_H_
 #define INC_DMOD_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdbool.h>
 #include "config.h"
 #include "dmod_types.h"
@@ -106,5 +110,9 @@ DMOD_BUILTIN_API( Dmod, 1.0, bool       , _DisableModule, (const char* ModuleNam
 DMOD_BUILTIN_API( Dmod, 1.0, int        , _RunModule, (const char* ModuleName, int argc, char *argv[]) );
 
 //! @}
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_DMOD_H_ */

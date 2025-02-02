@@ -1,6 +1,10 @@
 #ifndef INC_DMOD_TYPES_H_
 #define INC_DMOD_TYPES_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -164,5 +168,7 @@ typedef void* Dmod_List_t;
  */
 typedef void* Dmod_ListElement_t;
 
-
+#ifdef __cplusplus
+}
+#endif
 #endif /* INC_DMOD_TYPES_H_ */

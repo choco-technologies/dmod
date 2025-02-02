@@ -1,6 +1,10 @@
 #ifndef DMOD_ARCH_DEFS_H
 #define DMOD_ARCH_DEFS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //==============================================================================
 //                              ARCHITECTURE DEFINITIONS
 //==============================================================================
@@ -37,6 +41,10 @@
 #       error "Unknown architecture. Please define DMOD_ARCH"
 #       define DMOD_ARCH	"Unknown"
 #   endif
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif // DMOD_ARCH_DEFS_H
