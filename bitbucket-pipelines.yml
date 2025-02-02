@@ -12,9 +12,9 @@ pipelines:
           - rm -rf build
           - mkdir -p build 
           - cd build
-          - cmake .. -DDMOD_MODE=DMOD_SYSTEM
-          - cmake --build .
           - cmake .. -DDMOD_MODE=DMOD_MODULE
+          - cmake --build .
+          - cmake .. -DDMOD_MODE=DMOD_SYSTEM
           - cmake --build .
           - ./examples/system/dmod_loader ./dmf/example_app.dmf
     - step:
