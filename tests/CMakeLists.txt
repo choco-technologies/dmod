@@ -16,8 +16,10 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 set(TEST_SOURCES "")
 set(TEST_FILES "")
+set(DMOD_TEST_DMF_LIB_FILE "${DMOD_DMF_DIR}/dmodex.dmf")
 set(DMOD_TEST_DMF_FILE "${DMOD_DMF_DIR}/example_app.dmf")
 add_definitions(-DDMOD_TEST_DMF_FILE="${DMOD_TEST_DMF_FILE}")
+add_definitions(-DDMOD_TEST_DMF_LIB_FILE="${DMOD_TEST_DMF_LIB_FILE}")
 
 # ===========================================================================
 # 						Subdirectories
