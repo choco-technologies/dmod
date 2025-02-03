@@ -53,6 +53,47 @@ endif()
 add_definitions(-DON=1 -DOFF=0)
 
 # ===========================================================================
+# 						Checks if code coverage is possible (if gcovr is installed)
+# ===========================================================================
+if (DMOD_BUILD_TESTS)
+	find_program(GCOVR gcovr)
+	
+	add_definitions(-DDMOD_UNIT_TESTS)
+
+	# Check if GCOVR was found and if compiler id is GNU or Clang
+	if (GCOVR AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+		message(STATUS "gcovr found: ${GCOVR}")
+		set(DMOD_COVERAGE ON)
+
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -O0 -g")
+    	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage -O0 -g")
+    	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+	else()
+		message(WARNING "gcovr not found or compiler is not GNU/Clang, code coverage will not be available")
+		set(DMOD_COVERAGE OFF)
+	endif()
+endif()
+
+# ===========================================================================
+# 						Unit Tests Coverage
+# ===========================================================================
+if (DMOD_COVERAGE)
+	# Add the coverage target
+	add_custom_target(coverage ALL
+		COMMAND ${GCOVR} 
+			-r "${DMOD_DIR}"
+			--exclude "${DMOD_DIR}/tests/.*"
+			--exclude "${DMOD_DIR}/examples"
+			--exclude "${DMOD_DIR}/scripts"
+			--exclude "${DMOD_BUILD_DIR}"
+
+			--html --html-details -o ${DMOD_COVERAGE_FILE_PATH}
+		WORKING_DIRECTORY ${DMOD_BUILD_DIR}
+		COMMENT "Generating code coverage report"
+	)
+endif()
+
+# ===========================================================================
 # 						Subdirectories
 # ===========================================================================
 add_subdirectory(scripts)

@@ -41,3 +41,42 @@ TEST_F(DmodHlpTest, InitPointer)
 
     Dmod_Context_Delete(context);
 }
+
+/**
+ * @brief Test for Dmod_Hlp_InitPointer
+ * 
+ * The test checks if the function fails to initialize a pointer with the given offset.
+ */
+TEST_F(DmodHlpTest, InitPointerFail)
+{
+    size_t fileSize = 1024;
+    void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    ASSERT_NE(context, nullptr);
+
+    ASSERT_FALSE(Dmod_Hlp_InitPointer(context, nullptr, "Pointer"));
+
+    void* pointer = reinterpret_cast<void*>(0);
+    ASSERT_TRUE(Dmod_Hlp_InitPointer(context, &pointer, "Pointer")); // pointer is NULL and should not be changed
+
+    Dmod_Context_Delete(context);
+}
+
+/**
+ * @brief Test for Dmod_Hlp_InitPointer
+ * 
+ * The test checks if the function fails to initialize a pointer with the given offset.
+ */
+TEST_F(DmodHlpTest, InitPointerFailOffset)
+{
+    size_t fileSize = 1024;
+    void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    ASSERT_NE(context, nullptr);
+
+    uint32_t offset = 2000;
+    void* pointer = reinterpret_cast<void*>(offset);
+    ASSERT_FALSE(Dmod_Hlp_InitPointer(context, &pointer, "Pointer"));
+
+    Dmod_Context_Delete(context);
+}

@@ -49,6 +49,7 @@ set(DMOD_MODULE_LD_FILE_NAME module.ld)
 set(DMOD_API_HEADER_IN_FILE_NAME api.h.in)
 set(DMOD_MODULE_HEADER_SOURCE_FILE_NAME dmod_header.c)
 set(DMOD_INFO_MK_FILE_NAME dmod-info.cmake)
+set(DMOD_COVERAGE_FILE_NAME coverage.html)
 
 # -----------------------------------------------------------------------------
 #   Makefile file paths
@@ -74,6 +75,7 @@ set(DMOD_MODULE_LD_FILE_PATH ${DMOD_SCRIPTS_DIR}/${DMOD_MODULE_LD_FILE_NAME})
 set(DMOD_API_HEADER_IN_FILE_PATH ${DMOD_SCRIPTS_DIR}/${DMOD_API_HEADER_IN_FILE_NAME})
 set(DMOD_MODULE_HEADER_SOURCE_FILE_PATH ${DMOD_SCRIPTS_DIR}/${DMOD_MODULE_HEADER_SOURCE_FILE_NAME})
 set(DMOD_INFO_MK_FILE_PATH ${DMOD_DIR}/${DMOD_INFO_MK_FILE_NAME})
+set(DMOD_COVERAGE_FILE_PATH ${DMOD_BUILD_DIR}/${DMOD_COVERAGE_FILE_NAME})
 
 # -----------------------------------------------------------------------------
 #   Include the dmod configuration

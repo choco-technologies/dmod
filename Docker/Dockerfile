@@ -40,4 +40,4 @@ RUN apt-get install -y openocd
 
 # Installs the other required tools 
 RUN apt-get install -y make libusb-1.0 g++
-
+RUN apt-get update && apt-get install -y gcovr
