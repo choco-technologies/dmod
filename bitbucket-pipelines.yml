@@ -2,7 +2,7 @@ definitions:
   caches:
     build: build
 
-image: chocotechnologies/dmod:1.0.0
+image: chocotechnologies/dmod:1.0.1
 
 pipelines:
   default:

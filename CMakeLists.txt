@@ -97,7 +97,6 @@ if (DMOD_COVERAGE)
 			--sort-percentage
 
 			--print-summary
-			--txt ${DMOD_COVERAGE_SUMMARY_FILE_PATH}
 			--html --html-details -o ${DMOD_COVERAGE_FILE_PATH}
 		WORKING_DIRECTORY ${DMOD_BUILD_DIR}
 		COMMENT "Generating code coverage report"
