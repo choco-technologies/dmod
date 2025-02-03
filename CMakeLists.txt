@@ -58,8 +58,6 @@ add_definitions(-DON=1 -DOFF=0)
 if (DMOD_BUILD_TESTS)
 	find_program(GCOVR gcovr)
 
-	add_definitions(-DDMOD_UNIT_TESTS)
-
 	# Check if GCOVR was found and if compiler id is GNU or Clang
 	if (GCOVR AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
 		message(STATUS "gcovr found: ${GCOVR}")
