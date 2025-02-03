@@ -113,9 +113,8 @@ if (DMOD_COVERAGE)
 			--exclude "${DMOD_DIR}/src/system/if"
 
 			--fail-under-line ${DMOD_MIN_COVERAGE}
-			|| echo "❌ ERROR: Code coverage below ${DMOD_MIN_COVERAGE}%!"; exit 1;
 		WORKING_DIRECTORY ${DMOD_BUILD_DIR}
-		COMMENT "Checking code coverage"
+		COMMENT "Checking code coverage (Should be at least ${DMOD_MIN_COVERAGE}%)"
 	)
 
 endif()
