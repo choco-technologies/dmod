@@ -17,6 +17,7 @@ pipelines:
           - cmake .. -DDMOD_MODE=DMOD_SYSTEM
           - cmake --build .
           - ./examples/system/dmod_loader ./dmf/example_app.dmf
+          - cmake --build . --target coverage_check
     - step:
         name: 'MAKE: Build for x86_64'
         artifacts:

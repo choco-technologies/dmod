@@ -57,7 +57,7 @@ add_definitions(-DON=1 -DOFF=0)
 # ===========================================================================
 if (DMOD_BUILD_TESTS)
 	find_program(GCOVR gcovr)
-	
+
 	add_definitions(-DDMOD_UNIT_TESTS)
 
 	# Check if GCOVR was found and if compiler id is GNU or Clang
@@ -79,6 +79,13 @@ endif()
 # ===========================================================================
 if (DMOD_COVERAGE)
 	# Add the coverage target
+	set(EXCLUDED_DIRS "tests" "examples" "scripts" "src/system/if")
+	set(EXCLUDE_DIRS "")
+
+	foreach(dir ${EXCLUDED_DIRS})
+		list(APPEND EXCLUDE_DIRS "--exclude ${DMOD_DIR}/${dir}")
+	endforeach()
+
 	add_custom_target(coverage ALL
 		COMMAND ${GCOVR} 
 			-r "${DMOD_DIR}"
@@ -86,11 +93,32 @@ if (DMOD_COVERAGE)
 			--exclude "${DMOD_DIR}/examples"
 			--exclude "${DMOD_DIR}/scripts"
 			--exclude "${DMOD_BUILD_DIR}"
+			--exclude "${DMOD_DIR}/src/system/if"
+			--sort-percentage
 
+			--print-summary
+			--txt ${DMOD_COVERAGE_SUMMARY_FILE_PATH}
 			--html --html-details -o ${DMOD_COVERAGE_FILE_PATH}
 		WORKING_DIRECTORY ${DMOD_BUILD_DIR}
 		COMMENT "Generating code coverage report"
 	)
+
+	# Verification of minimum coverage
+	add_custom_target(coverage_check
+		COMMAND ${GCOVR} 
+			-r "${DMOD_DIR}"
+			--exclude "${DMOD_DIR}/tests/.*"
+			--exclude "${DMOD_DIR}/examples"
+			--exclude "${DMOD_DIR}/scripts"
+			--exclude "${DMOD_BUILD_DIR}"
+			--exclude "${DMOD_DIR}/src/system/if"
+
+			--fail-under-line ${DMOD_MIN_COVERAGE}
+			|| echo "❌ ERROR: Code coverage below ${DMOD_MIN_COVERAGE}%!"; exit 1;
+		WORKING_DIRECTORY ${DMOD_BUILD_DIR}
+		COMMENT "Checking code coverage"
+	)
+
 endif()
 
 # ===========================================================================
