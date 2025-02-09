@@ -1,5 +1,3 @@
-__________
-
 <div style="width: 300px;">
   <img src="gimp/logo/Logo-Transparent.png" style="width: 100%;">
 </div>
