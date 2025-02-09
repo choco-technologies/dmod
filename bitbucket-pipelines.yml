@@ -2,7 +2,7 @@ definitions:
   caches:
     build: build
 
-image: chocotechnologies/dmod:1.0.0
+image: chocotechnologies/dmod:1.0.1
 
 pipelines:
   default:
@@ -12,11 +12,12 @@ pipelines:
           - rm -rf build
           - mkdir -p build 
           - cd build
-          - cmake .. -DDMOD_MODE=DMOD_SYSTEM
-          - cmake --build .
           - cmake .. -DDMOD_MODE=DMOD_MODULE
           - cmake --build .
+          - cmake .. -DDMOD_MODE=DMOD_SYSTEM
+          - cmake --build .
           - ./examples/system/dmod_loader ./dmf/example_app.dmf
+          - cmake --build . --target coverage_check
     - step:
         name: 'MAKE: Build for x86_64'
         artifacts:

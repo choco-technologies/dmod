@@ -60,18 +60,17 @@ bool Dmod_Ldr_LoadHeader( Dmod_Context_t* Context )
         return false;
     }
 
-    if(Dmod_Mgr_IsLoaded(header->Name))
-    {
-        DMOD_LOG_ERROR("Cannot load header - module already loaded: %s\n", header->Name);
-        return false;
-    }
-
     switch( header->ModuleType )
     {
         case Dmod_ModuleType_Library:
             if( header->Init == NULL || header->Deinit == NULL )
             {
                 DMOD_LOG_ERROR("Cannot load header - missing Init or Deinit function\n");
+                return false;
+            }
+            if(Dmod_Mgr_IsLoaded(header->Name))
+            {
+                DMOD_LOG_ERROR("Cannot load header - module already loaded: %s\n", header->Name);
                 return false;
             }
             break;
@@ -130,6 +129,12 @@ bool Dmod_Ldr_LoadFooter( Dmod_Context_t* Context )
         return false;
     }
 
+    if( Context->Header == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load footer - missing header\n");
+        return false;
+    }
+
     Dmod_ModuleFooter_t* footer = Context->Header->Footer;
     
     if( footer->Header.SectionStart != 0 || footer->Header.SectionSize != sizeof( Dmod_ModuleHeader_t ) )
@@ -155,6 +160,12 @@ bool Dmod_Ldr_LoadOutput( Dmod_Context_t* Context )
 {
     if( Context == NULL )
     {
+        return false;
+    }
+
+    if( Context->Footer == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load output - missing footer\n");
         return false;
     }
 
@@ -223,6 +234,12 @@ bool Dmod_Ldr_LoadInput( Dmod_Context_t* Context )
 {
     if( Context == NULL )
     {
+        return false;
+    }
+
+    if( Context->Footer == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load input - missing footer\n");
         return false;
     }
 
@@ -304,6 +321,12 @@ bool Dmod_Ldr_LoadGot( Dmod_Context_t* Context )
         return false;
     }
 
+    if( Context->Footer == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load got - missing footer\n");
+        return false;
+    }
+
     Dmod_ModuleFooter_t* footer = Context->Footer;
     Dmod_ModuleSection_t* got = &footer->Got;
 
@@ -343,6 +366,12 @@ bool Dmod_Ldr_LoadBss( Dmod_Context_t* Context )
 {
     if( Context == NULL )
     {
+        return false;
+    }
+
+    if( Context->Footer == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load bss - missing footer\n");
         return false;
     }
 

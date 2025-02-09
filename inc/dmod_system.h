@@ -39,6 +39,10 @@
 #ifndef DMOD_SYSTEM_H
 #define DMOD_SYSTEM_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "dmod_defs.h"
 #include "dmod_types.h"
 
@@ -87,4 +91,7 @@ extern bool             Dmod_IsRunning          ( Dmod_Context_t* Context );
 
 //! @}
 
+#ifdef __cplusplus
+}
+#endif
 #endif // DMOD_SYSTEM_H

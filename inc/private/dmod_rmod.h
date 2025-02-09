@@ -1,6 +1,10 @@
 #ifndef DMOD_RMOD_H
 #define DMOD_RMOD_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef DMOD_PRIVATE
 #   error "This is private DMOD header. Don't include this outside DMOD library"
 #endif
@@ -17,5 +21,7 @@ extern Dmod_Context_t*          Dmod_RMod_FindDependentModule( Dmod_Context_t* C
 extern bool                     Dmod_RMod_LoadRequiredModules( Dmod_Context_t* Context );
 extern bool                     Dmod_RMod_EnableRequiredModules( Dmod_Context_t* Context );
 
-
+#ifdef __cplusplus
+}
+#endif
 #endif // DMOD_RMOD_H

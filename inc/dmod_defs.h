@@ -1,6 +1,10 @@
 #ifndef INC_DMOD_DEFS_H_
 #define INC_DMOD_DEFS_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "config.h"
 #include "dmod_arch_defs.h"
 
@@ -181,6 +185,10 @@
 #define DMOD_BUILTIN_API( MODULE, VERSION, RET, NAME, PARAMS )      DMOD_INPUT_API( MODULE, VERSION, RET, NAME, PARAMS )
 #elif DMOD_MODULE_EN == ON
 #define DMOD_BUILTIN_API( MODULE, VERSION, RET, NAME, PARAMS )      DMOD_OUTPUT_API( MODULE, VERSION, RET, NAME, PARAMS )
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* INC_DMOD_DEFS_H_ */
