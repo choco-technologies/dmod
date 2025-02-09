@@ -1,9 +1,11 @@
+__________
+
 <div style="width: 300px;">
   <img src="gimp/logo/Logo-Transparent.png" style="width: 100%;">
 </div>
 
-
 _________
+
 
 The **Dmod (Dynamic Modules)** library allows you to add the functionality of loading programs and libraries into your **embedded** architecture in runtime mode. This means that you can dynamically extend the capabilities of your embedded system without needing to recompile or restart the entire application. 
 
