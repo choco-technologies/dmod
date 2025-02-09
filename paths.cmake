@@ -39,6 +39,7 @@ set(DMOD_CONFIGS_DIR ${DMOD_DIR}/configs)
 # -----------------------------------------------------------------------------
 set(DMOD_TOOLS_FILE_NAME tools-cfg.cmake)
 set(DMOD_CFG_FILE_NAME dmod-cfg.cmake)
+set(DMOD_DEFAULTS_FILE_NAME dmod-defaults.cmake)
 set(DMOD_SUBDIRS_FILE_NAME subdirs.cmake)
 set(DMOD_CONFIGURE_FILE_NAME configure_file.cmake)
 set(DMOD_CONFIG_H_IN_FILE_NAME config.h.in)
@@ -78,11 +79,13 @@ set(DMOD_MODULE_HEADER_SOURCE_FILE_PATH ${DMOD_SCRIPTS_DIR}/${DMOD_MODULE_HEADER
 set(DMOD_INFO_MK_FILE_PATH ${DMOD_DIR}/${DMOD_INFO_MK_FILE_NAME})
 set(DMOD_COVERAGE_FILE_PATH ${DMOD_BUILD_DIR}/${DMOD_COVERAGE_FILE_NAME})
 set(DMOD_COVERAGE_SUMMARY_FILE_PATH ${DMOD_BUILD_DIR}/${DMOD_COVERAGE_SUMMARY_FILE_NAME})
+set(DMOD_DEFAULTS_FILE_PATH ${DMOD_DIR}/${DMOD_DEFAULTS_FILE_NAME})
 
 # -----------------------------------------------------------------------------
 #   Include the dmod configuration
 # -----------------------------------------------------------------------------
 include(${DMOD_CFG})
+include(${DMOD_DEFAULTS_FILE_PATH})
 include(${DMOD_INFO_MK_FILE_PATH})
 
 # -----------------------------------------------------------------------------
