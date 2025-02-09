@@ -53,6 +53,7 @@ DMOD_INFO_MK_FILE_NAME=dmod-info.mk
 DMOD_CACHE_MK_FILE_NAME=dmod-cache.mk
 DMOD_TMP_CACHE_MK_FILE_NAME=dmod-cache-tmp.mk
 DMOD_CHECK_CACHE_MK_FILE_NAME=check_cache.mk
+DMOD_DEFAULTS_FILE_NAME=dmod-defaults.mk
 
 # -----------------------------------------------------------------------------
 #   Makefile file paths
@@ -82,12 +83,14 @@ DMOD_INFO_MK_FILE_PATH=$(DMOD_DIR)/$(DMOD_INFO_MK_FILE_NAME)
 DMOD_CACHE_MK_FILE_PATH=$(DMOD_BUILD_DIR)/$(DMOD_CACHE_MK_FILE_NAME)
 DMOD_TMP_CACHE_MK_FILE_PATH=$(DMOD_BUILD_DIR)/$(DMOD_TMP_CACHE_MK_FILE_NAME)
 DMOD_CHECK_CACHE_MK_FILE_PATH=$(DMOD_SCRIPTS_DIR)/$(DMOD_CHECK_CACHE_MK_FILE_NAME)
+DMOD_DEFAULTS_FILE_PATH=$(DMOD_DIR)/$(DMOD_DEFAULTS_FILE_NAME)
 
 # -----------------------------------------------------------------------------
 #   Include the dmod configuration
 # -----------------------------------------------------------------------------
 include $(DMOD_CFG)
 include $(DMOD_INFO_MK_FILE_PATH)
+include $(DMOD_DEFAULTS_FILE_PATH)
 include $(DMOD_CHECK_CACHE_MK_FILE_PATH)
 
 # -----------------------------------------------------------------------------
