@@ -29,6 +29,114 @@ By using Dmod, you can achieve greater flexibility and scalability in your embed
 - **Dynamic Memory Allocation**: Your project must support dynamic memory allocation, requiring implementations of `Dmod_Malloc` and `Dmod_Free`.
 
 
+---
+## Getting Started
+
+To use the **Dmod** repository, you need to integrate it into your project first. This section will guide you through the initial steps to get started with Dmod, including integration into your project and developing your first module.
+
+### Integration
+
+To get started with **Dmod**, follow these simple steps to integrate it into your embedded system:
+
+1. **Clone the repository**: Add the source code of this repository into your project in a prefered way. We recommend to add it as a git submodule:
+
+```bash
+git submodule add https://bitbucket.org/chocotechnologies/dmod.git libs/dmod
+git submodule update --init --recursive  # updates the dmod repository with it's submodules
+```
+
+2. **Copy the configuration file template**: Depending on your build system, copy the `dmod-cfg.cmake` or `dmod-cfg.mk` file into your project and adapt it to your needs. 
+
+2. **Add the library to your build system**: Link the library `dmod` into your project:
+
+
+**CMake**:
+```CMake
+# Set the path to your configuration file
+set(DMOD_CFG ${CMAKE_SOURCE_DIR}/dmod-cfg.cmake)
+
+# Add the Dmod directory 
+add_subdirectory(libs/dmod)
+
+# Link the Dmod library into the target
+target_link_libraries(${PROJECT_NAME} dmod)
+
+# Add the Dmod scripts directory to linker paths
+target_link_options(${PROJECT_NAME} PRIVATE -L ${DMOD_SCRIPTS_DIR})
+```
+    
+**Make**:
+
+The `Make` configuration is a little more complicated, because you need to find your linker command and add the `-L ${DMOD_DIR}/scripts` parameter on your own. 
+
+```Makefile
+# Set the path to the Dmod library
+DMOD_DIR=$(pwd)/libs/dmod 
+
+# Set the path to your configuration file
+DMOD_CFG=$(pwd)/dmod-cfg.mk
+
+# Extra rule for building of the dmod library
+build_dmod:
+  @make -C $(DMOD_DIR) DMOD_CFG="$(DMOD_CFG)"
+
+# #################################################
+# 
+#   THIS PART DEPENDS ON YOUR PROJECT! 
+#
+#   You need to add the dmod/scripts directory into
+#   your linker command. 
+#
+#   In GCC you do this by adding:
+#                 -L $(DMOD_DIR)/scripts
+#   to the command parameters like in the example below 
+$(PROJECT_NAME): $(OBJECTS)
+	@$(CC) $(CFLAGS) -L $(DMOD_DIR)/scripts -T my_script.ld -o build/app.elf $(OBJECTS)
+
+```
+
+4. **Include `dmod-common.ld` in your linker script**: Find your linker script, and include the `dmod-common.ld` file inside the `.SECTIONS` block:
+
+```ld
+
+SECTIONS
+{
+
+    /* Some of your sections */
+    ...
+
+    /* Include the dmod definitions */
+    INCLUDE dmod-common.ld
+
+    /* More of your sections */
+    ...
+}
+```
+
+5. **Adapt the system API**: The library provides some default implementations of the System Abstract Layer (SAL), which utilize standard libraries such as `stdlib` and `stdio` for resource allocation and logging. These implementations are defined as weak, allowing you to override and customize them to suit your specific needs. 
+
+List of all the API used by the **Dmod** library can be found in the `dmod_sal.h` header, but the **minimum** required API to define includes:
+
+| Function Name        | Description                     | 
+| -------------------- | ------------------------------- |
+| `Dmod_Malloc`        | *Allocates heap memory*         |
+| `Dmod_Free`          | *Releases heap memory*          |
+| `Dmod_AlignedAlloc`  | *Allocates heap aligned memory* |
+
+
+It is also **recommended** (but not mandatory) to define those:
+
+| Function Name        | Description                           | 
+| -------------------- | ------------------------------------- |
+| `Dmod_Printf`        | *Prints Dmod logs in `printf` format* |
+| `Dmod_Mutex_New`     | *Creates new mutex*                   |
+| `Dmod_Mutex_Delete`  | *Releases mutex memory*               |
+| `Dmod_Mutex_Lock`    | *Locks the mutex*                     |
+| `Dmod_Mutex_Unlock`  | *Unlocks the mutex*                   |
+
+
+### Module Development
+
 
 
 ---
