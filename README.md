@@ -10,9 +10,11 @@ The **Dmod (Dynamic Modules)** library allows you to add the functionality of lo
 ### Key Features:
 - **Dynamic Loading**: Load and unload modules at runtime.
 - **Modular Architecture**: Design your system in a modular way, making it easier to manage and extend.
+- **Inter-Module Communication**: Modules can communicate with each other and the system using a common API.
 - **Resource Management**: Efficiently manage resources and dependencies between modules.
 - **Cross-Platform Support**: Compatible with various embedded platforms.
 - **Easy integration**: Integrate Dmod seamlessly into your existing projects with minimal effort.
+- **Lightweight**: Designed to be lightweight and efficient, with minimal impact on system performance.
 
 ### Use Cases:
 - **Firmware Updates**: Apply updates to specific modules without affecting the entire system.
@@ -139,6 +141,24 @@ It is also **recommended** (but not mandatory) to define those:
 
 To develop an application or library module, you need to create a **DMF (Dmod Module File)**. This file contains the compiled code of your module, as well as the metadata required for loading and unloading it dynamically.
 
+#### Hello World Source Code
+
+Here is an example of a simple "Hello World" module that you can use as a starting point:
+
+**main.c**:
+```c
+#include "dmod.h"
+
+int main(int argc, char *argv[])
+{
+    // Dmod_Printf is a system API function that prints messages to the console
+    Dmod_Printf("Hello, World!\n");
+    return 0;
+}
+```
+
+The `main.c` file contains the main function of the module, which prints the message "Hello, World!" to the console using the `Dmod_Printf` function - this function is a part of the System Abstract Layer (SAL) and should be implemented in your project. 
+
 The DMOD library supports two build systems: **CMake** and **Make**. You can use either of them to build your module.
 
 #### CMake
@@ -164,7 +184,6 @@ set(DMOD_PRIORITY           0)
 # Add the module executable
 dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION} 
     main.c
-    example.c
 )
 ```
 
@@ -200,7 +219,7 @@ DMOD_STACK_SIZE=1024
 DMOD_PRIORITY=0
 
 # Set the module sources
-DMOD_CSOURCES=main.c example.c
+DMOD_CSOURCES=main.c
 DMOD_CXXSOURCES=
 
 # Set the module include directories, libraries, and definitions
