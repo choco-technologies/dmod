@@ -43,6 +43,8 @@ The **Dmod** library is designed to provide a flexible and efficient way to mana
 
 Every module is a seperate executable file called **DMF (Dmod Module File)**. This file contains the compiled code of the module, as well as the metadata required for loading and unloading it dynamically. The **Dmod** library provides a set of APIs that allow you to interact with the system and other modules, making it easy to develop modular applications that can be extended and customized as needed.
 
+<img src="gimp/graphs/module-comm.jpg" style="width: 60%;">
+
 ---
 ## Getting Started
 
