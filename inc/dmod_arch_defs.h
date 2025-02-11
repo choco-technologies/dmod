@@ -31,11 +31,11 @@ extern "C" {
 #       define DMOD_ARCH	"MIPS"
 #   elif defined(__riscv)
 #       if __riscv_xlen == 32
-#           define DMOD_ARCH	"RISC-V (32-bit)"
+#           define DMOD_ARCH	"RISCV32"
 #       elif __riscv_xlen == 64
-#           define DMOD_ARCH	"RISC-V (64-bit)"
+#           define DMOD_ARCH	"RISCV64"
 #       else
-#           define DMOD_ARCH	"RISC-V"
+#           define DMOD_ARCH	"RISCV"
 #       endif
 #   else
 #       error "Unknown architecture. Please define DMOD_ARCH"
