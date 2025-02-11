@@ -137,9 +137,91 @@ It is also **recommended** (but not mandatory) to define those:
 
 ### Module Development
 
+To develop an application or library module, you need to create a **DMF (Dmod Module File)**. This file contains the compiled code of your module, as well as the metadata required for loading and unloading it dynamically.
+
+The DMOD library supports two build systems: **CMake** and **Make**. You can use either of them to build your module.
+
+#### CMake
+
+To build a module using CMake, you need to create a `CMakeLists.txt` file in the module's directory. This file should include the following commands:
+
+```CMake
+cmake_minimum_required(VERSION 3.18)
+
+# Set the module name
+set(DMOD_MODULE_NAME        my_module)
+
+# Set the module version
+set(DMOD_MODULE_VERSION     "0.1")
+
+# Set the module author (it will be displayed in the module information)
+set(DMOD_AUTHOR_NAME        "John Doe")
+
+# Set the stack size required by the module and its priority
+set(DMOD_STACK_SIZE         1024)
+set(DMOD_PRIORITY           0)
+
+# Add the module executable
+dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION} 
+    main.c
+    example.c
+)
+```
+
+> **Note**: Please note, that `dmod_add_executable` will create a target for your module, which you can use just like any other CMake target.
+
+Once this file is created, you can build the module using the following commands:
+
+```sh
+cmake -B build -S .
+cmake --build build/
+```
 
 
 ---
+
+#### Make
+
+To build a module using Make, you need to create a `Makefile` in the module's directory. This file should include the following commands:
+
+```Makefile
+
+# Set the module name
+DMOD_MODULE_NAME=my_module
+
+# Set the module version
+DMOD_MODULE_VERSION=0.1
+
+# Set the module author (it will be displayed in the module information)
+DMOD_AUTHOR_NAME=John Doe
+
+# Set the stack size required by the module and its priority
+DMOD_STACK_SIZE=1024
+DMOD_PRIORITY=0
+
+# Set the module sources
+DMOD_CSOURCES=main.c example.c
+DMOD_CXXSOURCES=
+
+# Set the module include directories, libraries, and definitions
+DMOD_INC_DIRS=../library
+DMOD_LIBS=
+DMOD_DEFINITIONS=
+
+
+# Add the module executable
+include $(DMOD_DMF_APP_FILE_PATH)
+
+```
+
+Once this file is created, you can build the module using the following commands:
+
+```sh
+make
+```
+
+Regardless of the build system you choose, the output of the build process will be a DMF file that contains the compiled code of your module and it can be found inside the `build/dmf` directory.
+
 ## Building
 
 There are two modes for building the project: MODULE mode and SYSTEM mode.
