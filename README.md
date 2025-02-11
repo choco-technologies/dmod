@@ -30,6 +30,18 @@ By using Dmod, you can achieve greater flexibility and scalability in your embed
 - **Make**: We also support the Make build system, but it must be version 4.2 or newer.
 - **Dynamic Memory Allocation**: Your project must support dynamic memory allocation, requiring implementations of `Dmod_Malloc` and `Dmod_Free`.
 
+### Recommended
+
+- **Logging**: We recommend implementing the `Dmod_Printf` function for logging purposes.
+- **File System**: If your project supports a file system, you can use it to store and load ***.dmf** files - this will allow for automatic loading of modules' dependencies. 
+
+## Introduction
+
+The **Dmod** library is designed to provide a flexible and efficient way to manage dynamic modules in embedded systems. It allows you to load and unload modules at runtime, enabling you to extend the functionality of your system without the need to recompile or restart the entire application.
+
+<img src="gimp/graphs/generic_arch.jpg" style="width: 60%;">
+
+Every module is a seperate executable file called **DMF (Dmod Module File)**. This file contains the compiled code of the module, as well as the metadata required for loading and unloading it dynamically. The **Dmod** library provides a set of APIs that allow you to interact with the system and other modules, making it easy to develop modular applications that can be extended and customized as needed.
 
 ---
 ## Getting Started
