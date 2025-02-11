@@ -10,7 +10,7 @@ pipelines:
         name: 'CMAKE: Build for x86_64'
         runs-on:
           - self.hosted
-          - linux.shell
+          - linux
         script:
           - rm -rf build
           - mkdir -p build 
@@ -23,6 +23,9 @@ pipelines:
           - cmake --build . --target coverage_check
     - step:
         name: 'MAKE: Build for x86_64'
+        runs-on:
+          - self.hosted
+          - linux
         artifacts:
           - ./build/examples/system/dmod_loader
           - ./build/dmf/example_app.dmf
