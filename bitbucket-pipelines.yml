@@ -8,6 +8,9 @@ pipelines:
   default:
     - step:
         name: 'CMAKE: Build for x86_64'
+        runs-on:
+          - self.hosted
+          - linux.shell
         script:
           - rm -rf build
           - mkdir -p build 
