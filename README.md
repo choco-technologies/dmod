@@ -168,6 +168,8 @@ dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
 )
 ```
 
+> **Note**: Please note, that `dmod_add_executable` will create a target for your module, which you can use just like any other CMake target.
+
 Once this file is created, you can build the module using the following commands:
 
 ```sh
@@ -196,6 +198,16 @@ DMOD_AUTHOR_NAME=John Doe
 # Set the stack size required by the module and its priority
 DMOD_STACK_SIZE=1024
 DMOD_PRIORITY=0
+
+# Set the module sources
+DMOD_CSOURCES=main.c example.c
+DMOD_CXXSOURCES=
+
+# Set the module include directories, libraries, and definitions
+DMOD_INC_DIRS=../library
+DMOD_LIBS=
+DMOD_DEFINITIONS=
+
 
 # Add the module executable
 include $(DMOD_DMF_APP_FILE_PATH)
