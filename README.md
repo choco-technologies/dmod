@@ -15,11 +15,16 @@ The **Dmod (Dynamic Modules)** library allows you to add the functionality of lo
 - **Cross-Platform Support**: Compatible with various embedded platforms.
 - **Easy integration**: Integrate Dmod seamlessly into your existing projects with minimal effort.
 - **Lightweight**: Designed to be lightweight and efficient, with minimal impact on system performance.
+- **Testing on Host**: Test your modules on a host machine before deploying them to the target platform.
+- **Safe deployment**: Update modules without affecting the entire system, ensuring safe and reliable operation.
 
 ### Use Cases:
 - **Firmware Updates**: Apply updates to specific modules without affecting the entire system.
 - **Feature Extensions**: Add new features or functionalities on-the-fly.
 - **Testing and Debugging**: Load test modules or debugging tools dynamically.
+- **Customization**: Customize the behavior of your system based on user input or external conditions.
+- **Resource Management**: Manage system resources more efficiently by loading and unloading modules as needed.
+
 
 By using Dmod, you can achieve greater flexibility and scalability in your embedded systems, ensuring that your applications can adapt to changing requirements and environments.
 
@@ -35,9 +40,19 @@ By using Dmod, you can achieve greater flexibility and scalability in your embed
 - **Logging**: We recommend implementing the `Dmod_Printf` function for logging purposes.
 - **File System**: If your project supports a file system, you can use it to store and load ***.dmf** files - this will allow for automatic loading of modules' dependencies. 
 
-## Introduction
+## What is the Module?
 
-The **Dmod** library is designed to provide a flexible and efficient way to manage dynamic modules in embedded systems. It allows you to load and unload modules at runtime, enabling you to extend the functionality of your system without the need to recompile or restart the entire application.
+<img src="gimp/graphs/generic_arch.jpg" style="width: 60%;">
+
+A module is a self-contained unit of code that can be dynamically loaded and unloaded from the system. Modules can be used to **add new features, extend existing functionality**, or customize the behavior of the system **without requiring a full recompilation or restart.** Moreover, they can communicate with each other and the system using a common API. The **Dmod** library manages the loading and unloading of modules, as well as its dependencies, ensuring that the system remains stable and efficient.
+
+Moreover, modules can be **developed and tested independently of the main application**, allowing for easier development, debugging, and sharing across projects. This modular approach makes it easier to manage and extend the system, as well as adapt it to changing requirements and environments.
+
+Thanks to the dependencies management, it is possible and easy to not only load the modules only when they are required, but also **unload not used modules to free up the resources.**
+
+## Communication
+
+The **Dmod** library provides a set of APIs that allow modules to communicate with each other and the system. These APIs are designed to be simple and easy to use, making it easy to develop modular applications that can be extended and customized as needed.
 
 <img src="gimp/graphs/generic_arch.jpg" style="width: 60%;">
 
