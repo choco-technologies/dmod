@@ -12,11 +12,6 @@ if (NOT DEFINED DMOD_BUILD_DIR)
 	set(DMOD_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 endif()
 
-if (NOT DEFINED DMOD_TOOLS_NAME)
-	message(STATUS "DMOD_TOOLS_NAME not defined, using default: arch/x86_64")
-	set(DMOD_TOOLS_NAME "arch/x86_64")
-endif()
-
 set(DMOD_PATHS "${DMOD_DIR}/paths.cmake")
 
 # ===========================================================================
@@ -131,7 +126,7 @@ if (DMOD_BUILD_EXAMPLES)
 endif()
 
 # Create a simple configuration header
-configure_file(config.h.in config.h)
+configure_file(dmod-config.h.in dmod-config.h)
 # Prepare the info file for the makefiles
 configure_file(scripts/dmod-info.mk.in ${DMOD_DIR}/dmod-info.mk)
 

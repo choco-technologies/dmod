@@ -51,12 +51,14 @@
  */
 void* DMOD_WEAK_SYMBOL Dmod_Malloc(size_t Size)        
 {
-    #if DMOD_USE_STDLIB
+#if DMOD_USE_ALIGNED_MALLOC_MOCK
+    return Dmod_AlignedMalloc(Size, sizeof(void*));
+#elif DMOD_USE_STDLIB
     return malloc(Size);
     #else
     DMOD_LOG_ERROR("Dmod_Malloc interface not implemented");
     return NULL;
-    #endif
+#endif
 }
 
 /**
@@ -71,25 +73,45 @@ void* DMOD_WEAK_SYMBOL Dmod_Malloc(size_t Size)
  */
 void* DMOD_WEAK_SYMBOL Dmod_AlignedMalloc(size_t Size, size_t Alignment)
 {
-    #if DMOD_USE_STDLIB
+    void* mem = NULL;
     size_t pagesize = Alignment;
-    #if DMOD_USE_MMAN
+#if DMOD_USE_MMAN
     pagesize = sysconf(_SC_PAGESIZE);
-    #endif
-    void* mem = aligned_alloc(pagesize, Size);
-    #if DMOD_USE_MMAN
-    if (mprotect(mem, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) 
+#endif
+
+#if DMOD_USE_ALIGNED_ALLOC
+    mem = aligned_alloc(pagesize, Size);
+#elif DMOD_USE_ALIGNED_MALLOC_MOCK
+#if !DMOD_USE_STDLIB
+#   error DMOD_USE_ALIGNED_MALLOC_MOCK cannot be used without DMOD_USE_STDLIB
+    void* original = NULL;
+#else 
+    void* original = malloc(Size + Alignment - 1 + sizeof(void*));
+#endif
+    if (original == NULL) 
+    {
+        DMOD_LOG_ERROR("malloc has returned NULL\n");
+        return NULL;
+    }
+    uintptr_t aligned = (uintptr_t)original + Alignment - 1 + sizeof(void*);
+    aligned &= ~(Alignment - 1);
+    ((void**)aligned)[-1] = original;
+    mem = (void*)aligned;
+#else 
+    DMOD_LOG_ERROR("Dmod_AlignedMalloc interface not implemented");
+    mem = NULL;
+#endif 
+
+#if DMOD_USE_MMAN
+    if (mem != NULL && mprotect(mem, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) 
     {
         DMOD_LOG_ERROR("Cannot set memory protection. Pagesize: %d\n", pagesize);
         free(mem);
         return NULL;
     }
-    #endif
+#endif
+
     return mem;
-    #else
-    DMOD_LOG_ERROR("Dmod_AlignedMalloc interface not implemented");
-    return NULL;
-    #endif
 }
 
 /**
@@ -99,9 +121,15 @@ void* DMOD_WEAK_SYMBOL Dmod_AlignedMalloc(size_t Size, size_t Alignment)
  */
 void DMOD_WEAK_SYMBOL Dmod_Free(void *ptr)
 {
-    #if DMOD_USE_STDLIB
-    free(ptr);
+#if DMOD_USE_ALIGNED_MALLOC_MOCK
+    #if !DMOD_USE_STDLIB
+    #   error DMOD_USE_ALIGNED_MALLOC_MOCK cannot be used without DMOD_USE_STDLIB
     #else 
-    DMOD_LOG_ERROR("Dmod_Free interface not implemented");
+    free(((void**)ptr)[-1]);
     #endif
+#elif DMOD_USE_STDLIB
+    free(ptr);
+#else 
+    DMOD_LOG_ERROR("Dmod_Free interface not implemented");
+#endif
 }
