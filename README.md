@@ -185,6 +185,31 @@ The `dmod_<module_name>_global_api` macro takes the following arguments:
 
 Thanks to this macro, the function will be accessible in the system and the modules by the name `<FunctionName>` (so for the example above, it would be `foo`), however the **Dmod** dependency system will treat it as a part of the `my_module` module.
 
+To implement the API function, you can either just use the default C function declaration or use the `dmod_<module_name>_global_api_declaration` macro:
+
+**Example version 1**:
+```c
+// Implement the API function
+void foo(int arg1, int arg2)
+{
+    // Your code here
+}
+```
+
+**Example version 2**:
+```c
+// Usage the dmod_my_module_global_api_declaration macro
+// to implement the API function - it can
+// be helpful in the future to maintain
+// compatibility (versioning)
+dmod_my_module_global_api_declaration( 1.0, void, foo, (int arg1, int arg2))
+{
+    // Your code here
+}
+```
+
+The second version of the implementation is recommended, as it allows you to maintain compatibility in the future - if the function signature changes, you can support both versions of the function at the same time.
+
 ---
 ## Getting Started
 
