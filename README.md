@@ -158,7 +158,7 @@ dmod_my_module_api_declaration( 1.0, void, foo, (int arg1, int arg2))
 
 The second version of the implementation is recommended, as it allows you to maintain compatibility in the future - if the function signature changes, you can support both versions of the function at the same time.
 
-> **Warning**: Unlike in the `built-in` API, in the module's API the module name is passed automatically by the `dmod_<module_name>_api` macro and cannot be empty - this is required for the dependency management, yet it is still **possible** to define a **function in the global scope** (check the next chapter). 
+> **⚠️ Warning**: Unlike in the `built-in` API, in the module's API the module name is passed automatically by the `dmod_<module_name>_api` macro and cannot be empty - this is required for the dependency management. However, it is still **possible** to define a **function in the global scope** (check the next chapter).
 
 ### Global API
 
