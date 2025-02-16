@@ -162,6 +162,25 @@ The second version of the implementation is recommended, as it allows you to mai
 
 ### Global API
 
+Sometimes it is required for your application to define a function in the *global* scope, so with the name that is **not prefixed** with the **module name**. For example names of functions like `printf` or `malloc` are defined by the standard so we cannot add any prefix to them, however as it was already mentioned, the **Dmod** library requires the name of the module for depenedency management. To solve this problem we introduced the macro `dmod_<module_name>_global_api`, which uses the module name in the dependency management, but does not add it to the function name:
+
+**Example**:
+```c
+#include "my_module_defs.h"
+
+// Define the API function
+// It can be accessed by name foo
+dmod_my_module_global_api( 1.0, void, foo, (int arg1, int arg2));
+```
+
+The `dmod_<module_name>_global_api` macro takes the following arguments:
+- **Version**: The version of the **function** (not the module) - helps in the future to maintain compatibility.
+- **Return Type**: The return type of the function.
+- **Function Name**: The name of the function.
+- **Arguments**: The arguments of the function.
+
+Thanks to this macro, the function will be accessible in the system and the modules by the name `<FunctionName>` (so for the example above, it would be `foo`), however the **Dmod** dependency system will treat it as a part of the `my_module` module.
+
 ---
 ## Getting Started
 
