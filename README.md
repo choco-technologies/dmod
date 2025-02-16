@@ -107,9 +107,60 @@ DMOD_INPUT_API_DECLARATION(ModuleName, 1.0, void, YourFunction, (int arg1, int a
 
 The second version of the implementation is recommended, as it allows you to maintain compatibility in the future - if the function signature changes, you can support both versions of the function at the same time.
 
-### Module-to-Module API
+### Module API
 
-Every module can define its own API that can be used by other modules (or the system). 
+Every module can define its own API that can be used by other modules (or the system). To define the API, you need a special header file that is generated for you by the **Dmod** library in the build process - `<module_name>_defs.h`. This file contains the declarations of macros, that allow you to define the API of your module. Once you include this file in your module, you can use the `dmod_<module_name>_api` macro to define the API functions:
+
+**Example**:
+```c
+#include "my_module_defs.h"
+
+// Define the API function
+// It can be accessed by name my_module_foo
+dmod_my_module_api( 1.0, void, _foo, (int arg1, int arg2));
+```
+
+The `dmod_<module_name>_api` macro takes the following arguments:
+- **Version**: The version of the **function** (not the module) - helps in the future to maintain compatibility.
+- **Return Type**: The return type of the function.
+- **Function Name**: The name of the function.
+- **Arguments**: The arguments of the function.
+
+The rules about the naming are similar to the **built-in API**, so your function will be accessible in the system and the modules by the name `<module_name><FunctionName>`, so for the example above, it would be `my_module_foo`. There is nothing unusual in the usage of the function, so calling it is as simple as calling any other function:
+
+```c
+my_module_foo(1, 2);
+```
+> **Note**: In this example, the function name is prefixed with an underscore `_`, resulting in the actual function name being `_foo`. The underscore is used here for better readability, but it is not required, so you can omit it if you prefer - in this case your full name will be `my_modulefoo`.
+
+To implement the API function, you can either just use the default C function declaration or use the `dmod_<module_name>_api_declaration` macro:
+
+**Example version 1**:
+```c
+// Implement the API function
+void my_module_foo(int arg1, int arg2)
+{
+    // Your code here
+}
+```
+
+**Example version 2**:
+```c
+// Usage the dmod_my_module_api_declaration macro
+// to implement the API function - it can
+// be helpful in the future to maintain
+// compatibility (versioning)
+dmod_my_module_api_declaration( 1.0, void, foo, (int arg1, int arg2))
+{
+    // Your code here
+}
+```
+
+The second version of the implementation is recommended, as it allows you to maintain compatibility in the future - if the function signature changes, you can support both versions of the function at the same time.
+
+> **Warning**: Unlike in the `built-in` API, in the module's API the module name is passed automatically by the `dmod_<module_name>_api` macro and cannot be empty - this is required for the dependency management, yet it is still **possible** to define a **function in the global scope** (check the next chapter). 
+
+### Global API
 
 ---
 ## Getting Started
