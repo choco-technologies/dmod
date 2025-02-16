@@ -56,6 +56,8 @@ The **Dmod** library provides a set of APIs that allow modules to communicate wi
 
 <img src="gimp/graphs/module-comm.jpg" style="width: 60%;">
 
+What is more, you don't need to provide the source code of the system or a module to use its API - all you need is the **API declaration**, so only the **header file** is required.
+
 ### Built-in API
 
 The communication between a module and the system is done through the **builtin API**. The **Dmod** library provides some interface for the modules on its own, but it is also possible and recommended to define your own API as well. You can easily declare any C function as an API function by using the `DMOD_BUILTIN_API` macro:
@@ -104,6 +106,10 @@ DMOD_INPUT_API_DECLARATION(ModuleName, 1.0, void, YourFunction, (int arg1, int a
 ```
 
 The second version of the implementation is recommended, as it allows you to maintain compatibility in the future - if the function signature changes, you can support both versions of the function at the same time.
+
+### Module-to-Module API
+
+Every module can define its own API that can be used by other modules (or the system). 
 
 ---
 ## Getting Started
