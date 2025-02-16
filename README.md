@@ -44,7 +44,7 @@ By using Dmod, you can achieve greater flexibility and scalability in your embed
 
 <img src="gimp/graphs/generic_arch.jpg" style="width: 60%;">
 
-A module is a self-contained unit of code that can be dynamically loaded and unloaded from the system. Modules can be used to **add new features, extend existing functionality**, or customize the behavior of the system **without requiring a full recompilation or restart.** Moreover, they can communicate with each other and the system using a common API. The **Dmod** library manages the loading and unloading of modules, as well as its dependencies, ensuring that the system remains stable and efficient.
+A module is a self-contained unit of code that can be dynamically loaded from a `*.dmf` file and unloaded from the system. Modules can be used to **add new features, extend existing functionality**, or customize the behavior of the system **without requiring a full recompilation or restart.** Moreover, they can communicate with each other and the system using a common API. The **Dmod** library manages the loading and unloading of modules, as well as its dependencies, ensuring that the system remains stable and efficient.
 
 Moreover, modules can be **developed and tested independently of the main application**, allowing for easier development, debugging, and sharing across projects. This modular approach makes it easier to manage and extend the system, as well as adapt it to changing requirements and environments.
 
@@ -52,13 +52,58 @@ Thanks to the dependencies management, it is possible and easy to not only load 
 
 ## Communication
 
-The **Dmod** library provides a set of APIs that allow modules to communicate with each other and the system. These APIs are designed to be simple and easy to use, making it easy to develop modular applications that can be extended and customized as needed.
-
-<img src="gimp/graphs/generic_arch.jpg" style="width: 60%;">
-
-Every module is a seperate executable file called **DMF (Dmod Module File)**. This file contains the compiled code of the module, as well as the metadata required for loading and unloading it dynamically. The **Dmod** library provides a set of APIs that allow you to interact with the system and other modules, making it easy to develop modular applications that can be extended and customized as needed.
+The **Dmod** library provides a set of APIs that allow modules to communicate with **each other** and **the system**. These APIs are designed to be simple and easy to use, making it easy to develop modular applications that can be extended and customized as needed.
 
 <img src="gimp/graphs/module-comm.jpg" style="width: 60%;">
+
+### Built-in API
+
+The communication between a module and the system is done through the **builtin API**. The **Dmod** library provides some interface for the modules on its own, but it is also possible and recommended to define your own API as well. You can easily declare any C function as an API function by using the `DMOD_BUILTIN_API` macro:
+
+**Example**:
+```c
+// YourFunction prototype 
+// It can be accessed by name ModuleNameFunctionName
+DMOD_BUILTIN_API( ModuleName, 1.0, void, FunctionName, (int arg1, int arg2));
+```
+
+The `DMOD_BUILTIN_API` macro takes the following arguments:
+- **Module Name**: The name/group of the module that the API function belongs to. (can be empty)
+- **Version**: The version of the **function** (not the module) - helps in the future to maintain compatibility.
+- **Return Type**: The return type of the function.
+- **Function Name**: The name of the function.
+- **Arguments**: The arguments of the function.
+
+Your function will be accessible in the system and the modules by the name `<ModuleName><FunctionName>`, so for the example above, it would be `ModuleNameYourFunction`. There is nothing unusual in the usage of the function, so calling it is as simple as calling any other function:
+
+```c
+ModuleNameYourFunction(1, 2);
+```
+
+To implement the API function, you can either just use the default C function declaration or use the `DMOD_INPUT_API_DECLARATION` macro:
+
+**Example version 1**:
+```c
+// Implement the API function
+void ModuleNameYourFunction(int arg1, int arg2)
+{
+    // Your code here
+}
+```
+
+**Example version 2**:
+```c
+// Usage the DMOD_INPUT_API_DECLARATION macro
+// to implement the API function - it can 
+// be helpful in the future to maintain
+// compatibility (versioning)
+DMOD_INPUT_API_DECLARATION(ModuleName, 1.0, void, YourFunction, (int arg1, int arg2))
+{
+    // Your code here
+}
+```
+
+The second version of the implementation is recommended, as it allows you to maintain compatibility in the future - if the function signature changes, you can support both versions of the function at the same time.
 
 ---
 ## Getting Started
