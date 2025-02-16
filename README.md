@@ -70,6 +70,7 @@ DMOD_BUILTIN_API( ModuleName, 1.0, void, FunctionName, (int arg1, int arg2));
 ```
 
 The `DMOD_BUILTIN_API` macro takes the following arguments:
+
 - **Module Name**: The name/group of the module that the API function belongs to. (can be empty)
 - **Version**: The version of the **function** (not the module) - helps in the future to maintain compatibility.
 - **Return Type**: The return type of the function.
@@ -121,6 +122,7 @@ dmod_my_module_api( 1.0, void, _foo, (int arg1, int arg2));
 ```
 
 The `dmod_<module_name>_api` macro takes the following arguments:
+
 - **Version**: The version of the **function** (not the module) - helps in the future to maintain compatibility.
 - **Return Type**: The return type of the function.
 - **Function Name**: The name of the function.
@@ -173,7 +175,9 @@ Sometimes it is required for your application to define a function in the *globa
 dmod_my_module_global_api( 1.0, void, foo, (int arg1, int arg2));
 ```
 
+
 The `dmod_<module_name>_global_api` macro takes the following arguments:
+
 - **Version**: The version of the **function** (not the module) - helps in the future to maintain compatibility.
 - **Return Type**: The return type of the function.
 - **Function Name**: The name of the function.
