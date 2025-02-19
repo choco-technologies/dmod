@@ -15,9 +15,9 @@ pipelines:
           - rm -rf build
           - mkdir -p build 
           - cd build
-          - cmake .. -DDMOD_MODE=DMOD_MODULE
+          - cmake .. -DDMOD_MODE=DMOD_MODULE -DDMOD_TOOLS_NAME=arch/x86_64
           - cmake --build .
-          - cmake .. -DDMOD_MODE=DMOD_SYSTEM
+          - cmake .. -DDMOD_MODE=DMOD_SYSTEM -DDMOD_TOOLS_NAME=arch/x86_64
           - cmake --build .
           - ./examples/system/dmod_loader ./dmf/example_app.dmf
           - cmake --build . --target coverage_check

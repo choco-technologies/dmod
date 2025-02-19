@@ -59,7 +59,7 @@ extern "C" {
 #endif
 
 #include <stdbool.h>
-#include "config.h"
+#include "dmod-config.h"
 #include "dmod_types.h"
 #include "dmod_sal.h"
 

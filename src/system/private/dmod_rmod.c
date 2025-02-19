@@ -183,7 +183,7 @@ bool Dmod_RMod_AreRequiredModulesEnabled( Dmod_Context_t* Context )
         return false;
     }
 
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    for(size_t i = 0; i < DMOD_MAX_REQUIRED_MODULES; i++)
     {
         if( Context->RequiredModules[i].Name[0] == 0 )
         {

@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "config.h"
+#include "dmod-config.h"
 #include "dmod_arch_defs.h"
 
 #define DMOD_HEADER_SIGNATURE           0x444D4F44
