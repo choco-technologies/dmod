@@ -7,19 +7,30 @@
 #   Edit the scripts/Makefile-lib.in file instead.
 #       
 # ##############################################################################
-DMOD_DIR = $(DMOD_DIR)
+ifeq ($(DMOD_DIR),)
+    DMOD_DIR = ../../
+endif
 
 #
 #  Name of the module
 #
 DMOD_LIB_NAME=libdmod_system.a
-DMOD_SOURCES=dmod_system.c\
-		dmod_if_file.c\
-		dmod_if_mem.c\
-		dmod_if_dbg.c\
-		dmod_if_irq.c\
-		dmod_if_events.c\
-		dmod_if_rtos.c
+DMOD_SOURCES=private/dmod_vars.c\
+		private/dmod_ctx.c\
+		private/dmod_hlp.c\
+		private/dmod_ldr.c\
+		private/dmod_mgr.c\
+		private/dmod_rmod.c\
+		public/dmod_dmf_cb.c\
+		public/dmod_dmf_api.c\
+		dmod_system.c\
+		if/dmod_if_file.c\
+		if/dmod_if_mem.c\
+		if/dmod_if_dbg.c\
+		if/dmod_if_irq.c\
+		if/dmod_if_events.c\
+		if/dmod_if_rtos.c\
+		Dmod.cpp
 DMOD_INC_DIRS = $(DMOD_DIR)/src/system\
 		$(DMOD_DIR)/inc\
 		$(DMOD_BUILD_DIR)\

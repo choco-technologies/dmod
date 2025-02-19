@@ -1,5 +1,18 @@
 ___DEFS = $(filter DMOD%,$(.VARIABLES)) $(filter dmod%,$(.VARIABLES))
 
+DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION = 4.2
+
+MAKE_VERSION_MAJOR = $(firstword $(subst ., ,$(MAKE_VERSION)))
+MAKE_VERSION_MINOR = $(word 2,$(subst ., ,$(MAKE_VERSION)))
+DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION_MAJOR = $(firstword $(subst ., ,$(DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION)))
+DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION_MINOR = $(word 2,$(subst ., ,$(DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION)))
+
+ifeq ($(shell expr $(MAKE_VERSION_MAJOR) \>= $(DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION_MAJOR) \& $(MAKE_VERSION_MINOR) \>= $(DMOD_CONFIGURE_FILE_MIN_MAKE_VERSION_MINOR)),1)
+  DMOD_CONFIGURE_FILE_RULES = ON
+else
+  DMOD_CONFIGURE_FILE_RULES = OFF
+endif
+
 # Function to generate sed commands
 define generate_sed_commands
 $(foreach var, $(___DEFS), -e 's|@$(var)@|$($(var))|g')
@@ -23,9 +36,31 @@ endef
 #	Generates a rule to generate a header file
 #
 define generate_header_rule
-$(2): $(1)
+$(2): $(1) 
 	@echo "Generating $2 from $1..."
 	@$(call configure_file,$1,$2)
+endef
+
+#
+#   Touches header
+#
+define touch_header
+	@if [ "$(DMOD_CACHE_CHANGED)" = "ON" ]; then \
+		echo "Touching $1..."; \
+		touch $1; \
+	else \
+		echo "Cache did not change. Skipping update of $1"; \
+	fi
+endef
+
+#
+#   Touches all headers
+#
+define touch_headers
+$(foreach pair,
+	$1,
+	$(call touch_header,$(word 1,$(subst =, ,$(pair))))
+)
 endef
 
 #
@@ -44,7 +79,7 @@ endef
 #	Generates a rules for every object file
 #
 define generate_cobject_rule
-$2: $1
+$2: $1 
 	@echo "Compiling $1 to $2..."
 	$(CC) $(CFLAGS) -c $1 -o $2
 	@echo "Listing generation for $2..."
@@ -55,7 +90,7 @@ endef
 #	Generates a rules for every object file
 #
 define generate_cxxobject_rule
-$2: $1
+$2: $1 
 	@echo "Compiling $1 to $2..."
 	$(CXX) $(CXXFLAGS) -c $1 -o $2
 	@echo "Listing generation for $2..."

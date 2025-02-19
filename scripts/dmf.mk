@@ -50,9 +50,11 @@ DMOD_MODULE_DMF_FILE_PATH = $(DMOD_DMF_DIR)/$(DMOD_MODULE_DMF_FILE_NAME)
 DMOD_INC_DIRS       += $(DMOD_INC_DIR) $(DMOD_BUILD_DIR) $(DMOD_SCRIPTS_DIR)
 DMOD_GEN_HEADERS_IN += $(DMOD_API_HEADER_IN_FILE_PATH)=$(DMOD_MODULE_DEFS_HEADER_FILE_PATH)
 DMOD_CSOURCES	    += $(DMOD_MODULE_HEADER_SOURCE_FILE_PATH)
+DMOD_MAL_DEFS       += $(foreach impl,$(DMOD_MAL_IMPLS),DMOD_MAL_$(impl))
 DMOD_DEFINITIONS    += DMOD_${DMOD_MODULE_NAME} \
             		   DMOD_MODULE=1 \
-            		   DMOD_SYSTEM=0
+            		   DMOD_SYSTEM=0 \
+					   $(DMOD_MAL_DEFS)
 
 # -----------------------------------------------------------------------------
 # 	List of objects
@@ -69,7 +71,8 @@ C_OPT 				= -O2
 CFLAGS_INC          = $(addprefix -I,$(DMOD_INC_DIRS))
 CFLAGS_LIB          = $(addprefix -L,$(DMOD_LIBS))
 CFLAGS_DEF          = $(addprefix -D,$(DMOD_DEFINITIONS))
-CFLAGS             += -fPIC -fPIE -ffunction-sections -include $(DMOD_MODULE_DEFS_HEADER_FILE_NAME) $(C_OPT)
+OPTIMIZATION        = -O2
+CFLAGS             += -fPIC -fPIE -ffunction-sections $(OPTIMIZATION) -include $(DMOD_MODULE_DEFS_HEADER_FILE_NAME) $(C_OPT)
 CFLAGS             += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 CXXFLAGS           += $(CFLAGS)
 LFLAGS 			   += -L $(DMOD_SCRIPTS_DIR) -T $(DMOD_MODULE_LD_FILE_NAME) -pie -nostartfiles -nostdlib -Xlinker --discard-all -static
@@ -80,9 +83,18 @@ endif
 # -----------------------------------------------------------------------------
 #   Rules
 # -----------------------------------------------------------------------------
-all: create_dirs generate_headers $(DMOD_MODULE_DMF_FILE_PATH)
+all: create_dirs update_cache generate_headers $(DMOD_MODULE_DMF_FILE_PATH)
 	@echo "List of sources: $(DMOD_COBJECTS) $(DMOD_CXXOBJECTS)"
 	@printf "==== \033[32;1m$(DMOD_MODULE_DMF_FILE_PATH) has been built\033[0m ===\n"
+
+ifeq ($(DMOD_UPDATE_CACHE),ON)
+update_cache:
+	$(call update_cache)
+	$(call touch_headers,$(DMOD_GEN_HEADERS_IN))
+else
+update_cache:
+	@echo "Make version is too old to support cache. Skipping cache update..."
+endif
 
 create_dirs: 
 	@echo "Creating output directories"
@@ -92,8 +104,13 @@ create_dirs:
 	@$(MKDIR) -p $(DMOD_LIBS_DIR)
 	@$(MKDIR) -p $(DMOD_LIB_OBJS_DIR)
 
-#$(call generate_header_rule,$(DMOD_API_HEADER_IN_FILE_PATH),$(DMOD_MODULE_DEFS_HEADER_FILE_PATH))
+ifeq ($(DMOD_CONFIGURE_FILE_RULES),ON)
 $(call generate_headers_rules,$(DMOD_GEN_HEADERS_IN))
+else
+$(DMOD_BUILD_DIR)/%.h: %.h.in
+	@echo "Your make version is too old ($(MAKE_VERSION)) to support rules for configure file. Using legacy rules..."
+	@$(call configure_file) $< $@
+endif
 
 generate_headers: $(DMOD_GEN_HEADERS)
 	@echo "All headers generated"
@@ -119,4 +136,4 @@ $(DMOD_LIB_OBJS_DIR)/%.o: %.cpp
 clean:
 	@$(RM) -f $(DMOD_OBJECTS) $(DMOD_LIB_NAME)
 
-.PHONY: all clean create_dirs generate_headers
+.PHONY: all clean create_dirs generate_headers update_cache

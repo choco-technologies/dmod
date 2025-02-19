@@ -1,4 +1,11 @@
+#define DMOD_PRIVATE
 #include "dmod.h"
+#include "private/dmod_vars.h"
+#include "private/dmod_ctx.h"
+#include "private/dmod_hlp.h"
+#include "private/dmod_ldr.h"
+#include "private/dmod_mgr.h"
+#include "private/dmod_rmod.h"
 #include "dmod_system.h"
 #include <stdbool.h>
 #include <string.h>
@@ -8,56 +15,8 @@
 //                              LOCAL FUNCTION PROTOTYPES
 //==============================================================================
 
-static Dmod_Context_t*          Context_New( void* Data, size_t FileSize );
-static bool                     Context_IsValid( Dmod_Context_t* Context );
-static void                     Context_Delete( Dmod_Context_t* Context );
-static const char*              Context_GetModuleName( Dmod_Context_t* Context );
-static bool                     Load( Dmod_Context_t* Context );
 static bool                     ReadFile( const char* ModuleName, void* Data, size_t Size, void* File );
-static bool                     LoadHeader( Dmod_Context_t* Context );
-static bool                     LoadFooter( Dmod_Context_t* Context );
-static bool                     LoadOutput( Dmod_Context_t* Context );
-static bool                     LoadInput( Dmod_Context_t* Context );
-static bool                     LoadGot( Dmod_Context_t* Context );
-static bool                     LoadBss( Dmod_Context_t* Context );
-static bool                     InitPointer( Dmod_Context_t* Context, void** PointerRef, const char* PointerName );
-static bool                     AddContext( Dmod_Context_t* Context );
-static bool                     RemoveContext( Dmod_Context_t* Context );
-static Dmod_Context_t*          GetContext( const char* ModuleName );
-static Dmod_RequiredModule_t*   FindRequiredModule( Dmod_Context_t* Context, const char* ModuleName );
-static Dmod_RequiredModule_t*   FindEmptyRequiredModule( Dmod_Context_t* Context );
-static bool                     IsModuleRequired( Dmod_Context_t* Context, const char* ModuleName );
-static bool                     ReadRequiredModules( Dmod_Context_t* Context );
-static bool                     AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature );
-static bool                     IsLoaded( const char* ModuleName );
-static bool                     IsEnabled( const char* ModuleName );
-static bool                     AreRequiredModulesEnabled( Dmod_Context_t* Context );
-static Dmod_Context_t*          FindDependentModule( Dmod_Context_t* Context, bool OnlyEnabled );
-static bool                     IsSystemModule( const char* ModuleName );
 static bool                     IsAllApiConnected( Dmod_Context_t* Context );
-static bool                     LoadRequiredModules( Dmod_Context_t* Context );
-static bool                     EnableRequiredModules( Dmod_Context_t* Context );
-
-//==============================================================================
-//                              GLOBAL VARIABLES
-//==============================================================================
-extern void* __dmod_inputs_start;
-extern void* __dmod_inputs_end;
-extern void* __dmod_inputs_size;
-extern void* __dmod_outputs_start;
-extern void* __dmod_outputs_end;
-extern void* __dmod_outputs_size;
-static Dmod_Api_t Dmod_BuiltinInputApi = {
-    .InputSection    = (void*)&__dmod_inputs_start,
-    .SectionSize     = (size_t)&__dmod_inputs_size,
-    .ApiType         = Dmod_ApiType_Input
-};
-static Dmod_Api_t Dmod_BuiltinOutputApi = {
-    .OutputSection    = (void*)&__dmod_outputs_start,
-    .SectionSize     = (size_t)&__dmod_outputs_size,
-    .ApiType         = Dmod_ApiType_Output
-};
-static Dmod_Context_t* Dmod_Contexts[DMOD_MAX_MODULES] = {0};
 
 //==============================================================================
 //                              FUNCTION IMPLEMENTATIONS
@@ -113,20 +72,20 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
     }
 
     Dmod_Event_ModuleLoadingInProgress( Path, 78 );
-    Dmod_Context_t* context = Context_New( buffer, fileSize );
+    Dmod_Context_t* context = Dmod_Context_New( buffer, fileSize );
     Dmod_FileClose( file );
     if( context == NULL )
     {
         return NULL;
     }
-    if( !Load( context ) || !AddContext( context ) )
+    if( !Dmod_Ldr_Load( context ) || !Dmod_Context_Add( context ) )
     {
-        Context_Delete( context );
+        Dmod_Context_Delete( context );
         return NULL;
     }
 
     Dmod_Event_ModuleLoadingInProgress( Path, 100 );
-    DMOD_LOG_INFO("Module loaded: %s\n", Context_GetModuleName( context ));
+    DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
 
     return context;
 }
@@ -149,7 +108,7 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
 
     Dmod_Event_ModuleLoadingInProgress( "Unknown", 10 );
 
-    Dmod_Context_t* context = Context_New( NULL, Size );
+    Dmod_Context_t* context = Dmod_Context_New( NULL, Size );
     if( context == NULL )
     {
         return NULL;
@@ -157,16 +116,16 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
 
     memcpy( context->Data, Data, Size );
 
-    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(context), 50 );
+    Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(context), 50 );
 
-    if(!Load(context) || !AddContext(context))
+    if(!Dmod_Ldr_Load(context) || !Dmod_Context_Add(context))
     {
-        Context_Delete( context );
+        Dmod_Context_Delete( context );
         return NULL;
     }
-    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(context), 100 );
+    Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(context), 100 );
 
-    DMOD_LOG_INFO("Module loaded: %s\n", Context_GetModuleName( context ));
+    DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
     Dmod_Event_ModuleLoaded( context );
 
     return context;
@@ -187,13 +146,13 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
         return false;
     }
 
-    if(IsLoaded(ModuleName))
+    if(Dmod_Mgr_IsLoaded(ModuleName))
     {
         DMOD_LOG_INFO("Module %s is already loaded\n", ModuleName);
         return true;
     }
     
-    char path[DMOD_MAX_PATH_LENGTH] = {0};
+    char path[DMOD_MAX_PATH_LENGTH + 1] = {0};
     const char* repoPath = Dmod_GetRepoPath();
     if( repoPath == NULL )
     {
@@ -216,7 +175,7 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
  */
 bool Dmod_Unload( Dmod_Context_t* Context, bool Force )
 {
-    if( !Context_IsValid( Context ) )
+    if( !Dmod_Context_IsValid( Context ) )
     {
         DMOD_LOG_ERROR("Cannot unload module - invalid context\n");
         return false;
@@ -225,504 +184,28 @@ bool Dmod_Unload( Dmod_Context_t* Context, bool Force )
     Dmod_EnterCritical();
     if(Context->Enabled && !Force)
     {
-        DMOD_LOG_ERROR("Module %s cannot be unloaded - it has to be disabled first\n", Context_GetModuleName( Context ));
+        DMOD_LOG_ERROR("Module %s cannot be unloaded - it has to be disabled first\n", Dmod_Context_GetModuleName( Context ));
         Dmod_ExitCritical();
         return false;
     }
     if(Context->Running && !Force)
     {
-        DMOD_LOG_ERROR("Module %s cannot be unloaded - it has to be stopped first\n", Context_GetModuleName( Context ));
+        DMOD_LOG_ERROR("Module %s cannot be unloaded - it has to be stopped first\n", Dmod_Context_GetModuleName( Context ));
         Dmod_ExitCritical();
         return false;
     }
 
     Dmod_Event_ModuleUnloaded( Context );
 
-    if( !RemoveContext( Context ) )
+    if( !Dmod_Context_Remove( Context ) )
     {
-        DMOD_LOG_WARN("Unloading module %s failed - not found\n", Context_GetModuleName( Context ));
+        DMOD_LOG_WARN("Unloading module %s failed - not found\n", Dmod_Context_GetModuleName( Context ));
     }
     Context->Signature = 0;
     Dmod_ExitCritical();
-    Context_Delete( Context );    
+    Dmod_Context_Delete( Context );    
 
     return true;
-}
-
-/**
- * @brief Connect API
- * 
- * @param Outputs Outputs section
- * @param Inputs Inputs section
- */
-bool Dmod_ConnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
-{
-    if( OutputsApi == NULL || InputsApi == NULL )
-    {
-        DMOD_LOG_ERROR("Cannot connect API - invalid API pointers\n");
-        return false;
-    }
-    
-    size_t numberOfOutputs = Dmod_Api_GetNumberOfEntries( OutputsApi );
-    size_t numberOfInputs = Dmod_Api_GetNumberOfEntries( InputsApi );
-
-    for(size_t i = 0; i < numberOfOutputs; i++)
-    {
-        for(size_t j = 0; j < numberOfInputs; j++)
-        {
-            if( !Dmod_ApiSignature_IsValid( OutputsApi->OutputSection->Entries[i] ) )
-            {
-                continue;
-            }
-            else if( Dmod_ApiSignature_AreEqual( OutputsApi->OutputSection->Entries[i], InputsApi->InputSection->Entries[j].Signature ) )
-            {
-                DMOD_LOG_VERBOSE("Connected: %s 0x%08X\n", InputsApi->InputSection->Entries[j].Signature, InputsApi->InputSection->Entries[j].Function);
-                OutputsApi->OutputSection->Entries[i] = InputsApi->InputSection->Entries[j].Function;
-            }
-        }
-    }
-    return true;
-}
-
-/**
- * @brief Disconnect API
- * 
- * @param Outputs Outputs section
- * @param Inputs Inputs section
- */
-bool Dmod_DisconnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
-{
-    if( OutputsApi == NULL || InputsApi == NULL )
-    {
-        DMOD_LOG_ERROR("Cannot disconnect API - invalid API pointers\n");
-        return false;
-    }
-    
-    size_t numberOfOutputs = Dmod_Api_GetNumberOfEntries( OutputsApi );
-    size_t numberOfInputs = Dmod_Api_GetNumberOfEntries( InputsApi );
-
-    for(size_t i = 0; i < numberOfOutputs; i++)
-    {
-        for(size_t j = 0; j < numberOfInputs; j++)
-        {
-            if( !Dmod_ApiSignature_IsValid( OutputsApi->OutputSection->Entries[i] ) )
-            {
-                continue;
-            }
-            else if( OutputsApi->OutputSection->Entries[i] == InputsApi->InputSection->Entries[j].Function )
-            {
-                DMOD_LOG_VERBOSE("Disconnected: %s\n", InputsApi->InputSection->Entries[j].Signature);
-                OutputsApi->OutputSection->Entries[i] = (void*)InputsApi->InputSection->Entries[j].Signature;
-            }
-        }
-    }
-    return true;
-}
-
-/**
- * @brief Connect output APIs
- * 
- * @param Context Context to connect APIs
- */
-bool Dmod_ConnectOutputApis( Dmod_Context_t* Context )
-{
-    if( !Context_IsValid( Context ) )
-    {
-        DMOD_LOG_ERROR("Cannot connect APIs - invalid context\n");
-        return false;
-    }
-    Dmod_EnterCritical();
-
-    Dmod_BuiltinInputApi.SectionSize = (size_t)((void*)&__dmod_inputs_end - (void*)&__dmod_inputs_start);
-    if( !Dmod_ConnectApi( &Context->Outputs, &Dmod_BuiltinInputApi ) )
-    {
-        DMOD_LOG_ERROR("Cannot connect system API to '%s' APIs\n", Context_GetModuleName( Context ));
-        Dmod_ExitCritical();
-        return false;
-    }
-
-    bool result = true;
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Dmod_Contexts[i] == NULL || Context == Dmod_Contexts[i] )
-        {
-            continue;
-        }
-
-        if( !Dmod_ConnectApi( &Context->Outputs, &Dmod_Contexts[i]->Inputs ) )
-        {
-            DMOD_LOG_ERROR("Cannot connect API from '%s' to '%s'\n", Context_GetModuleName( Dmod_Contexts[i] ), Context_GetModuleName( Context ));
-            result = false;
-        }
-    }
-
-    if(!result)
-    {
-        Dmod_DisconnectOutputApis( Context );
-    }
-    
-    Dmod_ExitCritical();
-    return result;
-}
-
-/**
- * @brief Connect input APIs
- * 
- * @param Context Context to connect APIs
- */
-bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
-{
-    if( !Context_IsValid( Context ) )
-    {
-        DMOD_LOG_ERROR("Cannot connect APIs - invalid context\n");
-        return false;
-    }
-
-    Dmod_EnterCritical();
-
-    Dmod_BuiltinOutputApi.SectionSize = (size_t)((void*)&__dmod_outputs_end - (void*)&__dmod_outputs_start);
-    if( !Dmod_ConnectApi( &Dmod_BuiltinOutputApi, &Context->Inputs ) )
-    {
-        DMOD_LOG_ERROR("Cannot connect API '%s' to system\n", Context_GetModuleName( Context ));
-        Dmod_ExitCritical();
-        return false;
-    }
-
-    bool result = true;
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Dmod_Contexts[i] == NULL )
-        {
-            continue;
-        }
-
-        if( !Dmod_ConnectApi( &Dmod_Contexts[i]->Outputs, &Context->Inputs ) )
-        {
-            DMOD_LOG_ERROR("Cannot connect API from '%s' to '%s'\n", Context_GetModuleName( Context ), Context_GetModuleName( Dmod_Contexts[i] ));
-            result = false;
-        }
-    }
-
-    if(!result)
-    {
-        Dmod_DisconnectInputApis( Context );
-    }
-
-    Dmod_ExitCritical();
-
-    return result;
-}
-
-/**
- * @brief Connect all APIs
- * 
- * @param Context Context to connect APIs
- */
-bool Dmod_ConnectAllApis( Dmod_Context_t* Context )
-{
-    if( !Context_IsValid( Context ) )
-    {
-        DMOD_LOG_ERROR("Cannot connect APIs - invalid context\n");
-        return false;
-    }
-
-    Dmod_EnterCritical();
-    bool result = Dmod_ConnectOutputApis( Context ) && Dmod_ConnectInputApis( Context );
-    Dmod_ExitCritical();
-
-    return result;
-}
-
-/**
- * @brief Disconnect output APIs
- * 
- * @param Context Context to disconnect APIs
- */
-bool Dmod_DisconnectOutputApis( Dmod_Context_t* Context )
-{
-    if( !Context_IsValid( Context ) )
-    {
-        DMOD_LOG_ERROR("Cannot disconnect APIs - invalid context\n");
-        return false;
-    }
-
-    Dmod_EnterCritical();
-    bool result = true;
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Dmod_Contexts[i] == NULL )
-        {
-            continue;
-        }
-
-        if( !Dmod_DisconnectApi( &Context->Outputs, &Dmod_Contexts[i]->Inputs ) )
-        {
-            DMOD_LOG_ERROR("Cannot disconnect %s's API from '%s'\n", Context_GetModuleName( Dmod_Contexts[i] ), Context_GetModuleName( Context ));
-            result = false;
-        }
-    }
-
-    if( !Dmod_DisconnectApi( &Context->Outputs, &Dmod_BuiltinInputApi ) )
-    {
-        DMOD_LOG_ERROR("Cannot disconnect system API from '%s'\n", Context_GetModuleName( Context ));
-        result = false;
-    }
-    Dmod_ExitCritical();
-
-    return result;
-}
-
-/**
- * @brief Disconnect input APIs
- * 
- * @param Context Context to disconnect APIs
- */
-bool Dmod_DisconnectInputApis( Dmod_Context_t* Context )
-{
-    if( !Context_IsValid( Context ) )
-    {
-        DMOD_LOG_ERROR("Cannot disconnect APIs - invalid context\n");
-        return false;
-    }
-
-    Dmod_EnterCritical();
-    bool result = true;
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Dmod_Contexts[i] == NULL )
-        {
-            continue;
-        }
-
-        if( !Dmod_DisconnectApi( &Dmod_Contexts[i]->Outputs, &Context->Inputs ) )
-        {
-            DMOD_LOG_ERROR("Cannot disconnect %s's API from '%s'\n", Context_GetModuleName( Context ), Context_GetModuleName( Dmod_Contexts[i] ));
-            result = false;
-        }
-    }
-
-    if( !Dmod_DisconnectApi( &Dmod_BuiltinOutputApi, &Context->Inputs ) )
-    {
-        DMOD_LOG_ERROR("Cannot disconnect %s's API from system\n", Context_GetModuleName( Context ));
-        result = false;
-    }
-
-    Dmod_ExitCritical();
-
-    return result;
-}
-
-/**
- * @brief Disconnect all APIs
- * 
- * @param Context Context to disconnect APIs
- */
-bool Dmod_DisconnectAllApis( Dmod_Context_t* Context )
-{
-    if( !Context_IsValid( Context ) )
-    {
-        DMOD_LOG_ERROR("Cannot disconnect APIs - invalid context\n");
-        return false;
-    }
-
-    Dmod_EnterCritical();
-    bool result = Dmod_DisconnectInputApis( Context ) && Dmod_DisconnectOutputApis( Context );
-    Dmod_ExitCritical();
-    if( !result )
-    {
-        DMOD_LOG_ERROR("Cannot disconnect APIs - failed to disconnect\n");
-        return false;
-    }
-
-    return true;
-}
-
-/**
- * @brief Get function
- * 
- * @param Context Context to get function from
- * @param Signature Signature of the function
- * 
- * @return Pointer to the function
- */
-void* Dmod_GetFunction( Dmod_Context_t* Context, const char* Signature )
-{
-    if( !Context_IsValid( Context ) || !Dmod_ApiSignature_IsValid( Signature ) )
-    {
-        DMOD_LOG_ERROR("Cannot get function - invalid context or signature\n");
-        return NULL;
-    }
-
-    if( Context->Inputs.InputSection == NULL )
-    {
-        DMOD_LOG_ERROR("Cannot get function - no output section\n");
-        return NULL;
-    }
-
-    size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
-    for(size_t i = 0; i < numberOfEntries; i++)
-    {
-        if( Dmod_ApiSignature_AreEqual( Context->Inputs.InputSection->Entries[i].Signature, Signature ) )
-        {
-            return Context->Inputs.InputSection->Entries[i].Function;
-        }
-    }
-
-    DMOD_LOG_ERROR("Cannot get function - function not found: %s\n", Signature);
-    return NULL;
-}
-
-/**
- * @brief Preinitialize module
- * 
- * @param Context Context to preinitialize
- */
-void Dmod_Preinit( Dmod_Context_t* Context )
-{
-    if( !Context_IsValid( Context ) )
-    {
-        DMOD_LOG_ERROR("Cannot preinit module - invalid context\n");
-        return;
-    }
-
-    if( Context->Header->Preinit == NULL )
-    {
-        DMOD_LOG_INFO("Preinit function not set\n");
-        return;
-    }
-
-    Context->Header->Preinit();
-}
-
-/**
- * @brief Initialize module
- * 
- * @param Context Context to initialize
- * @param Config Configuration
- * 
- * @return 0 on success, errno on error
- */
-int Dmod_Init( Dmod_Context_t* Context, const Dmod_Config_t* Config )
-{
-    int result = -EINVAL;
-    if( Context_IsValid( Context ) )
-    {
-        if( Context->Header->Init == NULL )
-        {
-            DMOD_LOG_INFO("Init function not set\n");
-            result = 0;
-        }
-        else 
-        {
-            result = Context->Header->Init( Config );
-        }
-    }
-    return result;
-}
-
-/**
- * @brief Call main function
- * 
- * @param Context Context to call main function
- * @param argc Number of arguments
- * @param argv Arguments
- * 
- * @return Return value of the main function
- */
-int Dmod_Main( Dmod_Context_t* Context, int argc, char *argv[] )
-{
-    int result = -EINVAL;
-    if( Context_IsValid( Context ) )
-    {
-        if( Context->Header->Main == NULL )
-        {
-            DMOD_LOG_INFO("Main function not set\n");
-            result = 0;
-        }
-        else 
-        {
-            result = Context->Header->Main( argc, argv );
-        }
-    }
-    return result;
-}
-
-/**
- * @brief Deinitialize module
- * 
- * @param Context Context to deinitialize
- * 
- * @return 0 on success, errno on error
- */
-int Dmod_Deinit( Dmod_Context_t* Context )
-{
-    int result = -EINVAL;
-    if( Context_IsValid( Context ) )
-    {
-        if( Context->Header->Deinit == NULL )
-        {
-            DMOD_LOG_INFO("Deinit function not set\n");
-            result = 0;
-        }
-        else 
-        {
-            result = Context->Header->Deinit();
-        }
-    }
-    return result;
-}
-
-/**
- * @brief Call signal's handler
- * 
- * @param Context Context to signal
- * @param SignalNumber Signal number
- * 
- * @return 0 on success, errno on error
- */
-int Dmod_Signal( Dmod_Context_t* Context, int SignalNumber )
-{
-    int result = -EINVAL;
-    if( Context_IsValid( Context ) )
-    {
-        if( Context->Header->Signal == NULL )
-        {
-            DMOD_LOG_INFO("Signal function not set\n");
-            result = 0;
-        }
-        else 
-        {
-            result = Context->Header->Signal( SignalNumber );
-        }
-    }
-    return result;
-}
-
-/**
- * @brief Call IRQ handler
- * 
- * @param Context Context to IRQ
- * @param IrqNumber IRQ number
- * 
- * @return 0 on success, errno on error
- */
-int Dmod_Irq( Dmod_Context_t* Context, const char* Signature )
-{
-    int result = -EINVAL;
-    if( Context_IsValid( Context ) )
-    {
-        void (*function)() = Dmod_GetFunction( Context, Signature );
-        if( function != NULL )
-        {
-            DMOD_LOG_VERBOSE("Calling IRQ %s for %s\n", Signature, Context_GetModuleName( Context ));
-            function();
-        }
-        result = 0;
-    }
-    return result;
 }
 
 /**
@@ -734,7 +217,7 @@ int Dmod_Irq( Dmod_Context_t* Context, const char* Signature )
  */
 uint64_t Dmod_GetStackSize( Dmod_Context_t* Context )
 {
-    if( !Context_IsValid( Context ) )
+    if( !Dmod_Context_IsValid( Context ) )
     {
         DMOD_LOG_ERROR("Cannot get stack size - invalid context\n");
         return 0;
@@ -752,7 +235,7 @@ uint64_t Dmod_GetStackSize( Dmod_Context_t* Context )
  */
 Dmod_ModuleType_t Dmod_GetModuleType( Dmod_Context_t* Context )
 {
-    if( !Context_IsValid( Context ) )
+    if( !Dmod_Context_IsValid( Context ) )
     {
         DMOD_LOG_ERROR("Cannot get module type - invalid context\n");
         return Dmod_ModuleType_Unknown;
@@ -797,14 +280,14 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
         return true;
     }
 
-    if(!LoadRequiredModules(Context))
+    if(!Dmod_RMod_LoadRequiredModules(Context))
     {
         DMOD_LOG_ERROR("Cannot run module - cannot load required modules\n");
         Dmod_Mutex_Unlock(Context->Mutex);
         return -ENOEXEC;
     }
 
-    if(!EnableRequiredModules(Context))
+    if(!Dmod_RMod_EnableRequiredModules(Context))
     {
         if(Context->Header->ManualLoad)
         {
@@ -818,7 +301,7 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
         }
     }
 
-    if( !AreRequiredModulesEnabled( Context ) )
+    if( !Dmod_RMod_AreRequiredModulesEnabled( Context ) )
     {
         if( !Force )
         {
@@ -828,7 +311,7 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
         }
         else 
         {
-            DMOD_LOG_WARN("Not all required modules are enabled for %s\n", Context_GetModuleName( Context ));
+            DMOD_LOG_WARN("Not all required modules are enabled for %s\n", Dmod_Context_GetModuleName( Context ));
         }
     }
 
@@ -866,7 +349,7 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
         return false;
     }
 
-    DMOD_LOG_INFO("Module enabled: %s\n", Context_GetModuleName( Context ));
+    DMOD_LOG_INFO("Module enabled: %s\n", Dmod_Context_GetModuleName( Context ));
     Context->Enabled = true;
 
     Dmod_Event_ModuleEnabled( Context );
@@ -900,7 +383,7 @@ bool Dmod_Disable( Dmod_Context_t* Context, bool Force )
 
     if( Context->UsageCounter > 0 && !Force )
     {
-        DMOD_LOG_ERROR("Cannot disable module %s - it is used\n", Context_GetModuleName( Context ));
+        DMOD_LOG_ERROR("Cannot disable module %s - it is used\n", Dmod_Context_GetModuleName( Context ));
         Dmod_Mutex_Unlock(Context->Mutex);
         return false;
     }
@@ -911,18 +394,18 @@ bool Dmod_Disable( Dmod_Context_t* Context, bool Force )
         Dmod_Mutex_Unlock(Context->Mutex);
         return true;
     }
-    Dmod_Context_t* dependentModule = FindDependentModule( Context, true );
+    Dmod_Context_t* dependentModule = Dmod_RMod_FindDependentModule( Context, true );
     if( dependentModule != NULL )
     {
         if( !Force )
         {
-            DMOD_LOG_ERROR("Cannot disable module '%s' - required by module '%s'\n", Context_GetModuleName(Context), Context_GetModuleName( dependentModule ));
+            DMOD_LOG_ERROR("Cannot disable module '%s' - required by module '%s'\n", Dmod_Context_GetModuleName(Context), Dmod_Context_GetModuleName( dependentModule ));
             Dmod_Mutex_Unlock(Context->Mutex);
             return false;
         }
         else 
         {
-            DMOD_LOG_WARN("'%s' is required by: %s\n", Context_GetModuleName( Context ), Context_GetModuleName( dependentModule ));
+            DMOD_LOG_WARN("'%s' is required by: %s\n", Dmod_Context_GetModuleName( Context ), Dmod_Context_GetModuleName( dependentModule ));
         }
     }
 
@@ -941,7 +424,7 @@ bool Dmod_Disable( Dmod_Context_t* Context, bool Force )
         return false;
     }
 
-    DMOD_LOG_INFO("Module disabled: %s\n", Context_GetModuleName( Context ));
+    DMOD_LOG_INFO("Module disabled: %s\n", Dmod_Context_GetModuleName( Context ));
     Dmod_Event_ModuleDisabled( Context );
 
     Dmod_Mutex_Unlock(Context->Mutex);
@@ -957,7 +440,7 @@ bool Dmod_Disable( Dmod_Context_t* Context, bool Force )
  */
 bool Dmod_IsEnabled( Dmod_Context_t* Context )
 {
-    return Context_IsValid(Context) && Context->Enabled;
+    return Dmod_Context_IsValid(Context) && Context->Enabled;
 }
 
 /**
@@ -971,7 +454,7 @@ bool Dmod_IsEnabled( Dmod_Context_t* Context )
  */
 int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
 {
-    if( !Context_IsValid( Context ) )
+    if( !Dmod_Context_IsValid( Context ) )
     {
         DMOD_LOG_ERROR("Cannot run module - invalid context\n");
         return -EINVAL;
@@ -991,19 +474,19 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
 
     if( Dmod_IsRunning( Context ) )
     {
-        DMOD_LOG_ERROR("Module %s already running\n", Context_GetModuleName( Context ));
+        DMOD_LOG_ERROR("Module %s already running\n", Dmod_Context_GetModuleName( Context ));
         Dmod_Mutex_Unlock(Context->Mutex);
         return -EEXIST;
     }
 
-    if(!LoadRequiredModules(Context))
+    if(!Dmod_RMod_LoadRequiredModules(Context))
     {
         DMOD_LOG_ERROR("Cannot run module - cannot load required modules\n");
         Dmod_Mutex_Unlock(Context->Mutex);
         return -ENOEXEC;
     }
 
-    if(!EnableRequiredModules(Context))
+    if(!Dmod_RMod_EnableRequiredModules(Context))
     {
         if(Context->Header->ManualLoad)
         {
@@ -1062,7 +545,7 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
  */
 bool Dmod_IsRunning( Dmod_Context_t* Context )
 {
-    return Context_IsValid(Context) && Context->Running;
+    return Dmod_Context_IsValid(Context) && Context->Running;
 }
 
 /**
@@ -1074,7 +557,7 @@ bool Dmod_IsRunning( Dmod_Context_t* Context )
  */
 Dmod_License_t* Dmod_GetLicense( Dmod_Context_t* Context )
 {
-    if( !Context_IsValid( Context ) )
+    if( !Dmod_Context_IsValid( Context ) )
     {
         DMOD_LOG_ERROR("Cannot get license - invalid context\n");
         return NULL;
@@ -1132,12 +615,12 @@ bool Dmod_ReadModuleHeader(const char* FilePath, Dmod_ModuleHeader_t* Header)
  */
 void Dmod_BeginUsage( const char* ModuleName )
 {
-    if(IsSystemModule(ModuleName))
+    if(Dmod_Mgr_IsSystemModule(ModuleName))
     {
         return;
     }
 
-    Dmod_Context_t* context = GetContext( ModuleName );
+    Dmod_Context_t* context = Dmod_Context_Get( ModuleName );
     if( context == NULL )
     {
         DMOD_LOG_ERROR("Cannot begin usage - module not found: %s\n", ModuleName);
@@ -1161,12 +644,12 @@ void Dmod_BeginUsage( const char* ModuleName )
  */
 void Dmod_EndUsage( const char* ModuleName )
 {
-    if(IsSystemModule(ModuleName))
+    if(Dmod_Mgr_IsSystemModule(ModuleName))
     {
         return;
     }
 
-    Dmod_Context_t* context = GetContext( ModuleName );
+    Dmod_Context_t* context = Dmod_Context_Get( ModuleName );
     if( context == NULL )
     {
         DMOD_LOG_ERROR("Cannot end usage - module not found: %s\n", ModuleName);
@@ -1200,12 +683,12 @@ void Dmod_EndUsage( const char* ModuleName )
  */
 bool Dmod_IsModuleUsed( const char* ModuleName )
 {
-    if(IsSystemModule(ModuleName))
+    if(Dmod_Mgr_IsSystemModule(ModuleName))
     {
         return true;
     }
 
-    Dmod_Context_t* context = GetContext( ModuleName );
+    Dmod_Context_t* context = Dmod_Context_Get( ModuleName );
     if( context == NULL )
     {
         DMOD_LOG_ERROR("Cannot check if module is used - module not found: %s\n", ModuleName);
@@ -1233,7 +716,7 @@ bool Dmod_IsModuleUsed( const char* ModuleName )
  */
 bool Dmod_IsModuleLoaded(const char* ModuleName)
 {
-    return IsLoaded(ModuleName);
+    return Dmod_Mgr_IsLoaded(ModuleName);
 }
 
 /**
@@ -1267,7 +750,7 @@ bool Dmod_IsModuleFileLoaded(const char* FilePath)
         return false;
     }
 
-    return IsLoaded( header.Name );
+    return Dmod_Mgr_IsLoaded( header.Name );
 }
 
 /**
@@ -1279,7 +762,7 @@ bool Dmod_IsModuleFileLoaded(const char* FilePath)
  */
 bool Dmod_IsModuleEnabled(const char* ModuleName)
 {
-    return IsEnabled(ModuleName);
+    return Dmod_Mgr_IsEnabled(ModuleName);
 }
 
 /**
@@ -1297,13 +780,13 @@ bool Dmod_IsModuleRequired(const char* ModuleName, const char* RequiredModuleNam
         return false;
     }
 
-    Dmod_Context_t* context = GetContext( ModuleName );
+    Dmod_Context_t* context = Dmod_Context_Get( ModuleName );
     if( context == NULL )
     {
         return false;
     }
 
-    return IsModuleRequired( context, RequiredModuleName );
+    return Dmod_RMod_IsModuleRequired( context, RequiredModuleName );
 }
 
 /**
@@ -1315,12 +798,12 @@ bool Dmod_IsModuleRequired(const char* ModuleName, const char* RequiredModuleNam
  */
 const char* Dmod_GetModuleVersion(const char* ModuleName)
 {
-    if( IsSystemModule( ModuleName ) )
+    if( Dmod_Mgr_IsSystemModule( ModuleName ) )
     {
         return DMOD_SYSTEM_VERSION_STRING;
     }
 
-    Dmod_Context_t* context = GetContext( ModuleName );
+    Dmod_Context_t* context = Dmod_Context_Get( ModuleName );
     if( context == NULL )
     {
         return 0;
@@ -1369,7 +852,7 @@ bool Dmod_UnloadModule(const char* ModuleName, bool Force)
         return false;
     }
 
-    Dmod_Context_t* context = GetContext( ModuleName );
+    Dmod_Context_t* context = Dmod_Context_Get( ModuleName );
     if( context == NULL )
     {
         DMOD_LOG_ERROR("Cannot unload module - module not found: %s\n", ModuleName);
@@ -1396,7 +879,7 @@ bool Dmod_EnableModule(const char* ModuleName, bool Force, const Dmod_Config_t* 
         return false;
     }
 
-    Dmod_Context_t* context = GetContext( ModuleName );
+    Dmod_Context_t* context = Dmod_Context_Get( ModuleName );
     if( context == NULL )
     {
         DMOD_LOG_ERROR("Cannot enable module - module not found: %s\n", ModuleName);
@@ -1422,7 +905,7 @@ bool Dmod_DisableModule(const char* ModuleName, bool Force)
         return false;
     }
 
-    Dmod_Context_t* context = GetContext( ModuleName );
+    Dmod_Context_t* context = Dmod_Context_Get( ModuleName );
     if( context == NULL )
     {
         DMOD_LOG_ERROR("Cannot disable module - module not found: %s\n", ModuleName);
@@ -1449,7 +932,7 @@ int Dmod_RunModule(const char* ModuleName, int argc, char *argv[])
         return -EINVAL;
     }
 
-    Dmod_Context_t* context = GetContext( ModuleName );
+    Dmod_Context_t* context = Dmod_Context_Get( ModuleName );
     if( context == NULL )
     {
         DMOD_LOG_ERROR("Cannot run module - module not found: %s\n", ModuleName);
@@ -1462,138 +945,6 @@ int Dmod_RunModule(const char* ModuleName, int argc, char *argv[])
 //==============================================================================
 //                              LOCAL FUNCTIONS IMPLEMENTATIONS
 //==============================================================================
-
-/**
- * @brief Create new context
- * 
- * @param FileSize      Size of the file
- * 
- * @return Pointer to new context
- * 
- * @note This function creates a new context and initializes it
- */
-static Dmod_Context_t*  Context_New( void* Data, size_t FileSize )
-{
-    Dmod_Context_t* Context = Dmod_Malloc( sizeof( Dmod_Context_t ) );
-    if( Context == NULL )
-    {
-        DMOD_LOG_ERROR("Cannot create new context - cannot allocate memory\n");
-        return NULL;
-    }
-
-    Context->Signature  = DMOD_CONTEXT_SIGNATURE;
-    Context->Header     = NULL;
-    Context->Footer     = NULL;
-    Context->Data       = Data != NULL ? Data : Dmod_AlignedMalloc( FileSize, DMOD_STACK_ALIGNMENT );
-    Context->Size       = FileSize;
-    Context->Mutex      = Dmod_Mutex_New(true);
-    Context->Enabled    = false;
-    Context->Running    = false;
-    Context->UsageCounter = 0;
-
-    if( Context->Data == NULL )
-    {
-        DMOD_LOG_ERROR("Cannot create new context - cannot allocate memory for file data. The required size: %d\n", FileSize);
-        Context_Delete( Context );
-        return NULL;
-    }
-
-    if( Context->Mutex == NULL )
-    {
-        DMOD_LOG_WARN("Could not create mutex\n");
-    }
-
-    return Context;
-}
-
-/**
- * @brief Check if context is valid
- * 
- * @param Context Context to check
- * 
- * @return True if context is valid, false otherwise
- */
-static bool Context_IsValid( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    if( Context->Signature != DMOD_CONTEXT_SIGNATURE )
-    {
-        return false;
-    }
-
-    return true;
-}
-
-/**
- * @brief Delete context
- * 
- * @param Context Context to delete
- * 
- * @note This function deletes the context and frees the memory
- */
-static void Context_Delete( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return;
-    }
-
-    Dmod_Mutex_Delete( Context->Mutex );
-    if( Context->Data != NULL )
-    {
-        Dmod_Free( Context->Data );
-    }
-    Dmod_Free( Context );
-}
-
-/**
- * @brief Get module name
- * 
- * @param Context Context to get module name from
- * 
- * @return Module name
- */
-static const char* Context_GetModuleName( Dmod_Context_t* Context )
-{
-    if( Context == NULL || !Context_IsValid( Context ) )
-    {
-        return "Invalid";
-    }
-
-    if( Context->Header == NULL )
-    {
-        return "Unknown";
-    }
-
-    return Context->Header->Name;
-}
-
-/**
- * @brief Load module
- * 
- * @param Context Context to load
- * 
- * @return True if module was loaded successfully, false otherwise
- */
-static bool Load( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    return LoadHeader( Context ) 
-        && LoadFooter( Context )
-        && LoadOutput( Context )
-        && LoadInput( Context )
-        && LoadGot( Context )
-        && LoadBss( Context )
-        && ReadRequiredModules( Context );
-}
 
 /**
  * @brief Read file
@@ -1648,763 +999,6 @@ static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* Fil
 }
 
 /**
- * @brief Load header
- * 
- * @param Context Context to load header to
- * 
- * @return True if header was loaded successfully, false otherwise
- */
-static bool LoadHeader( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    // Check signature
-    Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)Context->Data;
-    if( header->Signature != DMOD_HEADER_SIGNATURE )
-    {
-        DMOD_LOG_ERROR("Cannot load header - invalid signature: 0x%08x\n", header->Signature);
-        return false;
-    }
-    Dmod_Event_ModuleLoadingInProgress( header->Name, 80 );
-
-    // Check version
-    if( !DMOD_COMPATIBLE_VERSION(header->DmodVersion) )
-    {
-        DMOD_LOG_ERROR("Cannot load header - incompatible version: 0x%08X != 0x%08X "DMOD_VERSION_STRING"\n", header->Version, (uint32_t)DMOD_VERSION );
-        return false;
-    }
-
-    // Check architecture
-    if( strcmp( header->Arch, DMOD_ARCH ) != 0 )
-    {
-        DMOD_LOG_ERROR("Cannot load header - invalid architecture: %s != %s\n", header->Arch, DMOD_ARCH);
-        return false;
-    }
-
-    // Check target cpu 
-    if( header->CpuName[0] != 0 && strcmp( header->CpuName, DMOD_CPU_NAME ) != 0 )
-    {
-        DMOD_LOG_ERROR("Cannot load header - invalid target cpu: %s != %s\n", header->CpuName, DMOD_CPU_NAME);
-        return false;
-    }
-
-    // Check name
-    if( strlen( header->Name ) > DMOD_MAX_MODULE_NAME_LENGTH )
-    {
-        DMOD_LOG_ERROR("Cannot load header - The given name is too long: %s\n", header->Name);
-        return false;
-    }
-
-    if(IsLoaded(header->Name))
-    {
-        DMOD_LOG_ERROR("Cannot load header - module already loaded: %s\n", header->Name);
-        return false;
-    }
-
-    switch( header->ModuleType )
-    {
-        case Dmod_ModuleType_Library:
-            if( header->Init == NULL || header->Deinit == NULL )
-            {
-                DMOD_LOG_ERROR("Cannot load header - missing Init or Deinit function\n");
-                return false;
-            }
-            break;
-        case Dmod_ModuleType_Application:
-            if( header->Main == NULL )
-            {
-                DMOD_LOG_ERROR("Cannot load header - missing Main function\n");
-                return false;
-            }
-            break;
-        default:
-            DMOD_LOG_ERROR("Cannot load header - invalid module type: %d\n", header->ModuleType);
-            return false;
-    }
-
-    if(InitPointer(Context, (void**)&header->Footer, "Footer") == false)
-    {
-        DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize footer pointer\n", header->Name);
-        return false;
-    }
-
-    if( !InitPointer(Context, (void**)&header->License, "License") )
-    {
-        DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize license pointer\n", header->Name);
-        return false;
-    }
-    if(header->License != NULL && !InitPointer(Context, (void**)&header->License->Text, "License Text"))
-    {
-        DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize license text pointer\n", header->Name);
-        return false;
-    }
-
-    Context->Header = header;
-
-    bool result = InitPointer( Context, (void**)&header->Preinit,  "Preinit"    ) 
-               && InitPointer( Context, (void**)&header->Init,     "Init"       ) 
-               && InitPointer( Context, (void**)&header->Main,     "Main"       ) 
-               && InitPointer( Context, (void**)&header->Deinit,   "Deinit"     )
-               && InitPointer( Context, (void**)&header->Signal,   "Signal"     );
-               ;
-    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 85 );
-    return result;
-}
-
-/**
- * @brief Load footer
- * 
- * @param Context Context to load footer to
- * 
- * @return True if footer was loaded successfully, false otherwise
- */
-static bool LoadFooter( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    Dmod_ModuleFooter_t* footer = Context->Header->Footer;
-    
-    if( footer->Header.SectionStart != 0 || footer->Header.SectionSize != sizeof( Dmod_ModuleHeader_t ) )
-    {
-        DMOD_LOG_ERROR("Cannot load footer - invalid header section\n");
-        return false;
-    }
-
-    Context->Footer = footer;
-    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 88 );
-
-    return true;
-}
-
-/**
- * @brief Load output
- * 
- * @param Context Context to load output to
- * 
- * @return True if output was loaded successfully, false otherwise
- */
-static bool LoadOutput( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    Dmod_ModuleFooter_t* footer = Context->Footer;
-    Dmod_ModuleSection_t* output = &footer->Outputs;
-
-    if( output->SectionStart == 0 || output->SectionSize == 0 )
-    {
-        DMOD_LOG_WARN("Cannot load output - missing output section\n");
-        return true;
-    }
-
-    if( output->SectionStart + output->SectionSize > Context->Size )
-    {
-        DMOD_LOG_ERROR("Cannot load output - output section out of bounds\n");
-        return false;
-    }
-
-    Dmod_OutputsSection_t* outputSection = Context->Data + output->SectionStart;
-    size_t numberOfEntries = output->SectionSize / sizeof( outputSection->Entries[0] );
-    if( numberOfEntries == 0 )
-    {
-        DMOD_LOG_ERROR("Cannot load output - Invalid output's sections size\n");
-        return false;
-    }
-
-    for(size_t i = 0; i < numberOfEntries; i++)
-    {
-        if( !InitPointer( Context, &outputSection->Entries[i], "Output Entry" ) )
-        {
-            DMOD_LOG_ERROR("Cannot load output - cannot initialize output entry at index %d\n", i);
-            return false;
-        }
-        else if( outputSection->Entries[i] == NULL )
-        {
-            DMOD_LOG_WARN("Empty output entry at index: %d\n", i);
-        }
-        else
-        {
-            const char* entrySignature = outputSection->Entries[i];
-            if( strncmp( entrySignature, DMOD_SIGNATURE_PREFIX, sizeof( DMOD_SIGNATURE_PREFIX ) - 1 ) != 0 )
-            {
-                DMOD_LOG_ERROR("Cannot load output - Invalid output entry signature\n");
-                return false;
-            }
-        }
-    }
-
-    Context->Outputs.OutputSection      = outputSection;
-    Context->Outputs.SectionSize        = output->SectionSize;
-    Context->Outputs.ApiType            = Dmod_ApiType_Output;
-
-    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 90 );
-
-    return true;
-}
-
-/**
- * @brief Load input
- * 
- * @param Context Context to load input to
- * 
- * @return True if input was loaded successfully, false otherwise
- */
-static bool LoadInput( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    Dmod_ModuleFooter_t* footer = Context->Footer;
-    Dmod_ModuleSection_t* input = &footer->Inputs;
-
-    if( input->SectionStart == 0 || input->SectionSize == 0 )
-    {
-        DMOD_LOG_INFO("No inputs to load\n");
-        if( Context->Header->Init == NULL && Context->Header->Main == NULL && Context->Header->Deinit == NULL )
-        {
-            DMOD_LOG_ERROR("No inputs to load and no functions to call\n");
-            return false;
-        }
-        else 
-        {
-            return true;
-        }
-    }
-
-    if( input->SectionStart + input->SectionSize > Context->Size )
-    {
-        DMOD_LOG_ERROR("Cannot load input - input section out of bounds\n");
-        return false;
-    }
-
-    Dmod_InputsSection_t* inputSection = Context->Data + input->SectionStart;
-    size_t numberOfEntries = input->SectionSize / sizeof( inputSection->Entries[0] );
-    if( numberOfEntries == 0 )
-    {
-        DMOD_LOG_ERROR("Cannot load input - Invalid input's sections size\n");
-        return false;
-    }
-
-    for(size_t i = 0; i < numberOfEntries; i++)
-    {
-        if( inputSection->Entries[i].Function == NULL )
-        {
-            DMOD_LOG_WARN("Empty input entry at index: %d\n", i);
-            continue;
-        }
-        else 
-        {
-            if( !InitPointer( Context, (void**)&inputSection->Entries[i].Signature, "Input Signature" ) 
-             || !InitPointer( Context, (void**)&inputSection->Entries[i].Function , "Input Function"  ) 
-                )
-            {
-                DMOD_LOG_ERROR("Cannot load input - cannot initialize input entry at index %d\n", i);
-                return false;
-            }
-            else if(strncmp( inputSection->Entries[i].Signature, DMOD_SIGNATURE_PREFIX, sizeof( DMOD_SIGNATURE_PREFIX ) - 1 ) != 0 )
-            {
-                DMOD_LOG_ERROR("Cannot load input - Invalid input entry signature: %s\n", inputSection->Entries[i].Signature);
-                return false;
-            }
-        }
-    }
-
-    Context->Inputs.InputSection    = inputSection;
-    Context->Inputs.SectionSize     = input->SectionSize;
-    Context->Inputs.ApiType         = Dmod_ApiType_Input;
-
-    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 90 );
-
-    return true;
-}
-
-/**
- * @brief Load got section
- * 
- * @param Context Context to load got to
- * 
- * @return True if got was loaded successfully, false otherwise
- */
-static bool LoadGot( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    Dmod_ModuleFooter_t* footer = Context->Footer;
-    Dmod_ModuleSection_t* got = &footer->Got;
-
-    if( got->SectionStart == 0 || got->SectionSize == 0 )
-    {
-        DMOD_LOG_INFO("No got to load\n");
-        return true;
-    }
-
-    if( got->SectionStart + got->SectionSize > Context->Size )
-    {
-        DMOD_LOG_ERROR("Cannot load got - got section out of bounds\n");
-        return false;
-    }
-
-    Dmod_GotSection_t* gotSection = Context->Data + got->SectionStart;
-    size_t numberOfEntries = got->SectionSize / sizeof( gotSection->Entries[0] );
-
-    for(size_t i = 0; i < numberOfEntries; i++)
-    {
-        gotSection->Entries[i] += (size_t)Context->Data;
-    }
-
-    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 95 );
-
-    return true;
-}
-
-/**
- * @brief Load bss section
- * 
- * @param Context Context to load bss to
- * 
- * @return True if bss was loaded successfully, false otherwise
- */
-static bool LoadBss( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    Dmod_ModuleFooter_t* footer = Context->Footer;
-    Dmod_ModuleSection_t* bss = &footer->Bss;
-
-    if( bss->SectionStart == 0 || bss->SectionSize == 0 )
-    {
-        DMOD_LOG_INFO("No bss to load\n");
-        return true;
-    }
-
-    if( bss->SectionStart + bss->SectionSize > Context->Size )
-    {
-        DMOD_LOG_ERROR("Cannot load bss - bss section out of bounds\n");
-        return false;
-    }
-
-    memset( Context->Data + bss->SectionStart, 0, bss->SectionSize );
-
-    Dmod_Event_ModuleLoadingInProgress( Context_GetModuleName(Context), 97 );
-
-    return true;
-}
-
-/**
- * @brief Initialize pointer
- * 
- * @param Context       Context to initialize pointer in
- * @param Pointer       Pointer to initialize
- * @param PointerName   Name of the pointer
- * 
- * @return Initialized pointer
- */
-static bool InitPointer( Dmod_Context_t* Context, void** PointerRef, const char* PointerName )
-{
-    if(PointerRef == NULL || Context == NULL)
-    {
-        DMOD_LOG_ERROR("Cannot initialize pointer %s - unexpected NULL\n", PointerName);
-        return false;
-    }
-    void* pointer = *PointerRef;
-    if( pointer == NULL )
-    {
-        return true;
-    }
-
-    size_t offset = (size_t)pointer;
-    if( offset == 0 || offset > Context->Size )
-    {
-        DMOD_LOG_ERROR("Cannot initialize pointer %s - invalid offset: 0x%08X\n", PointerName, offset);
-        return NULL;
-    }
-
-    *PointerRef = Context->Data + offset;
-    return true;
-}
-
-/**
- * @brief Add context
- * 
- * @param Context Context to add
- * 
- * @return True if context was added successfully, false otherwise
- */
-static bool AddContext( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Dmod_Contexts[i] == NULL )
-        {
-            Dmod_Contexts[i] = Context;
-            return true;
-        }
-    }
-
-    DMOD_LOG_ERROR("Cannot add context '%s' - no space left\n", Context_GetModuleName( Context ));
-    return false;
-}
-
-/**
- * @brief Remove context
- * 
- * @param Context Context to remove
- * 
- * @return True if context was removed successfully, false otherwise
- */
-static bool RemoveContext( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Dmod_Contexts[i] == Context )
-        {
-            Dmod_Contexts[i] = NULL;
-            return true;
-        }
-    }
-
-    DMOD_LOG_WARN("Cannot remove context '%s' - not found\n", Context_GetModuleName( Context ));
-    return true;
-}
-
-/**
- * @brief Get context
- * 
- * @param ModuleName Name of the module to find
- * 
- * @return Pointer to the context
- */
-static Dmod_Context_t* GetContext( const char* ModuleName )
-{
-    if( ModuleName == NULL )
-    {
-        return NULL;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Dmod_Contexts[i] == NULL )
-        {
-            continue;
-        }
-
-        if( strcmp( Dmod_Contexts[i]->Header->Name, ModuleName ) == 0 )
-        {
-            return Dmod_Contexts[i];
-        }
-    }
-
-    return NULL;
-}
-
-/**
- * @brief Find context
- * 
- * @param ModuleName Name of the module to find
- * 
- * @return Pointer to the context
- */
-static Dmod_RequiredModule_t*   FindRequiredModule( Dmod_Context_t* Context, const char* ModuleName )
-{
-    if( Context == NULL || ModuleName == NULL )
-    {
-        return NULL;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Context->RequiredModules[i].Name[0] == 0 )
-        {
-            continue;
-        }
-
-        if( strcmp( Context->RequiredModules[i].Name, ModuleName ) == 0 )
-        {
-            return &Context->RequiredModules[i];
-        }
-    }
-
-    return NULL;
-}
-
-/**
- * @brief Find empty required module
- * 
- * @param Context Context to find empty required module in
- * 
- * @return Pointer to the empty required module
- */
-static Dmod_RequiredModule_t*   FindEmptyRequiredModule( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return NULL;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Context->RequiredModules[i].Name[0] == 0 )
-        {
-            return &Context->RequiredModules[i];
-        }
-    }
-
-    return NULL;
-}
-
-/**
- * @brief checks if the given module is required by the current module
- * 
- * @param Context Context to check
- * @param ModuleName Name of the module to check
- * 
- * @return True if module is required, false otherwise
- */
-static bool IsModuleRequired( Dmod_Context_t* Context, const char* ModuleName )
-{
-    return FindRequiredModule( Context, ModuleName ) != NULL;
-}
-
-/**
- * @brief Read required modules
- * 
- * @param Context Context to read required modules to
- * 
- * @return True if required modules were read successfully, false otherwise
- */
-static bool ReadRequiredModules( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    // Clear required modules
-    memset( Context->RequiredModules, 0, sizeof(Context->RequiredModules) );
-
-    size_t numberOfOuptuts = Dmod_Api_GetNumberOfEntries( &Context->Outputs );
-    for(size_t outputIndex = 0; outputIndex < numberOfOuptuts; outputIndex++)
-    {
-        const char* apiSignature = Context->Outputs.OutputSection->Entries[outputIndex];
-        if(apiSignature == NULL)
-        {
-            continue;
-        }
-        if(!AddRequiredModule( Context, apiSignature ))
-        {
-            DMOD_LOG_ERROR("Cannot read required modules for %s - cannot add required module\n", Context_GetModuleName( Context ));
-            return false;
-        }
-    }
-
-    return true;
-}
-
-/**
- * @brief Add required module
- * 
- * @param Context Context to add required module to
- * @param ApiSignature Signature of the API
- * 
- * @return True if required module was added successfully, false otherwise
- */
-static bool AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignature )
-{
-    if( Context == NULL || ApiSignature == NULL )
-    {
-        return false;
-    }
-
-    char moduleName[DMOD_MAX_MODULE_NAME_LENGTH] = {0};
-    if( !Dmod_ApiSignature_ReadModuleName( ApiSignature, moduleName, sizeof(moduleName) ) )
-    {
-        DMOD_LOG_ERROR("Cannot add required module - cannot read module name\n");
-        return false;
-    }
-
-    if(IsModuleRequired( Context, moduleName ))
-    {
-        return true;
-    }
-
-    Dmod_RequiredModule_t* requiredModule = FindEmptyRequiredModule( Context );
-    if( requiredModule == NULL )
-    {
-        DMOD_LOG_ERROR("Cannot add required module - no space left\n");
-        return false;
-    }
-
-    strncpy( requiredModule->Name, moduleName, sizeof(requiredModule->Name) );
-    if(Dmod_ApiSignature_ReadVersion( ApiSignature, requiredModule->Version, sizeof(requiredModule->Version) ) == false)
-    {
-        DMOD_LOG_ERROR("Cannot add required module - cannot read version\n");
-        return false;
-    }
-
-    DMOD_LOG_VERBOSE("Required module '%s' added to '%s'\n", requiredModule->Name, Context_GetModuleName( Context ));
-
-    return true;
-}
-
-/**
- * @brief Checks if the given module is loaded
- * 
- * @param ModuleName Name of the module to check
- * 
- * @return True if module is loaded, false otherwise
- */
-static bool IsLoaded( const char* ModuleName )
-{
-    if(IsSystemModule( ModuleName ))
-    {
-        return true; 
-    }
-
-    return GetContext( ModuleName ) != NULL;
-}
-
-/**
- * @brief Checks if the given module is enabled
- * 
- * @param ModuleName Name of the module to check
- * 
- * @return True if module is enabled, false otherwise
- */
-static bool IsEnabled( const char* ModuleName )
-{
-    if(IsSystemModule( ModuleName ))
-    {
-        return true; 
-    }
-    Dmod_Context_t* context = GetContext( ModuleName );
-    return context != NULL && Dmod_IsEnabled( context );
-}
-
-/**
- * @brief Are required modules enabled
- * 
- * @param Context Context to check
- * 
- * @return True if required modules are enabled, false otherwise
- */
-static bool AreRequiredModulesEnabled( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        DMOD_LOG_ERROR("Cannot check required modules - invalid context\n");
-        return false;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Context->RequiredModules[i].Name[0] == 0 )
-        {
-            continue;
-        }
-
-        if( !IsEnabled( Context->RequiredModules[i].Name ) )
-        {
-            DMOD_LOG_VERBOSE("Required module '%s' is not enabled\n", Context->RequiredModules[i].Name);
-            return false;
-        }
-    }
-
-    return true;
-}
-
-/**
- * @brief Checks if the given module is required by another module
- * 
- * @param Context Context to check
- * @param OnlyEnabled If true, only enabled modules will be checked
- * 
- * @return Pointer to the module that requires the given module
- */
-static Dmod_Context_t* FindDependentModule( Dmod_Context_t* Context, bool OnlyEnabled )
-{
-    if( Context == NULL )
-    {
-        return NULL;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-    {
-        if( Dmod_Contexts[i] == NULL )
-        {
-            continue;
-        }
-
-        if( Dmod_Contexts[i] == Context )
-        {
-            continue;
-        }
-
-        if( OnlyEnabled && !Dmod_IsEnabled( Dmod_Contexts[i] ) )
-        {
-            continue;
-        }
-
-        if( IsModuleRequired( Dmod_Contexts[i], Context_GetModuleName( Context ) ) )
-        {
-            return Dmod_Contexts[i];
-        }
-    }
-
-    return NULL;
-}
-
-/**
- * @brief checks if the given module is a system module
- * 
- * @param ModuleName Name of the module to check
- * 
- * @return True if module is a system module, false otherwise
- */
-static bool IsSystemModule( const char* ModuleName )
-{
-    if(ModuleName == NULL || ModuleName[0] == 0)
-    {
-        return true;
-    }
-    Dmod_BuiltinInputApi.SectionSize = (size_t)((void*)&__dmod_inputs_end - (void*)&__dmod_inputs_start);
-    size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Dmod_BuiltinInputApi );
-    for(size_t i = 0; i < numberOfEntries; i++)
-    {
-        if( Dmod_ApiSignature_IsModule(Dmod_BuiltinInputApi.InputSection->Entries[i].Signature, ModuleName) )
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-/**
  * @brief checks if all output API is connected
  * 
  * @param Context Context to check
@@ -2425,79 +1019,6 @@ static bool IsAllApiConnected( Dmod_Context_t* Context )
         if(Dmod_ApiSignature_IsValid(apiSignature))
         {
             DMOD_LOG_VERBOSE("API '%s' is not connected\n", apiSignature);
-            return false;
-        }
-    }
-
-    return true;
-}
-
-/**
- * @brief Load required modules
- * 
- * @param Context Context to load required modules to
- * 
- * @return True if required modules were loaded successfully, false otherwise
- */
-static bool LoadRequiredModules( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_REQUIRED_MODULES; i++)
-    {
-        if( Context->RequiredModules[i].Name[0] == 0 )
-        {
-            continue;
-        }
-
-        if(IsSystemModule(Context->RequiredModules[i].Name))
-        {
-            continue;
-        }
-
-        if( !Dmod_LoadModuleByName( Context->RequiredModules[i].Name ) )
-        {
-            DMOD_LOG_ERROR("Cannot load required module '%s'\n", Context->RequiredModules[i].Name);
-            return false;
-        }
-    }
-
-    DMOD_LOG_VERBOSE("All required modules loaded for '%s'\n", Context_GetModuleName( Context ));
-    return true;
-}
-
-/**
- * @brief Enable required modules
- * 
- * @param Context Context to enable required modules to
- * 
- * @return True if required modules were enabled successfully, false otherwise
- */
-static bool EnableRequiredModules( Dmod_Context_t* Context )
-{
-    if( Context == NULL )
-    {
-        return false;
-    }
-
-    for(size_t i = 0; i < DMOD_MAX_REQUIRED_MODULES; i++)
-    {
-        if( Context->RequiredModules[i].Name[0] == 0 )
-        {
-            continue;
-        }
-
-        if(IsSystemModule(Context->RequiredModules[i].Name))
-        {
-            continue;
-        }
-
-        if( !Dmod_EnableModule( Context->RequiredModules[i].Name, false, NULL ) )
-        {
-            DMOD_LOG_ERROR("Cannot enable required module '%s'\n", Context->RequiredModules[i].Name);
             return false;
         }
     }

@@ -1,0 +1,37 @@
+definitions:
+  caches:
+    build: build
+
+image: chocotechnologies/dmod:1.0.1
+
+pipelines:
+  default:
+    - step:
+        name: 'CMAKE: Build for x86_64'
+        runs-on:
+          - self.hosted
+          - linux
+        script:
+          - rm -rf build
+          - mkdir -p build 
+          - cd build
+          - cmake .. -DDMOD_MODE=DMOD_MODULE -DDMOD_TOOLS_NAME=arch/x86_64
+          - cmake --build .
+          - cmake .. -DDMOD_MODE=DMOD_SYSTEM -DDMOD_TOOLS_NAME=arch/x86_64
+          - cmake --build .
+          - ./examples/system/dmod_loader ./dmf/example_app.dmf
+          - cmake --build . --target coverage_check
+    - step:
+        name: 'MAKE: Build for x86_64'
+        runs-on:
+          - self.hosted
+          - linux
+        artifacts:
+          - ./build/examples/system/dmod_loader
+          - ./build/dmf/example_app.dmf
+          - ./build/dmf/dmodex.dmf
+        script:
+          - rm -rf build
+          - make DMOD_MODE=DMOD_SYSTEM
+          - make DMOD_MODE=DMOD_MODULE
+          - ./build/examples/system/dmod_loader build/dmf/example_app.dmf

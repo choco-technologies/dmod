@@ -13,10 +13,10 @@ include $(DMOD_DIR)/paths.mk
 # -----------------------------------------------------------------------------
 #   Module configuration
 # -----------------------------------------------------------------------------
-DMOD_MODULE_NAME=example_lib
+DMOD_MODULE_NAME=dmodex
 DMOD_MODULE_VERSION=0.1
 DMOD_AUTHOR_NAME=Patryk Kubiak
-DMOD_CSOURCES=example_lib.c
+DMOD_CSOURCES=dmodex.c
 DMOD_CXXSOURCES=
 DMOD_INC_DIRS=.
 DMOD_LIBS=

@@ -15,17 +15,18 @@ function( create_library_makefile targetName )
         set(DMOD_SYSTEM OFF)
         set(DMOD_MODULE OFF)
     endif()
-    string(REPLACE "${CMAKE_SOURCE_DIR}" "$(DMOD_DIR)" DMOD_PROJECT_DIR "${DMOD_PROJECT_DIR}")
+    file(RELATIVE_PATH DMOD_PROJECT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" "${DMOD_DIR}")
+    string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" DMOD_PROJECT_DIR "${DMOD_PROJECT_DIR}")
     
     set(DMOD_LIB_NAME ${targetName})
     file(RELATIVE_PATH DMOD_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}")
     set(DMOD_OUTPUT_DIR ${DMOD_OUTPUT_DIR})
     
     set(DMOD_LIB_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR})
-    string(REPLACE "${CMAKE_SOURCE_DIR}" "$(DMOD_DIR)" DMOD_LIB_SRC_PATH "${DMOD_LIB_SRC_PATH}")
+    string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" DMOD_LIB_SRC_PATH "${DMOD_LIB_SRC_PATH}")
     
     set(DMOD_LIBS_DIR ${CMAKE_BINARY_DIR}/libs)
-    string(REPLACE "${CMAKE_BINARY_DIR}" "$(DMOD_BUILD_DIR)" DMOD_LIBS_DIR "${DMOD_LIBS_DIR}")
+    string(REPLACE "${DMOD_BUILD_DIR}" "$(DMOD_BUILD_DIR)" DMOD_LIBS_DIR "${DMOD_LIBS_DIR}")
     
     get_target_property(DMOD_SOURCES ${targetName} SOURCES)
     get_target_property(DMOD_INC_DIRS ${targetName} INCLUDE_DIRECTORIES)
@@ -53,15 +54,16 @@ function( create_library_makefile targetName )
 
     set(DMOD_RELATIVE_HEADER_PATHS "")
     foreach(HEADER_PATH ${DMOD_INC_DIRS})
-        string(REPLACE "${CMAKE_BINARY_DIR}" "$(DMOD_BUILD_DIR)" HEADER_PATH "${HEADER_PATH}")
-        string(REPLACE "${CMAKE_SOURCE_DIR}" "$(DMOD_DIR)" HEADER_PATH "${HEADER_PATH}")
+        string(REPLACE "${DMOD_BUILD_DIR}" "$(DMOD_BUILD_DIR)" HEADER_PATH "${HEADER_PATH}")
+        string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" HEADER_PATH "${HEADER_PATH}")
         message(STATUS "HEADER_PATH: ${HEADER_PATH}")
         list(APPEND DMOD_RELATIVE_HEADER_PATHS "${HEADER_PATH}")
     endforeach()
     string(REPLACE ";" "\\\n\t\t" DMOD_SOURCES "${DMOD_SOURCES}")
     string(REPLACE ";" "\\\n\t\t" DMOD_INC_DIRS "${DMOD_RELATIVE_HEADER_PATHS}")
     string(REPLACE ";" "\\\n\t\t" DMOD_LIBS "${DMOD_LINKED_LIBRARIES}")
-    configure_file(${CMAKE_SOURCE_DIR}/scripts/Makefile-lib.in ${CMAKE_CURRENT_SOURCE_DIR}/Makefile)
+    string(REPLACE "Threads::Threads" "pthread" DMOD_LIBS "${DMOD_LIBS}")
+    configure_file(${DMOD_DIR}/scripts/Makefile-lib.in ${CMAKE_CURRENT_SOURCE_DIR}/Makefile)
 endfunction()
 
 
@@ -116,6 +118,14 @@ function(dmod_create_module moduleName version moduleType)
         PRIVATE 
             ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_defs.h
         )
+
+    foreach(MAL ${DMOD_MAL_IMPLS})
+        target_compile_definitions(${moduleName} 
+            PRIVATE
+                DMOD_MAL_${MAL}
+                )
+    endforeach()
+
     target_compile_definitions(${moduleName} 
         PUBLIC
             DMOD_MODULE_NAME="${DMOD_MODULE_NAME}"
@@ -139,10 +149,12 @@ function(dmod_create_module moduleName version moduleType)
     
     target_link_libraries(${moduleName} dmod ${moduleName}_if)
     
-    target_compile_options(${moduleName} PRIVATE -fPIC -fPIE -ffunction-sections -fdata-sections )
+    set(OPTIMIZATION "-O2")
+
+    target_compile_options(${moduleName} PRIVATE -fPIC -fPIE -ffunction-sections -fdata-sections -fpermissive ${OPTIMIZATION} )
     
-    target_link_options(${moduleName} PRIVATE -L ${DMOD_PROJECT_DIR}/scripts -pie -nostartfiles -nostdlib -Xlinker --discard-all )
-    target_link_options(${moduleName} PRIVATE -T ${DMOD_PROJECT_DIR}/scripts/module.ld  -static)
+    target_link_options(${moduleName} PRIVATE -L ${DMOD_SCRIPTS_DIR} -pie -nostartfiles -nostdlib -Xlinker --discard-all )
+    target_link_options(${moduleName} PRIVATE -T ${DMOD_SCRIPTS_DIR}/module.ld  -static)
     
     set(ELF_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${moduleName}")
     set(BIN_OUTPUT "${DMOD_DMF_DIR}/${moduleName}.dmf")
