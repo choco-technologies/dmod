@@ -210,6 +210,70 @@ dmod_my_module_global_api_declaration( 1.0, void, foo, (int arg1, int arg2))
 
 The second version of the implementation is recommended, as it allows you to maintain compatibility in the future - if the function signature changes, you can support both versions of the function at the same time.
 
+### Module Abstraction Layer (MAL)
+
+The default approach assumes, that every modules defines it's **API**, that can be consumed by other modules. In this approach, if 
+`Module A` requires `Module B`, it needs to have an access to the headers of the `Module B`, include them, call the API functions 
+and the **Dmod** library will load the `Module B` as a dependency of the `Module A`. 
+
+
+<img src="gimp/graphs/default-api.jpg" style="width: 60%;">
+
+However, sometimes we don't want to bind the modules to not force the user to have a dependency to the external repositories
+or to be more flexible and make the module compatible with different implementations of submodules. 
+In this case, we can use the **Module Abstraction Layer (MAL)**, which allows you to define the output interface of the module, 
+without binding it to the specific implementation.
+
+<img src="gimp/graphs/mal-example.jpg" style="width: 60%;">
+
+In other words, we revert a dependency - instead of `Module A` requiring headers of `Module B`, we require the headers 
+of the `Module A` in the `Module B`. This way, when the **Dmod** library loads the `Module A`, it searches for the implementation 
+of the `Module A MAL` in the available modules or the system and loads it as a dependency of the `Module A`. Thanks to that we can 
+decide which implementation we want to use in the runtime - it can be `Module B`, `Module C` or even the system itself.
+
+To define a function as **MAL**, you need to use the `dmod_<module_name>_mal` macro:
+
+**Example**:
+```c
+#include "my_module_defs.h"
+
+// Define the MAL function
+// It can be accessed by name my_module_foo
+dmod_my_module_mal( 1.0, void, _foo, (int arg1, int arg2));
+```
+
+The `dmod_<module_name>_mal` macro takes the following arguments:
+
+- **Version**: The version of the **function** (not the module) - helps in the future to maintain compatibility.
+- **Return Type**: The return type of the function.
+- **Function Name**: The name of the function.
+- **Arguments**: The arguments of the function.
+
+The rules about the naming are similar to the **built-in API**, so your function will be accessible in the system and the modules by the name `<module_name><FunctionName>`, so for the example above, it would be `my_module_foo`. There is nothing unusual in the usage of the function, so calling it is as simple as calling any other function:
+
+```c
+my_module_foo(1, 2);
+```
+
+To implement the MAL function in the second module, you need to update your `CMakeLists.txt` or `Makefile` file 
+to include the `<module_name>` name in the variable `DMOD_MAL_IMPLS`:
+
+**CMakeList.txt of `Module B`**:
+```CMake
+# Module B implements the MAL of `my_module`
+set(DMOD_MAL_IMPLS
+    my_module
+)
+```
+
+**Makefile of `Module B`**:
+```Makefile
+
+# Module B implements the MAL of `my_module`
+DMOD_MAL_IMPLS=my_module
+
+```
+
 ---
 ## Getting Started
 
