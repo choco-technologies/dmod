@@ -30,13 +30,16 @@ DMOD_SOURCES=private/dmod_vars.c\
 		if/dmod_if_irq.c\
 		if/dmod_if_events.c\
 		if/dmod_if_rtos.c\
+		if/dmod_if_comp.c\
 		Dmod.cpp
 DMOD_INC_DIRS = $(DMOD_DIR)/src/system\
 		$(DMOD_DIR)/inc\
 		$(DMOD_BUILD_DIR)\
-		$(DMOD_DIR)/src/common
+		$(DMOD_DIR)/src/common\
+		$(DMOD_DIR)/lib/third-party/FastLZ
 DMOD_LIBS = dmod_inc\
 		dmod_common\
+		dmod_fastlz\
 		pthread
 DMOD_GEN_HEADERS_IN = 
 DMOD_DEFINITIONS = 
