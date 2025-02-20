@@ -65,6 +65,7 @@ extern "C" {
  * @{
  */ 
 DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Malloc ,           ( size_t Size )                     );
+DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Realloc,           ( void* Ptr, size_t Size )          );
 DMOD_BUILTIN_API(Dmod, 1.0, void ,  _Free   ,           ( void* Ptr )                       );
 DMOD_BUILTIN_API(Dmod, 1.0, void*,  _AlignedMalloc,     ( size_t Size, size_t Alignment )   );
 //! @}
@@ -197,9 +198,10 @@ DMOD_BUILTIN_API(Dmod, 1.0, void , _Mutex_Delete, ( void* Mutex ) );
  * @{
  */
 
-DMOD_BUILTIN_API(Dmod, 1.0, size_t, _Compress,   ( const char* Name, int Level, void* Dest, size_t DestSize, const void* Src, size_t SrcSize ) );
-DMOD_BUILTIN_API(Dmod, 1.0, size_t, _Decompress, ( const char* Name, void* Dest, size_t DestSize, const void* Src, size_t SrcSize ) );
-DMOD_BUILTIN_API(Dmod, 1.0, bool  , _IsCompressionSupported, ( const char* Name ) );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t, _Compression_GetMaxSize,  ( const char* Name, int Level, size_t SrcSize ) );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t, _Compression_Pack,        ( const char* Name, int Level, void* Dest, size_t DestSize, const void* Src, size_t SrcSize ) );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t, _Compression_Unpack,      ( const char* Name, void* Dest, size_t DestSize, const void* Src, size_t SrcSize ) );
+DMOD_BUILTIN_API(Dmod, 1.0, bool  , _Compression_IsSupported, ( const char* Name ) );
 
 //! @}
 

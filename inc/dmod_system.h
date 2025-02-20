@@ -89,6 +89,12 @@ extern bool             Dmod_IsEnabled          ( Dmod_Context_t* Context );
 extern int              Dmod_Run                ( Dmod_Context_t* Context, int argc, char *argv[] );
 extern bool             Dmod_IsRunning          ( Dmod_Context_t* Context );
 
+// DMFC API
+extern bool             Dmod_IsDMFC             ( const void* Data, size_t Size );
+extern bool             Dmod_IsDMFCFile         ( const char* Path );
+extern bool             Dmod_ToDMFC             ( const char* CompressionName, int Level, const void* DmfData, size_t DmfSize, void** outDmfcData, size_t* outDmfcSize );
+extern bool             Dmod_FromDMFC           ( const void* DmfcData, size_t DmfcSize, void** outDmfData, size_t* outDmfSize );
+
 //! @}
 
 #ifdef __cplusplus

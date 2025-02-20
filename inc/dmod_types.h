@@ -80,8 +80,8 @@ typedef struct
 typedef struct 
 {
     uint32_t       Signature;       //!< DMFC
-    uint32_t       HeaderSize;      //!< Size of this header
-    uint32_t       HeaderVersion;   //!< Header version
+    uint16_t       HeaderSize;      //!< Size of this header
+    uint16_t       HeaderVersion;   //!< Header version
     char           Compression[DMOD_MAX_COMPRESSION_NAME_LENGTH];   //!< Compression algorithm
     char           Name[DMOD_MAX_MODULE_NAME_LENGTH];               //!< Module name
     uint32_t       OriginalSize;                                    //!< Original size of the module

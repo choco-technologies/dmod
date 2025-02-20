@@ -9,6 +9,7 @@ add_library(${MODULE_NAME} STATIC
     private/dmod_rmod.c
     public/dmod_dmf_cb.c
     public/dmod_dmf_api.c
+    public/dmod_dmfc_api.c
     dmod_system.c
     if/dmod_if_file.c
     if/dmod_if_mem.c
