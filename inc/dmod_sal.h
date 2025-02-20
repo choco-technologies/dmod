@@ -187,6 +187,21 @@ DMOD_BUILTIN_API(Dmod, 1.0, void , _Mutex_Delete, ( void* Mutex ) );
 
 //! @}
 
+/**
+ * @defgroup DMOD_SAL_COMPRESSION Compression Interface
+ * @ingroup DMOD_SAL
+ * 
+ * This interface is used to compress and decompress data in the system.
+ * 
+ * @addtogroup DMOD_SAL_COMPRESSION
+ * @{
+ */
+
+DMOD_BUILTIN_API(Dmod, 1.0, size_t, _Compress,   ( const char* Name, int Level, void* Dest, size_t DestSize, const void* Src, size_t SrcSize ) );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t, _Decompress, ( const char* Name, void* Dest, size_t DestSize, const void* Src, size_t SrcSize ) );
+DMOD_BUILTIN_API(Dmod, 1.0, bool  , _IsCompressionSupported, ( const char* Name ) );
+
+//! @}
 
 #ifdef __cplusplus
 }

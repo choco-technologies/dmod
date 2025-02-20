@@ -16,6 +16,7 @@ add_library(${MODULE_NAME} STATIC
     if/dmod_if_irq.c
     if/dmod_if_events.c
     if/dmod_if_rtos.c
+    if/dmod_if_comp.c
     Dmod.cpp
 )
 
@@ -26,9 +27,10 @@ target_include_directories(${MODULE_NAME}
 
 # Link libraries if needed
 target_link_libraries(${MODULE_NAME} 
-    PRIVATE    
+    PUBLIC    
         dmod_inc
         dmod_common
+        dmod_fastlz
     )
 
 if (DMOD_USE_PTHREAD)
