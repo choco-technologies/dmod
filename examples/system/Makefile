@@ -30,6 +30,10 @@ DMOD_LIBS 	  	= dmod_system\
 				  pthread
 DEFINITIONS 	= 
 
+ifeq ($(DMOD_USE_FASTLZ),ON)
+	DMOD_LIBS += dmod_fastlz
+endif
+
 # -----------------------------------------------------------------------------
 # 	List of objects
 # -----------------------------------------------------------------------------

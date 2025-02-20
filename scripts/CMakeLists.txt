@@ -32,6 +32,11 @@ function( create_library_makefile targetName )
     get_target_property(DMOD_INC_DIRS ${targetName} INCLUDE_DIRECTORIES)
     get_target_property(DMOD_LINKED_LIBRARIES ${targetName} LINK_LIBRARIES)
     get_target_property(DMOD_COMPILE_DEFINITIONS ${targetName} COMPILE_DEFINITIONS)
+    # Check if the library has any linked libraries
+    if(NOT DMOD_LINKED_LIBRARIES)
+        set(DMOD_LINKED_LIBRARIES "")
+    endif()
+
     foreach(LIB ${DMOD_LINKED_LIBRARIES})
         message(STATUS "LIB: ${LIB}")
         
