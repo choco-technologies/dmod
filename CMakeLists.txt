@@ -82,6 +82,7 @@ if (DMOD_COVERAGE)
 	add_custom_target(coverage ALL
 		COMMAND ${GCOVR} 
 			-r "${DMOD_DIR}"
+			--exclude "${DMOD_DIR}/lib"
 			--exclude "${DMOD_DIR}/tests/.*"
 			--exclude "${DMOD_DIR}/examples"
 			--exclude "${DMOD_DIR}/scripts"
@@ -99,6 +100,7 @@ if (DMOD_COVERAGE)
 	add_custom_target(coverage_check
 		COMMAND ${GCOVR} 
 			-r "${DMOD_DIR}"
+			--exclude "${DMOD_DIR}/lib"
 			--exclude "${DMOD_DIR}/tests/.*"
 			--exclude "${DMOD_DIR}/examples"
 			--exclude "${DMOD_DIR}/scripts"
