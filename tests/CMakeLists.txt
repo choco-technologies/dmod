@@ -38,8 +38,6 @@ foreach(test_src ${TEST_SOURCES})
     target_link_libraries(${test_name} gtest gtest_main gmock dmod_system dmod_common dmod_inc)
     add_test(NAME ${test_name} COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${test_name})
 
-    #target_link_options(${test_name} PRIVATE -L ${DMOD_DIR}/scripts)
-    #target_link_options(${test_name} PRIVATE -T ${CMAKE_CURRENT_SOURCE_DIR}/main.ld)
     list(APPEND TEST_FILES ${test_name})
     if(DMOD_COVERAGE)
         message(STATUS "Code coverage enabled for ${test_name}")

@@ -82,6 +82,7 @@ if (DMOD_COVERAGE)
 	add_custom_target(coverage ALL
 		COMMAND ${GCOVR} 
 			-r "${DMOD_DIR}"
+			--exclude "${DMOD_DIR}/lib"
 			--exclude "${DMOD_DIR}/tests/.*"
 			--exclude "${DMOD_DIR}/examples"
 			--exclude "${DMOD_DIR}/scripts"
@@ -99,6 +100,7 @@ if (DMOD_COVERAGE)
 	add_custom_target(coverage_check
 		COMMAND ${GCOVR} 
 			-r "${DMOD_DIR}"
+			--exclude "${DMOD_DIR}/lib"
 			--exclude "${DMOD_DIR}/tests/.*"
 			--exclude "${DMOD_DIR}/examples"
 			--exclude "${DMOD_DIR}/scripts"
@@ -116,6 +118,7 @@ endif()
 # 						Subdirectories
 # ===========================================================================
 add_subdirectory(scripts)
+add_subdirectory(lib)
 add_subdirectory(inc)
 add_subdirectory(src)
 if (DMOD_BUILD_TESTS)
@@ -136,6 +139,9 @@ configure_file(scripts/dmod-info.mk.in ${DMOD_DIR}/dmod-info.mk)
 add_library(dmod INTERFACE)
 
 target_link_libraries(dmod INTERFACE dmod_inc dmod_common)
+if (DMOD_USE_FASTLZ)
+	target_link_libraries(dmod INTERFACE dmod_fastlz)
+endif()
 if (DMOD_SYSTEM)
 	target_link_libraries(dmod INTERFACE dmod_system)
 elseif (DMOD_MODULE)
