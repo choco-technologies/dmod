@@ -17,6 +17,7 @@ The **Dmod (Dynamic Modules)** library allows you to add the functionality of lo
 - **Lightweight**: Designed to be lightweight and efficient, with minimal impact on system performance.
 - **Testing on Host**: Test your modules on a host machine before deploying them to the target platform.
 - **Safe deployment**: Update modules without affecting the entire system, ensuring safe and reliable operation.
+- **Restarts**: Restart the module without affecting the entire system.
 
 ### Use Cases:
 - **Firmware Updates**: Apply updates to specific modules without affecting the entire system.

@@ -67,7 +67,7 @@ extern "C" {
 #endif
 
 #ifndef DMOD_MAX_COMPRESSION_NAME_LENGTH
-#   define DMOD_MAX_COMPRESSION_NAME_LENGTH		32
+#   define DMOD_MAX_COMPRESSION_NAME_LENGTH		10
 #endif
 
 /**

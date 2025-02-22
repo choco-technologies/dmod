@@ -125,13 +125,20 @@ bool Dmod_IsDMFCFile( const char* Path )
 
     if( strlen(CompressionName) > DMOD_MAX_COMPRESSION_NAME_LENGTH )
     {
-        DMOD_LOG_ERROR("Cannot convert to DMFC - compression algorithm name is too long (max: %d)\n", DMOD_MAX_COMPRESSION_NAME_LENGTH);
+        DMOD_LOG_ERROR("Cannot convert to DMFC - compression algorithm name '%s' is too long (max: %d)\n", CompressionName, DMOD_MAX_COMPRESSION_NAME_LENGTH);
         return false;
     }
 
     if( Dmod_Compression_IsSupported( CompressionName ) == false )
     {
         DMOD_LOG_ERROR("Cannot convert to DMFC - compression algorithm '%s' is not supported\n", CompressionName);
+        return false;
+    }
+
+    Dmod_ModuleHeader_t* moduleHeader = (Dmod_ModuleHeader_t*)DmfData;
+    if( moduleHeader->Signature != DMOD_HEADER_SIGNATURE )
+    {
+        DMOD_LOG_ERROR("Cannot convert to DMFC - invalid DMF signature\n");
         return false;
     }
     
@@ -153,7 +160,8 @@ bool Dmod_IsDMFCFile( const char* Path )
     header->Signature = DMOD_DMFC_SIGNATURE;
     header->HeaderSize = sizeof(Dmod_DmfcHeader_t);
     header->HeaderVersion = DMOD_DMFC_VERSION;
-    strncpy( header->Compression, CompressionName, DMOD_MAX_COMPRESSION_NAME_LENGTH );
+    strncpy( header->Compression, CompressionName, sizeof(header->Compression) );
+    strncpy( header->Name, moduleHeader->Name, sizeof(header->Name) );
     header->OriginalSize = DmfSize;
     void* data = (void*)((uint8_t*)buffer + sizeof(Dmod_DmfcHeader_t));
     size_t compressedSize = Dmod_Compression_Pack( CompressionName, Level, data, maxBufferSize, DmfData, DmfSize );
@@ -198,7 +206,7 @@ bool Dmod_FromDMFC( const void* DmfcData, size_t DmfcSize, void** outDmfData, si
         return false;
     }
 
-    if( DmfcSize < sizeof(Dmod_DmfcHeader_t) )
+    if( DmfcSize <= sizeof(Dmod_DmfcHeader_t) )
     {
         DMOD_LOG_ERROR("Cannot convert from DMFC - DMFC size is too small\n");
         return false;
@@ -229,7 +237,7 @@ bool Dmod_FromDMFC( const void* DmfcData, size_t DmfcSize, void** outDmfData, si
         return false;
     }
 
-    if( header->OriginalSize > (DmfcSize - sizeof(Dmod_DmfcHeader_t)) )
+    if( header->OriginalSize < (DmfcSize - sizeof(Dmod_DmfcHeader_t)) )
     {
         DMOD_LOG_ERROR("Cannot convert from DMFC - invalid DMFC original size\n");
         return false;

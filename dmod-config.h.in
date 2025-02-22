@@ -34,4 +34,8 @@
 #   define OFF 0
 #endif
 
+#ifndef DMOD_BUILD_DIR
+#   define DMOD_BUILD_DIR "@DMOD_BUILD_DIR@"
+#endif
+
 #endif // DMOD_CONFIG_H
