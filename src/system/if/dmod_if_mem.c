@@ -62,6 +62,29 @@ void* DMOD_WEAK_SYMBOL Dmod_Malloc(size_t Size)
 }
 
 /**
+ * @brief Reallocate memory
+ * 
+ * @param Ptr Pointer to memory to reallocate
+ * @param Size Size of memory to allocate
+ * 
+ * @return Pointer to reallocated memory
+ */
+void* DMOD_WEAK_SYMBOL Dmod_Realloc(void* Ptr, size_t Size)
+{
+#if DMOD_USE_STDLIB && DMOD_USE_REALLOC
+    return realloc(Ptr, Size);
+#else
+    void* newPtr = Dmod_Malloc(Size);
+    if (newPtr != NULL) 
+    {
+        memcpy(newPtr, Ptr, Size);
+        Dmod_Free(Ptr);
+    }
+    return newPtr;
+#endif
+}
+
+/**
  * @brief Allocate aligned memory
  * 
  * @param Size Size of memory to allocate

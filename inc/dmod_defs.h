@@ -34,6 +34,10 @@ extern "C" {
 #   define DMOD_VERSION		0x00010000
 #endif
 
+#ifndef DMOD_DMFC_VERSION
+#   define DMOD_DMFC_VERSION		0x0100
+#endif
+
 #ifndef DMOD_MAX_MODULES
 #   define DMOD_MAX_MODULES		50
 #endif
@@ -63,13 +67,14 @@ extern "C" {
 #endif
 
 #ifndef DMOD_MAX_COMPRESSION_NAME_LENGTH
-#   define DMOD_MAX_COMPRESSION_NAME_LENGTH		32
+#   define DMOD_MAX_COMPRESSION_NAME_LENGTH		10
 #endif
 
 /**
  * @brief Check if the version is compatible
  */
 #define DMOD_COMPATIBLE_VERSION( version )		(( (version) & 0xFFFF0000 ) == ( (DMOD_VERSION) & 0xFFFF0000 ))
+#define DMOD_DMFC_COMPATIBLE_VERSION( version )		(( (version) & 0xFF00 ) == ( (DMOD_DMFC_VERSION) & 0xFF00 ))
 
 //==============================================================================
 //                              SIGNATURE definitions

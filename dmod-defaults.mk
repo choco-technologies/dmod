@@ -29,6 +29,10 @@ ifndef DMOD_USE_ALIGNED_MALLOC_MOCK
     endif
 endif
 
+ifndef DMOD_USE_REALLOC
+    DMOD_USE_REALLOC = ON
+endif
+
 ifndef DMOD_USE_FASTLZ
     DMOD_USE_FASTLZ = ON
 endif

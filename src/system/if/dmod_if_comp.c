@@ -36,9 +36,42 @@
 #   include "fastlz.h"
 #endif
 
+
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
 //==============================================================================
+
+/**
+ * @brief Get maximum compressed buffer size
+ * 
+ * @param Name Compression algorithm name
+ * @param Level Compression level
+ * @param SrcSize Source buffer size
+ * 
+ * @return Compressed buffer size
+ */
+size_t DMOD_WEAK_SYMBOL Dmod_Compression_GetMaxSize( const char* Name, int Level, size_t SrcSize )
+{
+    size_t max_output_size = 0;
+    if( SrcSize == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot compress data with size 0\n");
+        return 0;
+    }
+    #if DMOD_USE_FASTLZ
+    else if( strcmp( Name, "fastlz" ) == 0 )
+    {
+        max_output_size = SrcSize + (SrcSize / 16) + 64 + 3;
+    }
+    #endif
+    else 
+    {
+        DMOD_LOG_ERROR("Compression algorithm '%s' is not supported\n", Name);
+    }
+
+    return max_output_size;
+}
+
 /**
  * @brief Compress data
  * 
@@ -51,15 +84,25 @@
  * 
  * @return Compressed data size
  */
-size_t DMOD_WEAK_SYMBOL Dmod_Compress( const char* Name, int Level, void* Dest, size_t DestSize, const void* Src, size_t SrcSize )
+size_t DMOD_WEAK_SYMBOL Dmod_Compression_Pack( const char* Name, int Level, void* Dest, size_t DestSize, const void* Src, size_t SrcSize )
 {
     size_t Ret = 0;
+    if( SrcSize == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot compress data with size 0\n");
+        return 0;
+    }
     #if DMOD_USE_FASTLZ
-    if( strcmp( Name, "fastlz" ) == 0 )
+    else if( strcmp( Name, "fastlz" ) == 0 )
     {
         Ret = fastlz_compress_level(Level, Src, SrcSize, Dest );
     }
     #endif
+    else 
+    {
+        DMOD_LOG_ERROR("Compression algorithm '%s' is not supported\n", Name);
+    }
+
     return Ret;
 }
 
@@ -74,15 +117,24 @@ size_t DMOD_WEAK_SYMBOL Dmod_Compress( const char* Name, int Level, void* Dest, 
  * 
  * @return Decompressed data size
  */
-size_t DMOD_WEAK_SYMBOL Dmod_Decompress( const char* Name, void* Dest, size_t DestSize, const void* Src, size_t SrcSize )
+size_t DMOD_WEAK_SYMBOL Dmod_Compression_Unpack( const char* Name, void* Dest, size_t DestSize, const void* Src, size_t SrcSize )
 {
     size_t Ret = 0;
+    if( SrcSize == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot decompress data with size 0\n");
+        return 0;
+    }
     #if DMOD_USE_FASTLZ
     if(  strcmp( Name, "fastlz" ) == 0 )
     {
         Ret = fastlz_decompress( Src, SrcSize, Dest, DestSize );
     }
     #endif
+    else 
+    {
+        DMOD_LOG_ERROR("Compression algorithm '%s' is not supported\n", Name);
+    }
     return Ret;
 }
 
@@ -93,7 +145,7 @@ size_t DMOD_WEAK_SYMBOL Dmod_Decompress( const char* Name, void* Dest, size_t De
  * 
  * @return true if compression algorithm is supported, false otherwise
  */
-bool DMOD_WEAK_SYMBOL Dmod_IsCompressionSupported( const char* Name )
+bool DMOD_WEAK_SYMBOL Dmod_Compression_IsSupported( const char* Name )
 {
     bool Ret = false;
     #if DMOD_USE_FASTLZ
