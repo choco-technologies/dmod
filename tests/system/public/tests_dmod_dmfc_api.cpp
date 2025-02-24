@@ -26,8 +26,21 @@ public:
     MOCK_METHOD(bool, IsSupported, (const char* Name));
 };
 
+class MockFile
+{
+public:
+    MOCK_METHOD(void*, FileOpen, (const char* Path, const char* Mode));
+    MOCK_METHOD(size_t, FileRead, (void* Buffer, size_t Size, size_t Count, void* File));
+    MOCK_METHOD(size_t, FileWrite, (const void* Buffer, size_t Size, size_t Count, void* File));
+    MOCK_METHOD(int, FileSeek, (void* File, long Offset, int Origin));
+    MOCK_METHOD(size_t, FileTell, (void* File));
+    MOCK_METHOD(size_t, FileSize, (void* File));
+    MOCK_METHOD(void, FileClose, (void* File));
+};
+
 MockMemory* mockMemory = nullptr;
 MockCompression* mockCompression = nullptr;
+MockFile* mockFile = nullptr;
 
 extern "C"
 {
@@ -229,6 +242,135 @@ extern "C"
         #endif
         return Ret;
     }
+
+    /**
+     * @brief Open file
+     * 
+     * @param Path Path to file
+     * @param Mode Mode to open file
+     * 
+     * @return Pointer to file
+     */
+    void* Dmod_FileOpen(const char* Path, const char* Mode)
+    {
+        if( mockFile != nullptr )
+        {
+            return mockFile->FileOpen(Path, Mode);
+        }
+        return fopen(Path, Mode);
+    }
+
+    /**
+     * @brief Read file
+     * 
+     * @param File Pointer to file
+     * @param Buffer Buffer to read data into
+     * @param Size Size of data to read
+     * @param Count Number of elements to read
+     * 
+     * @return Number of elements read
+     */
+    size_t Dmod_FileRead(void* Buffer, size_t Size, size_t Count, void* File)
+    {
+        if( mockFile != nullptr )
+        {
+            return mockFile->FileRead(Buffer, Size, Count, File);
+        }
+        return fread(Buffer, Size, Count, (FILE*)File);
+    }
+
+    /**
+     * @brief Write file
+     * 
+     * @param File Pointer to file
+     * @param Buffer Buffer to write data from
+     * @param Size Size of data to write
+     * @param Count Number of elements to write
+     * 
+     * @return Number of elements written
+     */
+    size_t Dmod_FileWrite(const void* Buffer, size_t Size, size_t Count, void* File)
+    {
+        if( mockFile != nullptr )
+        {
+            return mockFile->FileWrite(Buffer, Size, Count, File);
+        }
+        return fwrite(Buffer, Size, Count, (FILE*)File);
+    }
+
+    /**
+     * @brief Seek file
+     * 
+     * @param File Pointer to file
+     * @param Offset Offset to seek
+     * @param Origin Origin of seek
+     * 
+     * @return 0 on success, non-zero on failure
+     */
+    int Dmod_FileSeek(void* File, long Offset, int Origin)
+    {
+        if( mockFile != nullptr )
+        {
+            return mockFile->FileSeek(File, Offset, Origin);
+        }
+        return fseek((FILE*)File, Offset, Origin);
+    }
+
+    /**
+     * @brief Get current position in file
+     * 
+     * @param File Pointer to file
+     * 
+     * @return Current position in file
+     */
+    size_t Dmod_FileTell(void* File)
+    {
+        if( mockFile != nullptr )
+        {
+            return mockFile->FileTell(File);
+        }
+        return ftell((FILE*)File);
+    }
+
+    /**
+     * @brief Get file size
+     * 
+     * @param File Pointer to file
+     * 
+     * @return File size
+     */
+    size_t Dmod_FileSize(void* File)
+    {
+        if( mockFile != nullptr )
+        {
+            return mockFile->FileSize(File);
+        }
+        size_t current = ftell((FILE*)File);
+        fseek((FILE*)File,
+                0,
+                SEEK_END);
+
+        size_t size = ftell((FILE*)File);
+        fseek((FILE*)File,
+                current,
+                SEEK_SET);
+        return size;
+    }
+
+    /**
+     * @brief Close file
+     * 
+     * @param File Pointer to file
+     */
+    void Dmod_FileClose(void* File)
+    {
+        if( mockFile != nullptr )
+        {
+            mockFile->FileClose(File);
+            return;
+        }
+        fclose((FILE*)File);
+    }
 }
 class DmodDmfcTest : public ::testing::Test
 {
@@ -244,6 +386,7 @@ protected:
 
     const char* m_EmptyFile = "empty.dmfc";
     const char* m_ShortFile = "short.dmfc";
+    const char* m_NotDmfFile = "not-dmf.dmf";
 
     void SetUp() override
     {
@@ -251,6 +394,7 @@ protected:
         PrepareDmfc();
         PrepareEmptyFile();
         PrepareShortFile();
+        PrepareNotDmfFile();
     }
 
     void TearDown() override
@@ -260,6 +404,7 @@ protected:
 
         DisableMockMemory();
         DisableMockCompression();
+        DisableMockFile();
     }
 
     bool ConvertToDmfc(const char* path, void** dmfcData, size_t* dmfcSize)
@@ -352,6 +497,30 @@ protected:
         return CreateShortFile(m_ShortFile);
     }
 
+    bool CreateNotDmfFile(const char* path)
+    {
+        FILE* file = fopen(path, "wb");
+        if(file != nullptr)
+        {
+            Dmod_ModuleHeader_t header;
+            header.Signature = ~DMOD_HEADER_SIGNATURE;
+            header.HeaderSize = sizeof(Dmod_ModuleHeader_t);
+            header.DmodVersion = 1;
+
+            fwrite(&header, 1, sizeof(header), file);
+            fwrite("not-dmf", 1, 7, file);
+            
+            fclose(file);
+            return true;
+        }
+        return false;
+    }
+
+    bool PrepareNotDmfFile()
+    {
+        return CreateNotDmfFile(m_NotDmfFile);
+    }
+
     void EnableMockMemory()
     {
         mockMemory = new MockMemory();
@@ -360,6 +529,11 @@ protected:
     void EnableMockCompression()
     {
         mockCompression = new MockCompression();
+    }
+
+    void EnableMockFile()
+    {
+        mockFile = new MockFile();
     }
 
     void DisableMockMemory()
@@ -379,6 +553,16 @@ protected:
             testing::Mock::VerifyAndClearExpectations(&mockCompression);
             delete mockCompression;
             mockCompression = nullptr;
+        }
+    }
+
+    void DisableMockFile()
+    {
+        if(mockFile != nullptr)
+        {
+            testing::Mock::VerifyAndClearExpectations(&mockFile);
+            delete mockFile;
+            mockFile = nullptr;
         }
     }
 
@@ -1044,7 +1228,7 @@ TEST_F(DmodDmfcTest, FromDMFCMallocFail)
     size_t dmfSize = 0;
 
     EnableMockMemory();
-    EXPECT_CALL(*mockMemory, Malloc(testing::_))
+    EXPECT_CALL(*mockMemory, AlignedMalloc(testing::_, testing::_))
         .WillOnce(testing::Return(nullptr));
 
     bool result = Dmod_FromDMFC(dmfcData, dmfcSize, &dmfData, &dmfSize);
@@ -1105,7 +1289,7 @@ TEST_F(DmodDmfcTest, FromDMFCInvalidDecompressedSize)
     size_t decompressedSize = 1;
 
     EnableMockMemory();
-    EXPECT_CALL(*mockMemory, Malloc(testing::_))
+    EXPECT_CALL(*mockMemory, AlignedMalloc(testing::_, testing::_))
         .WillOnce(testing::Return(testBuffer));
     EnableMockCompression();
     EXPECT_CALL(*mockCompression, IsSupported(testing::_))
@@ -1143,7 +1327,7 @@ TEST_F(DmodDmfcTest, FromDMFCReallocFail)
     size_t decompressedSize = 1;
 
     EnableMockMemory();
-    EXPECT_CALL(*mockMemory, Malloc(testing::_))
+    EXPECT_CALL(*mockMemory, AlignedMalloc(testing::_, testing::_))
         .WillOnce(testing::Return(testBuffer));
     EnableMockCompression();
     EXPECT_CALL(*mockCompression, IsSupported(testing::_))
@@ -1162,4 +1346,284 @@ TEST_F(DmodDmfcTest, FromDMFCReallocFail)
     DisableMockMemory();
     Dmod_Free(dmfcData);
     free(testBuffer);
+}
+
+// ===============================================================
+//                  Tests for Dmod_GetDMFCOriginalSize
+// ===============================================================
+
+/**
+ * @brief Test for Dmod_GetOriginalSize
+ * 
+ * The test checks if the function returns the original size of a DMFC data.
+ */
+TEST_F(DmodDmfcTest, GetOriginalSize)
+{
+    void* dmfcData = nullptr;
+    size_t dmfcSize = 0;
+    PrepareTestDmfc(&dmfcData, &dmfcSize);
+    ASSERT_NE(dmfcData, nullptr);
+    ASSERT_NE(dmfcSize, 0);
+
+    size_t originalSize = Dmod_GetDMFCOriginalSize(dmfcData, dmfcSize);
+    ASSERT_GT(originalSize, 0);
+
+    Dmod_Free(dmfcData);
+}
+
+/**
+ * @brief Test for Dmod_GetOriginalSize
+ * 
+ * The test checks if the function returns 0 for a NULL data.
+ */
+TEST_F(DmodDmfcTest, GetOriginalSizeNullData)
+{
+    size_t originalSize = Dmod_GetDMFCOriginalSize(NULL, 0);
+    ASSERT_EQ(originalSize, 0);
+}
+
+/**
+ * @brief Test for Dmod_GetOriginalSize
+ * 
+ * The test checks if the function returns 0 for a 0 size.
+ */
+TEST_F(DmodDmfcTest, GetOriginalSizeZeroSize)
+{
+    Dmod_DmfcHeader_t header;
+    memset(&header, 0, sizeof(header));
+    header.Signature = DMOD_DMFC_SIGNATURE;
+    header.HeaderSize = sizeof(Dmod_DmfcHeader_t);
+    size_t originalSize = Dmod_GetDMFCOriginalSize(&header, 0);
+    ASSERT_EQ(originalSize, 0);
+}
+
+/**
+ * @brief Test for Dmod_GetOriginalSize
+ * 
+ * The test checks if the function returns 0 for a small data.
+ */
+TEST_F(DmodDmfcTest, GetOriginalSizeSmallData)
+{
+    Dmod_DmfcHeader_t header;
+    memset(&header, 0, sizeof(header));
+    header.Signature = DMOD_DMFC_SIGNATURE;
+    header.HeaderSize = sizeof(Dmod_DmfcHeader_t);
+    size_t originalSize = Dmod_GetDMFCOriginalSize(&header, sizeof(Dmod_DmfcHeader_t) - 1);
+    ASSERT_EQ(originalSize, 0);
+}
+
+/**
+ * @brief Test for Dmod_GetOriginalSize
+ * 
+ * The test checks if the function returns 0 for an invalid signature.
+ */
+TEST_F(DmodDmfcTest, GetOriginalSizeInvalidSignature)
+{
+    size_t dmfcSize = sizeof(Dmod_DmfcHeader_t) + 1;
+    Dmod_DmfcHeader_t* header = (Dmod_DmfcHeader_t*)malloc(dmfcSize);
+    memset(header, 0, sizeof(Dmod_DmfcHeader_t) + 1);   
+    header->Signature = 0;
+    header->HeaderSize = sizeof(Dmod_DmfcHeader_t);
+    size_t originalSize = Dmod_GetDMFCOriginalSize(header, dmfcSize);
+    ASSERT_EQ(originalSize, 0);
+
+    free(header);
+}
+
+// ===============================================================
+//                  Tests for Dmod_ToDMFCFile
+// ===============================================================
+
+/**
+ * @brief Test for Dmod_ToDMFCFile
+ * 
+ * The test checks if the function returns true for a valid DMF file.
+ */
+TEST_F(DmodDmfcTest, ToDMFCFile)
+{
+    const char* outputPath = DMOD_BUILD_DIR "/example.dmfc";
+    const char* inputPath = DMOD_TEST_DMF_FILE;
+    bool result = Dmod_ToDMFCFile("fastlz", 2, inputPath, outputPath);
+    ASSERT_TRUE(result);
+
+    // Test if it is possible to execute it 
+    Dmod_Context_t* context = Dmod_LoadFile(outputPath);
+    ASSERT_NE(context, nullptr);
+    Dmod_Context_Delete(context);
+}
+
+/**
+ * @brief Test for Dmod_ToDMFCFile
+ * 
+ * The test checks if the function returns false for a NULL input path.
+ */
+TEST_F(DmodDmfcTest, ToDMFCFileNullInputPath)
+{
+    bool result = Dmod_ToDMFCFile("fastlz", 2, NULL, m_DmfcFile);
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @brief Test for Dmod_ToDMFCFile
+ * 
+ * The test checks if the function returns false for a NULL output path.
+ */
+TEST_F(DmodDmfcTest, ToDMFCFileNullOutputPath)
+{
+    const char* inputPath = DMOD_TEST_DMF_FILE;
+    bool result = Dmod_ToDMFCFile("fastlz", 2, inputPath, NULL);
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @brief Test for Dmod_ToDMFCFile
+ * 
+ * The test checks if the function returns false for an empty input path.
+ */
+TEST_F(DmodDmfcTest, ToDMFCFileEmptyInputPath)
+{
+    bool result = Dmod_ToDMFCFile("fastlz", 2, "", m_DmfcFile);
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @brief Test for Dmod_ToDMFCFile
+ * 
+ * The test checks if the function returns false for an empty output path.
+ */
+TEST_F(DmodDmfcTest, ToDMFCFileEmptyOutputPath)
+{
+    const char* inputPath = DMOD_TEST_DMF_FILE;
+    bool result = Dmod_ToDMFCFile("fastlz", 2, inputPath, "");
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @brief Test for Dmod_ToDMFCFile
+ * 
+ * The test checks if the function returns false for a non-existing input file.
+ */
+TEST_F(DmodDmfcTest, ToDMFCFileNotExistingInputFile)
+{
+    bool result = Dmod_ToDMFCFile("fastlz", 2, "non-existing-file", m_DmfcFile);
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @brief Test for Dmod_ToDMFCFile
+ * 
+ * The test checks if the function returns false for an empty input file.
+ */
+TEST_F(DmodDmfcTest, ToDMFCFileEmptyInputFile)
+{
+    bool result = Dmod_ToDMFCFile("fastlz", 2, m_EmptyFile, m_DmfcFile);
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @brief Test for Dmod_ToDMFCFile
+ * 
+ * The test checks if the function returns false for a non-DMF input file.
+ */
+TEST_F(DmodDmfcTest, ToDMFCFileNotDMF)
+{
+    bool result = Dmod_ToDMFCFile("fastlz", 2, m_NotDmfFile, m_DmfcFile);
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @brief Test for Dmod_ToDMFCFile
+ * 
+ * The test checks if the function returns false for a NULL compression algorithm.
+ */
+TEST_F(DmodDmfcTest, ToDMFCFileNullAlgorithm)
+{
+    const char* inputPath = DMOD_TEST_DMF_FILE;
+    bool result = Dmod_ToDMFCFile(NULL, 2, inputPath, m_DmfcFile);
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @brief Test for Dmod_ToDMFCFile
+ * 
+ * The test checks if the function returns false for Dmod_Malloc failure.
+ */
+TEST_F(DmodDmfcTest, ToDMFCFileMallocFail)
+{
+    const char* inputPath = DMOD_TEST_DMF_FILE;
+    bool result = false;
+
+    EnableMockMemory();
+    EXPECT_CALL(*mockMemory, Malloc(testing::_))
+        .WillOnce(testing::Return(nullptr));
+
+    result = Dmod_ToDMFCFile("fastlz", 2, inputPath, m_DmfcFile);
+    ASSERT_FALSE(result);
+
+    DisableMockMemory();
+}
+
+/**
+ * @brief Test for Dmod_ToDMFCFile
+ * 
+ * The test checks if the function returns false for empty file
+ */
+TEST_F(DmodDmfcTest, ToDMFCFileEmptyFile)
+{
+    bool result = Dmod_ToDMFCFile("fastlz", 2, m_EmptyFile, m_DmfcFile);
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @brief Test for Dmod_ToDMFCFile
+ * 
+ * The test checks if the function returns false for Dmod_FileRead failure.
+ */
+TEST_F(DmodDmfcTest, ToDMFCFileReadFail)
+{
+    const char* inputPath = DMOD_TEST_DMF_FILE;
+    bool result = false;
+    void* dummyPtr = (void*)0x1234;
+
+    EnableMockFile();
+    EXPECT_CALL(*mockFile, FileOpen(testing::_, testing::_))
+        .WillOnce(testing::Return(dummyPtr));
+    EXPECT_CALL(*mockFile, FileSize(testing::_))
+        .WillOnce(testing::Return(10));
+    EXPECT_CALL(*mockFile, FileRead(testing::_, testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(0));
+    
+    result = Dmod_ToDMFCFile("fastlz", 2, inputPath, m_DmfcFile);
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @brief Test for Dmod_ToDMFCFile
+ * 
+ * The test checks if the function returns false for Dmod_FileWrite failure.
+ */
+TEST_F(DmodDmfcTest, ToDMFCFileWriteFail)
+{
+    const char* inputPath = DMOD_TEST_DMF_FILE;
+    bool result = false;
+    void* inputPtr = fopen(inputPath, "rb");
+    void* outputPtr = fopen(m_DmfcFile, "wb");
+
+    EnableMockFile();
+    EXPECT_CALL(*mockFile, FileOpen(testing::_, testing::_))
+        .WillOnce(testing::Return(inputPtr))
+        .WillOnce(testing::Return(outputPtr));
+    EXPECT_CALL(*mockFile, FileSize(testing::_))
+        .WillOnce(testing::Return(10));
+    EXPECT_CALL(*mockFile, FileRead(testing::_, testing::_, testing::_, testing::_))
+        .WillOnce([](void* buffer, size_t size, size_t count, void* file) -> size_t {
+            return fread(buffer, size, count, (FILE*)file);
+        });
+    EXPECT_CALL(*mockFile, FileClose(testing::_))
+        .Times(2);
+    EXPECT_CALL(*mockFile, FileWrite(testing::_, testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(0));
+    
+    result = Dmod_ToDMFCFile("fastlz", 2, inputPath, m_DmfcFile);
+    ASSERT_FALSE(result);
 }

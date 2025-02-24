@@ -187,6 +187,91 @@ bool Dmod_IsDMFCFile( const char* Path )
 }
 
 /**
+ * @brief Convert DMF to DMFC file
+ * 
+ * This function converts the DMF data to DMFC (Dynamic Module File Compressed) file.
+ * 
+ * @param CompressionName Compression algorithm name
+ * @param Level Compression level
+ * @param DmfPath Path to the DMF file
+ * @param DmfcPath Path to the DMFC file
+ * 
+ * @return true if the conversion was successful, false otherwise
+ */
+bool Dmod_ToDMFCFile( const char* CompressionName, int Level, const char* DmfPath, const char* DmfcPath )
+{
+    if( DmfPath == NULL || DmfcPath == NULL || CompressionName == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot convert to DMFC file - invalid parameters\n");
+        return false;
+    }
+
+    void* fileIn = Dmod_FileOpen( DmfPath, "rb" );
+    if( fileIn == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot convert to DMFC file - failed to open DMF file\n");
+        return false;
+    }
+
+    size_t fileSize = Dmod_FileSize( fileIn );
+    if( fileSize == 0 )
+    {
+        Dmod_FileClose( fileIn );
+        DMOD_LOG_ERROR("Cannot convert to DMFC file - failed to get DMF file size\n");
+        return false;
+    }
+
+    void* buffer = Dmod_Malloc( fileSize );
+    if( buffer == NULL )
+    {
+        Dmod_FileClose( fileIn );
+        DMOD_LOG_ERROR("Cannot convert to DMFC file - failed to allocate buffer\n");
+        return false;
+    }
+
+    size_t read = Dmod_FileRead( buffer, 1, fileSize, fileIn );
+    Dmod_FileClose( fileIn );
+
+    if( read != fileSize )
+    {
+        Dmod_Free( buffer );
+        DMOD_LOG_ERROR("Cannot convert to DMFC file - failed to read DMF file\n");
+        return false;
+    }
+
+    void* dmfcData = NULL;
+    size_t dmfcSize = 0;
+    bool result = Dmod_ToDMFC( CompressionName, Level, buffer, fileSize, &dmfcData, &dmfcSize );
+    Dmod_Free( buffer );
+
+    if( result == false )
+    {
+        DMOD_LOG_ERROR("Cannot convert to DMFC file - failed to convert DMF to DMFC\n");
+        return false;
+    }
+
+    void* fileOut = Dmod_FileOpen( DmfcPath, "wb" );
+    if( fileOut == NULL )
+    {
+        Dmod_Free( dmfcData );
+        DMOD_LOG_ERROR("Cannot convert to DMFC file - failed to open DMFC file\n");
+        return false;
+    }
+
+    size_t written = Dmod_FileWrite( dmfcData, 1, dmfcSize, fileOut );
+    Dmod_FileClose( fileOut );
+    Dmod_Free( dmfcData );
+
+    if( written != dmfcSize )
+    {
+        DMOD_LOG_ERROR("Cannot convert to DMFC file - failed to write DMFC file\n");
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * @brief Convert DMFC to DMF
  * 
  * This function converts the DMFC data to DMF (Dynamic Module File) data.
@@ -255,7 +340,7 @@ bool Dmod_FromDMFC( const void* DmfcData, size_t DmfcSize, void** outDmfData, si
         return false;
     }
 
-    void* buffer = Dmod_Malloc( header->OriginalSize );
+    void* buffer = Dmod_AlignedMalloc( header->OriginalSize, DMOD_STACK_ALIGNMENT );
     if( buffer == NULL )
     {
         DMOD_LOG_ERROR("Cannot convert from DMFC - failed to allocate buffer\n");
@@ -285,4 +370,38 @@ bool Dmod_FromDMFC( const void* DmfcData, size_t DmfcSize, void** outDmfData, si
     *outDmfSize = header->OriginalSize;
 
     return true;
+}
+
+/**
+ * @brief Get original size of the DMFC data
+ * 
+ * This function gets the original size of the DMFC data.
+ * 
+ * @param DmfcData DMFC data
+ * @param DmfcSize DMFC size
+ * 
+ * @return Original size of the DMFC data
+ */
+size_t Dmod_GetDMFCOriginalSize( const void* DmfcData, size_t DmfcSize )
+{
+    if( DmfcData == NULL || DmfcSize == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot get original size - invalid parameters\n");
+        return 0;
+    }
+
+    if( DmfcSize <= sizeof(Dmod_DmfcHeader_t) )
+    {
+        DMOD_LOG_ERROR("Cannot get original size - DMFC size is too small\n");
+        return 0;
+    }
+
+    Dmod_DmfcHeader_t* header = (Dmod_DmfcHeader_t*)DmfcData;
+    if( header->Signature != DMOD_DMFC_SIGNATURE )
+    {
+        DMOD_LOG_ERROR("Cannot get original size - invalid DMFC signature\n");
+        return 0;
+    }
+
+    return header->OriginalSize;
 }

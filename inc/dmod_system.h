@@ -93,7 +93,9 @@ extern bool             Dmod_IsRunning          ( Dmod_Context_t* Context );
 extern bool             Dmod_IsDMFC             ( const void* Data, size_t Size );
 extern bool             Dmod_IsDMFCFile         ( const char* Path );
 extern bool             Dmod_ToDMFC             ( const char* CompressionName, int Level, const void* DmfData, size_t DmfSize, void** outDmfcData, size_t* outDmfcSize );
+extern bool             Dmod_ToDMFCFile         ( const char* CompressionName, int Level, const char* DmfPath, const char* DmfcPath );
 extern bool             Dmod_FromDMFC           ( const void* DmfcData, size_t DmfcSize, void** outDmfData, size_t* outDmfSize );
+extern size_t           Dmod_GetDMFCOriginalSize( const void* DmfcData, size_t DmfcSize );
 
 //! @}
 
