@@ -109,6 +109,23 @@ function(dmod_create_module moduleName version moduleType)
     endif()
     set(DMOD_MODULE_TYPE ${moduleType})
 
+    # check if todmfc tool is available
+    find_program(TODMFC 
+            todmfc
+            HINTS ${DMOD_TOOLS_BIN_DIR}
+            )
+    if(NOT TODMFC)
+        if(DEFINED DMOD_COMPRESSION_METHOD)
+            message(WARNING "todmfc not found, compression method will be set to none")
+        endif()
+        set(DMOD_COMPRESSION_METHOD "none")
+    else()
+        message(STATUS "todmfc found: ${TODMFC}")
+        if(NOT DEFINED DMOD_COMPRESSION_METHOD)
+            set(DMOD_COMPRESSION_METHOD "fastlz")
+        endif()
+    endif()
+
     configure_file(${DMOD_SCRIPTS_DIR}/api.h.in ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_defs.h)
     
     add_executable(${moduleName} 
@@ -156,21 +173,33 @@ function(dmod_create_module moduleName version moduleType)
     
     set(OPTIMIZATION "-O2")
 
-    target_compile_options(${moduleName} PRIVATE -fPIC -fPIE -ffunction-sections -fdata-sections -fpermissive ${OPTIMIZATION} )
-    
+    target_compile_options(${moduleName} PRIVATE -fPIC -fPIE -ffunction-sections -fdata-sections ${OPTIMIZATION} )
+    target_compile_options(${moduleName} PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-fpermissive>
+    )
     target_link_options(${moduleName} PRIVATE -L ${DMOD_SCRIPTS_DIR} -pie -nostartfiles -nostdlib -Xlinker --discard-all )
     target_link_options(${moduleName} PRIVATE -T ${DMOD_SCRIPTS_DIR}/module.ld  -static)
     
     set(ELF_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${moduleName}")
-    set(BIN_OUTPUT "${DMOD_DMF_DIR}/${moduleName}.dmf")
+    set(DMF_OUTPUT "${DMOD_DMF_DIR}/${moduleName}.dmf")
+    set(DMFC_OUTPUT "${DMOD_DMFC_DIR}/${moduleName}.dmfc")
     
     file(MAKE_DIRECTORY ${DMOD_DMF_DIR})
+    file(MAKE_DIRECTORY ${DMOD_DMFC_DIR})
 
     add_custom_command(
         TARGET ${moduleName} POST_BUILD
-        COMMAND ${CMAKE_OBJCOPY} -O binary ${ELF_OUTPUT} ${BIN_OUTPUT}
+        COMMAND ${CMAKE_OBJCOPY} -O binary ${ELF_OUTPUT} ${DMF_OUTPUT}
         COMMENT "Converting ELF to binary"
     )
+
+    if(TODMFC)
+        add_custom_command(
+            TARGET ${moduleName} POST_BUILD
+            COMMAND ${TODMFC} ${DMF_OUTPUT} ${DMFC_OUTPUT} ${DMOD_COMPRESSION_METHOD}
+            COMMENT "Compressing the binary"
+        )
+    endif()
 endfunction()
 
 #
