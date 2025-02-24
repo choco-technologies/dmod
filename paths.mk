@@ -24,6 +24,9 @@ DMOD_TOOLS_BIN_DIR=$(DMOD_BUILD_DIR)/bin/tools/
 ifeq ($(DMOD_DMF_DIR),)
 	DMOD_DMF_DIR=$(DMOD_BUILD_DIR)/dmf
 endif
+ifeq ($(DMOD_DMFC_DIR),)
+	DMOD_DMFC_DIR=$(DMOD_BUILD_DIR)/dmfc
+endif
 
 # -----------------------------------------------------------------------------
 #   Main project directories

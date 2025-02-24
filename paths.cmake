@@ -24,6 +24,9 @@ set(DMOD_TOOLS_BIN_DIR ${DMOD_BUILD_DIR}/bin/tools)
 if(NOT DEFINED DMOD_DMF_DIR)
 	set(DMOD_DMF_DIR ${DMOD_BUILD_DIR}/dmf)
 endif()
+if(NOT DEFINED DMOD_DMFC_DIR)
+	set(DMOD_DMFC_DIR ${DMOD_BUILD_DIR}/dmfc)
+endif()
 
 # -----------------------------------------------------------------------------
 #   Main project directories
