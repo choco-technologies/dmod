@@ -25,6 +25,8 @@ pipelines:
           - cmake .. -DDMOD_MODE=DMOD_MODULE -DDMOD_TOOLS_NAME=arch/x86_64
           - cmake --build .
           - ./examples/system/dmod_loader ./dmfc/example_app.dmfc
+          - rm -rf build/dmf
+          - ./examples/system/dmod_loader ./dmfc/example_app.dmfc
     - step:
         name: 'MAKE: Build for x86_64'
         runs-on:
@@ -39,4 +41,6 @@ pipelines:
           - make DMOD_MODE=DMOD_SYSTEM
           - make DMOD_MODE=DMOD_MODULE
           - ./build/examples/system/dmod_loader build/dmf/example_app.dmf
+          - ./build/examples/system/dmod_loader build/dmfc/example_app.dmfc
+          - rm -rf build/dmf
           - ./build/examples/system/dmod_loader build/dmfc/example_app.dmfc

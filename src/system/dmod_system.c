@@ -15,8 +15,9 @@
 //                              LOCAL FUNCTION PROTOTYPES
 //==============================================================================
 
-static bool                     ReadFile( const char* ModuleName, void* Data, size_t Size, void* File );
-static bool                     IsAllApiConnected( Dmod_Context_t* Context );
+static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* File );
+static bool IsAllApiConnected( Dmod_Context_t* Context );
+static bool PrepareModulePath( const char* RepoDir, const char* ModuleName, bool Compressed, char* Path, size_t MaxLength );
 
 //==============================================================================
 //                              FUNCTION IMPLEMENTATIONS
@@ -177,21 +178,66 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
         DMOD_LOG_INFO("Module %s is already loaded\n", ModuleName);
         return true;
     }
-    
+
     char path[DMOD_MAX_PATH_LENGTH + 1] = {0};
-    const char* repoPath = Dmod_GetRepoPath();
-    if( repoPath == NULL )
+    const char* repoPaths = Dmod_GetEnv("DMOD_REPO_PATHS");
+    char* repoEnv = NULL;
+    size_t repoEnvSize = 0;
+    if(repoPaths != NULL)
     {
-        DMOD_LOG_ERROR("Cannot load module by name - repository path is not set\n");
-        return false;
+        repoEnvSize = strlen(repoPaths);
+        if(repoEnvSize > 0)
+        {
+            repoEnv = Dmod_Malloc(repoEnvSize + 1);
+            strcpy(repoEnv, repoPaths);
+        }
     }
-
-    strncpy(path, repoPath, DMOD_MAX_PATH_LENGTH);
-    strncat(path, "/", DMOD_MAX_PATH_LENGTH - strlen(path));
-    strncat(path, ModuleName, DMOD_MAX_PATH_LENGTH - strlen(path));
-    strncat(path, ".dmf", DMOD_MAX_PATH_LENGTH - strlen(path));
-
-    return Dmod_LoadFile(path);
+    const char* repoDir = repoEnv != NULL ? strtok(repoEnv, DMOD_ARRAY_SEP) : NULL;
+    if( repoDir == NULL )
+    {
+        DMOD_LOG_VERBOSE("DMOD_REPO_PATH variable is not available. Searching for module '%s' in default repository\n", ModuleName);
+        repoDir = Dmod_GetRepoDir();
+        repoPaths = NULL;
+    }
+    do 
+    {
+        if( repoDir != NULL )
+        {
+            DMOD_LOG_VERBOSE("Searching for module '%s' in '%s'\n", ModuleName, repoDir);
+            if( 
+                (
+                    PrepareModulePath(repoDir, ModuleName, false, path, sizeof(path))
+                 && Dmod_FileAvailable(path)
+                 && Dmod_LoadFile(path) != NULL 
+                    ) ||
+                (
+                    PrepareModulePath(repoDir, ModuleName, true, path, sizeof(path))
+                 && Dmod_FileAvailable(path)
+                 && Dmod_LoadFile(path) != NULL
+                    )
+                )
+            {   
+                DMOD_LOG_INFO("Using module '%s' from '%s'\n", ModuleName, path);
+                if( repoEnv != NULL )
+                {
+                    Dmod_Free( repoEnv );
+                }
+                return true;
+            }
+        }
+        repoDir = NULL;
+        if( repoPaths != NULL )
+        {
+            repoDir = strtok(NULL, DMOD_ARRAY_SEP);
+            if( repoDir == NULL )
+            {
+                repoDir = Dmod_GetRepoDir();
+            }
+        }
+    } while( repoDir != NULL );
+    Dmod_Free( repoEnv );
+    DMOD_LOG_ERROR("Cannot load module by name - module not found: %s\n", ModuleName);
+    return false;
 }
 
 /**
@@ -1047,6 +1093,40 @@ static bool IsAllApiConnected( Dmod_Context_t* Context )
             DMOD_LOG_VERBOSE("API '%s' is not connected\n", apiSignature);
             return false;
         }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Prepare module path
+ * 
+ * @param RepoDir Repository directory
+ * @param ModuleName Name of the module
+ * @param Compressed If true, the module is compressed
+ * @param Path Destination for the path
+ * @param MaxLength Maximum length of the path
+ * 
+ * @return True if path was prepared successfully, false otherwise
+ */
+static bool PrepareModulePath( const char* RepoDir, const char* ModuleName, bool Compressed, char* Path, size_t MaxLength )
+{
+    if( RepoDir == NULL || ModuleName == NULL || Path == NULL )
+    {
+        return false;
+    }
+
+    memset(Path, 0, MaxLength);
+    strncpy(Path, RepoDir, MaxLength);
+    strncat(Path, "/", MaxLength - strlen(Path));
+    strncat(Path, ModuleName, MaxLength - strlen(Path));
+    if( Compressed )
+    {
+        strncat(Path, ".dmfc", MaxLength - strlen(Path));
+    }
+    else 
+    {
+        strncat(Path, ".dmf", MaxLength - strlen(Path));
     }
 
     return true;
