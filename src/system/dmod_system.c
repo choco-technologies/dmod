@@ -71,8 +71,23 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
         return NULL;
     }
 
+    void* dmfData = buffer;
+    size_t dmfSize = fileSize;
+    if( Dmod_IsDMFC(buffer, fileSize) )
+    {
+        DMOD_LOG_INFO("Module is compressed - decompressing\n");
+        if( !Dmod_FromDMFC(buffer, fileSize, &dmfData, &dmfSize) )
+        {
+            DMOD_LOG_ERROR("Cannot load module - failed to convert from DMFC\n");
+            Dmod_Free( buffer );
+            Dmod_FileClose( file );
+            return NULL;
+        }
+        Dmod_Free( buffer );
+    }
+
     Dmod_Event_ModuleLoadingInProgress( Path, 78 );
-    Dmod_Context_t* context = Dmod_Context_New( buffer, fileSize );
+    Dmod_Context_t* context = Dmod_Context_New( dmfData, dmfSize );
     Dmod_FileClose( file );
     if( context == NULL )
     {
@@ -108,7 +123,18 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
 
     Dmod_Event_ModuleLoadingInProgress( "Unknown", 10 );
 
-    Dmod_Context_t* context = Dmod_Context_New( NULL, Size );
+    void* dmfData = NULL;
+    size_t dmfSize = Size;
+    if( Dmod_IsDMFC(Data, Size) )
+    {
+        if( !Dmod_FromDMFC(Data, Size, &dmfData, &dmfSize) )
+        {
+            DMOD_LOG_ERROR("Cannot load module - failed to convert from DMFC\n");
+            return NULL;
+        }
+    }
+
+    Dmod_Context_t* context = Dmod_Context_New( dmfData, dmfSize );
     if( context == NULL )
     {
         return NULL;

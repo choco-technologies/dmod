@@ -79,6 +79,16 @@ size_t DMOD_WEAK_SYMBOL Dmod_FileRead(void *Buffer, size_t Size, size_t Count, v
     #endif
 }
 
+size_t DMOD_WEAK_SYMBOL Dmod_FileWrite(const void *Buffer, size_t Size, size_t Count, void *File)
+{
+    #if DMOD_USE_STDIO
+    return fwrite(Buffer, Size, Count, File);
+    #else
+    DMOD_LOG_ERROR("Dmod_FileWrite interface not implemented");
+    return 0;
+    #endif
+}
+
 /**
  * @brief Seek file
  * 
