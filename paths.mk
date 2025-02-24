@@ -20,6 +20,7 @@ ifeq ($(DMOD_BUILD_DIR),)
 endif
 DMOD_OBJS_DIR=$(DMOD_BUILD_DIR)/objs/$(DMOD_MODE)
 DMOD_LIBS_DIR=$(DMOD_BUILD_DIR)/libs/$(DMOD_MODE)
+DMOD_TOOLS_BIN_DIR=$(DMOD_BUILD_DIR)/bin/tools/
 ifeq ($(DMOD_DMF_DIR),)
 	DMOD_DMF_DIR=$(DMOD_BUILD_DIR)/dmf
 endif
@@ -54,6 +55,7 @@ DMOD_CACHE_MK_FILE_NAME=dmod-cache.mk
 DMOD_TMP_CACHE_MK_FILE_NAME=dmod-cache-tmp.mk
 DMOD_CHECK_CACHE_MK_FILE_NAME=check_cache.mk
 DMOD_DEFAULTS_FILE_NAME=dmod-defaults.mk
+DMOD_SYSTEM_TOOL_MK_FILE_NAME=system-tool.mk
 
 # -----------------------------------------------------------------------------
 #   Makefile file paths
@@ -84,6 +86,7 @@ DMOD_CACHE_MK_FILE_PATH=$(DMOD_BUILD_DIR)/$(DMOD_CACHE_MK_FILE_NAME)
 DMOD_TMP_CACHE_MK_FILE_PATH=$(DMOD_BUILD_DIR)/$(DMOD_TMP_CACHE_MK_FILE_NAME)
 DMOD_CHECK_CACHE_MK_FILE_PATH=$(DMOD_SCRIPTS_DIR)/$(DMOD_CHECK_CACHE_MK_FILE_NAME)
 DMOD_DEFAULTS_FILE_PATH=$(DMOD_DIR)/$(DMOD_DEFAULTS_FILE_NAME)
+DMOD_SYSTEM_TOOL_MK_FILE_PATH=$(DMOD_SCRIPTS_DIR)/$(DMOD_SYSTEM_TOOL_MK_FILE_NAME)
 
 # -----------------------------------------------------------------------------
 #   Include the dmod configuration

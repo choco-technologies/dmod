@@ -24,6 +24,10 @@ ifeq ($(DMOD_BUILD_TESTS),ON)
 	SUBDIRS += tests
 endif
 
+ifeq ($(DMOD_BUILD_TOOLS),ON)
+	SUBDIRS += tools
+endif
+
 # -----------------------------------------------------------------------------
 # 	Include template makefile
 # -----------------------------------------------------------------------------
