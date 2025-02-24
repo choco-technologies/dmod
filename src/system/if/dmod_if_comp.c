@@ -36,6 +36,15 @@
 #   include "fastlz.h"
 #endif
 
+//==============================================================================
+//                              GLOBAL VARIABLES
+//==============================================================================
+static const char* SupportedCompressions[] = {
+    #if DMOD_USE_FASTLZ
+    "fastlz",
+    #endif
+};
+static const size_t SupportedCompressionsCount = sizeof(SupportedCompressions) / sizeof(SupportedCompressions[0]);
 
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
@@ -147,12 +156,47 @@ size_t DMOD_WEAK_SYMBOL Dmod_Compression_Unpack( const char* Name, void* Dest, s
  */
 bool DMOD_WEAK_SYMBOL Dmod_Compression_IsSupported( const char* Name )
 {
-    bool Ret = false;
-    #if DMOD_USE_FASTLZ
-    if( strcmp( Name, "fastlz" ) == 0)
+    bool result = false;
+
+    for( size_t i = 0; i < SupportedCompressionsCount; i++ )
     {
-        Ret = true;
+        if( strcmp( SupportedCompressions[i], Name ) == 0 )
+        {
+            result = true;
+            break;
+        }
     }
-    #endif
-    return Ret;
+
+    return result;
+}
+
+/**
+ * @brief Get next supported compression algorithm
+ * 
+ * @param CompressionName Current compression algorithm name
+ * 
+ * @return Next supported compression algorithm name
+ */
+const char* DMOD_WEAK_SYMBOL Dmod_Compression_GetNextSupported( const char* CompressionName )
+{
+    const char* next = NULL;
+
+    if(CompressionName == NULL)
+    {
+        return SupportedCompressions[0];
+    }
+
+    for( size_t i = 0; i < SupportedCompressionsCount; i++ )
+    {
+        if( strcmp( SupportedCompressions[i], CompressionName ) == 0 )
+        {
+            if( (i + 1) < SupportedCompressionsCount )
+            {
+                next = SupportedCompressions[i + 1];
+            }
+            break;
+        }
+    }
+    
+    return next;
 }

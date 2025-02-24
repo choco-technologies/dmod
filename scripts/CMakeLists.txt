@@ -190,3 +190,24 @@ function(dmod_add_library moduleName version)
 
     dmod_create_module(${moduleName} ${version} Library ${SOURCES})
 endfunction()
+
+#
+# Function to create a DMOD system
+#
+function(dmod_add_tool toolName)
+    set(SOURCES ${ARGN})
+
+    add_executable(${toolName} ${SOURCES})
+
+    target_include_directories(${toolName} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+    target_link_libraries(${toolName} dmod)
+    target_link_options(${toolName} PRIVATE -L ${DMOD_SCRIPTS_DIR} -T ${DMOD_SCRIPTS_DIR}/main.ld)
+
+    # Move the binary to the tools directory
+    add_custom_command(
+        TARGET ${toolName} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${toolName}> ${DMOD_TOOLS_BIN_DIR}/${toolName}
+        COMMENT "Copying the binary to the tools directory"
+    )
+endfunction()

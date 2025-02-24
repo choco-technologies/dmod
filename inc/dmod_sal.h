@@ -199,10 +199,11 @@ DMOD_BUILTIN_API(Dmod, 1.0, void , _Mutex_Delete, ( void* Mutex ) );
  * @{
  */
 
-DMOD_BUILTIN_API(Dmod, 1.0, size_t, _Compression_GetMaxSize,  ( const char* Name, int Level, size_t SrcSize ) );
-DMOD_BUILTIN_API(Dmod, 1.0, size_t, _Compression_Pack,        ( const char* Name, int Level, void* Dest, size_t DestSize, const void* Src, size_t SrcSize ) );
-DMOD_BUILTIN_API(Dmod, 1.0, size_t, _Compression_Unpack,      ( const char* Name, void* Dest, size_t DestSize, const void* Src, size_t SrcSize ) );
-DMOD_BUILTIN_API(Dmod, 1.0, bool  , _Compression_IsSupported, ( const char* Name ) );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t     , _Compression_GetMaxSize,       ( const char* Name, int Level, size_t SrcSize ) );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t     , _Compression_Pack,             ( const char* Name, int Level, void* Dest, size_t DestSize, const void* Src, size_t SrcSize ) );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t     , _Compression_Unpack,           ( const char* Name, void* Dest, size_t DestSize, const void* Src, size_t SrcSize ) );
+DMOD_BUILTIN_API(Dmod, 1.0, bool       , _Compression_IsSupported,      ( const char* Name ) );
+DMOD_BUILTIN_API(Dmod, 1.0, const char*, _Compression_GetNextSupported, ( const char* CompressionName ));
 
 //! @}
 
