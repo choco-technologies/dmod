@@ -12,6 +12,7 @@ set(DMOD_USE_PTHREAD            ON )
 set(DMOD_USE_MMAN   	        ON )
 set(DMOD_BUILD_TESTS            ON )
 set(DMOD_BUILD_EXAMPLES         ON )
+set(DMOD_BUILD_TOOLS            ON )
 
 #
 #	Toolchain configuration

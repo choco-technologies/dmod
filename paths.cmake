@@ -9,6 +9,17 @@ endif()
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 
 # -----------------------------------------------------------------------------
+# 	Platform specific settings
+# -----------------------------------------------------------------------------
+if(WIN32)
+	set(DMOD_ARRAY_SEP ";")
+	set(DMOD_PATH_SEP "\\")
+else()
+	set(DMOD_ARRAY_SEP ":")
+	set(DMOD_PATH_SEP "/")
+endif()
+
+# -----------------------------------------------------------------------------
 # 	Output directories
 # -----------------------------------------------------------------------------
 if(NOT DEFINED DMOD_BUILD_DIR)
@@ -27,6 +38,7 @@ endif()
 if(NOT DEFINED DMOD_DMFC_DIR)
 	set(DMOD_DMFC_DIR ${DMOD_BUILD_DIR}/dmfc)
 endif()
+
 
 # -----------------------------------------------------------------------------
 #   Main project directories

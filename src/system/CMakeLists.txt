@@ -18,6 +18,7 @@ add_library(${MODULE_NAME} STATIC
     if/dmod_if_events.c
     if/dmod_if_rtos.c
     if/dmod_if_comp.c
+    if/dmod_if_env.c
     Dmod.cpp
 )
 

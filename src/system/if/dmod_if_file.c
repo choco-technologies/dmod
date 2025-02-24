@@ -79,6 +79,16 @@ size_t DMOD_WEAK_SYMBOL Dmod_FileRead(void *Buffer, size_t Size, size_t Count, v
     #endif
 }
 
+/**
+ * @brief Write file
+ * 
+ * @param File Pointer to file
+ * @param Buffer Buffer to write data from
+ * @param Size Size of data to write
+ * @param Count Number of elements to write
+ * 
+ * @return Number of elements written
+ */
 size_t DMOD_WEAK_SYMBOL Dmod_FileWrite(const void *Buffer, size_t Size, size_t Count, void *File)
 {
     #if DMOD_USE_STDIO
@@ -166,11 +176,29 @@ void DMOD_WEAK_SYMBOL Dmod_FileClose(void *File)
 }
 
 /**
- * @brief Get repository path
+ * @brief Get repository directory
  * 
- * @return Path to repository
+ * @return Path to repository directory
  */
-const char* DMOD_WEAK_SYMBOL Dmod_GetRepoPath(void)
+const char* DMOD_WEAK_SYMBOL Dmod_GetRepoDir(void)
 {
     return DMOD_REPO_DIR;
+}
+
+/**
+ * @brief Check if file is available
+ * 
+ * @param Path Path to file
+ * 
+ * @return True if file is available, false otherwise
+ */
+bool DMOD_WEAK_SYMBOL Dmod_FileAvailable(const char *Path)
+{
+    void* file = Dmod_FileOpen( Path, "rb" );
+    if( file == NULL )
+    {
+        return false;
+    }
+    Dmod_FileClose( file );
+    return true;
 }

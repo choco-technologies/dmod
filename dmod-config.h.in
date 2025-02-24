@@ -8,6 +8,7 @@
 #define DMOD_MAX_MODULES                @DMOD_MAX_MODULES@
 #define DMOD_MAX_REQUIRED_MODULES       @DMOD_MAX_REQUIRED_MODULES@
 #define DMOD_USE_STDLIB                 @DMOD_USE_STDLIB@
+#define DMOD_USE_GETENV                 @DMOD_USE_GETENV@
 #define DMOD_USE_STDIO                  @DMOD_USE_STDIO@
 #define DMOD_USE_ASSERT                 @DMOD_USE_ASSERT@
 #define DMOD_USE_PTHREAD                @DMOD_USE_PTHREAD@
@@ -24,7 +25,10 @@
 #define DMOD_SYSTEM_VERSION_STRING "@DMOD_SYSTEM_VERSION_MAJOR@.@DMOD_SYSTEM_VERSION_MINOR@"
 #define DMOD_SYSTEM_VERSION ((uint32_t)((@DMOD_SYSTEM_VERSION_MAJOR@ << 8) | (@DMOD_SYSTEM_VERSION_MINOR@)))
 #define DMOD_REPO_DIR        "@DMOD_REPO_DIR@"
+#define DMOD_REPO_PATHS      "@DMOD_REPO_PATHS@"
 #define DMOD_CPU_NAME        "@DMOD_CPU_NAME@"
+#define DMOD_ARRAY_SEP       "@DMOD_ARRAY_SEP@"
+#define DMOD_PATH_SEP        "@DMOD_PATH_SEP@"
 
 #ifndef ON 
 #   define ON 1

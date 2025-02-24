@@ -88,13 +88,28 @@ DMOD_BUILTIN_API(Dmod, 1.0, int         , _FileSeek,    ( void* File, long Offse
 DMOD_BUILTIN_API(Dmod, 1.0, size_t      , _FileTell,    ( void* File ) );
 DMOD_BUILTIN_API(Dmod, 1.0, size_t      , _FileSize,    ( void* File ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void        , _FileClose,   ( void* File ) );
-DMOD_BUILTIN_API(Dmod, 1.0, const char* , _GetRepoPath, ( void ) );
+DMOD_BUILTIN_API(Dmod, 1.0, const char* , _GetRepoDir,  ( void ) );
+DMOD_BUILTIN_API(Dmod, 1.0, bool        , _FileAvailable, ( const char* Path ) );
 
 #ifndef DMOD_SEEK_SET
 #   define DMOD_SEEK_SET   0
 #   define DMOD_SEEK_CUR   1
 #   define DMOD_SEEK_END   2
 #endif
+//! @}
+
+/**
+ * @defgroup DMOD_SAL_ENV Environment Interface
+ * @ingroup DMOD_SAL
+ * 
+ * This interface is used to get environment variables in the system.
+ * 
+ * @addtogroup DMOD_SAL_ENV
+ * @{
+ */
+
+DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetEnv, ( const char* Name ) );
+
 //! @}
 
 /**
