@@ -29,27 +29,33 @@ SECTIONS
         __text_start = .;
         *(.text .text.* .gnu.linkonce.t.*);
         
-        . = ALIGN(4);
+        . = ALIGN(8);
         KEEP(*(.init));
-        . = ALIGN(4);
+        . = ALIGN(8);
         __preinit_array_start = .;
         KEEP(*(.preinit_array));
-        . = ALIGN(4);
+        . = ALIGN(8);
         __preinit_array_end = .;
         __init_array_start = .;
         KEEP(*(SORT(.init_array.*)));
-        . = ALIGN(4);
+        . = ALIGN(8);
         KEEP(*(.init_array));
-        . = ALIGN(4);
+        . = ALIGN(8);
         __init_array_end = .;
         KEEP(*(.fini));
-        . = ALIGN(4);
+        . = ALIGN(8);
         __fini_array_start = .;
         KEEP(*(.fini_array));
-        . = ALIGN(4);
+        . = ALIGN(8);
+        __fini_array_end = .;
         KEEP(*(SORT(.fini_array.*)));
-        . = ALIGN(4);
+        . = ALIGN(8);
         __text_end = .;
+
+        PROVIDE(__init_array_start = __init_array_start);
+        PROVIDE(__init_array_end = __init_array_end);
+        PROVIDE(__fini_array_start = __fini_array_start);
+        PROVIDE(__fini_array_end = __fini_array_end);
     } : text
 
     .data : 

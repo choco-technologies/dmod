@@ -597,10 +597,24 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
             return -ENOEXEC;
         }
     }
+    int result = Dmod_Init( Context, NULL );
+    if( result != 0 )
+    {
+        DMOD_LOG_ERROR("Cannot run module - init failed: %d\n", result);
+        Dmod_DisconnectOutputApis(Context);
+        Dmod_Mutex_Unlock(Context->Mutex);
+        return -ENOEXEC;
+    }
 
-    int result = Dmod_Main( Context, argc, argv );
+    result = Dmod_Main( Context, argc, argv );
     Dmod_Event_ModuleStopped( Context );
     Context->Running = false;
+
+    result = Dmod_Deinit( Context );
+    if( result != 0 )
+    {
+        DMOD_LOG_ERROR("Cannot run module - deinit failed: %d\n", result);
+    }
 
     Dmod_DisconnectOutputApis(Context);
 
@@ -1012,6 +1026,18 @@ int Dmod_RunModule(const char* ModuleName, int argc, char *argv[])
     }
 
     return Dmod_Run( context, argc, argv );
+}
+
+/**
+ * @brief Check if function is connected
+ * 
+ * @param FunctionPointer Function pointer to check
+ * 
+ * @return true if function is connected, false otherwise
+ */
+bool Dmod_IsFunctionConnected( void* FunctionPointer )
+{
+    return FunctionPointer != NULL && !Dmod_ApiSignature_IsValid( FunctionPointer );
 }
 
 //==============================================================================
