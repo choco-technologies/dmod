@@ -200,6 +200,9 @@ function(dmod_create_module moduleName version moduleType)
             COMMENT "Compressing the binary"
         )
     endif()
+
+    # Print the source files
+    message(STATUS "SOURCES for module ${moduleName}: ${SOURCES}")
 endfunction()
 
 #

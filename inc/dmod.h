@@ -91,7 +91,6 @@ extern bool         Dmod_ApiSignature_ReadModuleName( const char* Signature, cha
 extern bool         Dmod_ApiSignature_ReadVersion( const char* Signature, char* Version, size_t MaxLength );
 extern bool         Dmod_ApiSignature_AreEqual( const char* Signature1, const char* Signature2 );
 extern bool         Dmod_ApiSignature_IsMal( const char* Signature );
-extern bool         Dmod_IsFunctionConnected( void* FunctionPointer );
 
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _ReadModuleHeader, (const char* FilePath, Dmod_ModuleHeader_t* Header) );
 DMOD_BUILTIN_API( Dmod, 1.0, void       , _BeginUsage, (const char* ModuleName) );
@@ -109,6 +108,7 @@ DMOD_BUILTIN_API( Dmod, 1.0, bool       , _UnloadModule, (const char* ModuleName
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _EnableModule, (const char* ModuleName, bool Force, const Dmod_Config_t* Config) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _DisableModule, (const char* ModuleName, bool Force ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int        , _RunModule, (const char* ModuleName, int argc, char *argv[]) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsFunctionConnected, (void* FunctionPointer) );
 
 //! @}
 

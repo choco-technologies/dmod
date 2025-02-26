@@ -121,6 +121,28 @@ const char* Dmod_Context_GetModuleName( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Get module type
+ * 
+ * @param Context Context to get module type from
+ * 
+ * @return Module type
+ */
+Dmod_ModuleType_t Dmod_Context_GetModuleType( Dmod_Context_t* Context )
+{
+    if( Context == NULL || !Dmod_Context_IsValid( Context ) )
+    {
+        return Dmod_ModuleType_Unknown;
+    }
+
+    if( Context->Header == NULL )
+    {
+        return Dmod_ModuleType_Unknown;
+    }
+
+    return Context->Header->ModuleType;
+}
+
+/**
  * @brief Add context
  * 
  * @param Context Context to add

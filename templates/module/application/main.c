@@ -31,5 +31,5 @@ void dmod_preinit(void)
 int main(int argc, char *argv[])
 {
     Dmod_Printf("Hello, World!\n");
-    return 0
+    return 0;
 }

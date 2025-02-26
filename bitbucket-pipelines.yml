@@ -20,6 +20,7 @@ pipelines:
           - cmake .. -DDMOD_MODE=DMOD_SYSTEM -DDMOD_TOOLS_NAME=arch/x86_64
           - cmake --build .
           - ./examples/system/dmod_loader ./dmf/example_app.dmf
+          - ./examples/system/dmod_loader ./dmf/MyApplication.dmf
           - cmake --build . --target coverage_check
           - echo "Building compressed DMF"
           - cmake .. -DDMOD_MODE=DMOD_MODULE -DDMOD_TOOLS_NAME=arch/x86_64

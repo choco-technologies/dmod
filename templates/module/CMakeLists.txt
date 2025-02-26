@@ -18,10 +18,10 @@ configure_file(
 
 configure_file(
     ${INPUT_DIR}/main.c
-    ${OUTPUT_DIR}/main.c
+    ${OUTPUT_DIR}/${DMOD_MODULE_NAME}.c
 )
 
-add_subdirectory(${OUTPUT_DIR})
+add_subdirectory(output/library)
 
 # #############################################################
 #   Creation of the application module using the template
@@ -41,10 +41,10 @@ configure_file(
 
 configure_file(
     ${INPUT_DIR}/main.c
-    ${OUTPUT_DIR}/main.c
+    ${OUTPUT_DIR}/${DMOD_MODULE_NAME}.c
 )
 
-add_subdirectory(${OUTPUT_DIR})
+add_subdirectory(output/application)
 
 
 

@@ -3,7 +3,6 @@
 #include "example_app_defs.h"
 #include <stdio.h>
 
-
 extern const Dmod_ModuleHeader_t* DMOD_Header;
 extern void HelloWorld();
 

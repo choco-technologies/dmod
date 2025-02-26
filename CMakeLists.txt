@@ -86,6 +86,7 @@ if (DMOD_COVERAGE)
 			--exclude "${DMOD_DIR}/tests/.*"
 			--exclude "${DMOD_DIR}/examples"
 			--exclude "${DMOD_DIR}/scripts"
+			--exclude "${DMOD_DIR}/templates"
 			--exclude "${DMOD_BUILD_DIR}"
 			--exclude "${DMOD_DIR}/src/system/if"
 			--sort-percentage
@@ -104,6 +105,7 @@ if (DMOD_COVERAGE)
 			--exclude "${DMOD_DIR}/tests/.*"
 			--exclude "${DMOD_DIR}/examples"
 			--exclude "${DMOD_DIR}/scripts"
+			--exclude "${DMOD_DIR}/templates"
 			--exclude "${DMOD_BUILD_DIR}"
 			--exclude "${DMOD_DIR}/src/system/if"
 

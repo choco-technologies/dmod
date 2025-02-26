@@ -613,3 +613,69 @@ TEST_F(DmodContextTest, GetNullModuleName)
     Dmod_Context_t* context = nullptr;
     ASSERT_EQ(Dmod_Context_Get(nullptr), context);
 }
+
+// ===============================================================
+//                  Tests for Dmod_Context_GetModuleType
+// ===============================================================
+/**
+ * @brief Test for Dmod_Context_GetModuleType
+ * 
+ * The test checks if the function returns the module type for a valid context.
+ */
+TEST_F(DmodContextTest, GetModuleTypeValidContext)
+{
+    size_t fileSize = 0;
+    void* data = nullptr;
+    EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
+
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+
+    // Set the module name
+    ASSERT_NE(context, nullptr);
+    context->Header = reinterpret_cast<Dmod_ModuleHeader_t*>(data);
+    const char* moduleName = Dmod_Context_GetModuleName(context);
+    EXPECT_NE(moduleName, nullptr);
+    EXPECT_STREQ(moduleName, "example_app");
+
+    // Add the context to the list
+    EXPECT_TRUE(Dmod_Context_Add(context));
+
+    ASSERT_EQ(Dmod_Context_GetModuleType(context), Dmod_ModuleType_Application);
+    EXPECT_TRUE(Dmod_Context_Remove(context));
+    Dmod_Context_Delete(context);
+}
+
+/**
+ * @brief Test for Dmod_Context_GetModuleType
+ * 
+ * The test checks if the function returns Dmod_ModuleType_Unknown for an invalid context.
+ */
+TEST_F(DmodContextTest, GetModuleTypeInvalidContext)
+{
+    Dmod_Context_t* context = nullptr;
+    ASSERT_EQ(Dmod_Context_GetModuleType(context), Dmod_ModuleType_Unknown);
+}
+
+/**
+ * @brief Test for Dmod_Context_GetModuleType
+ * 
+ * The test checks if the function returns Dmod_ModuleType_Unknown for a context with an invalid header.
+ */
+TEST_F(DmodContextTest, GetModuleTypeInvalidHeader)
+{
+    size_t fileSize = 0;
+    void* data = nullptr;
+    EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
+
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+
+    // Set the module name
+    ASSERT_NE(context, nullptr);
+    context->Header = nullptr;
+    const char* moduleName = Dmod_Context_GetModuleName(context);
+    EXPECT_NE(moduleName, nullptr);
+    EXPECT_STREQ(moduleName, "Unknown");
+
+    ASSERT_EQ(Dmod_Context_GetModuleType(context), Dmod_ModuleType_Unknown);
+    Dmod_Context_Delete(context);
+}

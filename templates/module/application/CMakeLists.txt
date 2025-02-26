@@ -19,7 +19,7 @@ set(DMOD_PRIORITY           0)
 #   and can be used in the same way after the creation
 #   (for example, to link libraries)
 #
-dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION} 
+dmod_add_executable(${DMOD_MODULE_NAME} "0.1"
     # List of source files - can include C and C++ files
-    main.c
+    @DMOD_MODULE_NAME@.c
 )
