@@ -385,6 +385,8 @@ It is also **recommended** (but not mandatory) to define those:
 
 To develop an application or library module, you need to create a **DMF (Dmod Module File)**. This file contains the compiled code of your module, as well as the metadata required for loading and unloading it dynamically.
 
+You can use templates provided in the [templates/module](templates/module/README.md) directory to create your own module. The templates include the necessary files and configurations to get started with developing a module using the **Dmod** library.
+
 #### Hello World Source Code
 
 Here is an example of a simple "Hello World" module that you can use as a starting point:
