@@ -297,6 +297,18 @@ bool Dmod_ApiSignature_IsMal( const char* Signature )
     return strncmp( Signature, DMOD_MAL_SIGNATURE_PREFIX, sizeof(DMOD_MAL_SIGNATURE_PREFIX) - 1 ) == 0;
 }
 
+/**
+ * @brief Check if function is connected
+ * 
+ * @param FunctionPointer Function pointer to check
+ * 
+ * @return true if function is connected, false otherwise
+ */
+bool Dmod_IsFunctionConnected( void* FunctionPointer )
+{
+    return FunctionPointer != NULL && !Dmod_ApiSignature_IsValid( FunctionPointer );
+}
+
 //==============================================================================
 //                              LOCAL FUNCTIONS IMPLEMENTATIONS
 //==============================================================================
