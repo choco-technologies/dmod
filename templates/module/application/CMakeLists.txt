@@ -1,14 +1,14 @@
 # Name of the module 
-set(DMOD_MODULE_NAME        @MODULE_NAME@)
+set(DMOD_MODULE_NAME        @DMOD_MODULE_NAME@)
 
 # Version (should be string in format "Major.Minor") 
 set(DMOD_MODULE_VERSION     "0.1")
 
 # Author (should be string)
-set(DMOD_AUTHOR_NAME        @AUTHOR_NAME@)
+set(DMOD_AUTHOR_NAME        @DMOD_AUTHOR_NAME@)
 
 # Stack size for the module (should be integer)
-set(DMOD_STACK_SIZE         @STACK_SIZE@)
+set(DMOD_STACK_SIZE         @DMOD_STACK_SIZE@)
 
 # Priority for the thread of the module (should be integer)
 set(DMOD_PRIORITY           0)

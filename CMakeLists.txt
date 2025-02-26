@@ -130,6 +130,9 @@ endif()
 if (DMOD_BUILD_TOOLS)
 	add_subdirectory(tools)
 endif()
+if (DMOD_BUILD_TEMPLATES)
+	add_subdirectory(templates)
+endif()
 
 # Create a simple configuration header
 configure_file(dmod-config.h.in dmod-config.h)
