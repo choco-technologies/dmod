@@ -172,12 +172,17 @@ function(dmod_create_module moduleName version moduleType)
     target_link_libraries(${moduleName} dmod ${moduleName}_if)
     
     set(OPTIMIZATION "-O2")
+    if(DMOD_USE_EXCEPTIONS)
+        set(EXCEPTION_FLAGS "")
+    else()
+        set(EXCEPTION_FLAGS -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables)
+    endif()
 
-    target_compile_options(${moduleName} PRIVATE -fPIC -fPIE -ffunction-sections -fdata-sections ${OPTIMIZATION} )
+    target_compile_options(${moduleName} PRIVATE -fPIC -fPIE -ffunction-sections ${EXCEPTION_FLAGS} -fdata-sections ${OPTIMIZATION} )
     target_compile_options(${moduleName} PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-fpermissive>
     )
-    target_link_options(${moduleName} PRIVATE -L ${DMOD_SCRIPTS_DIR} -pie -nostartfiles -nostdlib -Xlinker --discard-all )
+    target_link_options(${moduleName} PRIVATE -L ${DMOD_SCRIPTS_DIR} -pie -nostartfiles -nostdlib -Xlinker --discard-all -Wl,--gc-sections,--undefined=ModuleHeader )
     target_link_options(${moduleName} PRIVATE -T ${DMOD_SCRIPTS_DIR}/module.ld  -static)
     
     set(ELF_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${moduleName}")

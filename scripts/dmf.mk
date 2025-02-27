@@ -28,6 +28,11 @@ endif
 ifeq ($(DMOD_COMPRESSION_METHOD),)
 	DMOD_COMPRESSION_METHOD=fastlz
 endif
+ifeq ($(DMOD_USE_EXCEPTIONS),1)
+	EXCEPTION_FLAGS :=
+else
+	EXCEPTION_FLAGS := -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables
+endif
 DMOD_MODULE_NAME_SNAKE_CASE := $(shell echo $(DMOD_MODULE_NAME) | sed 's/[A-Z]/_\l&/g')
 DMOD_MODULE_DEFS_HEADER_FILE_NAME=$(DMOD_MODULE_NAME_SNAKE_CASE)_defs.h
 DMOD_MODULE_DEFS_HEADER_FILE_PATH=$(DMOD_BUILD_DIR)/$(DMOD_MODULE_DEFS_HEADER_FILE_NAME)
@@ -81,7 +86,7 @@ OPTIMIZATION        = -O2
 CFLAGS             += -fPIC -fPIE -ffunction-sections $(OPTIMIZATION) -include $(DMOD_MODULE_DEFS_HEADER_FILE_NAME) $(C_OPT)
 CFLAGS             += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 CXXFLAGS           += $(CFLAGS)
-LFLAGS 			   += -L $(DMOD_SCRIPTS_DIR) -T $(DMOD_MODULE_LD_FILE_NAME) -pie -nostartfiles -nostdlib -Xlinker --discard-all -static
+LFLAGS 			   += -L $(DMOD_SCRIPTS_DIR) -T $(DMOD_MODULE_LD_FILE_NAME) -pie -nostartfiles -nostdlib -Xlinker --discard-all -static -Wl,--gc-sections,--undefined=ModuleHeader
 ifeq ($(DMOD_DEBUG),ON)
 	CFLAGS += -g
 endif
