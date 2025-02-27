@@ -29,6 +29,7 @@
  * 
  */
 
+#include <string.h>
 #include "dmod_sal.h"
 #if DMOD_USE_STDLIB
 #   include <stdlib.h>
@@ -98,13 +99,14 @@ void* DMOD_WEAK_SYMBOL Dmod_AlignedMalloc(size_t Size, size_t Alignment)
 {
     void* mem = NULL;
     size_t pagesize = Alignment;
+    (void)pagesize;
 #if DMOD_USE_MMAN
     pagesize = sysconf(_SC_PAGESIZE);
 #endif
 
-#if DMOD_USE_ALIGNED_ALLOC
+#if DMOD_USE_ALIGNED_ALLOC && DMOD_USE_STDLIB
     mem = aligned_alloc(pagesize, Size);
-#elif DMOD_USE_ALIGNED_MALLOC_MOCK
+#elif DMOD_USE_ALIGNED_MALLOC_MOCK && DMOD_USE_STDLIB
 #if !DMOD_USE_STDLIB
 #   error DMOD_USE_ALIGNED_MALLOC_MOCK cannot be used without DMOD_USE_STDLIB
     void* original = NULL;
