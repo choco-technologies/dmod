@@ -54,6 +54,11 @@ if(NOT ARM_AR)
     message(FATAL_ERROR "ARM ar not found")
 endif()
 
+find_program(ARM_SIZE arm-none-eabi-size)
+if(NOT ARM_SIZE)
+    message(FATAL_ERROR "ARM size not found")
+endif()
+
 # ==============================================================================
 #                         CMake Configuration
 # ==============================================================================
@@ -64,6 +69,7 @@ set(CMAKE_CXX_COMPILER "${ARM_GXX}" CACHE STRING "C++ compiler")
 set(CMAKE_LINKER "${ARM_LD}" CACHE STRING "Linker")
 set(CMAKE_OBJDUMP "${ARM_OBJDUMP}" CACHE STRING "Objdump")
 set(CMAKE_OBJCOPY "${ARM_OBJCOPY}" CACHE STRING "Objcopy")
+set(CMAKE_SIZE "${ARM_SIZE}" CACHE STRING "Size")
 set(CMAKE_AR "${ARM_AR}" CACHE STRING "Archiver")
 set(MAKE make CACHE STRING "Make")
 set(MKDIR mkdir CACHE STRING "Mkdir")
