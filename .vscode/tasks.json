@@ -22,7 +22,23 @@
             "detail": "Build the project in DMOD_MODULE mode"
         },
         {
-            "label": "Build",
+            "label": "Build Parallel",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build",
+                "--parallel"
+            ],
+            "group": "build",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "detail": "Build the project in current mode"
+        },
+        {
+            "label": "Build Single Thread",
             "type": "shell",
             "command": "cmake",
             "args": [

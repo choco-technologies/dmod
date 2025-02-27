@@ -19,7 +19,11 @@ set(DMOD_PATHS "${DMOD_DIR}/paths.cmake")
 # ===========================================================================
 include(${DMOD_PATHS})
 message(STATUS "Using DMOD_TOOLS: ${DMOD_TOOLS}")
-include(${DMOD_TOOLS})
+if (DEFINED DMOD_TOOLS)
+	include(${DMOD_TOOLS})
+else()
+	message(WARNING "DMOD_TOOLS not defined, using default values")
+endif()
 
 # ===========================================================================
 # 						Project definition
@@ -72,23 +76,17 @@ endif()
 # ===========================================================================
 if (DMOD_COVERAGE)
 	# Add the coverage target
-	set(EXCLUDED_DIRS "tests" "examples" "scripts" "src/system/if")
-	set(EXCLUDE_DIRS "")
+	set(EXCLUDED_DIRS "tests" "examples" "scripts" "src/system/if" "lib" "templates")
+	set(EXCLUDE_DIRS --exclude "${DMOD_BUILD_DIR}")
 
 	foreach(dir ${EXCLUDED_DIRS})
-		list(APPEND EXCLUDE_DIRS "--exclude ${DMOD_DIR}/${dir}")
+		list(APPEND EXCLUDE_DIRS --exclude ${DMOD_DIR}/${dir})
 	endforeach()
 
 	add_custom_target(coverage ALL
 		COMMAND ${GCOVR} 
 			-r "${DMOD_DIR}"
-			--exclude "${DMOD_DIR}/lib"
-			--exclude "${DMOD_DIR}/tests/.*"
-			--exclude "${DMOD_DIR}/examples"
-			--exclude "${DMOD_DIR}/scripts"
-			--exclude "${DMOD_DIR}/templates"
-			--exclude "${DMOD_BUILD_DIR}"
-			--exclude "${DMOD_DIR}/src/system/if"
+			${EXCLUDE_DIRS}
 			--sort-percentage
 
 			--print-summary
@@ -101,13 +99,7 @@ if (DMOD_COVERAGE)
 	add_custom_target(coverage_check
 		COMMAND ${GCOVR} 
 			-r "${DMOD_DIR}"
-			--exclude "${DMOD_DIR}/lib"
-			--exclude "${DMOD_DIR}/tests/.*"
-			--exclude "${DMOD_DIR}/examples"
-			--exclude "${DMOD_DIR}/scripts"
-			--exclude "${DMOD_DIR}/templates"
-			--exclude "${DMOD_BUILD_DIR}"
-			--exclude "${DMOD_DIR}/src/system/if"
+			${EXCLUDE_DIRS}
 
 			--fail-under-line ${DMOD_MIN_COVERAGE}
 		WORKING_DIRECTORY ${DMOD_BUILD_DIR}

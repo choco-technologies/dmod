@@ -49,6 +49,8 @@ set(DMOD_SCRIPTS_DIR ${DMOD_DIR}/scripts)
 set(DMOD_EXAMPLES_DIR ${DMOD_DIR}/examples)
 set(DMOD_TESTS_DIR ${DMOD_DIR}/tests)
 set(DMOD_CONFIGS_DIR ${DMOD_DIR}/configs)
+set(DMOD_TEMPLATES_DIR ${DMOD_DIR}/templates)
+set(DMOD_TOOLS_DIR ${DMOD_DIR}/tools)
 
 # -----------------------------------------------------------------------------
 #   Makefile file names
@@ -73,9 +75,7 @@ set(DMOD_COVERAGE_SUMMARY_FILE_NAME coverage.txt)
 #   Makefile file paths
 # -----------------------------------------------------------------------------
 if(NOT DEFINED DMOD_TOOLS)
-	if(NOT DEFINED DMOD_TOOLS_NAME)
-		set(DMOD_TOOLS ${DMOD_DIR}/${DMOD_TOOLS_FILE_NAME})
-	else()
+	if(DEFINED DMOD_TOOLS_NAME)
 		set(DMOD_TOOLS ${DMOD_CONFIGS_DIR}/${DMOD_TOOLS_NAME}/${DMOD_TOOLS_FILE_NAME})
 	endif()
 endif()

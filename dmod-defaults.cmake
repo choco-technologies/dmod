@@ -74,3 +74,5 @@ endif()
 if (NOT DEFINED DMOD_USE_EXCEPTIONS)
     set(DMOD_USE_EXCEPTIONS OFF)
 endif()
+
+set(DMOD_MIN_COVERAGE 40 CACHE STRING "Minimum code coverage percentage")
