@@ -75,3 +75,11 @@ set(DMOD_CPU_NAME			    "" 						  	                        CACHE STRING "Name o
 
 # Name of the tools configuration
 set(DMOD_TOOLS_NAME			    "arch/x86_64" 					                    CACHE STRING "Name of the tools configuration")
+
+
+# ===========================================================================
+#                       BUILT-IN API
+# ===========================================================================
+
+# Allows for the built-in compression API (it can use a lot of flash memory and usually is not required - only decompression is required)
+set(DMOD_BUILTIN_COMPRESSION_API ON CACHE BOOL "Enable to use the built-in compression API")

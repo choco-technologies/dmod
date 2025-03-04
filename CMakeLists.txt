@@ -11,6 +11,9 @@ endif()
 if (NOT DEFINED DMOD_BUILD_DIR)
 	set(DMOD_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 endif()
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_definitions(-DNDEBUG)
+endif()
 
 set(DMOD_PATHS "${DMOD_DIR}/paths.cmake")
 

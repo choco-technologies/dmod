@@ -14,4 +14,10 @@ target_link_libraries(${MODULE_NAME}
         
     )
 
+target_compile_options(${MODULE_NAME} PRIVATE
+    -Os
+    -ffunction-sections
+    -fdata-sections
+)
+
 create_library_makefile(${MODULE_NAME})

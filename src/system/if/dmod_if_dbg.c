@@ -50,7 +50,7 @@
  * 
  * @return Number of characters printed
  */
-int DMOD_WEAK_SYMBOL Dmod_Printf( const char* Format, ... )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Printf, ( const char* Format, ... ))
 {
     #if DMOD_USE_STDIO
     int Ret = 0;
@@ -73,7 +73,7 @@ int DMOD_WEAK_SYMBOL Dmod_Printf( const char* Format, ... )
  * @param Line Line number
  * @param Function Function name
  */
-void  DMOD_WEAK_SYMBOL Dmod_Assert( int Condition, const char* Message, const char* File, int Line, const char* Function )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Assert, ( int Condition, const char* Message, const char* File, int Line, const char* Function ))
 {
     #if DMOD_USE_ASSERT
     if( !Condition )

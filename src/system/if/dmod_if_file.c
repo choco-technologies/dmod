@@ -49,7 +49,7 @@
  * 
  * @return Pointer to file
  */
-void* DMOD_WEAK_SYMBOL Dmod_FileOpen(const char *Path, const char *Mode)
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _FileOpen, ( const char* Path, const char* Mode ))
 {
     #if DMOD_USE_STDIO
     return fopen(Path, Mode);
@@ -69,7 +69,7 @@ void* DMOD_WEAK_SYMBOL Dmod_FileOpen(const char *Path, const char *Mode)
  * 
  * @return Number of elements read
  */
-size_t DMOD_WEAK_SYMBOL Dmod_FileRead(void *Buffer, size_t Size, size_t Count, void *File)
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileRead, ( void* Buffer, size_t Size, size_t Count, void* File ))
 {
     #if DMOD_USE_STDIO
     return fread(Buffer, Size, Count, File);
@@ -89,7 +89,7 @@ size_t DMOD_WEAK_SYMBOL Dmod_FileRead(void *Buffer, size_t Size, size_t Count, v
  * 
  * @return Number of elements written
  */
-size_t DMOD_WEAK_SYMBOL Dmod_FileWrite(const void *Buffer, size_t Size, size_t Count, void *File)
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileWrite, ( const void* Buffer, size_t Size, size_t Count, void* File ))
 {
     #if DMOD_USE_STDIO
     return fwrite(Buffer, Size, Count, File);
@@ -108,7 +108,7 @@ size_t DMOD_WEAK_SYMBOL Dmod_FileWrite(const void *Buffer, size_t Size, size_t C
  * 
  * @return 0 on success, -1 on error
  */
-int DMOD_WEAK_SYMBOL Dmod_FileSeek(void *File, long Offset, int Origin)
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileSeek, ( void* File, long Offset, int Origin ))
 {
     #if DMOD_USE_STDIO
     return fseek(File, Offset, Origin);
@@ -125,7 +125,7 @@ int DMOD_WEAK_SYMBOL Dmod_FileSeek(void *File, long Offset, int Origin)
  * 
  * @return Current position in file
  */
-size_t DMOD_WEAK_SYMBOL Dmod_FileTell(void *File)
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileTell, ( void* File ))
 {
     #if DMOD_USE_STDIO
     return ftell(File);
@@ -142,7 +142,7 @@ size_t DMOD_WEAK_SYMBOL Dmod_FileTell(void *File)
  * 
  * @return Size of file
  */
-size_t DMOD_WEAK_SYMBOL Dmod_FileSize(void *File)
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileSize, ( void* File ))
 {
     if( File == NULL )
     {
@@ -166,7 +166,7 @@ size_t DMOD_WEAK_SYMBOL Dmod_FileSize(void *File)
  * 
  * @param File Pointer to file
  */
-void DMOD_WEAK_SYMBOL Dmod_FileClose(void *File)
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _FileClose, ( void* File ))
 {
     #if DMOD_USE_STDIO
     fclose(File);
@@ -180,7 +180,7 @@ void DMOD_WEAK_SYMBOL Dmod_FileClose(void *File)
  * 
  * @return Path to repository directory
  */
-const char* DMOD_WEAK_SYMBOL Dmod_GetRepoDir(void)
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetRepoDir, ( void ))
 {
     return DMOD_REPO_DIR;
 }
@@ -192,7 +192,7 @@ const char* DMOD_WEAK_SYMBOL Dmod_GetRepoDir(void)
  * 
  * @return True if file is available, false otherwise
  */
-bool DMOD_WEAK_SYMBOL Dmod_FileAvailable(const char *Path)
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _FileAvailable, ( const char* Path ))
 {
     void* file = Dmod_FileOpen( Path, "rb" );
     if( file == NULL )

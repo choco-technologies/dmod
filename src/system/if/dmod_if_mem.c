@@ -50,7 +50,7 @@
  * 
  * @return Pointer to allocated memory
  */
-void* DMOD_WEAK_SYMBOL Dmod_Malloc(size_t Size)        
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _Malloc, ( size_t Size ))
 {
 #if DMOD_USE_ALIGNED_MALLOC_MOCK
     return Dmod_AlignedMalloc(Size, sizeof(void*));
@@ -70,7 +70,7 @@ void* DMOD_WEAK_SYMBOL Dmod_Malloc(size_t Size)
  * 
  * @return Pointer to reallocated memory
  */
-void* DMOD_WEAK_SYMBOL Dmod_Realloc(void* Ptr, size_t Size)
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _Realloc, ( void* Ptr, size_t Size ))
 {
 #if DMOD_USE_STDLIB && DMOD_USE_REALLOC
     return realloc(Ptr, Size);
@@ -95,7 +95,7 @@ void* DMOD_WEAK_SYMBOL Dmod_Realloc(void* Ptr, size_t Size)
  * 
  * @note Optional - set to NULL if not supported
  */
-void* DMOD_WEAK_SYMBOL Dmod_AlignedMalloc(size_t Size, size_t Alignment)
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _AlignedMalloc, ( size_t Size, size_t Alignment ))
 {
     void* mem = NULL;
     size_t pagesize = Alignment;
@@ -144,7 +144,7 @@ void* DMOD_WEAK_SYMBOL Dmod_AlignedMalloc(size_t Size, size_t Alignment)
  * 
  * @param ptr Pointer to memory to free
  */
-void DMOD_WEAK_SYMBOL Dmod_Free(void *ptr)
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Free, ( void* ptr ))
 {
 #if DMOD_USE_ALIGNED_MALLOC_MOCK
     #if !DMOD_USE_STDLIB
