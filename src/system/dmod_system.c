@@ -1,4 +1,5 @@
 #define DMOD_PRIVATE
+#define DMOD_ENABLE_REGISTRATION
 #include "dmod.h"
 #include "private/dmod_vars.h"
 #include "private/dmod_ctx.h"
@@ -100,7 +101,9 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
         return NULL;
     }
 
+    Dmod_PrintAllApis( context );
     Dmod_Event_ModuleLoadingInProgress( Path, 100 );
+
     DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
 
     return context;
@@ -150,6 +153,8 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
         Dmod_Context_Delete( context );
         return NULL;
     }
+    
+    Dmod_PrintAllApis( context );
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(context), 100 );
 
     DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));

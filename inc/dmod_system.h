@@ -67,6 +67,9 @@ extern bool             Dmod_ConnectAllApis     ( Dmod_Context_t* Context );
 extern bool             Dmod_DisconnectOutputApis( Dmod_Context_t* Context );
 extern bool             Dmod_DisconnectInputApis ( Dmod_Context_t* Context );
 extern bool             Dmod_DisconnectAllApis  ( Dmod_Context_t* Context );
+extern void             Dmod_PrintOutputApis    ( Dmod_Context_t* Context );
+extern void             Dmod_PrintInputApis     ( Dmod_Context_t* Context );
+extern void             Dmod_PrintAllApis       ( Dmod_Context_t* Context );
 extern void*            Dmod_GetFunction        ( Dmod_Context_t* Context, const char* Signature );
 
 // DMF Callbacks

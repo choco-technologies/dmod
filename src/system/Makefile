@@ -41,7 +41,8 @@ DMOD_INC_DIRS = $(DMOD_DIR)/src/system\
 		$(DMOD_DIR)/lib/third-party/FastLZ
 DMOD_LIBS = dmod_inc\
 		dmod_common\
-		dmod_fastlz
+		dmod_fastlz\
+		pthread
 DMOD_GEN_HEADERS_IN = 
 DMOD_DEFINITIONS = 
 

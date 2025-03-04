@@ -1,8 +1,6 @@
 #ifndef INC_DMOD_DEFS_H_
 #define INC_DMOD_DEFS_H_
 
-#pragma once
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -92,12 +90,17 @@ extern "C" {
 //==============================================================================
 //                              DMOD_API definitions
 //==============================================================================
-#define _DMOD_API_REGISTRATION( REG_NAME, FUNCTION_NAME, SIGNATURE )        \
-        Dmod_ApiRegistration_t REG_NAME DMOD_SECTION(".dmod.inputs") DMOD_USED = \
+#if defined(DMOD_ENABLE_REGISTRATION) 
+#       define _DMOD_API_REGISTRATION( REG_NAME, FUNCTION_NAME, SIGNATURE )        \
+        static Dmod_ApiRegistration_t REG_NAME DMOD_SECTION(".dmod.inputs") DMOD_USED = \
         { \
                 .Function = (void*)FUNCTION_NAME, \
                 .Signature = SIGNATURE \
         };
+#else 
+#       define _DMOD_API_REGISTRATION( REG_NAME, FUNCTION_NAME, SIGNATURE )     \
+        // extern volatile Dmod_ApiRegistration_t REG_NAME DMOD_SECTION(".dmod.inputs") DMOD_USED;
+#endif
        
 #define DMOD_MAKE_API_FUNCTION_NAME( MODULE, NAME )		        MODULE##NAME
 #define DMOD_MAKE_MAL_API_FUNCTION_NAME( MODULE, NAME )		        MODULE##NAME
@@ -105,7 +108,7 @@ extern "C" {
 #define DMOD_MAKE_MAL_API_REG_NAME( MODULE, NAME )			MODULE##NAME##_registration
 #define _DMOD_INPUT_API( FUNCTION_NAME, SIGNATURE, REG_NAME, RET, PARAMS )        \
         extern RET FUNCTION_NAME PARAMS DMOD_USED;\
-        DMOD_WEAK_SYMBOL _DMOD_API_REGISTRATION( REG_NAME, FUNCTION_NAME, SIGNATURE );
+        _DMOD_API_REGISTRATION( REG_NAME, FUNCTION_NAME, SIGNATURE );
 
 #define _DMOD_OUTPUT_API( FUNCTION_NAME, SIGNATURE, RET, PARAMS )       \
         static RET (*FUNCTION_NAME) PARAMS DMOD_SECTION(".dmod.outputs") DMOD_UNUSED = (void*)SIGNATURE;
