@@ -20,6 +20,8 @@ extern "C" {
 #define DMOD_SECTION( NAME )	        __attribute__((section(NAME)))
 #define DMOD_USED                        __attribute__((used))
 #define DMOD_UNUSED                      __attribute__((unused))
+#define DMOD_USED_SECTION( NAME )        __attribute__((used, section(NAME)))
+#define DMOD_UNUSED_SECTION( NAME )      __attribute__((unused, section(NAME)))
 #define DMOD_GLOBAL_POINTER             DMOD_SECTION(".got")
 
 
@@ -92,14 +94,14 @@ extern "C" {
 //==============================================================================
 #if defined(DMOD_ENABLE_REGISTRATION) 
 #       define _DMOD_API_REGISTRATION( REG_NAME, FUNCTION_NAME, SIGNATURE )        \
-        static Dmod_ApiRegistration_t REG_NAME DMOD_SECTION(".dmod.inputs") DMOD_USED = \
+        volatile const Dmod_ApiRegistration_t REG_NAME DMOD_USED_SECTION(".dmod.inputs") = \
         { \
                 .Function = (void*)FUNCTION_NAME, \
                 .Signature = SIGNATURE \
         };
 #else 
 #       define _DMOD_API_REGISTRATION( REG_NAME, FUNCTION_NAME, SIGNATURE )     \
-        // extern volatile Dmod_ApiRegistration_t REG_NAME DMOD_SECTION(".dmod.inputs") DMOD_USED;
+        extern Dmod_ApiRegistration_t REG_NAME;
 #endif
        
 #define DMOD_MAKE_API_FUNCTION_NAME( MODULE, NAME )		        MODULE##NAME

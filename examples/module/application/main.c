@@ -1,4 +1,4 @@
-#define DMOD_ENABLE_REGISTRATION
+#define DMOD_ENABLE_REGISTRATION ON
 #include "dmod.h"
 #include "dmodex.h"
 #include "example_app_defs.h"

@@ -1,4 +1,4 @@
-#define DMOD_ENABLE_REGISTRATION
+#define DMOD_ENABLE_REGISTRATION    ON
 #ifndef DMOD_dmodex
 #   define DMOD_dmodex
 #endif

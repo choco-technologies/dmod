@@ -127,19 +127,20 @@ function(dmod_create_module moduleName version moduleType)
     endif()
 
     configure_file(${DMOD_SCRIPTS_DIR}/api.h.in ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_defs.h)
+    configure_file(${DMOD_SCRIPTS_DIR}/dmod_header.c.in ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_header.c)
     
     add_executable(${moduleName} 
         ${SOURCES}
-        ${DMOD_SCRIPTS_DIR}/dmod_header.c
+        ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_header.c
         )
     
     add_library(${moduleName}_if INTERFACE
         )
     
-    target_precompile_headers(${moduleName} 
-        PRIVATE 
-            ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_defs.h
-        )
+    # target_precompile_headers(${moduleName} 
+    #     PRIVATE 
+    #         ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_defs.h
+    #     )
 
     foreach(MAL ${DMOD_MAL_IMPLS})
         target_compile_definitions(${moduleName} 
@@ -150,7 +151,6 @@ function(dmod_create_module moduleName version moduleType)
 
     target_compile_definitions(${moduleName} 
         PUBLIC
-            DMOD_MODULE_NAME="${DMOD_MODULE_NAME}"
             DMOD_${moduleName}
             DMOD_MODE="DMOD_MODULE"
             DMOD_MODULE=1
