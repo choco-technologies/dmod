@@ -127,7 +127,7 @@ function(dmod_create_module moduleName version moduleType)
     endif()
 
     configure_file(${DMOD_SCRIPTS_DIR}/api.h.in ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_defs.h)
-    configure_file(${DMOD_SCRIPTS_DIR}/dmod_header.c.in ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_header.c)
+    configure_file(${DMOD_MODULE_HEADER_SOURCE_IN_FILE_PATH} ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_header.c)
     
     add_executable(${moduleName} 
         ${SOURCES}

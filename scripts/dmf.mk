@@ -36,6 +36,8 @@ endif
 DMOD_MODULE_NAME_SNAKE_CASE := $(shell echo $(DMOD_MODULE_NAME) | sed 's/[A-Z]/_\l&/g')
 DMOD_MODULE_DEFS_HEADER_FILE_NAME=$(DMOD_MODULE_NAME_SNAKE_CASE)_defs.h
 DMOD_MODULE_DEFS_HEADER_FILE_PATH=$(DMOD_BUILD_DIR)/$(DMOD_MODULE_DEFS_HEADER_FILE_NAME)
+DMOD_MODULE_HEADER_SOURCE_FILE_NAME=$(DMOD_MODULE_NAME_SNAKE_CASE)_header.c
+DMOD_MODULE_HEADER_SOURCE_FILE_PATH=$(DMOD_BUILD_DIR)/$(DMOD_MODULE_HEADER_SOURCE_FILE_NAME)
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths
@@ -59,7 +61,8 @@ TODMFC 					 := $(shell command -v todmfc || command -v "$(DMOD_TOOLS_BIN_DIR)/t
 # 	Add extra sources
 # -----------------------------------------------------------------------------
 DMOD_INC_DIRS       += $(DMOD_INC_DIR) $(DMOD_BUILD_DIR) $(DMOD_SCRIPTS_DIR)
-DMOD_GEN_HEADERS_IN += $(DMOD_API_HEADER_IN_FILE_PATH)=$(DMOD_MODULE_DEFS_HEADER_FILE_PATH)
+DMOD_GEN_HEADERS_IN += $(DMOD_API_HEADER_IN_FILE_PATH)=$(DMOD_MODULE_DEFS_HEADER_FILE_PATH)	\
+					   $(DMOD_MODULE_HEADER_SOURCE_IN_FILE_PATH)=$(DMOD_MODULE_HEADER_SOURCE_FILE_PATH)
 DMOD_CSOURCES	    += $(DMOD_MODULE_HEADER_SOURCE_FILE_PATH)
 DMOD_MAL_DEFS       += $(foreach impl,$(DMOD_MAL_IMPLS),DMOD_MAL_$(impl))
 DMOD_DEFINITIONS    += DMOD_${DMOD_MODULE_NAME} \
@@ -83,7 +86,7 @@ CFLAGS_INC          = $(addprefix -I,$(DMOD_INC_DIRS))
 CFLAGS_LIB          = $(addprefix -L,$(DMOD_LIBS))
 CFLAGS_DEF          = $(addprefix -D,$(DMOD_DEFINITIONS))
 OPTIMIZATION        = -O2
-CFLAGS             += -fPIC -fPIE -ffunction-sections $(OPTIMIZATION) -include $(DMOD_MODULE_DEFS_HEADER_FILE_NAME) $(C_OPT)
+CFLAGS             += -fPIC -fPIE -ffunction-sections $(OPTIMIZATION) $(C_OPT)
 CFLAGS             += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 CXXFLAGS           += $(CFLAGS)
 LFLAGS 			   += -L $(DMOD_SCRIPTS_DIR) -T $(DMOD_MODULE_LD_FILE_NAME) -pie -nostartfiles -nostdlib -Xlinker --discard-all -static -Wl,--gc-sections,--undefined=ModuleHeader
