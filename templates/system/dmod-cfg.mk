@@ -82,6 +82,3 @@ DMOD_CPU_NAME=""
 
 # Name of the tools configuration
 DMOD_TOOLS_NAME="arch/x86_64"
-
-# Use debug mode
-DMOD_DEBUG=ON

@@ -46,7 +46,7 @@
  * 
  * @return Value of the environment variable
  */
-const char* DMOD_WEAK_SYMBOL Dmod_GetEnv( const char* Name )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetEnv, ( const char* Name ))
 {
     const char* value = NULL;
 #if DMOD_USE_STDLIB && DMOD_USE_GETENV

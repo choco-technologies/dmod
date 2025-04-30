@@ -28,6 +28,11 @@ ifeq ($(DMOD_BUILD_TOOLS),ON)
 	SUBDIRS += tools
 endif
 
+# TODO: DMOD-98 The templates generation is not supported yet in Makefile mode
+# ifeq ($(DMOD_BUILD_TEMPLATES),ON)
+#	SUBDIRS += templates
+# endif
+
 # -----------------------------------------------------------------------------
 # 	Include template makefile
 # -----------------------------------------------------------------------------

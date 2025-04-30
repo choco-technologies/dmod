@@ -33,7 +33,7 @@
 /**
  * @brief Enter critical section
  */
-void DMOD_WEAK_SYMBOL Dmod_EnterCritical( void )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _EnterCritical, ( void ))
 {
     DMOD_LOG_WARN("Dmod_EnterCritical not implemented in the system\n");
 }
@@ -41,7 +41,7 @@ void DMOD_WEAK_SYMBOL Dmod_EnterCritical( void )
 /**
  * @brief Exit critical section
  */
-void DMOD_WEAK_SYMBOL Dmod_ExitCritical( void )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _ExitCritical, ( void ))
 {
     DMOD_LOG_WARN("Dmod_ExitCritical not implemented in the system\n");
 }

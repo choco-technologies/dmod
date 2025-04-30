@@ -71,3 +71,7 @@ endif
 ifndef DMOD_BUILD_TOOLS
     DMOD_BUILD_TOOLS = ON
 endif
+
+ifndef DMOD_USE_EXCEPTIONS
+    DMOD_USE_EXCEPTIONS = OFF
+endif

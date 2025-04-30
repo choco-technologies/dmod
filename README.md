@@ -291,7 +291,7 @@ git submodule add https://bitbucket.org/chocotechnologies/dmod.git libs/dmod
 git submodule update --init --recursive  # updates the dmod repository with it's submodules
 ```
 
-2. **Copy the configuration file template**: Depending on your build system, copy the `dmod-cfg.cmake` or `dmod-cfg.mk` file into your project and adapt it to your needs. 
+2. **Copy the configuration file template**: Depending on your build system, copy the [dmod-cfg.cmake](templates/system/dmod-cfg.cmake) or [dmod-cfg.mk](templates/system/dmod-cfg.mk) file into your project and adapt it to your needs. 
 
 2. **Add the library to your build system**: Link the library `dmod` into your project:
 

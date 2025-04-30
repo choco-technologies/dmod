@@ -30,6 +30,9 @@
 #define DMOD_ARRAY_SEP       "@DMOD_ARRAY_SEP@"
 #define DMOD_PATH_SEP        "@DMOD_PATH_SEP@"
 
+// API 
+#define DMOD_BUILTIN_COMPRESSION_API        @DMOD_BUILTIN_COMPRESSION_API@
+
 #ifndef ON 
 #   define ON 1
 #endif

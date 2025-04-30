@@ -44,7 +44,7 @@
  * 
  * @return Pointer to new mutex
  */
-void* DMOD_WEAK_SYMBOL Dmod_Mutex_New( bool Recursive )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _Mutex_New, ( bool Recursive ))
 {
     #if DMOD_USE_PTHREAD
     pthread_mutex_t* Mutex = Dmod_Malloc( sizeof( pthread_mutex_t ) );
@@ -91,7 +91,7 @@ void* DMOD_WEAK_SYMBOL Dmod_Mutex_New( bool Recursive )
  * 
  * @param Mutex Mutex to lock
  */
-int DMOD_WEAK_SYMBOL Dmod_Mutex_Lock( void* Mutex )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Mutex_Lock, ( void* Mutex ))
 {
     #if DMOD_USE_PTHREAD
     if( Mutex == NULL )
@@ -112,7 +112,7 @@ int DMOD_WEAK_SYMBOL Dmod_Mutex_Lock( void* Mutex )
  * 
  * @param Mutex Mutex to unlock
  */
-int DMOD_WEAK_SYMBOL Dmod_Mutex_Unlock( void* Mutex )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Mutex_Unlock, ( void* Mutex ))
 {
     #if DMOD_USE_PTHREAD
     if( Mutex == NULL )
@@ -133,7 +133,7 @@ int DMOD_WEAK_SYMBOL Dmod_Mutex_Unlock( void* Mutex )
  * 
  * @param Mutex Mutex to delete
  */
-void DMOD_WEAK_SYMBOL Dmod_Mutex_Delete( void* Mutex )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Mutex_Delete, ( void* Mutex ))
 {
     #if DMOD_USE_PTHREAD
     if( Mutex == NULL )

@@ -59,7 +59,7 @@ static const size_t SupportedCompressionsCount = sizeof(SupportedCompressions) /
  * 
  * @return Compressed buffer size
  */
-size_t DMOD_WEAK_SYMBOL Dmod_Compression_GetMaxSize( const char* Name, int Level, size_t SrcSize )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _Compression_GetMaxSize, ( const char* Name, int Level, size_t SrcSize ))
 {
     size_t max_output_size = 0;
     if( SrcSize == 0 )
@@ -93,7 +93,7 @@ size_t DMOD_WEAK_SYMBOL Dmod_Compression_GetMaxSize( const char* Name, int Level
  * 
  * @return Compressed data size
  */
-size_t DMOD_WEAK_SYMBOL Dmod_Compression_Pack( const char* Name, int Level, void* Dest, size_t DestSize, const void* Src, size_t SrcSize )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _Compression_Pack, ( const char* Name, int Level, void* Dest, size_t DestSize, const void* Src, size_t SrcSize ))
 {
     size_t Ret = 0;
     if( SrcSize == 0 )
@@ -126,7 +126,7 @@ size_t DMOD_WEAK_SYMBOL Dmod_Compression_Pack( const char* Name, int Level, void
  * 
  * @return Decompressed data size
  */
-size_t DMOD_WEAK_SYMBOL Dmod_Compression_Unpack( const char* Name, void* Dest, size_t DestSize, const void* Src, size_t SrcSize )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _Compression_Unpack, ( const char* Name, void* Dest, size_t DestSize, const void* Src, size_t SrcSize ))
 {
     size_t Ret = 0;
     if( SrcSize == 0 )
@@ -154,7 +154,7 @@ size_t DMOD_WEAK_SYMBOL Dmod_Compression_Unpack( const char* Name, void* Dest, s
  * 
  * @return true if compression algorithm is supported, false otherwise
  */
-bool DMOD_WEAK_SYMBOL Dmod_Compression_IsSupported( const char* Name )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _Compression_IsSupported, ( const char* Name ))
 {
     bool result = false;
 
@@ -177,7 +177,7 @@ bool DMOD_WEAK_SYMBOL Dmod_Compression_IsSupported( const char* Name )
  * 
  * @return Next supported compression algorithm name
  */
-const char* DMOD_WEAK_SYMBOL Dmod_Compression_GetNextSupported( const char* CompressionName )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _Compression_GetNextSupported, ( const char* CompressionName ))
 {
     const char* next = NULL;
 

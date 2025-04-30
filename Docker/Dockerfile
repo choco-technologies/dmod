@@ -42,3 +42,5 @@ RUN apt-get install -y openocd
 RUN apt-get install -y make libusb-1.0 g++
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y gcovr
+
+RUN apt-get update && apt-get install -y git

@@ -36,7 +36,7 @@
  * 
  * @param Context Context of the module
  */
-void DMOD_WEAK_SYMBOL Dmod_Event_ModuleLoaded( Dmod_Context_t* Context )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Event_ModuleLoaded, ( Dmod_Context_t* Context ))
 {
 
 }
@@ -46,7 +46,7 @@ void DMOD_WEAK_SYMBOL Dmod_Event_ModuleLoaded( Dmod_Context_t* Context )
  * 
  * @param Context Context of the module
  */
-void DMOD_WEAK_SYMBOL Dmod_Event_ModuleUnloaded( Dmod_Context_t* Context )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Event_ModuleUnloaded, ( Dmod_Context_t* Context ))
 {
 
 }
@@ -57,7 +57,7 @@ void DMOD_WEAK_SYMBOL Dmod_Event_ModuleUnloaded( Dmod_Context_t* Context )
  * @param Name Name of the module
  * @param Progress Progress of the loading
  */
-void DMOD_WEAK_SYMBOL Dmod_Event_ModuleLoadingInProgress( const char* Name, uint16_t Progress )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Event_ModuleLoadingInProgress, ( const char* Name, uint16_t Progress ))
 {
     DMOD_LOG_INFO("Loading module %s in progress: %d\n", Name, Progress);
 }
@@ -67,7 +67,7 @@ void DMOD_WEAK_SYMBOL Dmod_Event_ModuleLoadingInProgress( const char* Name, uint
  * 
  * @param Context Context of the module
  */
-void DMOD_WEAK_SYMBOL Dmod_Event_ModuleEnabled( Dmod_Context_t* Context )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Event_ModuleEnabled, ( Dmod_Context_t* Context ))
 {
 
 }
@@ -77,7 +77,7 @@ void DMOD_WEAK_SYMBOL Dmod_Event_ModuleEnabled( Dmod_Context_t* Context )
  * 
  * @param Context Context of the module
  */
-void DMOD_WEAK_SYMBOL Dmod_Event_ModuleDisabled( Dmod_Context_t* Context )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Event_ModuleDisabled, ( Dmod_Context_t* Context ))
 {
 
 }
@@ -87,7 +87,7 @@ void DMOD_WEAK_SYMBOL Dmod_Event_ModuleDisabled( Dmod_Context_t* Context )
  * 
  * @param Context Context of the module
  */
-void DMOD_WEAK_SYMBOL Dmod_Event_ModuleRunning( Dmod_Context_t* Context )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Event_ModuleRunning, ( Dmod_Context_t* Context ))
 {
 
 }
@@ -97,7 +97,7 @@ void DMOD_WEAK_SYMBOL Dmod_Event_ModuleRunning( Dmod_Context_t* Context )
  * 
  * @param Context Context of the module
  */
-void DMOD_WEAK_SYMBOL Dmod_Event_ModuleStopped( Dmod_Context_t* Context )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Event_ModuleStopped, ( Dmod_Context_t* Context ))
 {
 
 }

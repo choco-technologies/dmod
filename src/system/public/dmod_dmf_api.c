@@ -299,6 +299,62 @@ bool Dmod_DisconnectAllApis( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Print output APIs
+ * 
+ * @param Context Context to print APIs
+ */
+void Dmod_PrintOutputApis( Dmod_Context_t* Context )
+{
+    if( !Dmod_Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot print APIs - invalid context\n");
+        return;
+    }
+    DMOD_LOG_INFO("Output APIs for %s:\n", Dmod_Context_GetModuleName( Context ));
+    size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Outputs );
+    for(size_t i = 0; i < numberOfEntries; i++)
+    {
+        DMOD_LOG_INFO("  %s\n", Context->Outputs.OutputSection->Entries[i]);
+    }
+}
+
+/**
+ * @brief Print input APIs
+ * 
+ * @param Context Context to print APIs
+ */
+void Dmod_PrintInputApis( Dmod_Context_t* Context )
+{
+    if( !Dmod_Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot print APIs - invalid context\n");
+        return;
+    }
+    DMOD_LOG_INFO("Input APIs for %s:\n", Dmod_Context_GetModuleName( Context ));
+    size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
+    for(size_t i = 0; i < numberOfEntries; i++)
+    {
+        DMOD_LOG_INFO("  %s\n", Context->Inputs.InputSection->Entries[i].Signature);
+    }
+}
+
+/**
+ * @brief Print all APIs
+ * 
+ * @param Context Context to print APIs
+ */
+void Dmod_PrintAllApis( Dmod_Context_t* Context )
+{
+    if( !Dmod_Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot print APIs - invalid context\n");
+        return;
+    }
+    Dmod_PrintOutputApis( Context );
+    Dmod_PrintInputApis( Context );
+}
+
+/**
  * @brief Get function
  * 
  * @param Context Context to get function from

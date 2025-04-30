@@ -70,3 +70,18 @@ endif()
 if (NOT DEFINED DMOD_BUILD_TEMPLATES)
     set(DMOD_BUILD_TEMPLATES ON)
 endif()
+
+if (NOT DEFINED DMOD_USE_EXCEPTIONS)
+    set(DMOD_USE_EXCEPTIONS OFF)
+endif()
+
+set(DMOD_MIN_COVERAGE 40 CACHE STRING "Minimum code coverage percentage")
+
+
+# ===========================================================================
+# 						    Built-in API Configuration
+# ===========================================================================
+
+if (NOT DEFINED DMOD_BUILTIN_COMPRESSION_API)
+    set(DMOD_BUILTIN_COMPRESSION_API ON)
+endif()
