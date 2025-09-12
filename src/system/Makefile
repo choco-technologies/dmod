@@ -36,8 +36,7 @@ DMOD_INC_DIRS = $(DMOD_DIR)/src/system\
 		$(DMOD_BUILD_DIR)\
 		$(DMOD_DIR)/src/common
 DMOD_LIBS = dmod_inc\
-		dmod_common\
-		pthread
+		dmod_common
 DMOD_GEN_HEADERS_IN = 
 DMOD_DEFINITIONS = 
 
