@@ -49,3 +49,6 @@ Thumbs.db
 *.wmv
 
 /build/
+
+# Architecture-specific config (copy from configs/arch/<arch>/)
+tools-cfg.cmake
