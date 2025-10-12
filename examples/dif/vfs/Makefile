@@ -1,6 +1,6 @@
 # #############################################################################
 # 
-# 	This is an example of a simple library module.
+# 	VFS - Virtual File System that uses DIFS interface
 #
 # #############################################################################
 DMOD_DIR=../../..
@@ -15,22 +15,22 @@ include $(DMOD_DIR)/paths.mk
 # -----------------------------------------------------------------------------
 
 # The name of the module
-DMOD_MODULE_NAME=@MODULE_NAME@
+DMOD_MODULE_NAME=vfs
 
 # The version of the module
-DMOD_MODULE_VERSION=0.1
+DMOD_MODULE_VERSION=1.0
 
 # The name of the author
-DMOD_AUTHOR_NAME=@AUTHOR_NAME@
+DMOD_AUTHOR_NAME=DMOD Team
 
 # The list of C sources
-DMOD_CSOURCES=main.c 
+DMOD_CSOURCES=vfs.c
 
 # The list of C++ sources
 DMOD_CXXSOURCES=
 
 # The list of include directories
-DMOD_INC_DIRS=
+DMOD_INC_DIRS=../difs
 
 # The list of libraries to link
 DMOD_LIBS=
@@ -44,11 +44,6 @@ DMOD_DEFINITIONS=
 DMOD_MAL_IMPLS=
 
 # -----------------------------------------------------------------------------
-#   List of DIF interfaces implemented by the module
-# -----------------------------------------------------------------------------
-DMOD_DIF_IMPLS=
-
-# -----------------------------------------------------------------------------
-#   Include the dmod app makefile
+#   Include the dmod lib makefile
 # -----------------------------------------------------------------------------
 include $(DMOD_DMF_LIB_FILE_PATH)

@@ -49,6 +49,14 @@ Thumbs.db
 *.wmv
 
 /build/
+/build-modules/
+
+# Binary files
+*.o
+*.so
+*.a
+*.dmf
+*.dmfc
 
 # Architecture-specific config (copy from configs/arch/<arch>/)
 tools-cfg.cmake

@@ -149,6 +149,13 @@ function(dmod_create_module moduleName version moduleType)
                 )
     endforeach()
 
+    foreach(DIF ${DMOD_DIF_IMPLS})
+        target_compile_definitions(${moduleName} 
+            PRIVATE
+                DMOD_DIF_${DIF}
+                )
+    endforeach()
+
     target_compile_definitions(${moduleName} 
         PUBLIC
             DMOD_${moduleName}
@@ -178,7 +185,7 @@ function(dmod_create_module moduleName version moduleType)
         set(EXCEPTION_FLAGS -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables)
     endif()
 
-    target_compile_options(${moduleName} PRIVATE -fPIC -fPIE -ffunction-sections ${EXCEPTION_FLAGS} -fdata-sections ${OPTIMIZATION} )
+    target_compile_options(${moduleName} PRIVATE -fPIC -fPIE -ffunction-sections ${EXCEPTION_FLAGS} -fdata-sections ${OPTIMIZATION} -fno-stack-protector )
     target_compile_options(${moduleName} PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-fpermissive>
     )

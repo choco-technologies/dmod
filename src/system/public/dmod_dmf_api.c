@@ -388,3 +388,115 @@ void* Dmod_GetFunction( Dmod_Context_t* Context, const char* Signature )
     DMOD_LOG_ERROR("Cannot get function - function not found: %s\n", Signature);
     return NULL;
 }
+
+/**
+ * @brief Get next module that implements the given DIF interface
+ * 
+ * @param DifSignature DIF function signature to search for
+ * @param Previous Previous module context (NULL to start from beginning)
+ * 
+ * @return Pointer to module context or NULL if no more modules found
+ */
+Dmod_Context_t* Dmod_GetNextDifModule( const char* DifSignature, Dmod_Context_t* Previous )
+{
+    if( !Dmod_ApiSignature_IsValid( DifSignature ) )
+    {
+        DMOD_LOG_ERROR("Cannot get next DIF module - invalid signature\n");
+        return NULL;
+    }
+
+    // Check if signature is a DIF signature
+    if( strncmp( DifSignature, DMOD_DIF_SIGNATURE_PREFIX, sizeof( DMOD_DIF_SIGNATURE_PREFIX ) - 1 ) != 0 )
+    {
+        DMOD_LOG_ERROR("Cannot get next DIF module - signature is not a DIF signature\n");
+        return NULL;
+    }
+
+    Dmod_EnterCritical();
+    
+    size_t startIndex = 0;
+    if( Previous != NULL )
+    {
+        // Find the previous context in the list
+        for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+        {
+            if( Dmod_Contexts[i] == Previous )
+            {
+                startIndex = i + 1;
+                break;
+            }
+        }
+    }
+
+    // Search for modules implementing this DIF
+    for(size_t i = startIndex; i < DMOD_MAX_MODULES; i++)
+    {
+        if( Dmod_Contexts[i] == NULL || !Dmod_Context_IsValid( Dmod_Contexts[i] ) )
+        {
+            continue;
+        }
+
+        // Only consider enabled modules
+        if( !Dmod_IsEnabled( Dmod_Contexts[i] ) )
+        {
+            continue;
+        }
+
+        // Check if this module implements the DIF
+        size_t numberOfInputs = Dmod_Api_GetNumberOfEntries( &Dmod_Contexts[i]->Inputs );
+        for(size_t j = 0; j < numberOfInputs; j++)
+        {
+            if( Dmod_ApiSignature_AreEqual( Dmod_Contexts[i]->Inputs.InputSection->Entries[j].Signature, DifSignature ) )
+            {
+                Dmod_ExitCritical();
+                return Dmod_Contexts[i];
+            }
+        }
+    }
+
+    Dmod_ExitCritical();
+    return NULL;
+}
+
+/**
+ * @brief Get DIF function pointer from module context
+ * 
+ * @param Context Module context
+ * @param DifSignature DIF function signature
+ * 
+ * @return Function pointer or NULL if not found
+ */
+void* Dmod_GetDifFunction( Dmod_Context_t* Context, const char* DifSignature )
+{
+    if( !Dmod_Context_IsValid( Context ) || !Dmod_ApiSignature_IsValid( DifSignature ) )
+    {
+        DMOD_LOG_ERROR("Cannot get DIF function - invalid context or signature\n");
+        return NULL;
+    }
+
+    // Check if signature is a DIF signature
+    if( strncmp( DifSignature, DMOD_DIF_SIGNATURE_PREFIX, sizeof( DMOD_DIF_SIGNATURE_PREFIX ) - 1 ) != 0 )
+    {
+        DMOD_LOG_ERROR("Cannot get DIF function - signature is not a DIF signature\n");
+        return NULL;
+    }
+
+    if( Context->Inputs.InputSection == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot get DIF function - no input section\n");
+        return NULL;
+    }
+
+    size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
+    for(size_t i = 0; i < numberOfEntries; i++)
+    {
+        if( Dmod_ApiSignature_AreEqual( Context->Inputs.InputSection->Entries[i].Signature, DifSignature ) )
+        {
+            return Context->Inputs.InputSection->Entries[i].Function;
+        }
+    }
+
+    DMOD_LOG_ERROR("Cannot get DIF function - function not found: %s in module %s\n", DifSignature, Dmod_Context_GetModuleName( Context ));
+    return NULL;
+}
+

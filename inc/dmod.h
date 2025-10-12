@@ -109,6 +109,8 @@ DMOD_BUILTIN_API( Dmod, 1.0, bool       , _EnableModule, (const char* ModuleName
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _DisableModule, (const char* ModuleName, bool Force ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int        , _RunModule, (const char* ModuleName, int argc, char *argv[]) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsFunctionConnected, (void* FunctionPointer) );
+DMOD_BUILTIN_API( Dmod, 1.0, Dmod_Context_t*, _GetNextDifModule, (const char* DifSignature, Dmod_Context_t* Previous) );
+DMOD_BUILTIN_API( Dmod, 1.0, void*      , _GetDifFunction, (Dmod_Context_t* Context, const char* DifSignature) );
 
 //! @}
 

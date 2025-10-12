@@ -1,6 +1,8 @@
 # #############################################################################
 # 
-# 	This is an example of a simple library module.
+# 	DIFS - Dmod Interface for File System
+# 	This module defines file system interface that can be implemented by 
+# 	multiple modules (e.g., FatFS, FlashFS)
 #
 # #############################################################################
 DMOD_DIR=../../..
@@ -15,16 +17,16 @@ include $(DMOD_DIR)/paths.mk
 # -----------------------------------------------------------------------------
 
 # The name of the module
-DMOD_MODULE_NAME=@MODULE_NAME@
+DMOD_MODULE_NAME=difs
 
 # The version of the module
-DMOD_MODULE_VERSION=0.1
+DMOD_MODULE_VERSION=1.0
 
 # The name of the author
-DMOD_AUTHOR_NAME=@AUTHOR_NAME@
+DMOD_AUTHOR_NAME=DMOD Team
 
 # The list of C sources
-DMOD_CSOURCES=main.c 
+DMOD_CSOURCES=difs.c
 
 # The list of C++ sources
 DMOD_CXXSOURCES=
@@ -44,11 +46,6 @@ DMOD_DEFINITIONS=
 DMOD_MAL_IMPLS=
 
 # -----------------------------------------------------------------------------
-#   List of DIF interfaces implemented by the module
-# -----------------------------------------------------------------------------
-DMOD_DIF_IMPLS=
-
-# -----------------------------------------------------------------------------
-#   Include the dmod app makefile
+#   Include the dmod lib makefile
 # -----------------------------------------------------------------------------
 include $(DMOD_DMF_LIB_FILE_PATH)

@@ -71,6 +71,8 @@ extern void             Dmod_PrintOutputApis    ( Dmod_Context_t* Context );
 extern void             Dmod_PrintInputApis     ( Dmod_Context_t* Context );
 extern void             Dmod_PrintAllApis       ( Dmod_Context_t* Context );
 extern void*            Dmod_GetFunction        ( Dmod_Context_t* Context, const char* Signature );
+extern Dmod_Context_t*  Dmod_GetNextDifModule   ( const char* DifSignature, Dmod_Context_t* Previous );
+extern void*            Dmod_GetDifFunction     ( Dmod_Context_t* Context, const char* DifSignature );
 
 // DMF Callbacks
 extern void             Dmod_Preinit            ( Dmod_Context_t* Context );
