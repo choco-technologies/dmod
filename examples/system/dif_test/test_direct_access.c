@@ -9,6 +9,10 @@
  * directly without going through the VFS abstraction.
  */
 
+// Declare the auto-generated signature from difs module
+// The _sig version is the one exported and accessible
+extern const char* const dmod_difs_fopen_sig;
+
 int main( int argc, char *argv[] )
 {
     printf("\n=== Testing Direct DIF Access from System ===\n\n");
@@ -28,11 +32,11 @@ int main( int argc, char *argv[] )
     printf("Testing direct access to DIF implementations:\n\n");
 
     // Test: Get first DIF module implementing fopen
-    extern const char* dmod_difs_fopen_sig;  // Should be available if we link with difs
+    // Using auto-generated _sig signature from difs module
     
     printf("Attempting to discover FatFS implementation...\n");
     Dmod_Context_t* fatfs_ctx = Dmod_GetNextDifModule( 
-        "\021DDIF\022_fopen@difs:1.0\0",  // DIF signature for _fopen
+        dmod_difs_fopen_sig,  // Use auto-generated _sig signature
         NULL 
     );
     
@@ -41,7 +45,7 @@ int main( int argc, char *argv[] )
         printf("✓ Successfully discovered first implementation\n");
         
         // Get the function pointer
-        void* fopen_func = Dmod_GetDifFunction( fatfs_ctx, "\021DDIF\022_fopen@difs:1.0\0" );
+        void* fopen_func = Dmod_GetDifFunction( fatfs_ctx, dmod_difs_fopen_sig );
         if( fopen_func != NULL )
         {
             printf("✓ Successfully retrieved function pointer from system\n");
@@ -55,7 +59,7 @@ int main( int argc, char *argv[] )
         // Try to get second implementation
         printf("\nAttempting to discover FlashFS implementation...\n");
         Dmod_Context_t* flashfs_ctx = Dmod_GetNextDifModule( 
-            "\021DDIF\022_fopen@difs:1.0\0",
+            dmod_difs_fopen_sig,
             fatfs_ctx 
         );
         
@@ -63,7 +67,7 @@ int main( int argc, char *argv[] )
         {
             printf("✓ Successfully discovered second implementation\n");
             
-            void* fopen_func2 = Dmod_GetDifFunction( flashfs_ctx, "\021DDIF\022_fopen@difs:1.0\0" );
+            void* fopen_func2 = Dmod_GetDifFunction( flashfs_ctx, dmod_difs_fopen_sig );
             if( fopen_func2 != NULL )
             {
                 printf("✓ Successfully retrieved second function pointer\n");
