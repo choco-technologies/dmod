@@ -146,10 +146,12 @@ Implements a DIF function in a module. This macro:
 Dmod_Context_t* Dmod_GetNextDifModule( const char* DifSignature, Dmod_Context_t* Previous )
 ```
 
-Iterates through all loaded modules that implement a specific DIF function.
+Iterates through all loaded **and enabled** modules that implement a specific DIF function.
 - **DifSignature**: The DIF signature string (e.g., `dmod_difs_fopen_sig`)
 - **Previous**: Previous module context (NULL to start from the beginning)
 - **Returns**: Next module implementing the DIF, or NULL if no more modules
+
+**Important**: Only **enabled** modules are returned. Modules must be both loaded and enabled.
 
 ```c
 void* Dmod_GetDifFunction( Dmod_Context_t* Context, const char* DifSignature )
@@ -159,6 +161,23 @@ Gets the function pointer for a DIF implementation from a specific module.
 - **Context**: Module context
 - **DifSignature**: The DIF signature string
 - **Returns**: Function pointer, or NULL if not found
+
+### Module State Requirements
+
+For DIF implementations to be discoverable:
+
+1. **Load the module**: `Dmod_LoadModuleByName("fatfs")`
+2. **Enable the module**: `Dmod_EnableModule("fatfs", false)` (for library modules) or `Dmod_StartModule("fatfs", false)` (for application modules)
+
+**Example**:
+```c
+// Load and enable FatFS implementation
+Dmod_LoadModuleByName("fatfs");
+Dmod_EnableModule("fatfs", false, NULL);  // Required!
+
+// Now it can be discovered
+Dmod_Context_t* fs = Dmod_GetNextDifModule(dmod_difs_fopen_sig, NULL);
+```
 
 ## Building
 
@@ -224,6 +243,6 @@ Total file systems found: 2
 
 - DIF signatures must match exactly between interface definition and implementations
 - Use the `_sig` macros (e.g., `dmod_difs_fopen_sig`) as compile-time constants for signatures
-- All DIF implementations must be loaded and enabled before they can be discovered
+- **All DIF implementations must be loaded AND enabled before they can be discovered** - only enabled modules are returned by `Dmod_GetNextDifModule()`
 - The order of discovered modules is determined by the system's module loading order
 

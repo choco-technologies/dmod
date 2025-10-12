@@ -402,10 +402,12 @@ int dmod_init(const Dmod_Config_t *Config)
 
 **`Dmod_GetNextDifModule( const char* DifSignature, Dmod_Context_t* Previous )`**
 
-Iterates through all loaded modules that implement a specific DIF function.
+Iterates through all loaded **and enabled** modules that implement a specific DIF function.
 - **DifSignature**: The DIF signature string (e.g., `dmod_difs_fopen_sig`)
 - **Previous**: Previous module context (NULL to start from the beginning)
 - **Returns**: Next module implementing the DIF, or NULL if no more modules
+
+**Important**: Only **enabled** modules are returned by this function. Modules must be both loaded and enabled for their DIF implementations to be discoverable.
 
 **`Dmod_GetDifFunction( Dmod_Context_t* Context, const char* DifSignature )`**
 
@@ -413,6 +415,25 @@ Gets the function pointer for a DIF implementation from a specific module.
 - **Context**: Module context returned by `Dmod_GetNextDifModule`
 - **DifSignature**: The DIF signature string
 - **Returns**: Function pointer, or NULL if not found
+
+#### Module State Requirements
+
+For DIF implementations to be discoverable and usable:
+
+1. **Module must be loaded**: Use `Dmod_LoadModuleByName()` or `Dmod_LoadFile()`
+2. **Module must be enabled**: Use `Dmod_EnableModule()` for library modules or `Dmod_StartModule()` for application modules
+
+**Example**:
+```c
+// Load the DIF implementation module
+Dmod_LoadModuleByName("fatfs");
+
+// Enable it (required for DIF discovery!)
+Dmod_EnableModule("fatfs", false, NULL);
+
+// Now the module's DIF implementations are discoverable
+Dmod_Context_t* fs = Dmod_GetNextDifModule(dmod_difs_fopen_sig, NULL);
+```
 
 #### DIF Example Output
 

@@ -436,6 +436,12 @@ Dmod_Context_t* Dmod_GetNextDifModule( const char* DifSignature, Dmod_Context_t*
             continue;
         }
 
+        // Only consider enabled modules
+        if( !Dmod_IsEnabled( Dmod_Contexts[i] ) )
+        {
+            continue;
+        }
+
         // Check if this module implements the DIF
         size_t numberOfInputs = Dmod_Api_GetNumberOfEntries( &Dmod_Contexts[i]->Inputs );
         for(size_t j = 0; j < numberOfInputs; j++)

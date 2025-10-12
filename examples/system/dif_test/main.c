@@ -32,7 +32,15 @@ int main( int argc, char *argv[] )
         printf("ERROR: Cannot load FatFS module!\n");
         return -1;
     }
-    printf("FatFS module loaded successfully!\n\n");
+    
+    // Enable FatFS (required for DIF to work)
+    printf("Enabling FatFS module...\n");
+    if( !Dmod_EnableModule( "fatfs", false, NULL ) )
+    {
+        printf("ERROR: Cannot enable FatFS module!\n");
+        return -1;
+    }
+    printf("FatFS module loaded and enabled successfully!\n\n");
 
     // Load FlashFS implementation
     printf("Loading FlashFS implementation module...\n");
@@ -41,7 +49,15 @@ int main( int argc, char *argv[] )
         printf("ERROR: Cannot load FlashFS module!\n");
         return -1;
     }
-    printf("FlashFS module loaded successfully!\n\n");
+    
+    // Enable FlashFS (required for DIF to work)
+    printf("Enabling FlashFS module...\n");
+    if( !Dmod_EnableModule( "flashfs", false, NULL ) )
+    {
+        printf("ERROR: Cannot enable FlashFS module!\n");
+        return -1;
+    }
+    printf("FlashFS module loaded and enabled successfully!\n\n");
 
     // Load VFS module that will use the DIF implementations
     printf("Loading VFS module...\n");
