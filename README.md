@@ -276,6 +276,159 @@ DMOD_MAL_IMPLS=my_module
 ```
 
 ---
+
+### Dmod Interface (DIF)
+
+While **MAL** allows you to define an interface that can be implemented by **one module at a time** (1:1 relationship), **DIF (Dmod Interface)** enables **multiple modules to implement the same interface simultaneously** (1:N relationship). This is particularly useful for plugin-like architectures where you want to discover and use multiple implementations dynamically.
+
+<img src="gimp/graphs/dif-example.jpg" style="width: 60%;" alt="DIF Architecture Example">
+
+**Use Cases for DIF:**
+- Multiple filesystem implementations (FAT32, Flash, RAM) used together
+- Different hardware drivers (SPI, I2C, UART) available on the same system
+- Plugin systems where multiple implementations can be loaded and discovered at runtime
+
+#### Comparison: MAL vs DIF
+
+| Feature | MAL | DIF |
+|---------|-----|-----|
+| **Implementations** | Single (1:1) | Multiple (1:N) |
+| **Dynamic Discovery** | No | Yes |
+| **Use Case** | Swappable implementations | Plugin-like architecture |
+| **Selection** | Compile/load time | Runtime iteration |
+| **Overhead** | Lower | Slightly higher (discovery) |
+
+#### Defining a DIF Interface
+
+Create an interface module that defines the DIF signatures:
+
+**difs.h (Interface Definition)**:
+```c
+#include "dmod.h"
+#include "difs_defs.h"
+
+// Define DIF signature strings as compile-time constants
+#define dmod_difs_fopen_sig   DMOD_MAKE_DIF_SIGNATURE( difs, 1.0, _fopen )
+#define dmod_difs_fclose_sig  DMOD_MAKE_DIF_SIGNATURE( difs, 1.0, _fclose )
+
+// Define the DIF with function signatures and typedefs
+dmod_difs_dif( 1.0, int, _fopen, (void** fp, const char* path, int mode, int attr) );
+dmod_difs_dif( 1.0, int, _fclose, (void* fp) );
+```
+
+The `dmod_<module>_dif` macro creates:
+- A typedef for the function pointer: `dmod_<module>_<name>_t`
+- Access to the signature string via the `_sig` macros
+
+#### Implementing a DIF
+
+Modules can implement the DIF by using the `dmod_<module>_dif_api_declaration` macro:
+
+**fatfs.c (FatFS Implementation)**:
+```c
+#define DMOD_ENABLE_REGISTRATION    ON
+#ifndef DMOD_fatfs
+#   define DMOD_fatfs
+#endif
+
+#include "dmod.h"
+#include "difs.h"
+
+// Implement _fopen for FatFS
+dmod_difs_dif_api_declaration( 1.0, FatFS, int, _fopen, (void** fp, const char* path, int mode, int attr) )
+{
+    // FatFS-specific implementation
+    *fp = Dmod_Malloc(32);  // Allocate file handle
+    return 0;
+}
+
+// Implement _fclose for FatFS
+dmod_difs_dif_api_declaration( 1.0, FatFS, int, _fclose, (void* fp) )
+{
+    Dmod_Free(fp);
+    return 0;
+}
+```
+
+**flashfs.c (FlashFS Implementation)**:
+```c
+// Similar structure with FlashFS-specific implementation
+dmod_difs_dif_api_declaration( 1.0, FlashFS, int, _fopen, (void** fp, const char* path, int mode, int attr) )
+{
+    // FlashFS-specific implementation
+    return 0;
+}
+```
+
+#### Using DIF - Dynamic Discovery
+
+Modules can discover and use all available DIF implementations at runtime:
+
+**vfs.c (Virtual File System using DIF)**:
+```c
+#include "dmod.h"
+#include "difs.h"
+
+int dmod_init(const Dmod_Config_t *Config)
+{
+    // Iterate through all modules implementing DIFS
+    Dmod_Context_t* fs = Dmod_GetNextDifModule( dmod_difs_fopen_sig, NULL );
+    
+    while(fs != NULL)
+    {
+        // Get function pointers from this module
+        dmod_difs_fopen_t fopen_func = (dmod_difs_fopen_t)Dmod_GetDifFunction( fs, dmod_difs_fopen_sig );
+        dmod_difs_fclose_t fclose_func = (dmod_difs_fclose_t)Dmod_GetDifFunction( fs, dmod_difs_fclose_sig );
+        
+        // Use the functions
+        void* file_handle = NULL;
+        fopen_func( &file_handle, "test.txt", 1, 0 );
+        // ... work with file ...
+        fclose_func( file_handle );
+        
+        // Get next implementation
+        fs = Dmod_GetNextDifModule( dmod_difs_fopen_sig, fs );
+    }
+    
+    return 0;
+}
+```
+
+#### DIF API Reference
+
+**`Dmod_GetNextDifModule( const char* DifSignature, Dmod_Context_t* Previous )`**
+
+Iterates through all loaded modules that implement a specific DIF function.
+- **DifSignature**: The DIF signature string (e.g., `dmod_difs_fopen_sig`)
+- **Previous**: Previous module context (NULL to start from the beginning)
+- **Returns**: Next module implementing the DIF, or NULL if no more modules
+
+**`Dmod_GetDifFunction( Dmod_Context_t* Context, const char* DifSignature )`**
+
+Gets the function pointer for a DIF implementation from a specific module.
+- **Context**: Module context returned by `Dmod_GetNextDifModule`
+- **DifSignature**: The DIF signature string
+- **Returns**: Function pointer, or NULL if not found
+
+#### DIF Example Output
+
+```
+=== VFS Demo - Using DIF Interfaces ===
+
+Found file system #1
+FatFS: Opening file 'test.txt'
+  Operations completed successfully
+
+Found file system #2
+FlashFS: Opening file 'test.txt'
+  Operations completed successfully
+
+Total file systems found: 2
+```
+
+For a complete working example, see the [DIF examples directory](examples/dif/).
+
+---
 ## Getting Started
 
 To use the **Dmod** repository, you need to integrate it into your project first. This section will guide you through the initial steps to get started with Dmod, including integration into your project and developing your first module.
