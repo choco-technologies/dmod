@@ -281,94 +281,9 @@ DMOD_MAL_IMPLS=my_module
 
 While **MAL** allows you to define an interface that can be implemented by **one module at a time** (1:1 relationship), **DIF (Dmod Interface)** enables **multiple modules to implement the same interface simultaneously** (1:N relationship). This is particularly useful for plugin-like architectures where you want to discover and use multiple implementations dynamically.
 
-```plantuml
-@startuml
-!theme plain
-skinparam sequenceMessageAlign center
-skinparam backgroundColor #FFFFFF
+![DIF Sequence Diagram](docs/images/dif-sequence.png)
 
-participant "VFS Module" as VFS
-participant "DMOD System" as DMOD
-participant "DIFS Interface" as DIFS
-participant "FatFS Module" as FAT
-participant "FlashFS Module" as FLASH
-
-== Module Initialization ==
-VFS -> DMOD: Dmod_LoadModuleByName("difs")
-activate DMOD
-DMOD -> DIFS: Load & Register Interface
-activate DIFS
-DIFS --> DMOD: Interface Ready
-deactivate DIFS
-DMOD --> VFS: Module Loaded
-deactivate DMOD
-
-VFS -> DMOD: Dmod_LoadModuleByName("fatfs")
-activate DMOD
-DMOD -> FAT: Load & Register Implementation
-activate FAT
-FAT -> DIFS: Register DIF Functions\n(fopen, fclose, fread, fwrite)
-DIFS --> FAT: Registered
-FAT --> DMOD: Implementation Ready
-deactivate FAT
-DMOD --> VFS: Module Loaded
-deactivate DMOD
-
-VFS -> DMOD: Dmod_LoadModuleByName("flashfs")
-activate DMOD
-DMOD -> FLASH: Load & Register Implementation
-activate FLASH
-FLASH -> DIFS: Register DIF Functions\n(fopen, fclose, fread, fwrite)
-DIFS --> FLASH: Registered
-FLASH --> DMOD: Implementation Ready
-deactivate FLASH
-DMOD --> VFS: Module Loaded
-deactivate DMOD
-
-== Runtime Discovery & Usage ==
-VFS -> DMOD: Dmod_GetNextDifModule(dmod_difs_fopen_sig, NULL)
-activate DMOD
-DMOD --> VFS: Return FatFS Context
-deactivate DMOD
-
-VFS -> DMOD: Dmod_GetDifFunction(fatfs_ctx, dmod_difs_fopen_sig)
-activate DMOD
-DMOD --> VFS: Return FatFS fopen function pointer
-deactivate DMOD
-
-VFS -> FAT: Call fopen_func("file.txt", ...)
-activate FAT
-FAT --> VFS: File Handle
-deactivate FAT
-
-VFS -> DMOD: Dmod_GetNextDifModule(dmod_difs_fopen_sig, fatfs_ctx)
-activate DMOD
-DMOD --> VFS: Return FlashFS Context
-deactivate DMOD
-
-VFS -> DMOD: Dmod_GetDifFunction(flashfs_ctx, dmod_difs_fopen_sig)
-activate DMOD
-DMOD --> VFS: Return FlashFS fopen function pointer
-deactivate DMOD
-
-VFS -> FLASH: Call fopen_func("file.txt", ...)
-activate FLASH
-FLASH --> VFS: File Handle
-deactivate FLASH
-
-VFS -> DMOD: Dmod_GetNextDifModule(dmod_difs_fopen_sig, flashfs_ctx)
-activate DMOD
-DMOD --> VFS: NULL (no more implementations)
-deactivate DMOD
-
-note over VFS
-  VFS discovered and used both
-  FatFS and FlashFS implementations
-  of the same DIFS interface
-end note
-
-@enduml
-```
+The diagram above illustrates the complete DIF workflow: module initialization, DIF registration, runtime discovery with `Dmod_GetNextDifModule()`, and dynamic function calls using multiple filesystem implementations.
 
 **Use Cases for DIF:**
 - Multiple filesystem implementations (FAT32, Flash, RAM) used together
@@ -403,9 +318,11 @@ dmod_difs_dif( 1.0, int, _fopen, (void** fp, const char* path, int mode, int att
 dmod_difs_dif( 1.0, int, _fclose, (void* fp) );
 ```
 
-The `dmod_<module>_dif` macro creates:
+The `dmod_<module>_dif` macro automatically creates:
 - A typedef for the function pointer: `dmod_<module>_<name>_t`
-- Access to the signature string via the `_sig` macros
+- A signature string accessible via `dmod_<module>_<name>_sig` (used for runtime discovery)
+
+**Important**: Use the `_sig` version of the signature (e.g., `dmod_difs_fopen_sig`) when calling `Dmod_GetNextDifModule()` and `Dmod_GetDifFunction()`. These signatures are automatically generated and exported by the DIF macro.
 
 #### Implementing a DIF
 
