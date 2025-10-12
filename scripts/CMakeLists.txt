@@ -149,6 +149,13 @@ function(dmod_create_module moduleName version moduleType)
                 )
     endforeach()
 
+    foreach(DIF ${DMOD_DIF_IMPLS})
+        target_compile_definitions(${moduleName} 
+            PRIVATE
+                DMOD_DIF_${DIF}
+                )
+    endforeach()
+
     target_compile_definitions(${moduleName} 
         PUBLIC
             DMOD_${moduleName}

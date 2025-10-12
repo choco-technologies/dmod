@@ -7,6 +7,9 @@ set(DMOD_STACK_SIZE 1024)
 set(DMOD_PRIORITY 1)
 set(DMOD_MANUAL_LOAD OFF)
 
+# Declare that this module implements the DIFS interface
+set(DMOD_DIF_IMPLS difs)
+
 dmod_add_library(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
     fatfs.c
 )
