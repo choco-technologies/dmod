@@ -18,65 +18,36 @@ int main( int argc, char *argv[] )
 
     // Load the DIFS interface module first
     printf("Loading DIFS interface module...\n");
-    Dmod_Context_t* difs = Dmod_LoadFile( "build-modules/dmf/difs.dmf" );
-    if( difs == NULL )
+    if( !Dmod_LoadModuleByName( "difs" ) )
     {
         printf("ERROR: Cannot load DIFS interface module!\n");
-        return -1;
-    }
-    
-    // Initialize the DIFS module
-    if( !Dmod_Enable( difs, false, NULL ) )
-    {
-        printf("ERROR: Cannot enable DIFS module!\n");
         return -1;
     }
     printf("DIFS interface module loaded successfully!\n\n");
 
     // Load FatFS implementation
     printf("Loading FatFS implementation module...\n");
-    Dmod_Context_t* fatfs = Dmod_LoadFile( "build-modules/dmf/fatfs.dmf" );
-    if( fatfs == NULL )
+    if( !Dmod_LoadModuleByName( "fatfs" ) )
     {
         printf("ERROR: Cannot load FatFS module!\n");
-        return -1;
-    }
-    
-    if( !Dmod_Enable( fatfs, false, NULL ) )
-    {
-        printf("ERROR: Cannot enable FatFS module!\n");
         return -1;
     }
     printf("FatFS module loaded successfully!\n\n");
 
     // Load FlashFS implementation
     printf("Loading FlashFS implementation module...\n");
-    Dmod_Context_t* flashfs = Dmod_LoadFile( "build-modules/dmf/flashfs.dmf" );
-    if( flashfs == NULL )
+    if( !Dmod_LoadModuleByName( "flashfs" ) )
     {
         printf("ERROR: Cannot load FlashFS module!\n");
-        return -1;
-    }
-    
-    if( !Dmod_Enable( flashfs, false, NULL ) )
-    {
-        printf("ERROR: Cannot enable FlashFS module!\n");
         return -1;
     }
     printf("FlashFS module loaded successfully!\n\n");
 
     // Load VFS module that will use the DIF implementations
     printf("Loading VFS module...\n");
-    Dmod_Context_t* vfs = Dmod_LoadFile( "build-modules/dmf/vfs.dmf" );
-    if( vfs == NULL )
+    if( !Dmod_LoadModuleByName( "vfs" ) )
     {
         printf("ERROR: Cannot load VFS module!\n");
-        return -1;
-    }
-    
-    if( !Dmod_Enable( vfs, false, NULL ) )
-    {
-        printf("ERROR: Cannot enable VFS module!\n");
         return -1;
     }
     printf("VFS module loaded successfully!\n\n");
@@ -87,17 +58,17 @@ int main( int argc, char *argv[] )
 
     // Cleanup
     printf("Cleaning up...\n");
-    Dmod_Disable( vfs, false );
-    Dmod_Unload( vfs, false );
+    Dmod_DisableModule( "vfs", false );
+    Dmod_UnloadModule( "vfs", false );
     
-    Dmod_Disable( flashfs, false );
-    Dmod_Unload( flashfs, false );
+    Dmod_DisableModule( "flashfs", false );
+    Dmod_UnloadModule( "flashfs", false );
     
-    Dmod_Disable( fatfs, false );
-    Dmod_Unload( fatfs, false );
+    Dmod_DisableModule( "fatfs", false );
+    Dmod_UnloadModule( "fatfs", false );
     
-    Dmod_Disable( difs, false );
-    Dmod_Unload( difs, false );
+    Dmod_DisableModule( "difs", false );
+    Dmod_UnloadModule( "difs", false );
 
     printf("\nDIF test completed successfully!\n\n");
 

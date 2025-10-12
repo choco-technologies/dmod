@@ -1,0 +1,95 @@
+#include <stdio.h>
+#include "dmod.h"
+#include "dmod_system.h"
+
+/**
+ * @brief Test if DIF functions can be accessed directly from system level
+ * 
+ * This test loads modules implementing DIF and tries to call their functions
+ * directly without going through the VFS abstraction.
+ */
+
+int main( int argc, char *argv[] )
+{
+    printf("\n=== Testing Direct DIF Access from System ===\n\n");
+
+    // Load modules
+    printf("Loading DIFS, FatFS, and FlashFS modules...\n");
+    if( !Dmod_LoadModuleByName( "difs" ) || 
+        !Dmod_LoadModuleByName( "fatfs" ) || 
+        !Dmod_LoadModuleByName( "flashfs" ) )
+    {
+        printf("ERROR: Cannot load modules!\n");
+        return -1;
+    }
+    printf("Modules loaded successfully.\n\n");
+
+    // Try to get DIF implementations directly from system
+    printf("Testing direct access to DIF implementations:\n\n");
+
+    // Test: Get first DIF module implementing fopen
+    extern const char* dmod_difs_fopen_sig;  // Should be available if we link with difs
+    
+    printf("Attempting to discover FatFS implementation...\n");
+    Dmod_Context_t* fatfs_ctx = Dmod_GetNextDifModule( 
+        "\021DDIF\022_fopen@difs:1.0\0",  // DIF signature for _fopen
+        NULL 
+    );
+    
+    if( fatfs_ctx != NULL )
+    {
+        printf("✓ Successfully discovered first implementation\n");
+        
+        // Get the function pointer
+        void* fopen_func = Dmod_GetDifFunction( fatfs_ctx, "\021DDIF\022_fopen@difs:1.0\0" );
+        if( fopen_func != NULL )
+        {
+            printf("✓ Successfully retrieved function pointer from system\n");
+            printf("  Function pointer: %p\n", fopen_func);
+        }
+        else
+        {
+            printf("✗ Failed to get function pointer\n");
+        }
+        
+        // Try to get second implementation
+        printf("\nAttempting to discover FlashFS implementation...\n");
+        Dmod_Context_t* flashfs_ctx = Dmod_GetNextDifModule( 
+            "\021DDIF\022_fopen@difs:1.0\0",
+            fatfs_ctx 
+        );
+        
+        if( flashfs_ctx != NULL )
+        {
+            printf("✓ Successfully discovered second implementation\n");
+            
+            void* fopen_func2 = Dmod_GetDifFunction( flashfs_ctx, "\021DDIF\022_fopen@difs:1.0\0" );
+            if( fopen_func2 != NULL )
+            {
+                printf("✓ Successfully retrieved second function pointer\n");
+                printf("  Function pointer: %p\n", fopen_func2);
+            }
+        }
+        else
+        {
+            printf("✗ Failed to discover second implementation\n");
+        }
+    }
+    else
+    {
+        printf("✗ Failed to discover any implementation\n");
+        printf("  This means DIF functions are NOT accessible from system level!\n");
+    }
+
+    // Cleanup
+    printf("\nCleaning up...\n");
+    Dmod_DisableModule( "flashfs", false );
+    Dmod_UnloadModule( "flashfs", false );
+    Dmod_DisableModule( "fatfs", false );
+    Dmod_UnloadModule( "fatfs", false );
+    Dmod_DisableModule( "difs", false );
+    Dmod_UnloadModule( "difs", false );
+
+    printf("\n=== Test Complete ===\n\n");
+    return 0;
+}
