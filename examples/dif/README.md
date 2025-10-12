@@ -226,3 +226,4 @@ Total file systems found: 2
 - Use the `_sig` macros (e.g., `dmod_difs_fopen_sig`) as compile-time constants for signatures
 - All DIF implementations must be loaded and enabled before they can be discovered
 - The order of discovered modules is determined by the system's module loading order
+
