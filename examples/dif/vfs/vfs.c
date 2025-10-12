@@ -15,7 +15,7 @@ int dmod_init(const Dmod_Config_t *Config)
     // Iterate through all modules that implement DIFS _fopen
     Dmod_Printf("Looking for file systems implementing DIFS interface...\n\n");
     
-    Dmod_Context_t* fs = Dmod_GetNextDifModule( dmod_difs_fopen, NULL );
+    Dmod_Context_t* fs = Dmod_GetNextDifModule( dmod_difs_fopen_sig, NULL );
     
     int fs_count = 0;
     while(fs != NULL)
@@ -24,10 +24,10 @@ int dmod_init(const Dmod_Config_t *Config)
         Dmod_Printf("Found file system #%d\n", fs_count);
         
         // Get the function pointer for _fopen from this module
-        dmod_difs_fopen_t fopen_func = (dmod_difs_fopen_t)Dmod_GetDifFunction( fs, dmod_difs_fopen );
-        dmod_difs_fclose_t fclose_func = (dmod_difs_fclose_t)Dmod_GetDifFunction( fs, dmod_difs_fclose );
-        dmod_difs_fread_t fread_func = (dmod_difs_fread_t)Dmod_GetDifFunction( fs, dmod_difs_fread );
-        dmod_difs_fwrite_t fwrite_func = (dmod_difs_fwrite_t)Dmod_GetDifFunction( fs, dmod_difs_fwrite );
+        dmod_difs_fopen_t fopen_func = (dmod_difs_fopen_t)Dmod_GetDifFunction( fs, dmod_difs_fopen_sig );
+        dmod_difs_fclose_t fclose_func = (dmod_difs_fclose_t)Dmod_GetDifFunction( fs, dmod_difs_fclose_sig );
+        dmod_difs_fread_t fread_func = (dmod_difs_fread_t)Dmod_GetDifFunction( fs, dmod_difs_fread_sig );
+        dmod_difs_fwrite_t fwrite_func = (dmod_difs_fwrite_t)Dmod_GetDifFunction( fs, dmod_difs_fwrite_sig );
         
         if( fopen_func != NULL && fclose_func != NULL && fread_func != NULL && fwrite_func != NULL )
         {
@@ -58,7 +58,7 @@ int dmod_init(const Dmod_Config_t *Config)
         Dmod_Printf("\n");
         
         // Get next file system
-        fs = Dmod_GetNextDifModule( dmod_difs_fopen, fs );
+        fs = Dmod_GetNextDifModule( dmod_difs_fopen_sig, fs );
     }
     
     if( fs_count == 0 )

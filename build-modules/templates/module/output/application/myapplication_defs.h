@@ -49,8 +49,10 @@
                 DMOD_GLOBAL_OUTPUT_API(MyApplication, VERSION, RET, NAME, PARAMS)
 #  define dmod_myapplication_dif(VERSION, RET, NAME, PARAMS)            \
                 typedef RET (*dmod_myapplication##NAME##_t) PARAMS; \
-                static const char* dmod_myapplication##NAME DMOD_SECTION(".dmod.outputs") DMOD_UNUSED = (void*)DMOD_MAKE_DIF_SIGNATURE(MyApplication, VERSION, #NAME);
+                static const char* dmod_myapplication##NAME DMOD_SECTION(".dmod.outputs") DMOD_UNUSED = (void*)DMOD_MAKE_DIF_SIGNATURE(MyApplication, VERSION, NAME);
 #  define dmod_myapplication_dif_api_declaration(VERSION, IMPL_MODULE, RET, NAME, PARAMS)  \
+                RET DMOD_MAKE_DIF_API_FUNCTION_NAME(MyApplication, IMPL_MODULE, NAME) PARAMS; \
+                _DMOD_DIF_API_REGISTRATION(MyApplication, IMPL_MODULE, VERSION, NAME) \
                 RET DMOD_MAKE_DIF_API_FUNCTION_NAME(MyApplication, IMPL_MODULE, NAME) PARAMS
 #endif
 

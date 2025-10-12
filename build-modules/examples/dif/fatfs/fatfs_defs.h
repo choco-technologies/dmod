@@ -49,8 +49,10 @@
                 DMOD_GLOBAL_OUTPUT_API(fatfs, VERSION, RET, NAME, PARAMS)
 #  define dmod_fatfs_dif(VERSION, RET, NAME, PARAMS)            \
                 typedef RET (*dmod_fatfs##NAME##_t) PARAMS; \
-                static const char* dmod_fatfs##NAME DMOD_SECTION(".dmod.outputs") DMOD_UNUSED = (void*)DMOD_MAKE_DIF_SIGNATURE(fatfs, VERSION, #NAME);
+                static const char* dmod_fatfs##NAME DMOD_SECTION(".dmod.outputs") DMOD_UNUSED = (void*)DMOD_MAKE_DIF_SIGNATURE(fatfs, VERSION, NAME);
 #  define dmod_fatfs_dif_api_declaration(VERSION, IMPL_MODULE, RET, NAME, PARAMS)  \
+                RET DMOD_MAKE_DIF_API_FUNCTION_NAME(fatfs, IMPL_MODULE, NAME) PARAMS; \
+                _DMOD_DIF_API_REGISTRATION(fatfs, IMPL_MODULE, VERSION, NAME) \
                 RET DMOD_MAKE_DIF_API_FUNCTION_NAME(fatfs, IMPL_MODULE, NAME) PARAMS
 #endif
 

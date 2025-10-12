@@ -49,8 +49,10 @@
                 DMOD_GLOBAL_OUTPUT_API(flashfs, VERSION, RET, NAME, PARAMS)
 #  define dmod_flashfs_dif(VERSION, RET, NAME, PARAMS)            \
                 typedef RET (*dmod_flashfs##NAME##_t) PARAMS; \
-                static const char* dmod_flashfs##NAME DMOD_SECTION(".dmod.outputs") DMOD_UNUSED = (void*)DMOD_MAKE_DIF_SIGNATURE(flashfs, VERSION, #NAME);
+                static const char* dmod_flashfs##NAME DMOD_SECTION(".dmod.outputs") DMOD_UNUSED = (void*)DMOD_MAKE_DIF_SIGNATURE(flashfs, VERSION, NAME);
 #  define dmod_flashfs_dif_api_declaration(VERSION, IMPL_MODULE, RET, NAME, PARAMS)  \
+                RET DMOD_MAKE_DIF_API_FUNCTION_NAME(flashfs, IMPL_MODULE, NAME) PARAMS; \
+                _DMOD_DIF_API_REGISTRATION(flashfs, IMPL_MODULE, VERSION, NAME) \
                 RET DMOD_MAKE_DIF_API_FUNCTION_NAME(flashfs, IMPL_MODULE, NAME) PARAMS
 #endif
 

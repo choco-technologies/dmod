@@ -49,8 +49,10 @@
                 DMOD_GLOBAL_OUTPUT_API(vfs, VERSION, RET, NAME, PARAMS)
 #  define dmod_vfs_dif(VERSION, RET, NAME, PARAMS)            \
                 typedef RET (*dmod_vfs##NAME##_t) PARAMS; \
-                static const char* dmod_vfs##NAME DMOD_SECTION(".dmod.outputs") DMOD_UNUSED = (void*)DMOD_MAKE_DIF_SIGNATURE(vfs, VERSION, #NAME);
+                static const char* dmod_vfs##NAME DMOD_SECTION(".dmod.outputs") DMOD_UNUSED = (void*)DMOD_MAKE_DIF_SIGNATURE(vfs, VERSION, NAME);
 #  define dmod_vfs_dif_api_declaration(VERSION, IMPL_MODULE, RET, NAME, PARAMS)  \
+                RET DMOD_MAKE_DIF_API_FUNCTION_NAME(vfs, IMPL_MODULE, NAME) PARAMS; \
+                _DMOD_DIF_API_REGISTRATION(vfs, IMPL_MODULE, VERSION, NAME) \
                 RET DMOD_MAKE_DIF_API_FUNCTION_NAME(vfs, IMPL_MODULE, NAME) PARAMS
 #endif
 

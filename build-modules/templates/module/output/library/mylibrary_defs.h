@@ -49,8 +49,10 @@
                 DMOD_GLOBAL_OUTPUT_API(MyLibrary, VERSION, RET, NAME, PARAMS)
 #  define dmod_mylibrary_dif(VERSION, RET, NAME, PARAMS)            \
                 typedef RET (*dmod_mylibrary##NAME##_t) PARAMS; \
-                static const char* dmod_mylibrary##NAME DMOD_SECTION(".dmod.outputs") DMOD_UNUSED = (void*)DMOD_MAKE_DIF_SIGNATURE(MyLibrary, VERSION, #NAME);
+                static const char* dmod_mylibrary##NAME DMOD_SECTION(".dmod.outputs") DMOD_UNUSED = (void*)DMOD_MAKE_DIF_SIGNATURE(MyLibrary, VERSION, NAME);
 #  define dmod_mylibrary_dif_api_declaration(VERSION, IMPL_MODULE, RET, NAME, PARAMS)  \
+                RET DMOD_MAKE_DIF_API_FUNCTION_NAME(MyLibrary, IMPL_MODULE, NAME) PARAMS; \
+                _DMOD_DIF_API_REGISTRATION(MyLibrary, IMPL_MODULE, VERSION, NAME) \
                 RET DMOD_MAKE_DIF_API_FUNCTION_NAME(MyLibrary, IMPL_MODULE, NAME) PARAMS
 #endif
 
