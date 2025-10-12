@@ -309,10 +309,6 @@ Create an interface module that defines the DIF signatures:
 #include "dmod.h"
 #include "difs_defs.h"
 
-// Define DIF signature strings as compile-time constants
-#define dmod_difs_fopen_sig   DMOD_MAKE_DIF_SIGNATURE( difs, 1.0, _fopen )
-#define dmod_difs_fclose_sig  DMOD_MAKE_DIF_SIGNATURE( difs, 1.0, _fclose )
-
 // Define the DIF with function signatures and typedefs
 dmod_difs_dif( 1.0, int, _fopen, (void** fp, const char* path, int mode, int attr) );
 dmod_difs_dif( 1.0, int, _fclose, (void* fp) );
