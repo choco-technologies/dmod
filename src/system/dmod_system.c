@@ -232,13 +232,11 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
             else 
             {
                 DMOD_LOG_VERBOSE("Module '%s' not found in '%s'\n", ModuleName, repoDir);
-                break;
             }
         }
-        repoDir = NULL;
         if( repoPaths != NULL )
         {
-            repoDir = strtok(NULL, DMOD_ARRAY_SEP);
+            repoDir = strtok(repoDir, DMOD_ARRAY_SEP);
             if( repoDir == NULL )
             {
                 repoDir = Dmod_GetRepoDir();
