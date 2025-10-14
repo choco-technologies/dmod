@@ -95,30 +95,33 @@ jobs:
         run: make DMOD_MODE=DMOD_SYSTEM
       
       - name: Test loader with example_app.dmf
-        run: chmod +x ./build/examples/system/dmod_loader/dmod_loader && ./build/examples/system/dmod_loader/dmod_loader build/dmf/example_app.dmf
+        run: chmod +x ./build/examples/system/dmod_loader && ./build/examples/system/dmod_loader build/dmf/example_app.dmf
+
+      - name: Build compressed modules with Make
+        run: make DMOD_MODE=DMOD_MODULE
       
       - name: Test loader with compressed example_app.dmfc
-        run: ./build/examples/system/dmod_loader/dmod_loader build/dmfc/example_app.dmfc
+        run: ./build/examples/system/dmod_loader build/dmfc/example_app.dmfc
       
       - name: Test loader with compressed DMF after removing dmf directory
         run: |
           rm -rf build/dmf
-          ./build/examples/system/dmod_loader/dmod_loader build/dmfc/example_app.dmfc
+          ./build/examples/system/dmod_loader build/dmfc/example_app.dmfc
       
       - name: DIF test 
         run: |
-          chmod +x ./build/examples/system/dif_test/dif_test
-          chmod +x ./build/examples/system/dif_test/test_direct_access
-          ./build/examples/system/dif_test/dif_test
-          ./build/examples/system/dif_test/test_direct_access
+          chmod +x ./build/examples/dif_test/dif_test
+          chmod +x ./build/examples/dif_test/test_direct_access
+          ./build/examples/dif_test/dif_test
+          ./build/examples/dif_test/test_direct_access
           
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dmod-build-artifacts
           path: |
-            ./build/examples/system/dmod_loader/dmod_loader
-            ./build/examples/system/dif_test/dif_test
-            ./build/examples/system/dif_test/test_direct_access
+            ./build/examples/system/dmod_loader
+            ./build/examples/dif_test/dif_test
+            ./build/examples/dif_test/test_direct_access
             ./build/dmf/example_app.dmf
             ./build/dmf/dmodex.dmf
