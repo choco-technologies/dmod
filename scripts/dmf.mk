@@ -88,7 +88,7 @@ CFLAGS_INC          = $(addprefix -I,$(DMOD_INC_DIRS))
 CFLAGS_LIB          = $(addprefix -L,$(DMOD_LIBS))
 CFLAGS_DEF          = $(addprefix -D,$(DMOD_DEFINITIONS))
 OPTIMIZATION        = -O2
-CFLAGS             += -fPIC -fPIE -ffunction-sections $(OPTIMIZATION) $(C_OPT)
+CFLAGS             += -fPIC -fPIE -ffunction-sections -fno-stack-protector -fno-stack-check -fno-split-stack $(OPTIMIZATION) $(C_OPT) 
 CFLAGS             += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 CXXFLAGS           += $(CFLAGS)
 LFLAGS 			   += -L $(DMOD_SCRIPTS_DIR) -T $(DMOD_MODULE_LD_FILE_NAME) -pie -nostartfiles -nostdlib -Xlinker --discard-all -static -Wl,--gc-sections,--undefined=ModuleHeader

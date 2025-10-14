@@ -1,3 +1,5 @@
+#define ENABLE_DIF_REGISTRATIONS ON
+#include "difs.h"
 #include <stdio.h>
 #include "dmod.h"
 #include "dmod_system.h"
@@ -27,6 +29,16 @@ int main( int argc, char *argv[] )
         return -1;
     }
     printf("Modules loaded successfully.\n\n");
+
+    // Enable modules (required for DIF discovery!)
+    if( !Dmod_EnableModule( "difs", false, NULL ) ||
+        !Dmod_EnableModule( "fatfs", false, NULL ) ||
+        !Dmod_EnableModule( "flashfs", false, NULL ) )
+    {
+        printf("ERROR: Cannot enable modules!\n");
+        return -1;
+    }
+    printf("Modules loaded and enabled successfully.\n\n");
 
     // Try to get DIF implementations directly from system
     printf("Testing direct access to DIF implementations:\n\n");

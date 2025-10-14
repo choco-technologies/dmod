@@ -48,6 +48,7 @@ DMOD_SCRIPTS_DIR=$(DMOD_DIR)/scripts
 DMOD_EXAMPLES_DIR=$(DMOD_DIR)/examples
 DMOD_TESTS_DIR=$(DMOD_DIR)/tests
 DMOD_CONFIGS_DIR=$(DMOD_DIR)/configs
+DMOD_EXAMPLE_DIFS_DIR=$(DMOD_EXAMPLES_DIR)/dif/difs
 
 # -----------------------------------------------------------------------------
 #   Makefile file names

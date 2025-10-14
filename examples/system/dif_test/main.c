@@ -1,6 +1,7 @@
+#define ENABLE_DIF_REGISTRATIONS ON
+#include "difs.h"
 #include <stdio.h>
 #include <string.h>
-#include "dmod.h"
 
 /**
  * @brief Test application for DIF (Dmod Interface) functionality

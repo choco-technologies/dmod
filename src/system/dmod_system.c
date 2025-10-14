@@ -204,6 +204,7 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
         repoDir = Dmod_GetRepoDir();
         repoPaths = NULL;
     }
+    bool lastTry = false;
     do 
     {
         if( repoDir != NULL )
@@ -229,17 +230,21 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
                 }
                 return true;
             }
+            else 
+            {
+                DMOD_LOG_VERBOSE("Module '%s' not found in '%s'\n", ModuleName, repoDir);
+            }
         }
-        repoDir = NULL;
         if( repoPaths != NULL )
         {
             repoDir = strtok(NULL, DMOD_ARRAY_SEP);
             if( repoDir == NULL )
             {
                 repoDir = Dmod_GetRepoDir();
+                lastTry = true;
             }
         }
-    } while( repoDir != NULL );
+    } while( repoDir != NULL && !lastTry );
     Dmod_Free( repoEnv );
     DMOD_LOG_ERROR("Cannot load module by name - module not found: %s\n", ModuleName);
     return false;

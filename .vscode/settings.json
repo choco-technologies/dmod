@@ -25,6 +25,8 @@
         "dmodex_defs.h": "c",
         "dmod_mgr.h": "c",
         "dmod_vars.h": "c",
-        "new": "cpp"
+        "new": "cpp",
+        "difs.h": "c",
+        "difs_defs.h": "c"
     }
 }
