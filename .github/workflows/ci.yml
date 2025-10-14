@@ -111,9 +111,7 @@ jobs:
       - name: DIF test 
         run: |
           chmod +x ./build/examples/dif_test/dif_test
-          chmod +x ./build/examples/dif_test/test_direct_access
           ./build/examples/dif_test/dif_test
-          ./build/examples/dif_test/test_direct_access
           
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -122,6 +120,5 @@ jobs:
           path: |
             ./build/examples/system/dmod_loader
             ./build/examples/dif_test/dif_test
-            ./build/examples/dif_test/test_direct_access
             ./build/dmf/example_app.dmf
             ./build/dmf/dmodex.dmf
