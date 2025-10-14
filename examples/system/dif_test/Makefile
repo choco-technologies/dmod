@@ -24,7 +24,9 @@ PROJECT_NAME    = dif_test
 OUTPUT_DIR		= $(DMOD_BUILD_DIR)/examples/dif_test
 DMOD_SOURCES	= main.c
 DMOD_INC_DIRS 	= $(DMOD_INC_DIR) \
-				  $(DMOD_BUILD_DIR) 
+				  $(DMOD_BUILD_DIR) \
+				  $(DMOD_EXAMPLE_DIFS_DIR) \
+				  
 DMOD_LIBS 	  	= dmod_system\
 				  dmod_common\
 				  pthread

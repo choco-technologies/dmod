@@ -101,9 +101,13 @@ extern "C" {
                 .Function = (void*)FUNCTION_NAME, \
                 .Signature = SIGNATURE \
         };
+#       define _DMOD_DIF_SIGNATURE_REGISTRATION( SIG_NAME, SIGNATURE )        \
+        const char* const SIG_NAME = SIGNATURE;
 #else 
 #       define _DMOD_API_REGISTRATION( REG_NAME, FUNCTION_NAME, SIGNATURE )     \
         extern Dmod_ApiRegistration_t REG_NAME;
+#       define _DMOD_DIF_SIGNATURE_REGISTRATION( SIG_NAME, SIGNATURE )     \
+        extern const char* const SIG_NAME;
 #endif
        
 #define DMOD_MAKE_API_FUNCTION_NAME( MODULE, NAME )		        MODULE##NAME
@@ -112,6 +116,7 @@ extern "C" {
 #define DMOD_MAKE_API_REG_NAME( MODULE, NAME )			        MODULE##NAME##_registration
 #define DMOD_MAKE_MAL_API_REG_NAME( MODULE, NAME )			MODULE##NAME##_registration
 #define DMOD_MAKE_DIF_API_REG_NAME( DIF_MODULE, IMPL_MODULE, NAME )	DIF_MODULE##_##IMPL_MODULE##NAME##_registration
+#define DMOD_MAKE_DIF_SIG_NAME( MODULE, NAME ) dmod_##MODULE##NAME##_sig
 #define _DMOD_INPUT_API( FUNCTION_NAME, SIGNATURE, REG_NAME, RET, PARAMS )        \
         extern RET FUNCTION_NAME PARAMS DMOD_USED;\
         _DMOD_API_REGISTRATION( REG_NAME, FUNCTION_NAME, SIGNATURE );

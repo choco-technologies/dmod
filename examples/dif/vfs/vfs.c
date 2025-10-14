@@ -1,5 +1,6 @@
-#include "dmod.h"
+#define ENABLE_DIF_REGISTRATIONS ON
 #include "difs.h"
+#include "dmod.h"
 
 /**
  * @brief VFS - Virtual File System that uses DIFS interface
