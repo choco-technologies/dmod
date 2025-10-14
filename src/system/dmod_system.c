@@ -229,6 +229,11 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
                 }
                 return true;
             }
+            else 
+            {
+                DMOD_LOG_VERBOSE("Module '%s' not found in '%s'\n", ModuleName, repoDir);
+                break;
+            }
         }
         repoDir = NULL;
         if( repoPaths != NULL )

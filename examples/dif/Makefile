@@ -7,8 +7,8 @@ DMOD_DIR=..
 #   Subdirectories
 # -----------------------------------------------------------------------------
 SUBDIRS = 
-SYSTEM_SUBDIRS = system
-MODULE_SUBDIRS = module dif
+SYSTEM_SUBDIRS = 
+MODULE_SUBDIRS = difs fatfs flashfs vfs
 
 
 # -----------------------------------------------------------------------------
