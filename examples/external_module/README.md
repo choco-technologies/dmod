@@ -11,7 +11,7 @@ Modules can be built outside the dmod directory by including `paths.cmake` and u
 To build a module outside the dmod tree:
 
 1. Set `DMOD_DIR` to point to the dmod repository
-2. Set `DMOD_MODE` to "DMOD_MODULE"
+2. Set `DMOD_MODE` to "DMOD_MODULE" with CACHE...FORCE
 3. Set `DMOD_BUILD_DIR` to your project's build directory
 4. Include `${DMOD_DIR}/paths.cmake`
 5. Define your project with `project()`

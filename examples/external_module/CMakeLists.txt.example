@@ -8,7 +8,7 @@ set(DMOD_DIR "/path/to/dmod")
 # ===========================================================================
 # 2. Set mode to MODULE
 # ===========================================================================
-set(DMOD_MODE "DMOD_MODULE")
+set(DMOD_MODE "DMOD_MODULE" CACHE STRING "Mode" FORCE)
 
 # ===========================================================================
 # 3. Set build directory to current project's build directory
