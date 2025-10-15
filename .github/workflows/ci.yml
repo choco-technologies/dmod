@@ -148,10 +148,12 @@ jobs:
       
       - name: Create external module directory
         run: |
-          mkdir -p /tmp/external_test_module
-          cp -r ${GITHUB_WORKSPACE}/.github/test_templates/external_module_cmake/* /tmp/external_test_module/
-          cd /tmp/external_test_module
-          sed -i "s|@DMOD_DIR@|${GITHUB_WORKSPACE}|g" CMakeLists.txt
+          ./scripts/new-module.sh \
+            --name external_test \
+            --type application \
+            --path /tmp/external_test_module \
+            --dmod-dir "${GITHUB_WORKSPACE}" \
+            --author "CI Test"
       
       - name: Build external module with CMake
         run: |
@@ -192,10 +194,12 @@ jobs:
       
       - name: Create external module directory
         run: |
-          mkdir -p /tmp/external_test_module_make
-          cp -r ${GITHUB_WORKSPACE}/.github/test_templates/external_module_make/* /tmp/external_test_module_make/
-          cd /tmp/external_test_module_make
-          sed -i "s|@DMOD_DIR@|${GITHUB_WORKSPACE}|g" Makefile
+          ./scripts/new-module.sh \
+            --name external_test_make \
+            --type application \
+            --path /tmp/external_test_module_make \
+            --dmod-dir "${GITHUB_WORKSPACE}" \
+            --author "CI Test"
       
       - name: Build external module with Make
         run: |
