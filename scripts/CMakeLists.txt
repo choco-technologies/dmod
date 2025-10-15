@@ -1,4 +1,6 @@
-set(DMOD_SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE STRING "Path to the scripts directory")
+if(NOT DEFINED DMOD_SCRIPTS_DIR)
+    set(DMOD_SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE STRING "Path to the scripts directory")
+endif()
 
 #
 #   Creates makefile for the given library.

@@ -1,0 +1,61 @@
+cmake_minimum_required(VERSION 3.18)
+
+# ===========================================================================
+# 1. Set path to dmod repository
+# ===========================================================================
+set(DMOD_DIR "/path/to/dmod")
+
+# ===========================================================================
+# 2. Set mode to MODULE
+# ===========================================================================
+set(DMOD_MODE "DMOD_MODULE" CACHE STRING "Mode" FORCE)
+
+# ===========================================================================
+# 3. Set build directory to current project's build directory
+# ===========================================================================
+set(DMOD_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+
+# ===========================================================================
+# 4. Include dmod paths and functions
+# ===========================================================================
+include(${DMOD_DIR}/paths.cmake)
+
+# ===========================================================================
+# 5. Define your project
+# ===========================================================================
+project(external_example)
+
+# ===========================================================================
+# 6. Setup dmod libraries for external module
+# ===========================================================================
+dmod_setup_external_module()
+
+# ===========================================================================
+# 7. Configure your module (same as in examples/module/)
+# ===========================================================================
+set(DMOD_MODULE_NAME        external_example)
+set(DMOD_MODULE_VERSION     "0.1")
+set(DMOD_AUTHOR_NAME        "Your Name")
+
+# Optional: set stack size and priority
+# set(DMOD_STACK_SIZE         1024)
+# set(DMOD_PRIORITY           0)
+
+# ===========================================================================
+# 8. Create your module using dmod functions
+# ===========================================================================
+# For a library module:
+dmod_add_library(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
+    external_example.c
+)
+
+# For an application module, use instead:
+# dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
+#     external_example.c
+# )
+
+# ===========================================================================
+# 9. Additional configuration (optional)
+# ===========================================================================
+# You can add additional target properties, link libraries, etc.
+# target_link_libraries(${DMOD_MODULE_NAME} some_library)
