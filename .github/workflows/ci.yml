@@ -140,20 +140,26 @@ jobs:
           cmake .. -DDMOD_MODE=DMOD_MODULE -DDMOD_TOOLS_NAME=arch/x86_64
           cmake --build .
       
+      - name: Build dmod in SYSTEM mode for loader
+        run: |
+          cd build
+          cmake .. -DDMOD_MODE=DMOD_SYSTEM -DDMOD_TOOLS_NAME=arch/x86_64
+          cmake --build . --target dmod_loader
+      
       - name: Create external module directory
         run: |
           mkdir -p /tmp/external_test_module
           cd /tmp/external_test_module
           
-          # Create CMakeLists.txt
-          cat > CMakeLists.txt << 'EOF'
+          # Create CMakeLists.txt with GITHUB_WORKSPACE substituted
+          cat > CMakeLists.txt << EOF
           cmake_minimum_required(VERSION 3.18)
           
-          set(DMOD_DIR "$ENV{GITHUB_WORKSPACE}")
+          set(DMOD_DIR "${GITHUB_WORKSPACE}")
           set(DMOD_MODE "DMOD_MODULE" CACHE STRING "Mode" FORCE)
-          set(DMOD_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+          set(DMOD_BUILD_DIR "\${CMAKE_CURRENT_BINARY_DIR}")
           
-          include(${DMOD_DIR}/paths.cmake)
+          include(\${DMOD_DIR}/paths.cmake)
           
           project(external_test_module)
           
@@ -163,7 +169,7 @@ jobs:
           set(DMOD_MODULE_VERSION "1.0")
           set(DMOD_AUTHOR_NAME "CI Test")
           
-          dmod_add_library(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
+          dmod_add_library(\${DMOD_MODULE_NAME} \${DMOD_MODULE_VERSION}
               external_test.c
           )
           EOF
@@ -211,16 +217,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Build dmod with Make
+      - name: Build dmod with Make in MODULE mode
         run: make DMOD_MODE=DMOD_MODULE
+      
+      - name: Build dmod with Make in SYSTEM mode for loader
+        run: make DMOD_MODE=DMOD_SYSTEM
       
       - name: Create external module directory
         run: |
           mkdir -p /tmp/external_test_module_make
           cd /tmp/external_test_module_make
           
-          # Create Makefile
-          cat > Makefile << 'EOF'
+          # Create Makefile with GITHUB_WORKSPACE substituted
+          cat > Makefile << EOF
           # Path to dmod repository
           DMOD_DIR = ${GITHUB_WORKSPACE}
           
@@ -233,10 +242,10 @@ jobs:
           DMOD_CSOURCES = external_test.c
           
           # Include dmod paths
-          include $(DMOD_DIR)/paths.mk
+          include \$(DMOD_DIR)/paths.mk
           
           # Include dmod module makefile
-          include $(DMOD_DMF_LIB_FILE_PATH)
+          include \$(DMOD_DMF_LIB_FILE_PATH)
           EOF
           
           # Create source file
@@ -261,10 +270,9 @@ jobs:
       
       - name: Verify external module DMF was created
         run: |
-          test -f /tmp/external_test_module_make/build/dmf/external_test_make.dmf
+          test -f ${GITHUB_WORKSPACE}/build/dmf/external_test_make.dmf
           echo "External module DMF created successfully with Make"
       
       - name: Test external module with dmod_loader
         run: |
-          cd /tmp/external_test_module_make
-          ${GITHUB_WORKSPACE}/build/examples/system/dmod_loader build/dmf/external_test_make.dmf
+          ${GITHUB_WORKSPACE}/build/examples/system/dmod_loader ${GITHUB_WORKSPACE}/build/dmf/external_test_make.dmf
