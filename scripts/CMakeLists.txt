@@ -61,8 +61,19 @@ function( create_library_makefile targetName )
 
     set(DMOD_RELATIVE_HEADER_PATHS "")
     foreach(HEADER_PATH ${DMOD_INC_DIRS})
-        string(REPLACE "${DMOD_BUILD_DIR}" "$(DMOD_BUILD_DIR)" HEADER_PATH "${HEADER_PATH}")
-        string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" HEADER_PATH "${HEADER_PATH}")
+        # Sprawdź czy ścieżka jest bezwzględna
+        if(IS_ABSOLUTE "${HEADER_PATH}")
+            # Najpierw spróbuj zamienić na zmienne dmod
+            string(REPLACE "${DMOD_BUILD_DIR}" "$(DMOD_BUILD_DIR)" HEADER_PATH "${HEADER_PATH}")
+            string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" HEADER_PATH "${HEADER_PATH}")
+            
+            # Jeśli nadal jest bezwzględna, konwertuj na względną względem CMAKE_CURRENT_SOURCE_DIR
+            if(IS_ABSOLUTE "${HEADER_PATH}")
+                file(RELATIVE_PATH RELATIVE_HEADER_PATH "${CMAKE_CURRENT_SOURCE_DIR}" "${HEADER_PATH}")
+                set(HEADER_PATH "${RELATIVE_HEADER_PATH}")
+            endif()
+        endif()
+        
         message(STATUS "HEADER_PATH: ${HEADER_PATH}")
         list(APPEND DMOD_RELATIVE_HEADER_PATHS "${HEADER_PATH}")
     endforeach()
