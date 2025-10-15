@@ -561,6 +561,28 @@ To develop an application or library module, you need to create a **DMF (Dmod Mo
 
 You can use templates provided in the [templates/module](templates/module/README.md) directory to create your own module. The templates include the necessary files and configurations to get started with developing a module using the **Dmod** library.
 
+#### Automated Module Generation
+
+For convenience, the **Dmod** repository includes a bash script that automates the creation of new modules from templates. This script generates all necessary files (CMakeLists.txt, Makefile, source files, README, and optionally CI/CD pipelines) with minimal user input.
+
+**Quick Start:**
+```bash
+# Create a simple library module
+./scripts/new-module.sh --name my_lib --type library --path ./modules/my_lib
+
+# Create an application module with GitHub Actions workflow
+./scripts/new-module.sh --name my_app --type application --path ./modules/my_app --author "Your Name" --github
+```
+
+The script supports:
+- **Module types**: `library` or `application`
+- **Optional parameters**: author name, license, DMOD directory path
+- **CI/CD pipelines**: GitHub Actions and Bitbucket pipelines
+- **Interfaces**: DIF and MAL interface support for library modules
+- **External modules**: Modules outside the DMOD repository tree
+
+For detailed information about the module generator, see [scripts/README.md](scripts/README.md).
+
 #### Hello World Source Code
 
 Here is an example of a simple "Hello World" module that you can use as a starting point:
