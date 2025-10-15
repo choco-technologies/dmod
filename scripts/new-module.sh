@@ -15,6 +15,7 @@
 # Optional parameters:
 #   --author AUTHOR   Author name (default: "John Doe")
 #   --license LICENSE License name (default: "MIT")
+#   --dmod-dir DIR    Path to DMOD repository (default: auto-detect or ../../..)
 #   --github          Generate GitHub Actions workflow
 #   --bitbucket       Generate Bitbucket pipeline
 #   --dif             Add DIF interface support (library modules only)
@@ -28,6 +29,7 @@ set -e
 # Default values
 AUTHOR_NAME="John Doe"
 LICENSE_NAME="MIT"
+DMOD_DIR_PATH="../../.."
 GENERATE_GITHUB=false
 GENERATE_BITBUCKET=false
 ADD_DIF=false
@@ -78,6 +80,7 @@ Required parameters:
 Optional parameters:
   --author AUTHOR   Author name (default: "John Doe")
   --license LICENSE License name (default: "MIT")
+  --dmod-dir DIR    Path to DMOD repository (default: ../../..)
   --github          Generate GitHub Actions workflow
   --bitbucket       Generate Bitbucket pipeline
   --dif             Add DIF interface support (library modules only)
@@ -121,6 +124,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --license)
             LICENSE_NAME="$2"
+            shift 2
+            ;;
+        --dmod-dir)
+            DMOD_DIR_PATH="$2"
             shift 2
             ;;
         --github)
@@ -214,13 +221,73 @@ fi
 
 # Copy and process CMakeLists.txt
 echo "Generating CMakeLists.txt..."
-sed -e "s/@DMOD_MODULE_NAME@/${MODULE_NAME}/g" \
-    -e "s/@DMOD_AUTHOR_NAME@/${AUTHOR_NAME}/g" \
-    -e "s/@DMOD_STACK_SIZE@/1024/g" \
-    "${TEMPLATE_SRC}/CMakeLists.txt" > "${MODULE_PATH}/CMakeLists.txt"
 
-# Update the source file reference in CMakeLists.txt
-sed -i "s/@DMOD_MODULE_NAME@\.c/${MODULE_NAME}.c/g" "${MODULE_PATH}/CMakeLists.txt"
+# For external modules (not in the DMOD tree), add DMOD setup
+if [[ "${DMOD_DIR_PATH}" != "../../.." ]]; then
+    # This is an external module
+    cat > "${MODULE_PATH}/CMakeLists.txt" << EOF
+cmake_minimum_required(VERSION 3.18)
+
+set(DMOD_DIR "${DMOD_DIR_PATH}")
+set(DMOD_MODE "DMOD_MODULE" CACHE STRING "Mode" FORCE)
+set(DMOD_BUILD_DIR "\${CMAKE_CURRENT_BINARY_DIR}")
+
+include(\${DMOD_DIR}/paths.cmake)
+
+project(${MODULE_NAME}_module)
+
+dmod_setup_external_module()
+
+# Name of the module 
+set(DMOD_MODULE_NAME        ${MODULE_NAME})
+
+# Version (should be string in format "Major.Minor") 
+set(DMOD_MODULE_VERSION     "0.1")
+
+# Author (should be string)
+set(DMOD_AUTHOR_NAME        ${AUTHOR_NAME})
+
+# Stack size for the module (should be integer)
+set(DMOD_STACK_SIZE         1024)
+
+EOF
+
+    if [[ "${MODULE_TYPE}" == "library" ]]; then
+        echo "#" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "#   dmod_add_library - create a library module" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "#   it has the same signature as add_library" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "#   and can be used in the same way after the creation" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "#   (for example, to link libraries)" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "#" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "dmod_add_library(\${DMOD_MODULE_NAME} \"0.1\"" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "    # List of source files - can include C and C++ files" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "    ${MODULE_NAME}.c" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo ")" >> "${MODULE_PATH}/CMakeLists.txt"
+    else
+        echo "# Priority for the thread of the module (should be integer)" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "set(DMOD_PRIORITY           0)" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "# " >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "#   dmod_add_executable - create an executable module" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "#   it has the same signature as add_executable, " >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "#   and can be used in the same way after the creation" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "#   (for example, to link libraries)" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "#" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "dmod_add_executable(\${DMOD_MODULE_NAME} \"0.1\"" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "    # List of source files - can include C and C++ files" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo "    ${MODULE_NAME}.c" >> "${MODULE_PATH}/CMakeLists.txt"
+        echo ")" >> "${MODULE_PATH}/CMakeLists.txt"
+    fi
+else
+    # This is an internal module (within DMOD tree)
+    sed -e "s/@DMOD_MODULE_NAME@/${MODULE_NAME}/g" \
+        -e "s/@DMOD_AUTHOR_NAME@/${AUTHOR_NAME}/g" \
+        -e "s/@DMOD_STACK_SIZE@/1024/g" \
+        "${TEMPLATE_SRC}/CMakeLists.txt" > "${MODULE_PATH}/CMakeLists.txt"
+    
+    # Update the source file reference in CMakeLists.txt
+    sed -i "s/@DMOD_MODULE_NAME@\.c/${MODULE_NAME}.c/g" "${MODULE_PATH}/CMakeLists.txt"
+fi
 
 # Copy and process Makefile
 echo "Generating Makefile..."
@@ -230,6 +297,9 @@ sed -e "s/@MODULE_NAME@/${MODULE_NAME}/g" \
 
 # Update the source file reference in Makefile
 sed -i "s/DMOD_CSOURCES=main.c/DMOD_CSOURCES=${MODULE_NAME}.c/g" "${MODULE_PATH}/Makefile"
+
+# Update DMOD_DIR in Makefile
+sed -i "s|DMOD_DIR=../../..|DMOD_DIR=${DMOD_DIR_PATH}|g" "${MODULE_PATH}/Makefile"
 
 # Add DIF/MAL interface configuration to Makefile if requested
 if [[ "${ADD_DIF}" == "true" ]]; then
