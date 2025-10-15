@@ -461,7 +461,7 @@ To get started with **Dmod**, follow these simple steps to integrate it into you
 1. **Clone the repository**: Add the source code of this repository into your project in a prefered way. We recommend to add it as a git submodule:
 
 ```bash
-git submodule add https://bitbucket.org/chocotechnologies/dmod.git libs/dmod
+git submodule add git@github.com:choco-technologies/dmod.git libs/dmod
 git submodule update --init --recursive  # updates the dmod repository with it's submodules
 ```
 
