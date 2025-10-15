@@ -114,3 +114,39 @@ else()
 	set(DMOD_SYSTEM OFF)
 	set(DMOD_MODULE ON)
 endif()
+
+# -----------------------------------------------------------------------------
+#   Include the scripts to make functions available
+# -----------------------------------------------------------------------------
+include(${DMOD_SCRIPTS_DIR}/CMakeLists.txt)
+
+# -----------------------------------------------------------------------------
+#   Setup dmod libraries for external modules
+# -----------------------------------------------------------------------------
+# Define a macro to setup dmod libraries for external modules.
+# This should be called after project() in external modules.
+macro(dmod_setup_external_module)
+	# Check if we're in an external module context by checking if the dmod 
+	# target doesn't exist yet.
+	if(NOT TARGET dmod)
+		# Generate configuration header
+		configure_file(${DMOD_DIR}/dmod-config.h.in ${CMAKE_CURRENT_BINARY_DIR}/dmod-config.h)
+		
+		# Add dmod library subdirectories
+		add_subdirectory(${DMOD_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/dmod_lib)
+		add_subdirectory(${DMOD_DIR}/inc ${CMAKE_CURRENT_BINARY_DIR}/dmod_inc)
+		add_subdirectory(${DMOD_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}/dmod_src)
+		
+		# Create the dmod interface library target
+		add_library(dmod INTERFACE)
+		target_link_libraries(dmod INTERFACE dmod_inc dmod_common)
+		if (DMOD_USE_FASTLZ)
+			target_link_libraries(dmod INTERFACE dmod_fastlz)
+		endif()
+		if (DMOD_SYSTEM)
+			target_link_libraries(dmod INTERFACE dmod_system)
+		elseif (DMOD_MODULE)
+			target_link_libraries(dmod INTERFACE dmod_module)
+		endif()
+	endif()
+endmacro()

@@ -10,7 +10,7 @@
  */
 int dmod_init(const Dmod_Config_t *Config)
 {
-    Dmod_Printf("External example module initialized!\n");
+    // Module initialization code
     return 0;
 }
 
@@ -23,6 +23,6 @@ int dmod_init(const Dmod_Config_t *Config)
  */
 int dmod_deinit(void)
 {
-    Dmod_Printf("External example module deinitialized!\n");
+    // Module cleanup code
     return 0;
 }

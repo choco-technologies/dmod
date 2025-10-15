@@ -1,55 +1,41 @@
 # External Module Example
 
-This directory contains an example of how to build a DMOD module outside the dmod repository tree.
+This directory contains an example showing how to build a DMOD module outside the dmod repository tree.
 
 ## Overview
 
-Modules can be built outside the dmod directory tree by including the necessary dmod CMake files and subdirectories. This allows you to:
-- Keep your module code separate from the dmod framework
-- Build modules independently
-- Maintain your own version control for modules
+Modules can be built outside the dmod directory by including `paths.cmake` and using the same approach as in the internal examples. The CMakeLists.txt structure is very similar to the examples in `examples/module/`.
 
-## Building the Module
+## Building an External Module
 
-To build this example module:
+To build a module outside the dmod tree:
 
-1. Navigate to the module directory
-2. Create a build directory
-3. Configure with CMake, specifying the path to DMOD_DIR
-4. Build
+1. Set `DMOD_DIR` to point to the dmod repository
+2. Set `DMOD_MODE` to "DMOD_MODULE"
+3. Set `DMOD_BUILD_DIR` to your project's build directory
+4. Include `${DMOD_DIR}/paths.cmake`
+5. Define your project with `project()`
+6. Call `dmod_setup_external_module()` to setup dmod libraries
+7. Configure your module (set DMOD_MODULE_NAME, DMOD_MODULE_VERSION, etc.)
+8. Use `dmod_add_library()` or `dmod_add_executable()` to create your module
+
+## Example
+
+See `CMakeLists.txt.example` and `external_example.c.example` for a complete working example.
+
+## Building
 
 ```bash
-cd /path/to/your/module
+cd your_module_directory
 mkdir build && cd build
-cmake .. -DDMOD_DIR=/path/to/dmod
+cmake ..
 make
 ```
 
-## CMakeLists.txt Template
-
-The key elements for building a module outside the dmod tree are:
-
-1. **Set DMOD_DIR**: Point to the dmod repository location
-2. **Set DMOD_MODE**: Set to "DMOD_MODULE" 
-3. **Include paths.cmake**: Include the dmod paths configuration
-4. **Add dmod subdirectories**: Include scripts, lib, inc, and src
-5. **Create dmod interface library**: Recreate the dmod target
-6. **Use dmod_add_library or dmod_add_executable**: Create your module
-
-See the `CMakeLists.txt.template` file for a complete template.
-
-## Example Module Structure
-
-```
-your_module/
-├── CMakeLists.txt
-├── your_module.c
-└── your_module.h (optional)
-```
+The generated `.dmf` file will be in `build/dmf/`.
 
 ## Important Notes
 
-- The DMOD_DIR must point to a valid dmod repository
-- You need to include all necessary dmod subdirectories (scripts, lib, inc, src)
-- The dmod libraries will be built as part of your module build
-- The generated .dmf file will be in your build/dmf directory
+- `DMOD_BUILD_DIR` should be set to `${CMAKE_CURRENT_BINARY_DIR}` before including paths.cmake
+- The approach is the same as used in `examples/module/` - just set some variables and call the dmod functions
+- All dmod functions (dmod_add_library, dmod_add_executable) work the same as in internal modules
