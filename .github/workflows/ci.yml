@@ -187,6 +187,9 @@ jobs:
       - name: Build dmod with Make in SYSTEM mode for loader
         run: make DMOD_MODE=DMOD_SYSTEM
       
+      - name: Rebuild dmod in MODULE mode before external module
+        run: make DMOD_MODE=DMOD_MODULE
+      
       - name: Create external module directory
         run: |
           mkdir -p /tmp/external_test_module_make
