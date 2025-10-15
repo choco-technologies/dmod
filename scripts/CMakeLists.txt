@@ -61,8 +61,19 @@ function( create_library_makefile targetName )
 
     set(DMOD_RELATIVE_HEADER_PATHS "")
     foreach(HEADER_PATH ${DMOD_INC_DIRS})
-        string(REPLACE "${DMOD_BUILD_DIR}" "$(DMOD_BUILD_DIR)" HEADER_PATH "${HEADER_PATH}")
-        string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" HEADER_PATH "${HEADER_PATH}")
+        # Check if path is absolute
+        if(IS_ABSOLUTE "${HEADER_PATH}")
+            # First try to replace with dmod variables
+            string(REPLACE "${DMOD_BUILD_DIR}" "$(DMOD_BUILD_DIR)" HEADER_PATH "${HEADER_PATH}")
+            string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" HEADER_PATH "${HEADER_PATH}")
+            
+            # If still absolute, convert to relative path relative to CMAKE_CURRENT_SOURCE_DIR
+            if(IS_ABSOLUTE "${HEADER_PATH}")
+                file(RELATIVE_PATH RELATIVE_HEADER_PATH "${CMAKE_CURRENT_SOURCE_DIR}" "${HEADER_PATH}")
+                set(HEADER_PATH "${RELATIVE_HEADER_PATH}")
+            endif()
+        endif()
+        
         message(STATUS "HEADER_PATH: ${HEADER_PATH}")
         list(APPEND DMOD_RELATIVE_HEADER_PATHS "${HEADER_PATH}")
     endforeach()
@@ -75,16 +86,16 @@ endfunction()
 
 
 function(to_snake_case INPUT_STRING OUTPUT_VARIABLE)
-    # Zamiana myślników na podkreślenia
+    # Replace hyphens with underscores
     string(REPLACE "-" "_" INTERMEDIATE_STRING "${INPUT_STRING}")
     
-    # Zamiana spacji na podkreślenia
+    # Replace spaces with underscores
     string(REPLACE " " "_" INTERMEDIATE_STRING "${INTERMEDIATE_STRING}")
     
-    # Konwersja na małe litery
+    # Convert to lowercase
     string(TOLOWER "${INTERMEDIATE_STRING}" SNAKE_CASE_STRING)
     
-    # Przypisanie wyniku do zmiennej wyjściowej
+    # Set the result to the output variable
     set(${OUTPUT_VARIABLE} "${SNAKE_CASE_STRING}" PARENT_SCOPE)
 endfunction()
 
