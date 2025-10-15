@@ -169,7 +169,7 @@ jobs:
           set(DMOD_MODULE_VERSION "1.0")
           set(DMOD_AUTHOR_NAME "CI Test")
           
-          dmod_add_library(\${DMOD_MODULE_NAME} \${DMOD_MODULE_VERSION}
+          dmod_add_executable(\${DMOD_MODULE_NAME} \${DMOD_MODULE_VERSION}
               external_test.c
           )
           EOF
@@ -178,13 +178,9 @@ jobs:
           cat > external_test.c << 'EOF'
           #include "dmod.h"
           
-          int dmod_init(const Dmod_Config_t *Config)
+          int main(int argc, char** argv)
           {
-              return 0;
-          }
-          
-          int dmod_deinit(void)
-          {
+              Dmod_Printf("External test module running\n");
               return 0;
           }
           EOF
@@ -244,21 +240,17 @@ jobs:
           # Include dmod paths
           include \$(DMOD_DIR)/paths.mk
           
-          # Include dmod module makefile
-          include \$(DMOD_DMF_LIB_FILE_PATH)
+          # Include dmod app makefile
+          include \$(DMOD_DMF_APP_FILE_PATH)
           EOF
           
           # Create source file
           cat > external_test.c << 'EOF'
           #include "dmod.h"
           
-          int dmod_init(const Dmod_Config_t *Config)
+          int main(int argc, char** argv)
           {
-              return 0;
-          }
-          
-          int dmod_deinit(void)
-          {
+              Dmod_Printf("External test module running with Make\n");
               return 0;
           }
           EOF
