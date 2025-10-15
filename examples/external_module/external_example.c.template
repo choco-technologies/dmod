@@ -1,0 +1,28 @@
+#include "dmod.h"
+
+/**
+ * @brief Module initialization function
+ * 
+ * This function is called when the module is loaded by the system.
+ * 
+ * @param Config Configuration parameters for the module
+ * @return 0 on success, non-zero on error
+ */
+int dmod_init(const Dmod_Config_t *Config)
+{
+    Dmod_Printf("External example module initialized!\n");
+    return 0;
+}
+
+/**
+ * @brief Module deinitialization function
+ * 
+ * This function is called when the module is unloaded from the system.
+ * 
+ * @return 0 on success, non-zero on error
+ */
+int dmod_deinit(void)
+{
+    Dmod_Printf("External example module deinitialized!\n");
+    return 0;
+}

@@ -1,0 +1,85 @@
+cmake_minimum_required(VERSION 3.18)
+
+# ===========================================================================
+# 1. Set the DMOD_DIR to point to the dmod repository
+# ===========================================================================
+# You can pass this as a CMake argument: -DDMOD_DIR=/path/to/dmod
+# or set it here directly:
+if(NOT DEFINED DMOD_DIR)
+    set(DMOD_DIR "/path/to/dmod" CACHE PATH "Path to DMOD directory")
+endif()
+
+# ===========================================================================
+# 2. Set build directory (optional)
+# ===========================================================================
+# By default, dmod will use ${DMOD_DIR}/build
+# You can override this if needed
+# if(NOT DEFINED DMOD_BUILD_DIR)
+#     set(DMOD_BUILD_DIR "${DMOD_DIR}/build")
+# endif()
+
+# ===========================================================================
+# 3. Set the mode to MODULE
+# ===========================================================================
+set(DMOD_MODE "DMOD_MODULE" CACHE STRING "Mode of the system")
+
+# ===========================================================================
+# 4. Include the DMOD paths configuration
+# ===========================================================================
+include(${DMOD_DIR}/paths.cmake)
+
+# ===========================================================================
+# 5. Define your project
+# ===========================================================================
+project(external_module_example)
+
+# ===========================================================================
+# 6. Add dmod subdirectories to ensure libraries are available
+# ===========================================================================
+add_subdirectory(${DMOD_DIR}/scripts ${CMAKE_CURRENT_BINARY_DIR}/dmod_scripts)
+add_subdirectory(${DMOD_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/dmod_lib)
+add_subdirectory(${DMOD_DIR}/inc ${CMAKE_CURRENT_BINARY_DIR}/dmod_inc)
+add_subdirectory(${DMOD_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}/dmod_src)
+
+# ===========================================================================
+# 7. Create dmod interface library (required for linking)
+# ===========================================================================
+add_library(dmod INTERFACE)
+target_link_libraries(dmod INTERFACE dmod_inc dmod_common)
+if (DMOD_USE_FASTLZ)
+    target_link_libraries(dmod INTERFACE dmod_fastlz)
+endif()
+if (DMOD_MODULE)
+    target_link_libraries(dmod INTERFACE dmod_module)
+endif()
+
+# ===========================================================================
+# 8. Configure your module
+# ===========================================================================
+set(DMOD_MODULE_NAME        external_example)
+set(DMOD_MODULE_VERSION     "0.1")
+set(DMOD_AUTHOR_NAME        "Your Name")
+
+# Optional module configuration
+# set(DMOD_STACK_SIZE         1024)
+# set(DMOD_PRIORITY           0)
+
+# ===========================================================================
+# 9. Create your module (library or application)
+# ===========================================================================
+# For a library module:
+dmod_add_library(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
+    external_example.c
+)
+
+# For an application module, use instead:
+# dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
+#     external_example.c
+# )
+
+# ===========================================================================
+# 10. Add any additional configuration (optional)
+# ===========================================================================
+# You can link additional libraries, set compile options, etc.
+# target_link_libraries(${DMOD_MODULE_NAME} your_library)
+# target_compile_definitions(${DMOD_MODULE_NAME} PRIVATE YOUR_DEFINE=1)
