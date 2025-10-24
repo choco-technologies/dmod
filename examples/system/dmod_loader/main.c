@@ -60,6 +60,38 @@ int main( int argc, char *argv[] )
         return -1;
     }
 
-    return Dmod_Run( context, argc, argv );
+    // Check module type and handle accordingly
+    Dmod_ModuleType_t moduleType = Dmod_GetModuleType( context );
+    
+    if( moduleType == Dmod_ModuleType_Library )
+    {
+        // For library modules: enable, then disable
+        printf("Module is a library, enabling...\n");
+        if( !Dmod_Enable( context, false, NULL ) )
+        {
+            printf("Cannot enable library module: %s\n", argv[1]);
+            return -1;
+        }
+        printf("Library module enabled successfully\n");
+        
+        printf("Disabling library module...\n");
+        if( !Dmod_Disable( context, false ) )
+        {
+            printf("Cannot disable library module: %s\n", argv[1]);
+            return -1;
+        }
+        printf("Library module disabled successfully\n");
+        return 0;
+    }
+    else if( moduleType == Dmod_ModuleType_Application )
+    {
+        // For application modules: run as before
+        return Dmod_Run( context, argc, argv );
+    }
+    else
+    {
+        printf("Unknown module type: %d\n", moduleType);
+        return -1;
+    }
 }
 
