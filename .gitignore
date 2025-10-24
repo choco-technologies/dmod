@@ -60,3 +60,4 @@ Thumbs.db
 
 # Architecture-specific config (copy from configs/arch/<arch>/)
 tools-cfg.cmake
+build/
