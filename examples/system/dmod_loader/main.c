@@ -25,7 +25,10 @@ void PrintHelp( const char* AppName )
     printf("Usage: %s path/to/file.dmf\n", AppName);
     printf("Options:\n");
     printf("  -h, --help     Print this help message\n");
-    printf("  -v, --version  Print version information\n");
+    printf("  -v, --version  Print version information\n\n");
+    printf("Module Types:\n");
+    printf("  Application    Runs the module's main function\n");
+    printf("  Library        Enables the module, then disables it\n");
 }
 
 // -----------------------------------------
