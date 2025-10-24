@@ -4,8 +4,17 @@ endif()
 
 #
 #   Creates makefile for the given library.
+#   Usage: create_library_makefile(targetName [PATH_VARIABLES var1:name1 var2:name2 ...])
+#   
+#   PATH_VARIABLES - optional list of custom path variable replacements in format:
+#                   VARIABLE_PATH:VARIABLE_NAME where:
+#                   - VARIABLE_PATH is the CMake variable containing the path
+#                   - VARIABLE_NAME is the Makefile variable name to use
 #
 function( create_library_makefile targetName )
+    # Parse arguments
+    cmake_parse_arguments(PARSE_ARGV 1 ARG "" "" "PATH_VARIABLES")
+    
     # Configure the Makefile
     if(DMOD_MODE STREQUAL "DMOD_SYSTEM")
         set(DMOD_SYSTEM ON)
@@ -59,14 +68,51 @@ function( create_library_makefile targetName )
         endforeach()
     endif()
 
+    # Helper function to apply path variable replacements
+    function(apply_path_replacements INPUT_PATH OUTPUT_VAR)
+        set(RESULT_PATH "${INPUT_PATH}")
+        
+        # Apply custom path variables first (if provided)
+        if(ARG_PATH_VARIABLES)
+            foreach(PATH_VAR ${ARG_PATH_VARIABLES})
+                string(FIND "${PATH_VAR}" ":" COLON_POS)
+                if(COLON_POS GREATER -1)
+                    string(SUBSTRING "${PATH_VAR}" 0 ${COLON_POS} VAR_PATH)
+                    math(EXPR START_POS "${COLON_POS} + 1")
+                    string(SUBSTRING "${PATH_VAR}" ${START_POS} -1 VAR_NAME)
+                    
+                    # Get the value of the variable
+                    if(DEFINED ${VAR_PATH})
+                        set(VAR_VALUE "${${VAR_PATH}}")
+                        string(REPLACE "${VAR_VALUE}" "$(${VAR_NAME})" RESULT_PATH "${RESULT_PATH}")
+                        message(STATUS "Custom path replacement: ${VAR_VALUE} -> $(${VAR_NAME})")
+                    endif()
+                endif()
+            endforeach()
+        endif()
+        
+        # Apply standard DMOD path replacements
+        string(REPLACE "${DMOD_BUILD_DIR}" "$(DMOD_BUILD_DIR)" RESULT_PATH "${RESULT_PATH}")
+        string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" RESULT_PATH "${RESULT_PATH}")
+        
+        set(${OUTPUT_VAR} "${RESULT_PATH}" PARENT_SCOPE)
+    endfunction()
+
     set(DMOD_RELATIVE_HEADER_PATHS "")
     foreach(HEADER_PATH ${DMOD_INC_DIRS})
-        string(REPLACE "${DMOD_BUILD_DIR}" "$(DMOD_BUILD_DIR)" HEADER_PATH "${HEADER_PATH}")
-        string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" HEADER_PATH "${HEADER_PATH}")
-        message(STATUS "HEADER_PATH: ${HEADER_PATH}")
-        list(APPEND DMOD_RELATIVE_HEADER_PATHS "${HEADER_PATH}")
+        apply_path_replacements("${HEADER_PATH}" PROCESSED_HEADER_PATH)
+        message(STATUS "HEADER_PATH: ${PROCESSED_HEADER_PATH}")
+        list(APPEND DMOD_RELATIVE_HEADER_PATHS "${PROCESSED_HEADER_PATH}")
     endforeach()
-    string(REPLACE ";" "\\\n\t\t" DMOD_SOURCES "${DMOD_SOURCES}")
+    
+    # Apply path replacements to sources as well
+    set(PROCESSED_SOURCES "")
+    foreach(SOURCE_PATH ${DMOD_SOURCES})
+        apply_path_replacements("${SOURCE_PATH}" PROCESSED_SOURCE_PATH)
+        list(APPEND PROCESSED_SOURCES "${PROCESSED_SOURCE_PATH}")
+    endforeach()
+    
+    string(REPLACE ";" "\\\n\t\t" DMOD_SOURCES "${PROCESSED_SOURCES}")
     string(REPLACE ";" "\\\n\t\t" DMOD_INC_DIRS "${DMOD_RELATIVE_HEADER_PATHS}")
     string(REPLACE ";" "\\\n\t\t" DMOD_LIBS "${DMOD_LINKED_LIBRARIES}")
     string(REPLACE "Threads::Threads" "pthread" DMOD_LIBS "${DMOD_LIBS}")
