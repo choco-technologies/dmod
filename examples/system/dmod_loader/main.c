@@ -65,7 +65,6 @@ int main( int argc, char *argv[] )
 
     // Check module type and handle accordingly
     Dmod_ModuleType_t moduleType = Dmod_GetModuleType( context );
-    int result = 0;
     
     if( moduleType == Dmod_ModuleType_Library )
     {
@@ -93,7 +92,7 @@ int main( int argc, char *argv[] )
     else if( moduleType == Dmod_ModuleType_Application )
     {
         // For application modules: run as before
-        result = Dmod_Run( context, argc, argv );
+        int result = Dmod_Run( context, argc, argv );
         Dmod_Unload( context, false );
         return result;
     }
