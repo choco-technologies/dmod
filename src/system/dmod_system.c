@@ -677,7 +677,19 @@ Dmod_License_t* Dmod_GetLicense( Dmod_Context_t* Context )
  */
 const char* Dmod_GetName( Dmod_Context_t* Context )
 {
-    return Dmod_Context_GetModuleName( Context );
+    if( !Dmod_Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot get module name - invalid context\n");
+        return "Invalid";
+    }
+
+    if( Context->Header == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot get module name - header not set\n");
+        return "Unknown";
+    }
+
+    return Context->Header->Name;
 }
 
 /**

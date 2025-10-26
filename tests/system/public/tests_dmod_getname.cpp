@@ -25,12 +25,11 @@
  */
 void* Dmod_AlignedMalloc(size_t Size, size_t Alignment)
 {
-    size_t pagesize = Alignment;
-    pagesize = sysconf(_SC_PAGESIZE);
+    size_t pagesize = sysconf(_SC_PAGESIZE);
     void* mem = aligned_alloc(pagesize, Size);
     if (mprotect(mem, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) 
     {
-        DMOD_LOG_ERROR("Cannot set memory protection. Pagesize: %d\n", pagesize);
+        DMOD_LOG_ERROR("Cannot set memory protection. Pagesize: %zu\n", pagesize);
         free(mem);
         return NULL;
     }
