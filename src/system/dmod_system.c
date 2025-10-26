@@ -669,6 +669,18 @@ Dmod_License_t* Dmod_GetLicense( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Get module name
+ * 
+ * @param Context Context to get module name from
+ * 
+ * @return Module name (from signature)
+ */
+const char* Dmod_GetName( Dmod_Context_t* Context )
+{
+    return Dmod_Context_GetModuleName( Context );
+}
+
+/**
  * @brief Read module header
  * 
  * @param FilePath Path to the module file
