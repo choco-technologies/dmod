@@ -86,6 +86,7 @@ extern int              Dmod_Irq                ( Dmod_Context_t* Context, const
 extern uint64_t         Dmod_GetStackSize       ( Dmod_Context_t* Context );
 extern Dmod_ModuleType_t Dmod_GetModuleType     ( Dmod_Context_t* Context );
 extern Dmod_License_t*  Dmod_GetLicense         ( Dmod_Context_t* Context );
+extern const char*      Dmod_GetName            ( Dmod_Context_t* Context );
 
 // DMF System
 extern bool             Dmod_Enable             ( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Config );
