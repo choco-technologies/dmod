@@ -25,7 +25,10 @@ void PrintHelp( const char* AppName )
     printf("Usage: %s path/to/file.dmf\n", AppName);
     printf("Options:\n");
     printf("  -h, --help     Print this help message\n");
-    printf("  -v, --version  Print version information\n");
+    printf("  -v, --version  Print version information\n\n");
+    printf("Module Types:\n");
+    printf("  Application    Runs the module's main function\n");
+    printf("  Library        Enables the module, then disables it\n");
 }
 
 // -----------------------------------------
@@ -60,6 +63,44 @@ int main( int argc, char *argv[] )
         return -1;
     }
 
-    return Dmod_Run( context, argc, argv );
+    // Check module type and handle accordingly
+    Dmod_ModuleType_t moduleType = Dmod_GetModuleType( context );
+    
+    if( moduleType == Dmod_ModuleType_Library )
+    {
+        // For library modules: enable, then disable
+        printf("Module is a library, enabling...\n");
+        if( !Dmod_Enable( context, false, NULL ) )
+        {
+            printf("Cannot enable library module: %s\n", argv[1]);
+            Dmod_Unload( context, false );
+            return -1;
+        }
+        printf("Library module enabled successfully\n");
+        
+        printf("Disabling library module...\n");
+        if( !Dmod_Disable( context, false ) )
+        {
+            printf("Cannot disable library module: %s\n", argv[1]);
+            Dmod_Unload( context, false );
+            return -1;
+        }
+        printf("Library module disabled successfully\n");
+        Dmod_Unload( context, false );
+        return 0;
+    }
+    else if( moduleType == Dmod_ModuleType_Application )
+    {
+        // For application modules: run as before
+        int result = Dmod_Run( context, argc, argv );
+        Dmod_Unload( context, false );
+        return result;
+    }
+    else
+    {
+        printf("Unknown module type: %d\n", moduleType);
+        Dmod_Unload( context, false );
+        return -1;
+    }
 }
 
