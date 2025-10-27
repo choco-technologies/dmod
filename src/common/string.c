@@ -27,6 +27,7 @@ void *memset(void *s, int c, size_t n)
 
 /**
  * @brief Copy memory area
+ * @note This function does not handle overlapping memory regions. Use memmove() for that.
  */
 void *memcpy(void *dest, const void *src, size_t n)
 {
