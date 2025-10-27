@@ -1,6 +1,7 @@
 set(MODULE_NAME dmod_common)
 add_library(${MODULE_NAME} STATIC
     dmod_common.c
+    string.c
 )
 
 target_include_directories(${MODULE_NAME} 
