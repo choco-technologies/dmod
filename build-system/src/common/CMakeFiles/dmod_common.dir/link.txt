@@ -1,0 +1,2 @@
+/usr/bin/ar qc libdmod_common.a CMakeFiles/dmod_common.dir/dmod_common.c.o
+/usr/bin/ranlib libdmod_common.a

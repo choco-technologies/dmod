@@ -1,0 +1,1 @@
+/usr/bin/c++ -L /home/runner/work/dmod/dmod/scripts -T /home/runner/work/dmod/dmod/scripts/main.ld -Wl,--dependency-file=CMakeFiles/dif_test.dir/link.d CMakeFiles/dif_test.dir/main.c.o -o dif_test  ../../../src/system/libdmod_system.a ../../../src/common/libdmod_common.a ../../../lib/third-party/FastLZ/libdmod_fastlz.a

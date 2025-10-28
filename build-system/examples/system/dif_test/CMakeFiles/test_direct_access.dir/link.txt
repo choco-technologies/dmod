@@ -1,0 +1,1 @@
+/usr/bin/c++ -L /home/runner/work/dmod/dmod/scripts -T /home/runner/work/dmod/dmod/scripts/main.ld -Wl,--dependency-file=CMakeFiles/test_direct_access.dir/link.d CMakeFiles/test_direct_access.dir/test_direct_access.c.o -o test_direct_access  ../../../src/system/libdmod_system.a ../../../src/common/libdmod_common.a ../../../lib/third-party/FastLZ/libdmod_fastlz.a
