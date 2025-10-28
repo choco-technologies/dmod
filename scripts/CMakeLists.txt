@@ -198,7 +198,7 @@ function(dmod_create_module moduleName version moduleType)
         set(EXCEPTION_FLAGS -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables)
     endif()
 
-    target_compile_options(${moduleName} PRIVATE -fPIC -fPIE -ffunction-sections ${EXCEPTION_FLAGS} -fdata-sections ${OPTIMIZATION} -fno-stack-protector )
+    target_compile_options(${moduleName} PRIVATE -fPIC -fPIE -ffunction-sections ${EXCEPTION_FLAGS} -fdata-sections ${OPTIMIZATION} -fno-stack-protector -fno-builtin )
     target_compile_options(${moduleName} PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-fpermissive>
     )
