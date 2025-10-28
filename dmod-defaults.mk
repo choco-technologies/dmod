@@ -9,6 +9,15 @@ ifndef DMOD_USE_STDIO
     DMOD_USE_STDIO = ON
 endif
 
+ifndef DMOD_IMPLEMENT_PRINTF
+    # Use custom printf implementation when STDIO is not available
+    ifneq ($(DMOD_USE_STDIO), ON)
+        DMOD_IMPLEMENT_PRINTF = ON
+    else
+        DMOD_IMPLEMENT_PRINTF = OFF
+    endif
+endif
+
 ifndef DMOD_USE_DIRENT
     DMOD_USE_DIRENT = ON
 endif

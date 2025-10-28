@@ -38,6 +38,10 @@
 #if DMOD_USE_ASSERT
 #   include <assert.h>
 #endif
+#if DMOD_IMPLEMENT_PRINTF
+#   include "dmod_printf_impl.h"
+#   include <stdarg.h>
+#endif
 
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
@@ -90,6 +94,8 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _VSnPrintf, ( char* Buffer, size
     {
         return vsnprintf( Buffer, Size, Format, Args );
     }
+    #elif DMOD_IMPLEMENT_PRINTF
+    return dmod_vsnprintf_impl( Buffer, Size, Format, Args );
     #else
     return 0;
     #endif
@@ -106,7 +112,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _VSnPrintf, ( char* Buffer, size
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _SnPrintf, ( char* Buffer, size_t Size, const char* Format, ... ))
 {
-    #if DMOD_USE_STDIO
+    #if DMOD_USE_STDIO || DMOD_IMPLEMENT_PRINTF
     int Ret = 0;
     va_list Args;
     va_start( Args, Format );

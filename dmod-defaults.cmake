@@ -8,6 +8,16 @@ endif()
 if (NOT DEFINED DMOD_USE_STDIO)
     set(DMOD_USE_STDIO ON)
 endif()
+
+if (NOT DEFINED DMOD_IMPLEMENT_PRINTF)
+    # Use custom printf implementation when STDIO is not available
+    if(NOT DMOD_USE_STDIO)
+        set(DMOD_IMPLEMENT_PRINTF ON)
+    else()
+        set(DMOD_IMPLEMENT_PRINTF OFF)
+    endif()
+endif()
+
 if (NOT DEFINED DMOD_USE_DIRENT)
     set(DMOD_USE_DIRENT ON)
 endif()

@@ -35,6 +35,12 @@ DMOD_SOURCES=private/dmod_vars.c\
 		if/dmod_if_comp.c\
 		if/dmod_if_env.c\
 		Dmod.cpp
+
+# Add custom printf implementation if enabled
+ifeq ($(DMOD_IMPLEMENT_PRINTF),ON)
+DMOD_SOURCES += if/dmod_printf_impl.c
+endif
+
 DMOD_INC_DIRS = $(DMOD_DIR)/src/system\
 		$(DMOD_DIR)/inc\
 		$(DMOD_BUILD_DIR)\

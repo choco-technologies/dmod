@@ -1,6 +1,8 @@
 set(MODULE_NAME dmod_system)
 set(DMOD_MODE "DMOD_SYSTEM")
-add_library(${MODULE_NAME} STATIC
+
+# Prepare source list
+set(SYSTEM_SOURCES
     private/dmod_vars.c
     private/dmod_ctx.c
     private/dmod_hlp.c
@@ -22,6 +24,13 @@ add_library(${MODULE_NAME} STATIC
     if/dmod_if_env.c
     Dmod.cpp
 )
+
+# Add custom printf implementation if enabled
+if(DMOD_IMPLEMENT_PRINTF)
+    list(APPEND SYSTEM_SOURCES if/dmod_printf_impl.c)
+endif()
+
+add_library(${MODULE_NAME} STATIC ${SYSTEM_SOURCES})
 
 target_include_directories(${MODULE_NAME} 
     PUBLIC 
