@@ -19,7 +19,7 @@ protected:
     }
 };
 
-#ifdef DMOD_MEMORY_MOCK_ADDRESS
+#ifdef DMOD_MEMORY_MOCK_ENABLED
 /**
  * @brief Test for Dmod_ReadMemory with mock memory
  * 
@@ -29,8 +29,8 @@ TEST_F(DmodMockMemoryTest, ReadMemoryFromMock)
 {
     uint8_t buffer[16] = {0};
     
-    // Read from the beginning of mock memory
-    size_t bytesRead = Dmod_ReadMemory(DMOD_MEMORY_MOCK_ADDRESS, buffer, sizeof(buffer));
+    // Read from the beginning of first mock memory region
+    size_t bytesRead = Dmod_ReadMemory(DMOD_MEMORY_MOCK_ADDRESS_0, buffer, sizeof(buffer));
     
     ASSERT_EQ(bytesRead, sizeof(buffer));
     
@@ -53,11 +53,11 @@ TEST_F(DmodMockMemoryTest, WriteMemoryToMock)
     uint8_t readData[16] = {0};
     
     // Write to mock memory
-    size_t bytesWritten = Dmod_WriteMemory(DMOD_MEMORY_MOCK_ADDRESS + 128, writeData, sizeof(writeData));
+    size_t bytesWritten = Dmod_WriteMemory(DMOD_MEMORY_MOCK_ADDRESS_0 + 128, writeData, sizeof(writeData));
     ASSERT_EQ(bytesWritten, sizeof(writeData));
     
     // Read back from mock memory
-    size_t bytesRead = Dmod_ReadMemory(DMOD_MEMORY_MOCK_ADDRESS + 128, readData, sizeof(readData));
+    size_t bytesRead = Dmod_ReadMemory(DMOD_MEMORY_MOCK_ADDRESS_0 + 128, readData, sizeof(readData));
     ASSERT_EQ(bytesRead, sizeof(readData));
     
     // Verify data
@@ -75,7 +75,7 @@ TEST_F(DmodMockMemoryTest, ReadMemoryPartialMock)
     
     // Try to read past the end of mock memory (256 bytes)
     // Reading from offset 240 with size 64 should only read 16 bytes
-    size_t bytesRead = Dmod_ReadMemory(DMOD_MEMORY_MOCK_ADDRESS + 240, buffer, sizeof(buffer));
+    size_t bytesRead = Dmod_ReadMemory(DMOD_MEMORY_MOCK_ADDRESS_0 + 240, buffer, sizeof(buffer));
     
     ASSERT_EQ(bytesRead, 16); // Should only read to end of mock memory
     
@@ -90,6 +90,6 @@ TEST_F(DmodMockMemoryTest, ReadMemoryPartialMock)
 TEST_F(DmodMockMemoryTest, MockMemoryNotEnabled)
 {
     // This test just confirms that mock memory is not enabled
-    GTEST_SKIP() << "Mock memory is not enabled (DMOD_MEMORY_MOCK_ADDRESS not defined)";
+    GTEST_SKIP() << "Mock memory is not enabled (DMOD_MEMORY_MOCK_ENABLED not defined)";
 }
 #endif

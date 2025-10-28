@@ -36,34 +36,84 @@
 //                              MOCK MEMORY CONFIGURATION
 //==============================================================================
 
-#ifdef DMOD_MEMORY_MOCK_ADDRESS
-#   define DMOD_MEMORY_MOCK_ENABLED 1
-static void* g_MockMemoryFile = NULL;
-static size_t g_MockMemorySize = 0;
-static uintptr_t g_MockMemoryAddress = DMOD_MEMORY_MOCK_ADDRESS;
+#ifdef DMOD_MEMORY_MOCK_ENABLED
+#ifndef DMOD_MEMORY_MOCK_COUNT
+#   define DMOD_MEMORY_MOCK_COUNT 1
+#endif
+
+#ifndef DMOD_MAX_MOCK_MEMORY_REGIONS
+#   define DMOD_MAX_MOCK_MEMORY_REGIONS 5
+#endif
+
+typedef struct {
+    void* file;
+    size_t size;
+    uintptr_t address;
+    bool initialized;
+} Dmod_MockMemoryRegion_t;
+
+static Dmod_MockMemoryRegion_t g_MockMemoryRegions[DMOD_MAX_MOCK_MEMORY_REGIONS] = {0};
+static bool g_MockMemoryInitialized = false;
 
 static void Dmod_InitMockMemory(void)
 {
-    static bool initialized = false;
-    if (initialized) 
+    if (g_MockMemoryInitialized) 
     {
         return;
     }
-    initialized = true;
+    g_MockMemoryInitialized = true;
 
-    g_MockMemoryFile = Dmod_FileOpen(DMOD_MEMORY_MOCK_FILE, "r+b");
-    if (g_MockMemoryFile == NULL) 
-    {
-        DMOD_LOG_ERROR("Failed to open mock memory file: %s\n", DMOD_MEMORY_MOCK_FILE);
-        return;
-    }
+#define INIT_MOCK_REGION(index, addr_macro, file_macro) \
+    do { \
+        if (index < DMOD_MEMORY_MOCK_COUNT) { \
+            g_MockMemoryRegions[index].address = addr_macro; \
+            g_MockMemoryRegions[index].file = Dmod_FileOpen(file_macro, "r+b"); \
+            if (g_MockMemoryRegions[index].file != NULL) { \
+                g_MockMemoryRegions[index].size = Dmod_FileSize(g_MockMemoryRegions[index].file); \
+                g_MockMemoryRegions[index].initialized = true; \
+                DMOD_LOG_INFO("Mock memory region %d: address=0x%lx, size=%zu, file=%s\n", \
+                    index, (unsigned long)g_MockMemoryRegions[index].address, \
+                    g_MockMemoryRegions[index].size, file_macro); \
+            } else { \
+                DMOD_LOG_ERROR("Failed to open mock memory file: %s\n", file_macro); \
+            } \
+        } \
+    } while(0)
 
-    g_MockMemorySize = Dmod_FileSize(g_MockMemoryFile);
-    DMOD_LOG_INFO("Mock memory initialized at address 0x%lx with size %zu from file %s\n", 
-                  (unsigned long)g_MockMemoryAddress, g_MockMemorySize, DMOD_MEMORY_MOCK_FILE);
+#ifdef DMOD_MEMORY_MOCK_ADDRESS_0
+    INIT_MOCK_REGION(0, DMOD_MEMORY_MOCK_ADDRESS_0, DMOD_MEMORY_MOCK_FILE_0);
+#endif
+#ifdef DMOD_MEMORY_MOCK_ADDRESS_1
+    INIT_MOCK_REGION(1, DMOD_MEMORY_MOCK_ADDRESS_1, DMOD_MEMORY_MOCK_FILE_1);
+#endif
+#ifdef DMOD_MEMORY_MOCK_ADDRESS_2
+    INIT_MOCK_REGION(2, DMOD_MEMORY_MOCK_ADDRESS_2, DMOD_MEMORY_MOCK_FILE_2);
+#endif
+#ifdef DMOD_MEMORY_MOCK_ADDRESS_3
+    INIT_MOCK_REGION(3, DMOD_MEMORY_MOCK_ADDRESS_3, DMOD_MEMORY_MOCK_FILE_3);
+#endif
+#ifdef DMOD_MEMORY_MOCK_ADDRESS_4
+    INIT_MOCK_REGION(4, DMOD_MEMORY_MOCK_ADDRESS_4, DMOD_MEMORY_MOCK_FILE_4);
+#endif
+
+#undef INIT_MOCK_REGION
 }
-#else
-#   define DMOD_MEMORY_MOCK_ENABLED 0
+
+static Dmod_MockMemoryRegion_t* Dmod_FindMockMemoryRegion(uintptr_t Address)
+{
+    for (int i = 0; i < DMOD_MEMORY_MOCK_COUNT && i < DMOD_MAX_MOCK_MEMORY_REGIONS; i++)
+    {
+        if (g_MockMemoryRegions[i].initialized && 
+            g_MockMemoryRegions[i].file != NULL &&
+            Address >= g_MockMemoryRegions[i].address && 
+            Address < (g_MockMemoryRegions[i].address + g_MockMemoryRegions[i].size))
+        {
+            return &g_MockMemoryRegions[i];
+        }
+    }
+    return NULL;
+}
+
 #endif
 
 //==============================================================================
@@ -86,25 +136,25 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _ReadMemory, ( uintptr_t Addr
         return 0;
     }
 
-#if DMOD_MEMORY_MOCK_ENABLED
+#ifdef DMOD_MEMORY_MOCK_ENABLED
     Dmod_InitMockMemory();
     
-    if (g_MockMemoryFile != NULL && Address >= g_MockMemoryAddress && 
-        Address < (g_MockMemoryAddress + g_MockMemorySize)) 
+    Dmod_MockMemoryRegion_t* region = Dmod_FindMockMemoryRegion(Address);
+    if (region != NULL)
     {
-        uintptr_t offset = Address - g_MockMemoryAddress;
-        size_t available = g_MockMemorySize - offset;
+        uintptr_t offset = Address - region->address;
+        size_t available = region->size - offset;
         size_t toRead = (Size < available) ? Size : available;
         
         // Seek to the offset in the file
-        if (Dmod_FileSeek(g_MockMemoryFile, offset, DMOD_SEEK_SET) != 0)
+        if (Dmod_FileSeek(region->file, offset, DMOD_SEEK_SET) != 0)
         {
             DMOD_LOG_ERROR("Failed to seek in mock memory file\n");
             return 0;
         }
         
         // Read from file
-        size_t bytesRead = Dmod_FileRead(Buffer, 1, toRead, g_MockMemoryFile);
+        size_t bytesRead = Dmod_FileRead(Buffer, 1, toRead, region->file);
         return bytesRead;
     }
 #endif
@@ -130,25 +180,25 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _WriteMemory, ( uintptr_t Add
         return 0;
     }
 
-#if DMOD_MEMORY_MOCK_ENABLED
+#ifdef DMOD_MEMORY_MOCK_ENABLED
     Dmod_InitMockMemory();
     
-    if (g_MockMemoryFile != NULL && Address >= g_MockMemoryAddress && 
-        Address < (g_MockMemoryAddress + g_MockMemorySize)) 
+    Dmod_MockMemoryRegion_t* region = Dmod_FindMockMemoryRegion(Address);
+    if (region != NULL)
     {
-        uintptr_t offset = Address - g_MockMemoryAddress;
-        size_t available = g_MockMemorySize - offset;
+        uintptr_t offset = Address - region->address;
+        size_t available = region->size - offset;
         size_t toWrite = (Size < available) ? Size : available;
         
         // Seek to the offset in the file
-        if (Dmod_FileSeek(g_MockMemoryFile, offset, DMOD_SEEK_SET) != 0)
+        if (Dmod_FileSeek(region->file, offset, DMOD_SEEK_SET) != 0)
         {
             DMOD_LOG_ERROR("Failed to seek in mock memory file\n");
             return 0;
         }
         
         // Write to file
-        size_t bytesWritten = Dmod_FileWrite(Buffer, 1, toWrite, g_MockMemoryFile);
+        size_t bytesWritten = Dmod_FileWrite(Buffer, 1, toWrite, region->file);
         return bytesWritten;
     }
 #endif
