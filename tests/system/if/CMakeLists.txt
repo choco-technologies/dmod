@@ -1,7 +1,6 @@
-add_executable(tests_dmod_rawmem tests_dmod_rawmem.cpp)
-target_link_libraries(tests_dmod_rawmem dmod GTest::gtest GTest::gtest_main)
-add_test(NAME tests_dmod_rawmem COMMAND tests_dmod_rawmem)
-
-add_executable(tests_dmod_mock_memory tests_dmod_mock_memory.cpp)
-target_link_libraries(tests_dmod_mock_memory dmod GTest::gtest GTest::gtest_main)
-add_test(NAME tests_dmod_mock_memory COMMAND tests_dmod_mock_memory)
+set(TEST_SOURCES 
+        ${TEST_SOURCES} 
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_rawmem.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_mock_memory.cpp
+        PARENT_SCOPE
+        )
