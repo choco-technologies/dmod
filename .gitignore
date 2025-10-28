@@ -62,3 +62,4 @@ Thumbs.db
 tools-cfg.cmake
 build/
 _codeql_*
+build-*/
