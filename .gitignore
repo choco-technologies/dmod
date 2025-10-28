@@ -60,6 +60,9 @@ Thumbs.db
 
 # Architecture-specific config (copy from configs/arch/<arch>/)
 tools-cfg.cmake
+
+# Build directories (use build/ for standard builds, not build_module/)
 build/
-_codeql_*
+build_module/
 build-*/
+_codeql_*
