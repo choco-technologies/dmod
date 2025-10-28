@@ -78,7 +78,8 @@ int main( int argc, char *argv[] )
     }
 
     // Prepare arguments to pass to the module
-    if( argsIndex != -1 && argsIndex + 1 < argc )
+    // Check if --args flag was found and there are arguments after it
+    if( argsIndex != -1 && argc > argsIndex + 1 )
     {
         // Arguments start after --args flag
         appArgc = argc - argsIndex - 1;
@@ -86,7 +87,7 @@ int main( int argc, char *argv[] )
     }
     else
     {
-        // No --args flag, pass empty arguments
+        // No --args flag or no arguments after it, pass empty arguments
         appArgc = 0;
         appArgv = NULL;
     }
