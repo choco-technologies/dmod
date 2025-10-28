@@ -1,1 +1,0 @@
-/usr/bin/c++ -L /home/runner/work/dmod/dmod/scripts -T /home/runner/work/dmod/dmod/examples/system/dmod_loader/main.ld -Wl,--dependency-file=CMakeFiles/dmod_loader.dir/link.d CMakeFiles/dmod_loader.dir/main.c.o -o dmod_loader  ../../../src/system/libdmod_system.a ../../../src/common/libdmod_common.a ../../../lib/third-party/FastLZ/libdmod_fastlz.a
