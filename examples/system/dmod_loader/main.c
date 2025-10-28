@@ -9,7 +9,7 @@
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s path/to/file.dmf\n", AppName);
+    printf("Usage: %s path/to/file.dmf [--args <arguments>]\n", AppName);
 }
 
 // -----------------------------------------
@@ -22,13 +22,18 @@ void PrintHelp( const char* AppName )
     printf("-- Dynamic Module Loader ver. " DMOD_VERSION_STRING " --\n\n");
     printf("The DMOD is a dynamic module loader that allows to load and unload modules\n");
     printf("This is an example application that uses the DMOD system\n\n");
-    printf("Usage: %s path/to/file.dmf\n", AppName);
+    printf("Usage: %s path/to/file.dmf [--args <arguments>]\n", AppName);
     printf("Options:\n");
-    printf("  -h, --help     Print this help message\n");
-    printf("  -v, --version  Print version information\n\n");
+    printf("  -h, --help                Print this help message\n");
+    printf("  -v, --version             Print version information\n");
+    printf("  --args <arguments>        Arguments to pass to the application module\n\n");
     printf("Module Types:\n");
     printf("  Application    Runs the module's main function\n");
-    printf("  Library        Enables the module, then disables it\n");
+    printf("  Library        Enables the module, then disables it\n\n");
+    printf("Examples:\n");
+    printf("  %s my-app.dmf\n", AppName);
+    printf("  %s my-app.dmf --args \"arg1 arg2\"\n", AppName);
+    printf("  %s my-app.dmf --args \"--verbose --output=file.txt\"\n", AppName);
 }
 
 // -----------------------------------------
@@ -56,10 +61,40 @@ int main( int argc, char *argv[] )
         return 0;
     }
 
-    Dmod_Context_t* context = Dmod_LoadFile( argv[1] );
+    // Parse arguments
+    const char* dmfPath = argv[1];
+    int appArgc = 0;
+    char** appArgv = NULL;
+
+    // Look for --args flag
+    int argsIndex = -1;
+    for( int i = 2; i < argc; i++ )
+    {
+        if( strcmp( argv[i], "--args" ) == 0 )
+        {
+            argsIndex = i;
+            break;
+        }
+    }
+
+    // Prepare arguments to pass to the module
+    if( argsIndex != -1 && argsIndex + 1 < argc )
+    {
+        // Arguments start after --args flag
+        appArgc = argc - argsIndex - 1;
+        appArgv = &argv[argsIndex + 1];
+    }
+    else
+    {
+        // No --args flag, pass empty arguments
+        appArgc = 0;
+        appArgv = NULL;
+    }
+
+    Dmod_Context_t* context = Dmod_LoadFile( dmfPath );
     if( context == NULL )
     {
-        printf("Cannot load module: %s\n", argv[1]);
+        printf("Cannot load module: %s\n", dmfPath);
         return -1;
     }
 
@@ -72,7 +107,7 @@ int main( int argc, char *argv[] )
         printf("Module is a library, enabling...\n");
         if( !Dmod_Enable( context, false, NULL ) )
         {
-            printf("Cannot enable library module: %s\n", argv[1]);
+            printf("Cannot enable library module: %s\n", dmfPath);
             Dmod_Unload( context, false );
             return -1;
         }
@@ -81,7 +116,7 @@ int main( int argc, char *argv[] )
         printf("Disabling library module...\n");
         if( !Dmod_Disable( context, false ) )
         {
-            printf("Cannot disable library module: %s\n", argv[1]);
+            printf("Cannot disable library module: %s\n", dmfPath);
             Dmod_Unload( context, false );
             return -1;
         }
@@ -91,8 +126,8 @@ int main( int argc, char *argv[] )
     }
     else if( moduleType == Dmod_ModuleType_Application )
     {
-        // For application modules: run as before
-        int result = Dmod_Run( context, argc, argv );
+        // For application modules: run with parsed arguments
+        int result = Dmod_Run( context, appArgc, appArgv );
         Dmod_Unload( context, false );
         return result;
     }

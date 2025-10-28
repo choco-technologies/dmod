@@ -34,6 +34,15 @@ int main(int argc, char** argv)
     Dmod_Printf("Version: %s\n", DMOD_Header->Version);
     Dmod_Printf("Author: %s\n", DMOD_Header->Author);
     Dmod_Printf("Arch: %s\n", DMOD_Header->Arch);
+    Dmod_Printf("\n");
+
+    // Print the arguments received
+    Dmod_Printf("Arguments received (argc=%d):\n", argc);
+    for(int i = 0; i < argc; i++)
+    {
+        Dmod_Printf("  argv[%d] = \"%s\"\n", i, argv[i]);
+    }
+    Dmod_Printf("\n");
 
     HelloWorld();
 
