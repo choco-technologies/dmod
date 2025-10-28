@@ -1,2 +1,0 @@
-/usr/bin/ar qc libdmod_module.a CMakeFiles/dmod_module.dir/dmod_module.c.o CMakeFiles/dmod_module.dir/string.c.o
-/usr/bin/ranlib libdmod_module.a
