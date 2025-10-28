@@ -9,6 +9,10 @@ ifndef DMOD_USE_STDIO
     DMOD_USE_STDIO = ON
 endif
 
+ifndef DMOD_USE_DIRENT
+    DMOD_USE_DIRENT = ON
+endif
+
 ifndef DMOD_USE_ASSERT
     DMOD_USE_ASSERT = ON
 endif

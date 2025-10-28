@@ -36,6 +36,8 @@
 #include "dmod_sal.h"
 #if DMOD_USE_STDIO
 #   include <stdio.h>
+#endif
+#if DMOD_USE_DIRENT
 #   include <dirent.h>
 #   include <sys/stat.h>
 #   include <sys/types.h>
@@ -215,7 +217,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _FileAvailable, ( const char* P
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _OpenDir, ( const char* Path ))
 {
-    #if DMOD_USE_STDIO
+    #if DMOD_USE_DIRENT
     return opendir(Path);
     #else
     DMOD_LOG_ERROR("Dmod_OpenDir interface not implemented");
@@ -232,7 +234,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _OpenDir, ( const char* Path )
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _ReadDir, ( void* Dir ))
 {
-    #if DMOD_USE_STDIO
+    #if DMOD_USE_DIRENT
     struct dirent* entry = readdir((DIR*)Dir);
     return entry ? entry->d_name : NULL;
     #else
@@ -248,7 +250,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _ReadDir, ( void* Dir ))
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _CloseDir, ( void* Dir ))
 {
-    #if DMOD_USE_STDIO
+    #if DMOD_USE_DIRENT
     closedir((DIR*)Dir);
     #else
     DMOD_LOG_ERROR("Dmod_CloseDir interface not implemented");
@@ -265,7 +267,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _CloseDir, ( void* Dir ))
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _MakeDir, ( const char* Path, int Mode ))
 {
-    #if DMOD_USE_STDIO
+    #if DMOD_USE_DIRENT
     return mkdir(Path, (mode_t)Mode);
     #else
     DMOD_LOG_ERROR("Dmod_MakeDir interface not implemented");
