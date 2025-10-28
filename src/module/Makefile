@@ -15,7 +15,8 @@ endif
 #  Name of the module
 #
 DMOD_LIB_NAME=libdmod_module.a
-DMOD_SOURCES=dmod_module.c
+DMOD_SOURCES=dmod_module.c\
+		string.c
 DMOD_INC_DIRS = $(DMOD_DIR)/src/module\
 		$(DMOD_DIR)/inc\
 		$(DMOD_BUILD_DIR)

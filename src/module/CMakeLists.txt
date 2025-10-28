@@ -3,6 +3,7 @@ set(DMOD_HEADER_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE STRING "Path to the module
 
 add_library(${MODULE_NAME} STATIC
     dmod_module.c
+    string.c
 )
 
 target_include_directories(${MODULE_NAME} 
