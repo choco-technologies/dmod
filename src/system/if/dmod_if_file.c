@@ -37,6 +37,11 @@
 #if DMOD_USE_STDIO
 #   include <stdio.h>
 #endif
+#if DMOD_USE_DIRENT
+#   include <dirent.h>
+#   include <sys/stat.h>
+#   include <sys/types.h>
+#endif
 
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
@@ -201,4 +206,71 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _FileAvailable, ( const char* P
     }
     Dmod_FileClose( file );
     return true;
+}
+
+/**
+ * @brief Open directory
+ * 
+ * @param Path Path to directory
+ * 
+ * @return Pointer to directory handle, NULL on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _OpenDir, ( const char* Path ))
+{
+    #if DMOD_USE_DIRENT
+    return opendir(Path);
+    #else
+    DMOD_LOG_ERROR("Dmod_OpenDir interface not implemented");
+    return NULL;
+    #endif
+}
+
+/**
+ * @brief Read directory entry
+ * 
+ * @param Dir Pointer to directory handle
+ * 
+ * @return Name of the directory entry, NULL when no more entries
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _ReadDir, ( void* Dir ))
+{
+    #if DMOD_USE_DIRENT
+    struct dirent* entry = readdir((DIR*)Dir);
+    return entry ? entry->d_name : NULL;
+    #else
+    DMOD_LOG_ERROR("Dmod_ReadDir interface not implemented");
+    return NULL;
+    #endif
+}
+
+/**
+ * @brief Close directory
+ * 
+ * @param Dir Pointer to directory handle
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _CloseDir, ( void* Dir ))
+{
+    #if DMOD_USE_DIRENT
+    closedir((DIR*)Dir);
+    #else
+    DMOD_LOG_ERROR("Dmod_CloseDir interface not implemented");
+    #endif
+}
+
+/**
+ * @brief Create directory
+ * 
+ * @param Path Path to directory to create
+ * @param Mode Directory permissions mode
+ * 
+ * @return 0 on success, -1 on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _MakeDir, ( const char* Path, int Mode ))
+{
+    #if DMOD_USE_DIRENT
+    return mkdir(Path, (mode_t)Mode);
+    #else
+    DMOD_LOG_ERROR("Dmod_MakeDir interface not implemented");
+    return -1;
+    #endif
 }
