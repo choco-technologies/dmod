@@ -65,7 +65,7 @@ cmake .. -DDMOD_MODE=DMOD_SYSTEM -DDMOD_MEMORY=<address>:<filepath>
 ```
 
 **Format:** `address:filepath`
-- `address` - Hexadecimal address (without 0x prefix) where the file will be mapped
+- `address` - Hexadecimal address without '0x' prefix (e.g., `ffff0000` not `0xffff0000`)
 - `filepath` - Path to the file to use as mock memory
 
 ### Example
