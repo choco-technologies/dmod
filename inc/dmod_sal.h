@@ -48,6 +48,7 @@ extern "C" {
 #endif
 
 #include "dmod_types.h"
+#include <stdarg.h>
 
 //==============================================================================
 //                              FUNCTION PROTOTYPES
@@ -130,6 +131,8 @@ DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetEnv, ( const char* Name ) );
  * @{
  */
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_Printf, ( const char* Format, ... ) );
+DMOD_BUILTIN_API( Dmod, 1.0, int  ,_VSnPrintf, ( char* Buffer, size_t Size, const char* Format, va_list Args ) );
+DMOD_BUILTIN_API( Dmod, 1.0, int  ,_SnPrintf, ( char* Buffer, size_t Size, const char* Format, ... ) );
 DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message, const char* File, int Line, const char* Function ) );
 
 #ifdef NDEBUG

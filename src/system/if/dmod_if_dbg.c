@@ -38,6 +38,10 @@
 #if DMOD_USE_ASSERT
 #   include <assert.h>
 #endif
+#if DMOD_IMPLEMENT_PRINTF
+#   include "dmod_printf_impl.h"
+#   include <stdarg.h>
+#endif
 
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
@@ -57,6 +61,62 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Printf, ( const char* Format, .
     va_list Args;
     va_start( Args, Format );
     Ret = vprintf( Format, Args );
+    va_end( Args );
+    return Ret;
+    #else
+    return 0;
+    #endif
+}
+
+/**
+ * @brief VSnPrintf function
+ * 
+ * @param Buffer Output buffer (can be NULL to calculate required size)
+ * @param Size Size of the buffer
+ * @param Format Format string
+ * @param Args Variable argument list
+ * 
+ * @return Number of characters that would have been written (excluding null terminator)
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _VSnPrintf, ( char* Buffer, size_t Size, const char* Format, va_list Args ))
+{
+    #if DMOD_USE_STDIO
+    if( Buffer == NULL )
+    {
+        // Calculate required buffer size without writing
+        va_list ArgsCopy;
+        va_copy( ArgsCopy, Args );
+        int Ret = vsnprintf( NULL, 0, Format, ArgsCopy );
+        va_end( ArgsCopy );
+        return Ret;
+    }
+    else
+    {
+        return vsnprintf( Buffer, Size, Format, Args );
+    }
+    #elif DMOD_IMPLEMENT_PRINTF
+    return dmod_vsnprintf_impl( Buffer, Size, Format, Args );
+    #else
+    return 0;
+    #endif
+}
+
+/**
+ * @brief SnPrintf function
+ * 
+ * @param Buffer Output buffer (can be NULL to calculate required size)
+ * @param Size Size of the buffer
+ * @param Format Format string
+ * 
+ * @return Number of characters that would have been written (excluding null terminator)
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _SnPrintf, ( char* Buffer, size_t Size, const char* Format, ... ))
+{
+    #if DMOD_USE_STDIO || DMOD_IMPLEMENT_PRINTF
+    int Ret = 0;
+    va_list Args;
+    va_start( Args, Format );
+    Ret = Dmod_VSnPrintf( Buffer, Size, Format, Args );
     va_end( Args );
     return Ret;
     #else
