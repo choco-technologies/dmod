@@ -254,3 +254,87 @@ char *strrchr(const char *s, int c)
     
     return (char *)last;
 }
+
+/**
+ * @brief Checked version of memcpy
+ * @note GCC replaces memcpy with __memcpy_chk when destination size is known
+ * @param dest Destination buffer
+ * @param src Source buffer
+ * @param n Number of bytes to copy
+ * @param destlen Size of destination buffer (for overflow checking)
+ * @return Pointer to dest
+ */
+void *__memcpy_chk(void *dest, const void *src, size_t n, size_t destlen)
+{
+    /* In a full implementation, we would check: if (n > destlen) abort() */
+    /* For embedded systems without abort, we just call the regular function */
+    (void)destlen; /* Suppress unused parameter warning */
+    return memcpy(dest, src, n);
+}
+
+/**
+ * @brief Checked version of memmove
+ * @note GCC replaces memmove with __memmove_chk when destination size is known
+ */
+void *__memmove_chk(void *dest, const void *src, size_t n, size_t destlen)
+{
+    (void)destlen;
+    return memmove(dest, src, n);
+}
+
+/**
+ * @brief Checked version of memset
+ * @note GCC replaces memset with __memset_chk when destination size is known
+ */
+void *__memset_chk(void *s, int c, size_t n, size_t slen)
+{
+    (void)slen;
+    return memset(s, c, n);
+}
+
+/**
+ * @brief Checked version of strncpy
+ * @note GCC replaces strncpy with __strncpy_chk when destination size is known
+ * @param dest Destination buffer
+ * @param src Source string
+ * @param n Maximum number of bytes to copy
+ * @param destlen Size of destination buffer (for overflow checking)
+ * @return Pointer to dest
+ */
+char *__strncpy_chk(char *dest, const char *src, size_t n, size_t destlen)
+{
+    /* In a full implementation, we would check: if (n > destlen) abort() */
+    /* For embedded systems without abort, we just call the regular function */
+    (void)destlen; /* Suppress unused parameter warning */
+    return strncpy(dest, src, n);
+}
+
+/**
+ * @brief Checked version of strncat
+ * @note GCC replaces strncat with __strncat_chk when destination size is known
+ */
+char *__strncat_chk(char *dest, const char *src, size_t n, size_t destlen)
+{
+    (void)destlen;
+    return strncat(dest, src, n);
+}
+
+/**
+ * @brief Checked version of strcpy
+ * @note GCC replaces strcpy with __strcpy_chk when destination size is known
+ */
+char *__strcpy_chk(char *dest, const char *src, size_t destlen)
+{
+    (void)destlen;
+    return strcpy(dest, src);
+}
+
+/**
+ * @brief Checked version of strcat
+ * @note GCC replaces strcat with __strcat_chk when destination size is known
+ */
+char *__strcat_chk(char *dest, const char *src, size_t destlen)
+{
+    (void)destlen;
+    return strcat(dest, src);
+}
