@@ -128,11 +128,16 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _AlignedMalloc, ( size_t Size,
 #endif 
 
 #if DMOD_USE_MMAN
-    if (mem != NULL && mprotect(mem, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) 
+    if (mem != NULL) 
     {
-        DMOD_LOG_ERROR("Cannot set memory protection. Pagesize: %d\n", pagesize);
-        free(mem);
-        return NULL;
+        // Round up Size to the nearest page boundary
+        size_t prot_size = ((Size + pagesize - 1) / pagesize) * pagesize;
+        if (mprotect(mem, prot_size, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) 
+        {
+            DMOD_LOG_ERROR("Cannot set memory protection. Size: %zu, Pagesize: %zu\n", prot_size, pagesize);
+            free(mem);
+            return NULL;
+        }
     }
 #endif
 
