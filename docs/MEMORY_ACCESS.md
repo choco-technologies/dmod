@@ -77,9 +77,10 @@ make
 ```
 
 When mock memory is enabled:
-- Reads from the configured address range will read from the file
-- Writes to the configured address range will write to the in-memory copy
+- Reads from the configured address range will read directly from the file
+- Writes to the configured address range will write directly to the file (persisted)
 - Reads/writes outside the mock memory range use direct memory access
+- File operations use Dmod_FileOpen, Dmod_FileSeek, Dmod_FileRead, and Dmod_FileWrite
 
 ### Example Usage with Mock Memory
 
@@ -95,15 +96,16 @@ size_t bytesRead = Dmod_ReadMemory(0xffff0000, buffer, sizeof(buffer));
 
 uint8_t newData[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
 Dmod_WriteMemory(0xffff0000 + 100, newData, sizeof(newData));
-// Writes to offset 100 in the mock memory (in RAM, not in file)
+// Writes to offset 100 in data.bin (persisted to file)
 ```
 
 ## Implementation Details
 
 - Functions are defined as weak symbols, allowing system-level override
 - Default implementation uses direct memory access via `memcpy`
-- Mock memory is loaded into RAM on first access
-- Mock memory requires `DMOD_USE_STDIO` to be enabled
+- Mock memory keeps a file handle open and reads/writes directly from/to file using fseek
+- Mock memory does not allocate memory for the entire file (suitable for embedded systems)
+- Mock memory uses Dmod_FileOpen, Dmod_FileSeek, Dmod_FileRead, and Dmod_FileWrite (SAL functions)
 - Functions return 0 on error (NULL buffer, zero size, etc.)
 
 ## Testing

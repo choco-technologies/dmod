@@ -32,17 +32,13 @@
 #include <string.h>
 #include "dmod_sal.h"
 
-#if DMOD_USE_STDIO
-#   include <stdio.h>
-#endif
-
 //==============================================================================
 //                              MOCK MEMORY CONFIGURATION
 //==============================================================================
 
 #ifdef DMOD_MEMORY_MOCK_ADDRESS
 #   define DMOD_MEMORY_MOCK_ENABLED 1
-static uint8_t* g_MockMemoryBuffer = NULL;
+static void* g_MockMemoryFile = NULL;
 static size_t g_MockMemorySize = 0;
 static uintptr_t g_MockMemoryAddress = DMOD_MEMORY_MOCK_ADDRESS;
 
@@ -55,38 +51,16 @@ static void Dmod_InitMockMemory(void)
     }
     initialized = true;
 
-#if DMOD_USE_STDIO
-    FILE* file = fopen(DMOD_MEMORY_MOCK_FILE, "rb");
-    if (file == NULL) 
+    g_MockMemoryFile = Dmod_FileOpen(DMOD_MEMORY_MOCK_FILE, "r+b");
+    if (g_MockMemoryFile == NULL) 
     {
         DMOD_LOG_ERROR("Failed to open mock memory file: %s\n", DMOD_MEMORY_MOCK_FILE);
         return;
     }
 
-    fseek(file, 0, SEEK_END);
-    g_MockMemorySize = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    g_MockMemoryBuffer = (uint8_t*)Dmod_Malloc(g_MockMemorySize);
-    if (g_MockMemoryBuffer == NULL) 
-    {
-        DMOD_LOG_ERROR("Failed to allocate mock memory buffer\n");
-        fclose(file);
-        return;
-    }
-
-    size_t read = fread(g_MockMemoryBuffer, 1, g_MockMemorySize, file);
-    if (read != g_MockMemorySize) 
-    {
-        DMOD_LOG_WARN("Mock memory file size mismatch: expected %zu, got %zu\n", g_MockMemorySize, read);
-    }
-
-    fclose(file);
+    g_MockMemorySize = Dmod_FileSize(g_MockMemoryFile);
     DMOD_LOG_INFO("Mock memory initialized at address 0x%lx with size %zu from file %s\n", 
                   (unsigned long)g_MockMemoryAddress, g_MockMemorySize, DMOD_MEMORY_MOCK_FILE);
-#else
-    DMOD_LOG_ERROR("DMOD_MEMORY_MOCK requires DMOD_USE_STDIO to be enabled\n");
-#endif
 }
 #else
 #   define DMOD_MEMORY_MOCK_ENABLED 0
@@ -115,15 +89,23 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _ReadMemory, ( uintptr_t Addr
 #if DMOD_MEMORY_MOCK_ENABLED
     Dmod_InitMockMemory();
     
-    if (g_MockMemoryBuffer != NULL && Address >= g_MockMemoryAddress && 
+    if (g_MockMemoryFile != NULL && Address >= g_MockMemoryAddress && 
         Address < (g_MockMemoryAddress + g_MockMemorySize)) 
     {
         uintptr_t offset = Address - g_MockMemoryAddress;
         size_t available = g_MockMemorySize - offset;
         size_t toRead = (Size < available) ? Size : available;
         
-        memcpy(Buffer, g_MockMemoryBuffer + offset, toRead);
-        return toRead;
+        // Seek to the offset in the file
+        if (Dmod_FileSeek(g_MockMemoryFile, offset, DMOD_SEEK_SET) != 0)
+        {
+            DMOD_LOG_ERROR("Failed to seek in mock memory file\n");
+            return 0;
+        }
+        
+        // Read from file
+        size_t bytesRead = Dmod_FileRead(Buffer, 1, toRead, g_MockMemoryFile);
+        return bytesRead;
     }
 #endif
 
@@ -151,15 +133,23 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _WriteMemory, ( uintptr_t Add
 #if DMOD_MEMORY_MOCK_ENABLED
     Dmod_InitMockMemory();
     
-    if (g_MockMemoryBuffer != NULL && Address >= g_MockMemoryAddress && 
+    if (g_MockMemoryFile != NULL && Address >= g_MockMemoryAddress && 
         Address < (g_MockMemoryAddress + g_MockMemorySize)) 
     {
         uintptr_t offset = Address - g_MockMemoryAddress;
         size_t available = g_MockMemorySize - offset;
         size_t toWrite = (Size < available) ? Size : available;
         
-        memcpy(g_MockMemoryBuffer + offset, Buffer, toWrite);
-        return toWrite;
+        // Seek to the offset in the file
+        if (Dmod_FileSeek(g_MockMemoryFile, offset, DMOD_SEEK_SET) != 0)
+        {
+            DMOD_LOG_ERROR("Failed to seek in mock memory file\n");
+            return 0;
+        }
+        
+        // Write to file
+        size_t bytesWritten = Dmod_FileWrite(Buffer, 1, toWrite, g_MockMemoryFile);
+        return bytesWritten;
     }
 #endif
 
