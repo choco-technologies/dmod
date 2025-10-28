@@ -55,6 +55,22 @@ endif()
 add_definitions(-DON=1 -DOFF=0)
 
 # ===========================================================================
+# 						Mock Memory Configuration
+# ===========================================================================
+if (DEFINED DMOD_MEMORY)
+	string(REGEX MATCH "^([0-9a-fA-F]+):(.+)$" DMOD_MEMORY_MATCH "${DMOD_MEMORY}")
+	if (DMOD_MEMORY_MATCH)
+		set(DMOD_MEMORY_ADDRESS ${CMAKE_MATCH_1})
+		set(DMOD_MEMORY_FILE ${CMAKE_MATCH_2})
+		message(STATUS "Mock memory configured: address=0x${DMOD_MEMORY_ADDRESS}, file=${DMOD_MEMORY_FILE}")
+		add_definitions(-DDMOD_MEMORY_MOCK_ADDRESS=0x${DMOD_MEMORY_ADDRESS})
+		add_definitions(-DDMOD_MEMORY_MOCK_FILE="${DMOD_MEMORY_FILE}")
+	else()
+		message(WARNING "DMOD_MEMORY format invalid. Expected format: address:filepath (e.g., ffff0000:./my-file.bin)")
+	endif()
+endif()
+
+# ===========================================================================
 # 						Checks if code coverage is possible (if gcovr is installed)
 # ===========================================================================
 if (DMOD_BUILD_TESTS)
