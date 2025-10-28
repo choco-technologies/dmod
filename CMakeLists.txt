@@ -55,6 +55,44 @@ endif()
 add_definitions(-DON=1 -DOFF=0)
 
 # ===========================================================================
+# 						Mock Memory Configuration
+# ===========================================================================
+if (DEFINED DMOD_MEMORY)
+	# Split by semicolon to support multiple memory regions
+	string(REPLACE ";" "|" DMOD_MEMORY_LIST "${DMOD_MEMORY}")
+	string(REPLACE "|" ";" DMOD_MEMORY_LIST "${DMOD_MEMORY_LIST}")
+	
+	set(DMOD_MEMORY_COUNT 0)
+	foreach(MEMORY_REGION ${DMOD_MEMORY_LIST})
+		string(REGEX MATCH "^([0-9a-fA-F]+):(.+)$" DMOD_MEMORY_MATCH "${MEMORY_REGION}")
+		if (DMOD_MEMORY_MATCH)
+			set(ADDR ${CMAKE_MATCH_1})
+			set(FILE ${CMAKE_MATCH_2})
+			message(STATUS "Mock memory region ${DMOD_MEMORY_COUNT}: address=0x${ADDR}, file=${FILE}")
+			
+			add_definitions(-DDMOD_MEMORY_MOCK_ADDRESS_${DMOD_MEMORY_COUNT}=0x${ADDR})
+			add_definitions(-DDMOD_MEMORY_MOCK_FILE_${DMOD_MEMORY_COUNT}="${FILE}")
+			
+			math(EXPR DMOD_MEMORY_COUNT "${DMOD_MEMORY_COUNT} + 1")
+			
+			if (DMOD_MEMORY_COUNT GREATER 5)
+				message(WARNING "Maximum 5 mock memory regions supported. Additional regions will be ignored.")
+				break()
+			endif()
+		else()
+			message(WARNING "Invalid memory region format: ${MEMORY_REGION}. Expected format: address:filepath")
+		endif()
+	endforeach()
+	
+	if (DMOD_MEMORY_COUNT GREATER 0)
+		add_definitions(-DDMOD_MEMORY_MOCK_COUNT=${DMOD_MEMORY_COUNT})
+		add_definitions(-DDMOD_MEMORY_MOCK_ENABLED=1)
+	else()
+		message(WARNING "No valid memory regions found in DMOD_MEMORY")
+	endif()
+endif()
+
+# ===========================================================================
 # 						Checks if code coverage is possible (if gcovr is installed)
 # ===========================================================================
 if (DMOD_BUILD_TESTS)

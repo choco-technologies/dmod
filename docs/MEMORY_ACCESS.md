@@ -1,0 +1,149 @@
+# Memory Access Functions
+
+## Overview
+
+DMOD provides two new functions for reading and writing memory at arbitrary addresses:
+- `Dmod_ReadMemory` - Read data from a memory address into a buffer
+- `Dmod_WriteMemory` - Write data from a buffer to a memory address
+
+These functions are part of the DMOD SAL (System Abstraction Layer) and can be overridden by the system.
+
+## API
+
+### Dmod_ReadMemory
+
+```c
+size_t Dmod_ReadMemory(uintptr_t Address, void* Buffer, size_t Size);
+```
+
+**Parameters:**
+- `Address` - Memory address to read from
+- `Buffer` - Buffer to store the read data
+- `Size` - Number of bytes to read
+
+**Returns:** Number of bytes successfully read
+
+### Dmod_WriteMemory
+
+```c
+size_t Dmod_WriteMemory(uintptr_t Address, const void* Buffer, size_t Size);
+```
+
+**Parameters:**
+- `Address` - Memory address to write to
+- `Buffer` - Buffer containing data to write
+- `Size` - Number of bytes to write
+
+**Returns:** Number of bytes successfully written
+
+## Usage
+
+### Basic Example
+
+```c
+#include "dmod_sal.h"
+
+uint8_t data[16];
+// Read 16 bytes from address 0x1000
+size_t bytesRead = Dmod_ReadMemory(0x1000, data, sizeof(data));
+
+uint8_t writeData[8] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11};
+// Write 8 bytes to address 0x2000
+size_t bytesWritten = Dmod_WriteMemory(0x2000, writeData, sizeof(writeData));
+```
+
+## Mock Memory
+
+For testing and simulation purposes, DMOD supports mock memory. This allows you to map one or more files to specific memory address ranges.
+
+### Configuration
+
+Enable mock memory by passing the `DMOD_MEMORY` parameter to CMake. You can specify up to 5 memory regions separated by semicolons:
+
+```bash
+# Single region
+cmake .. -DDMOD_MODE=DMOD_SYSTEM -DDMOD_MEMORY=<address>:<filepath>
+
+# Multiple regions (up to 5)
+cmake .. -DDMOD_MODE=DMOD_SYSTEM -DDMOD_MEMORY="<addr1>:<file1>;<addr2>:<file2>"
+```
+
+**Format:** `address:filepath` for each region
+- `address` - Hexadecimal address without '0x' prefix (e.g., `ffff0000` not `0xffff0000`)
+- `filepath` - Path to the file to use as mock memory
+- Multiple regions are separated by semicolons (`;`)
+
+### Examples
+
+```bash
+# Map a single ROM file to address 0xffff0000
+cmake .. -DDMOD_MODE=DMOD_SYSTEM -DDMOD_MEMORY=ffff0000:./my-rom.bin
+make
+
+# Map separate ROM and RAM regions
+cmake .. -DDMOD_MODE=DMOD_SYSTEM -DDMOD_MEMORY="ffff0000:./my-rom.bin;2000:./my-ram.bin"
+make
+```
+
+When mock memory is enabled:
+- Reads from the configured address ranges will read directly from the corresponding file
+- Writes to the configured address ranges will write directly to the corresponding file (persisted)
+- Reads/writes outside all mock memory ranges use direct memory access
+- File operations use Dmod_FileOpen, Dmod_FileSeek, Dmod_FileRead, and Dmod_FileWrite
+- Each region is independent and can represent different memory types (ROM, RAM, peripherals, etc.)
+
+### Example Usage with Mock Memory
+
+```c
+#include "dmod_sal.h"
+
+// Example 1: Single region
+// If built with -DDMOD_MEMORY=ffff0000:./data.bin
+// The file contents will be available at 0xffff0000
+
+uint8_t buffer[32];
+size_t bytesRead = Dmod_ReadMemory(0xffff0000, buffer, sizeof(buffer));
+// Reads first 32 bytes from data.bin
+
+uint8_t newData[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+Dmod_WriteMemory(0xffff0000 + 100, newData, sizeof(newData));
+// Writes to offset 100 in data.bin (persisted to file)
+
+// Example 2: Multiple regions
+// If built with -DDMOD_MEMORY="ffff0000:./rom.bin;2000:./ram.bin"
+// ROM at 0xffff0000, RAM at 0x2000
+
+uint8_t romData[16];
+Dmod_ReadMemory(0xffff0000, romData, sizeof(romData));
+// Reads from rom.bin
+
+uint8_t ramData[16];
+Dmod_ReadMemory(0x2000, ramData, sizeof(ramData));
+// Reads from ram.bin
+
+Dmod_WriteMemory(0x2000 + 50, newData, sizeof(newData));
+// Writes to offset 50 in ram.bin
+```
+```
+
+## Implementation Details
+
+- Functions are defined as weak symbols, allowing system-level override
+- Default implementation uses direct memory access via `memcpy`
+- Mock memory keeps a file handle open and reads/writes directly from/to file using fseek
+- Mock memory does not allocate memory for the entire file (suitable for embedded systems)
+- Mock memory uses Dmod_FileOpen, Dmod_FileSeek, Dmod_FileRead, and Dmod_FileWrite (SAL functions)
+- Functions return 0 on error (NULL buffer, zero size, etc.)
+
+## Testing
+
+Test cases are provided in:
+- `tests/system/if/tests_dmod_rawmem.cpp` - Basic functionality tests
+- `tests/system/if/tests_dmod_mock_memory.cpp` - Mock memory tests
+
+Run tests:
+```bash
+cd build
+./tests/system/if/tests_dmod_rawmem
+./tests/system/if/tests_dmod_mock_memory
+```

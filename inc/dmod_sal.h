@@ -68,6 +68,8 @@ DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Malloc ,           ( size_t Size )         
 DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Realloc,           ( void* Ptr, size_t Size )          );
 DMOD_BUILTIN_API(Dmod, 1.0, void ,  _Free   ,           ( void* Ptr )                       );
 DMOD_BUILTIN_API(Dmod, 1.0, void*,  _AlignedMalloc,     ( size_t Size, size_t Alignment )   );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t, _ReadMemory,        ( uintptr_t Address, void* Buffer, size_t Size ) );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t, _WriteMemory,       ( uintptr_t Address, const void* Buffer, size_t Size ) );
 //! @}
 
 /**
