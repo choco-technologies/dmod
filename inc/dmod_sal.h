@@ -92,6 +92,10 @@ DMOD_BUILTIN_API(Dmod, 1.0, size_t      , _FileSize,    ( void* File ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void        , _FileClose,   ( void* File ) );
 DMOD_BUILTIN_API(Dmod, 1.0, const char* , _GetRepoDir,  ( void ) );
 DMOD_BUILTIN_API(Dmod, 1.0, bool        , _FileAvailable, ( const char* Path ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void*       , _OpenDir,     ( const char* Path ) );
+DMOD_BUILTIN_API(Dmod, 1.0, const char* , _ReadDir,     ( void* Dir ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void        , _CloseDir,    ( void* Dir ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int         , _MakeDir,     ( const char* Path, int Mode ) );
 
 #ifndef DMOD_SEEK_SET
 #   define DMOD_SEEK_SET   0
