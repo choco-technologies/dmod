@@ -73,19 +73,24 @@ static void Dmod_Print_Int( char** Buffer, size_t* Pos, size_t Size, int32_t Val
     char Temp[12]; // Enough for -2147483648
     int i = 0;
     bool IsNegative = false;
+    uint32_t UValue;
     
     if( Value < 0 )
     {
         IsNegative = true;
-        Value = -Value;
+        UValue = (uint32_t)(-(Value + 1)) + 1; // Avoid overflow with INT32_MIN
+    }
+    else
+    {
+        UValue = (uint32_t)Value;
     }
     
     // Convert to string (reversed)
     do
     {
-        Temp[i++] = '0' + (Value % 10);
-        Value /= 10;
-    } while( Value > 0 );
+        Temp[i++] = '0' + (UValue % 10);
+        UValue /= 10;
+    } while( UValue > 0 );
     
     // Add sign
     if( IsNegative )
