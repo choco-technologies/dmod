@@ -27,7 +27,7 @@ set(SYSTEM_SOURCES
 
 # Add custom printf implementation if enabled
 if(DMOD_IMPLEMENT_PRINTF)
-    list(APPEND SYSTEM_SOURCES if/dmod_printf_impl.c)
+    list(APPEND SYSTEM_SOURCES if/dmod_prf.c)
 endif()
 
 add_library(${MODULE_NAME} STATIC ${SYSTEM_SOURCES})

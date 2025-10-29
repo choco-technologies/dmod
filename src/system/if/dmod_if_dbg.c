@@ -39,7 +39,8 @@
 #   include <assert.h>
 #endif
 #if DMOD_IMPLEMENT_PRINTF
-#   include "dmod_printf_impl.h"
+#   define DMOD_PRIVATE
+#   include "dmod_prf.h"
 #   include <stdarg.h>
 #endif
 
@@ -95,7 +96,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _VSnPrintf, ( char* Buffer, size
         return vsnprintf( Buffer, Size, Format, Args );
     }
     #elif DMOD_IMPLEMENT_PRINTF
-    return dmod_vsnprintf_impl( Buffer, Size, Format, Args );
+    return Dmod_VSnPrintf_Impl( Buffer, Size, Format, Args );
     #else
     return 0;
     #endif
