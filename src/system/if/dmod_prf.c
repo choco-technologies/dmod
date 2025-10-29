@@ -78,7 +78,8 @@ static void Dmod_Print_Int( char** Buffer, size_t* Pos, size_t Size, int32_t Val
     if( Value < 0 )
     {
         IsNegative = true;
-        UValue = (uint32_t)(-(Value + 1)) + 1; // Avoid overflow with INT32_MIN
+        // Handle INT32_MIN specially to avoid overflow
+        UValue = (Value == INT32_MIN) ? ((uint32_t)INT32_MAX + 1) : (uint32_t)(-Value);
     }
     else
     {
