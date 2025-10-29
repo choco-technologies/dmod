@@ -9,9 +9,11 @@ set(SYSTEM_SOURCES
     private/dmod_ldr.c
     private/dmod_mgr.c
     private/dmod_rmod.c
+    private/dmod_pck.c
     public/dmod_dmf_cb.c
     public/dmod_dmf_api.c
     public/dmod_dmfc_api.c
+    public/dmod_dmp_api.c
     dmod_system.c
     if/dmod_if_file.c
     if/dmod_if_mem.c
@@ -22,6 +24,7 @@ set(SYSTEM_SOURCES
     if/dmod_if_rtos.c
     if/dmod_if_comp.c
     if/dmod_if_env.c
+    if/dmod_if_str.c
     Dmod.cpp
 )
 

@@ -112,6 +112,16 @@ DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsFunctionConnected, (void* FunctionP
 DMOD_BUILTIN_API( Dmod, 1.0, Dmod_Context_t*, _GetNextDifModule, (const char* DifSignature, Dmod_Context_t* Previous) );
 DMOD_BUILTIN_API( Dmod, 1.0, void*      , _GetDifFunction, (Dmod_Context_t* Context, const char* DifSignature) );
 
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _AddPackageBuffer, ( const void* Buffer, size_t Size, uint32_t* outIndex ) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _AddPackageFile, ( const char* FilePath, uint32_t* outIndex ) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _RemovePackage, ( const char* PackageName ) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _RemovePackageBuffer, ( const void* Buffer ) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _RemovePackageFile, ( const char* FilePath ) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsPackageAvailable, ( const char* PackageName ) );
+DMOD_BUILTIN_API( Dmod, 1.0, size_t     , _GetNumberOfPackages, ( void ) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _GetPackageInfo, ( uint32_t PackageIndex, char* outName, size_t NameMaxLength, size_t* outSize ) );
+DMOD_BUILTIN_API( Dmod, 1.0, uint32_t   , _GetMainIndexFromPackage, ( const char* PackageName ) );
+
 //! @}
 
 #ifdef __cplusplus

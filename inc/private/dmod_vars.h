@@ -18,6 +18,7 @@ extern void* __dmod_outputs_size;
 extern Dmod_Api_t Dmod_BuiltinInputApi;
 extern Dmod_Api_t Dmod_BuiltinOutputApi;
 extern Dmod_Context_t* Dmod_Contexts[DMOD_MAX_MODULES];
+extern Dmod_PackageSlot_t Dmod_Packages[DMOD_MAX_NUMBER_OF_PACKAGES];
 
 #ifdef __cplusplus
 }

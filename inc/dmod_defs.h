@@ -72,6 +72,14 @@ extern "C" {
 #   define DMOD_MAX_COMPRESSION_NAME_LENGTH		10
 #endif
 
+#ifndef DMOD_MAX_PACKAGE_NAME_LENGTH
+#   define DMOD_MAX_PACKAGE_NAME_LENGTH		32
+#endif
+
+#ifndef DMOD_MAX_NUMBER_OF_PACKAGES
+#   define DMOD_MAX_NUMBER_OF_PACKAGES		20
+#endif
+
 /**
  * @brief Check if the version is compatible
  */

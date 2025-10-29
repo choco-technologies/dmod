@@ -21,9 +21,11 @@ DMOD_SOURCES=private/dmod_vars.c\
 		private/dmod_ldr.c\
 		private/dmod_mgr.c\
 		private/dmod_rmod.c\
+		private/dmod_pck.c\
 		public/dmod_dmf_cb.c\
 		public/dmod_dmf_api.c\
 		public/dmod_dmfc_api.c\
+		public/dmod_dmp_api.c\
 		dmod_system.c\
 		if/dmod_if_file.c\
 		if/dmod_if_mem.c\
@@ -34,6 +36,7 @@ DMOD_SOURCES=private/dmod_vars.c\
 		if/dmod_if_rtos.c\
 		if/dmod_if_comp.c\
 		if/dmod_if_env.c\
+		if/dmod_if_str.c\
 		Dmod.cpp
 DMOD_INC_DIRS = $(DMOD_DIR)/src/system\
 		$(DMOD_DIR)/inc\
