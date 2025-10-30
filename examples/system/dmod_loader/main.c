@@ -81,7 +81,7 @@ int main( int argc, char *argv[] )
         else if( strcmp( argv[i], "--args" ) == 0 )
         {
             argsIndex = i;
-            break;
+            // Don't break here to allow detecting all flags
         }
     }
 
@@ -138,7 +138,7 @@ int main( int argc, char *argv[] )
             }
             
             // Get package name from the added package
-            char packageName[256] = {0};
+            char packageName[DMOD_MAX_PACKAGE_NAME_LENGTH] = {0};
             size_t packageSize = 0;
             if( !Dmod_GetPackageInfo( packageIndex, packageName, sizeof(packageName), &packageSize ) )
             {
