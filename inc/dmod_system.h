@@ -106,6 +106,9 @@ extern bool             Dmod_ToDMFCFile         ( const char* CompressionName, i
 extern bool             Dmod_FromDMFC           ( const void* DmfcData, size_t DmfcSize, void** outDmfData, size_t* outDmfSize );
 extern size_t           Dmod_GetDMFCOriginalSize( const void* DmfcData, size_t DmfcSize );
 
+// DMP API
+extern bool             Dmod_ToDMPFile          ( const char* PackageName, const char* InputDir, const char* OutputFile, const char* MainModuleName );
+
 //! @}
 
 #ifdef __cplusplus

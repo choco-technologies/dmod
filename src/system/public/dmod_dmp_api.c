@@ -322,3 +322,256 @@ uint32_t Dmod_GetMainIndexFromPackage( const char* PackageName )
     return slot->DmpHeader->MainIndex;
 }
 
+/**
+ * @brief Create a DMP package file from a directory of module files
+ * 
+ * @param PackageName Name of the package
+ * @param InputDir Directory containing the module files (.dmf or .dmfc)
+ * @param OutputFile Path to the output .dmp file
+ * @param MainModuleName Name of the main module (can be NULL)
+ * @return true If the DMP file was created successfully
+ * @return false If the DMP file could not be created
+ */
+bool Dmod_ToDMPFile( const char* PackageName, const char* InputDir, const char* OutputFile, const char* MainModuleName )
+{
+    if( PackageName == NULL || InputDir == NULL || OutputFile == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot create DMP file - invalid parameters\n");
+        return false;
+    }
+
+    // Open the input directory
+    void* dir = Dmod_OpenDir( InputDir );
+    if( dir == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot create DMP file - cannot open input directory '%s'\n", InputDir);
+        return false;
+    }
+
+    // Count the number of module files
+    uint32_t moduleCount = 0;
+    const char* fileName = NULL;
+    while( (fileName = Dmod_ReadDir( dir )) != NULL )
+    {
+        size_t len = strlen( fileName );
+        if( len > 4 && (strcmp( fileName + len - 4, ".dmf" ) == 0 || strcmp( fileName + len - 5, ".dmfc" ) == 0) )
+        {
+            moduleCount++;
+        }
+    }
+    Dmod_CloseDir( dir );
+
+    if( moduleCount == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot create DMP file - no module files found in '%s'\n", InputDir);
+        return false;
+    }
+
+    // Allocate memory for module entries
+    Dmod_DmpModuleEntry_t* moduleEntries = (Dmod_DmpModuleEntry_t*)Dmod_Malloc( moduleCount * sizeof(Dmod_DmpModuleEntry_t) );
+    if( moduleEntries == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot create DMP file - cannot allocate memory for module entries\n");
+        return false;
+    }
+
+    // Calculate total size and fill module entries
+    dir = Dmod_OpenDir( InputDir );
+    if( dir == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot create DMP file - cannot reopen input directory '%s'\n", InputDir);
+        Dmod_Free( moduleEntries );
+        return false;
+    }
+
+    uint32_t currentIndex = 0;
+    uint32_t mainIndex = 0;
+    size_t dataOffset = sizeof(Dmod_DmpHeader_t) + moduleCount * sizeof(Dmod_DmpModuleEntry_t);
+    size_t totalSize = dataOffset;
+
+    while( (fileName = Dmod_ReadDir( dir )) != NULL )
+    {
+        size_t len = strlen( fileName );
+        bool isDmf = (len > 4 && strcmp( fileName + len - 4, ".dmf" ) == 0);
+        bool isDmfc = (len > 5 && strcmp( fileName + len - 5, ".dmfc" ) == 0);
+        
+        if( !isDmf && !isDmfc )
+        {
+            continue;
+        }
+
+        // Build full path
+        char filePath[DMOD_MAX_PATH_LENGTH];
+        Dmod_SnPrintf( filePath, sizeof(filePath), "%s/%s", InputDir, fileName );
+
+        // Open the file to get its size
+        void* file = Dmod_FileOpen( filePath, "rb" );
+        if( file == NULL )
+        {
+            DMOD_LOG_ERROR("Cannot create DMP file - cannot open module file '%s'\n", filePath);
+            Dmod_CloseDir( dir );
+            Dmod_Free( moduleEntries );
+            return false;
+        }
+
+        size_t fileSize = Dmod_FileSize( file );
+        Dmod_FileClose( file );
+
+        // Extract module name from file name (without extension)
+        char moduleName[DMOD_MAX_MODULE_NAME_LENGTH];
+        size_t nameLen = isDmf ? len - 4 : len - 5;
+        if( nameLen >= DMOD_MAX_MODULE_NAME_LENGTH )
+        {
+            nameLen = DMOD_MAX_MODULE_NAME_LENGTH - 1;
+        }
+        memcpy( moduleName, fileName, nameLen );
+        moduleName[nameLen] = '\0';
+
+        // Fill module entry
+        moduleEntries[currentIndex].ModuleOffset = (uint32_t)dataOffset;
+        moduleEntries[currentIndex].FileSize = (uint32_t)fileSize;
+        strncpy( moduleEntries[currentIndex].ModuleName, moduleName, DMOD_MAX_MODULE_NAME_LENGTH );
+        moduleEntries[currentIndex].ModuleName[DMOD_MAX_MODULE_NAME_LENGTH - 1] = '\0';
+
+        // Check if this is the main module
+        if( MainModuleName != NULL && strcmp( moduleName, MainModuleName ) == 0 )
+        {
+            mainIndex = currentIndex;
+        }
+
+        dataOffset += fileSize;
+        totalSize += fileSize;
+        currentIndex++;
+    }
+    Dmod_CloseDir( dir );
+
+    // Print list of modules being added
+    DMOD_LOG_INFO("Adding %u module(s) to package '%s':\n", moduleCount, PackageName);
+    for( uint32_t i = 0; i < moduleCount; i++ )
+    {
+        DMOD_LOG_INFO("  [%u] %s (size: %u bytes, offset: %u)%s\n", 
+            i, 
+            moduleEntries[i].ModuleName, 
+            moduleEntries[i].FileSize,
+            moduleEntries[i].ModuleOffset,
+            (i == mainIndex) ? " [MAIN]" : "");
+    }
+
+    // Create DMP header
+    Dmod_DmpHeader_t header;
+    header.Signature = DMOD_DMP_SIGNATURE;
+    header.HeaderSize = sizeof(Dmod_DmpHeader_t);
+    header.HeaderVersion = DMOD_DMP_VERSION;
+    strncpy( header.Name, PackageName, DMOD_MAX_PACKAGE_NAME_LENGTH );
+    header.Name[DMOD_MAX_PACKAGE_NAME_LENGTH - 1] = '\0';
+    header.MainIndex = mainIndex;
+    header.ModuleCount = moduleCount;
+
+    // Open output file
+    void* outFile = Dmod_FileOpen( OutputFile, "wb" );
+    if( outFile == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot create DMP file - cannot open output file '%s'\n", OutputFile);
+        Dmod_Free( moduleEntries );
+        return false;
+    }
+
+    // Write header
+    if( Dmod_FileWrite( &header, sizeof(header), 1, outFile ) != 1 )
+    {
+        DMOD_LOG_ERROR("Cannot create DMP file - cannot write header\n");
+        Dmod_FileClose( outFile );
+        Dmod_Free( moduleEntries );
+        return false;
+    }
+
+    // Write module entries
+    if( Dmod_FileWrite( moduleEntries, sizeof(Dmod_DmpModuleEntry_t), moduleCount, outFile ) != moduleCount )
+    {
+        DMOD_LOG_ERROR("Cannot create DMP file - cannot write module entries\n");
+        Dmod_FileClose( outFile );
+        Dmod_Free( moduleEntries );
+        return false;
+    }
+
+    // Write module data
+    dir = Dmod_OpenDir( InputDir );
+    if( dir == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot create DMP file - cannot reopen input directory for writing data\n");
+        Dmod_FileClose( outFile );
+        Dmod_Free( moduleEntries );
+        return false;
+    }
+
+    while( (fileName = Dmod_ReadDir( dir )) != NULL )
+    {
+        size_t len = strlen( fileName );
+        bool isDmf = (len > 4 && strcmp( fileName + len - 4, ".dmf" ) == 0);
+        bool isDmfc = (len > 5 && strcmp( fileName + len - 5, ".dmfc" ) == 0);
+        
+        if( !isDmf && !isDmfc )
+        {
+            continue;
+        }
+
+        // Build full path
+        char filePath[DMOD_MAX_PATH_LENGTH];
+        Dmod_SnPrintf( filePath, sizeof(filePath), "%s/%s", InputDir, fileName );
+
+        // Open the file
+        void* file = Dmod_FileOpen( filePath, "rb" );
+        if( file == NULL )
+        {
+            DMOD_LOG_ERROR("Cannot create DMP file - cannot open module file '%s' for reading\n", filePath);
+            Dmod_CloseDir( dir );
+            Dmod_FileClose( outFile );
+            Dmod_Free( moduleEntries );
+            return false;
+        }
+
+        size_t fileSize = Dmod_FileSize( file );
+        void* buffer = Dmod_Malloc( fileSize );
+        if( buffer == NULL )
+        {
+            DMOD_LOG_ERROR("Cannot create DMP file - cannot allocate buffer for file '%s'\n", filePath);
+            Dmod_FileClose( file );
+            Dmod_CloseDir( dir );
+            Dmod_FileClose( outFile );
+            Dmod_Free( moduleEntries );
+            return false;
+        }
+
+        if( Dmod_FileRead( buffer, 1, fileSize, file ) != fileSize )
+        {
+            DMOD_LOG_ERROR("Cannot create DMP file - cannot read file '%s'\n", filePath);
+            Dmod_Free( buffer );
+            Dmod_FileClose( file );
+            Dmod_CloseDir( dir );
+            Dmod_FileClose( outFile );
+            Dmod_Free( moduleEntries );
+            return false;
+        }
+        Dmod_FileClose( file );
+
+        if( Dmod_FileWrite( buffer, 1, fileSize, outFile ) != fileSize )
+        {
+            DMOD_LOG_ERROR("Cannot create DMP file - cannot write file data '%s'\n", filePath);
+            Dmod_Free( buffer );
+            Dmod_CloseDir( dir );
+            Dmod_FileClose( outFile );
+            Dmod_Free( moduleEntries );
+            return false;
+        }
+
+        Dmod_Free( buffer );
+    }
+
+    Dmod_CloseDir( dir );
+    Dmod_FileClose( outFile );
+    Dmod_Free( moduleEntries );
+
+    return true;
+}
+
+
