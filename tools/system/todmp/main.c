@@ -96,14 +96,17 @@ int ListDMPPackage( const char* packageFile )
 void PrintUsage( const char* AppName )
 {
     printf("Usage: %s <package_name> <input_dir> [output_file] [module_name]\n", AppName);
+    printf("       %s -d <package_name> <main_module_path> [output_file]\n", AppName);
     printf("       %s -l <package_file>\n", AppName);
     printf("\n");
     printf("Arguments:\n");
-    printf("  <package_name>   - Name of the package (for the header)\n");
-    printf("  <input_dir>      - Folder with modules to pack (.dmf or .dmfc files)\n");
-    printf("  [output_file]    - (optional) Path to output .dmp file (default: ./package_name.dmp)\n");
-    printf("  [module_name]    - (optional) Name of the main module in the package\n");
-    printf("  -l <package_file> - List contents of a DMP package\n");
+    printf("  <package_name>      - Name of the package (for the header)\n");
+    printf("  <input_dir>         - Folder with modules to pack (.dmf or .dmfc files)\n");
+    printf("  [output_file]       - (optional) Path to output .dmp file (default: ./package_name.dmp)\n");
+    printf("  [module_name]       - (optional) Name of the main module in the package\n");
+    printf("  -d <package_name> <main_module_path> [output_file]\n");
+    printf("                      - Create package with dependencies\n");
+    printf("  -l <package_file>   - List contents of a DMP package\n");
 }
 
 // -----------------------------------------
@@ -119,14 +122,22 @@ void PrintHelp( const char* AppName )
     PrintUsage( AppName );
     printf("\n");
     printf("Options:\n");
-    printf("  -h, --help            Print this help message\n");
-    printf("  -v, --version         Print version information\n");
-    printf("  -l, --list <file>     List contents of a DMP package\n");
+    printf("  -h, --help               Print this help message\n");
+    printf("  -v, --version            Print version information\n");
+    printf("  -l, --list <file>        List contents of a DMP package\n");
+    printf("  -d, --dependencies       Create package with dependencies\n");
+    printf("\n");
+    printf("Dependency Mode:\n");
+    printf("  In dependency mode, todmp will:\n");
+    printf("  1. Analyze the main module to find its dependencies\n");
+    printf("  2. Search for dependencies in DMOD_REPO_PATHS environment variable\n");
+    printf("  3. Package the main module and all found dependencies together\n");
     printf("\n");
     printf("Examples:\n");
     printf("  %s kernel ./dmfc main-app ./out/kernel.dmp\n", AppName);
     printf("  %s mypackage ./modules\n", AppName);
     printf("  %s mypackage ./modules ./output/mypackage.dmp\n", AppName);
+    printf("  %s -d myapp ./build/myapp.dmf ./myapp.dmp\n", AppName);
     printf("  %s -l ./mypackage.dmp\n", AppName);
 }
 
@@ -165,6 +176,54 @@ int main( int argc, char *argv[] )
             return -1;
         }
         return ListDMPPackage( argv[2] );
+    }
+
+    // Handle dependencies option
+    if( strcmp( argv[1], "-d" ) == 0 || strcmp( argv[1], "--dependencies" ) == 0 )
+    {
+        if( argc < 4 )
+        {
+            printf("Error: Missing required arguments for dependency mode\n");
+            printf("Usage: %s -d <package_name> <main_module_path> [output_file]\n", argv[0]);
+            return -1;
+        }
+
+        if( argc > 5 )
+        {
+            printf("Error: Too many arguments for dependency mode\n");
+            printf("Usage: %s -d <package_name> <main_module_path> [output_file]\n", argv[0]);
+            return -1;
+        }
+
+        const char* packageName = argv[2];
+        const char* mainModulePath = argv[3];
+        const char* outputFile = NULL;
+
+        // Default output file: ./package_name.dmp
+        char defaultOutputFile[256];
+        if( argc >= 5 )
+        {
+            outputFile = argv[4];
+        }
+        else
+        {
+            snprintf( defaultOutputFile, sizeof(defaultOutputFile), "./%s.dmp", packageName );
+            outputFile = defaultOutputFile;
+        }
+
+        printf("Creating DMP package with dependencies...\n");
+        printf("  Package name: %s\n", packageName);
+        printf("  Main module: %s\n", mainModulePath);
+        printf("  Output file: %s\n", outputFile);
+
+        if( !Dmod_ToDMPFileWithDependencies( packageName, mainModulePath, outputFile ) )
+        {
+            printf("Error: Failed to create DMP package with dependencies\n");
+            return -1;
+        }
+
+        printf("DMP package '%s' was successfully created at '%s'\n", packageName, outputFile);
+        return 0;
     }
 
     if( argc < 3 )

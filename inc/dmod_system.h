@@ -108,6 +108,7 @@ extern size_t           Dmod_GetDMFCOriginalSize( const void* DmfcData, size_t D
 
 // DMP API
 extern bool             Dmod_ToDMPFile          ( const char* PackageName, const char* InputDir, const char* OutputFile, const char* MainModuleName );
+extern bool             Dmod_ToDMPFileWithDependencies ( const char* PackageName, const char* MainModulePath, const char* OutputFile );
 
 //! @}
 
