@@ -35,7 +35,6 @@
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _EnterCritical, ( void ))
 {
-    DMOD_LOG_WARN("Dmod_EnterCritical not implemented in the system\n");
 }
 
 /**
@@ -43,5 +42,4 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _EnterCritical, ( void ))
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _ExitCritical, ( void ))
 {
-    DMOD_LOG_WARN("Dmod_ExitCritical not implemented in the system\n");
 }
