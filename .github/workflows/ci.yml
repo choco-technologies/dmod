@@ -74,6 +74,40 @@ jobs:
         run: |
           rm -rf dmf
           ./examples/system/dmod_loader/dmod_loader ./dmfc/example_app.dmfc
+      
+      - name: Create DMP package from DMF files
+        working-directory: build
+        run: |
+          # Rebuild DMF files first
+          cmake .. -DDMOD_MODE=DMOD_MODULE -DDMOD_TOOLS_NAME=arch/x86_64
+          cmake --build .
+          # Create DMP package with vfs as main module
+          ./bin/tools/todmp test_package ./dmf ./test_package.dmp vfs
+          echo "DMP package created successfully"
+      
+      - name: List DMP package contents
+        working-directory: build
+        run: |
+          ./bin/tools/todmp -l ./test_package.dmp
+          echo "DMP package listing completed"
+      
+      - name: Test loading DMP package
+        working-directory: build
+        run: |
+          ./examples/system/dmod_loader/dmod_loader ./test_package.dmp
+          echo "DMP package loaded and executed successfully"
+      
+      - name: Create DMP package without main module
+        working-directory: build
+        run: |
+          ./bin/tools/todmp libs_package ./dmf ./libs_package.dmp
+          echo "DMP package without main module created successfully"
+      
+      - name: Test todmp help and version
+        working-directory: build
+        run: |
+          ./bin/tools/todmp --help
+          ./bin/tools/todmp --version
 
   make-build:
     name: 'MAKE: Build for x86_64'
@@ -112,6 +146,34 @@ jobs:
         run: |
           chmod +x ./build/examples/dif_test/dif_test
           ./build/examples/dif_test/dif_test
+      
+      - name: Create DMP package from DMF files
+        run: |
+          # Rebuild DMF files first
+          make DMOD_MODE=DMOD_MODULE
+          # Create DMP package with vfs as main module
+          ./build/bin/tools/todmp test_package ./build/dmf ./build/test_package.dmp vfs
+          echo "DMP package created successfully"
+      
+      - name: List DMP package contents
+        run: |
+          ./build/bin/tools/todmp -l ./build/test_package.dmp
+          echo "DMP package listing completed"
+      
+      - name: Test loading DMP package
+        run: |
+          ./build/examples/system/dmod_loader ./build/test_package.dmp
+          echo "DMP package loaded and executed successfully"
+      
+      - name: Create DMP package without main module
+        run: |
+          ./build/bin/tools/todmp libs_package ./build/dmf ./build/libs_package.dmp
+          echo "DMP package without main module created successfully"
+      
+      - name: Test todmp help and version
+        run: |
+          ./build/bin/tools/todmp --help
+          ./build/bin/tools/todmp --version
           
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -122,6 +184,8 @@ jobs:
             ./build/examples/dif_test/dif_test
             ./build/dmf/example_app.dmf
             ./build/dmf/dmodex.dmf
+            ./build/test_package.dmp
+            ./build/libs_package.dmp
 
   external-module-cmake:
     name: 'CMAKE: Test external module build'
