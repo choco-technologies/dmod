@@ -56,6 +56,7 @@ extern "C" {
  */
 extern Dmod_Context_t*  Dmod_LoadFile           ( const char* Path );
 extern Dmod_Context_t*  Dmod_Load               ( const void* Data, size_t Size );
+extern Dmod_Context_t*  Dmod_LoadFromPackage    ( const char* PackageName, const char* ModuleName );
 extern bool             Dmod_Unload             ( Dmod_Context_t* Context, bool Force );
 
 // DMF API
@@ -96,6 +97,8 @@ extern int              Dmod_Run                ( Dmod_Context_t* Context, int a
 extern bool             Dmod_IsRunning          ( Dmod_Context_t* Context );
 
 // DMFC API
+extern bool             Dmod_IsDMP              ( const void* Data, size_t Size );
+extern bool             Dmod_IsDMPFile          ( const char* Path );
 extern bool             Dmod_IsDMFC             ( const void* Data, size_t Size );
 extern bool             Dmod_IsDMFCFile         ( const char* Path );
 extern bool             Dmod_ToDMFC             ( const char* CompressionName, int Level, const void* DmfData, size_t DmfSize, void** outDmfcData, size_t* outDmfcSize );

@@ -195,6 +195,7 @@ typedef struct
     Dmod_RequiredModule_t    RequiredModules[DMOD_MAX_REQUIRED_MODULES];
     bool                     Enabled;
     bool                     Running;
+    const char*              PackageName;  
 } Dmod_Context_t;
 
 /**

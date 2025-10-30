@@ -76,9 +76,15 @@ bool Dmod_Pck_IsValidSlot( Dmod_PackageSlot_t* Slot )
         return false;
     }
 
-    if( Slot->DmpHeader->Signature != 0x48504D44 ) // 'DMPH'
+    if( Slot->DmpHeader->Signature != DMOD_DMP_SIGNATURE ) 
     {
         DMOD_LOG_ERROR("Package slot has invalid DMP header signature: 0x%08X", Slot->DmpHeader->Signature);
+        return false;
+    }
+
+    if( Slot->DmpHeader->Name[0] == '\0' )
+    {
+        DMOD_LOG_ERROR("Package slot has empty package name");
         return false;
     }
 
@@ -107,6 +113,23 @@ Dmod_PackageSlot_t* Dmod_Pck_GetFreeSlot( uint32_t *outIndex )
     }
     DMOD_LOG_ERROR("No free package slots available");
     return NULL;
+}
+
+/**
+ * @brief Get a package slot by its index
+ * 
+ * @param Index Index of the package slot
+ * 
+ * @return Dmod_PackageSlot_t* Pointer to the package slot, or NULL if index is out of bounds
+ */
+Dmod_PackageSlot_t* Dmod_Pck_GetSlotByIndex( uint32_t Index )
+{
+    if( Index >= DMOD_MAX_NUMBER_OF_PACKAGES )
+    {
+        DMOD_LOG_ERROR("Package slot index out of bounds: %u", Index);
+        return NULL;
+    }
+    return &Dmod_Packages[Index];
 }
 
 /**
@@ -188,18 +211,18 @@ size_t Dmod_Pck_GetNumberOfPackages( void )
 }
 
 /**
- * @brief Get the index of a module in a package
+ * @brief Find a module entry in a package slot by module name
  * 
  * @param Slot Pointer to the package slot
  * @param ModuleName Name of the module to find
- * @return uint32_t Index of the module in the package, or UINT32_MAX if not found
+ * @return Dmod_DmpModuleEntry_t* Pointer to the found module entry, or NULL if not found
  */
-uint32_t Dmod_Pck_GetModuleIndexInPackage( Dmod_PackageSlot_t* Slot, const char* ModuleName )
+Dmod_DmpModuleEntry_t* Dmod_Pck_FindModuleEntry( Dmod_PackageSlot_t* Slot, const char* ModuleName )
 {
     if( Slot == NULL || Slot->DmpHeader == NULL || Slot->ModuleEntries == NULL )
     {
-        DMOD_LOG_ERROR("Cannot get module index - invalid package slot");
-        return UINT32_MAX;
+        DMOD_LOG_ERROR("Cannot find module entry - invalid package slot");
+        return NULL;
     }
 
     for( uint32_t i = 0; i < Slot->DmpHeader->ModuleCount; i++ )
@@ -207,14 +230,65 @@ uint32_t Dmod_Pck_GetModuleIndexInPackage( Dmod_PackageSlot_t* Slot, const char*
         Dmod_DmpModuleEntry_t* entry = &Slot->ModuleEntries[i];
         if( strcmp( entry->ModuleName, ModuleName ) == 0 )
         {
-            return i;
+            return entry;
         }
     }
 
     DMOD_LOG_ERROR("Module '%s' not found in package '%s'", ModuleName, Dmod_Pck_GetPackageName( Slot ));
-    return UINT32_MAX;
+    return NULL;
 }
 
+/**
+ * @brief Find a module entry in all loaded packages by module name
+ * 
+ * @param ModuleName Name of the module to find
+ * @param outSlot Optional pointer to store the package slot where the module was found
+ * @return Dmod_DmpModuleEntry_t* Pointer to the found module entry, or NULL if not found
+ */
+Dmod_DmpModuleEntry_t* Dmod_Pck_FindModuleEntryInPackages( const char* ModuleName, Dmod_PackageSlot_t** outSlot )
+{
+    for( size_t i = 0; i < DMOD_MAX_NUMBER_OF_PACKAGES; i++ )
+    {
+        Dmod_PackageSlot_t* slot = &Dmod_Packages[i];
+        if( Dmod_Pck_IsSlotUsed( slot ) )
+        {
+            Dmod_DmpModuleEntry_t* entry = Dmod_Pck_FindModuleEntry( slot, ModuleName );
+            if( entry != NULL )
+            {
+                if( outSlot != NULL )
+                {
+                    *outSlot = slot;
+                }
+                return entry;
+            }
+        }
+    }
+    return NULL;
+}
 
+/**
+ * @brief Get the main module name from a package slot
+ * 
+ * @param Slot Pointer to the package slot
+ * 
+ * @return const char* Name of the main module, or NULL if invalid
+ */
+const char* Dmod_Pck_GetMainModuleName( Dmod_PackageSlot_t* Slot )
+{
+    if( Slot == NULL || Slot->DmpHeader == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot get main module name - invalid package slot");
+        return NULL;
+    }
+
+    uint32_t mainIndex = Slot->DmpHeader->MainIndex;
+    if( mainIndex >= Slot->DmpHeader->ModuleCount )
+    {
+        DMOD_LOG_ERROR("Cannot get main module name - main index out of bounds");
+        return NULL;
+    }
+
+    return Slot->ModuleEntries[mainIndex].ModuleName;
+}
 
 

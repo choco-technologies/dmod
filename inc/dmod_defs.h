@@ -10,6 +10,7 @@ extern "C" {
 
 #define DMOD_HEADER_SIGNATURE           0x444D4F44
 #define DMOD_DMFC_SIGNATURE             0x444D4643
+#define DMOD_DMP_SIGNATURE              0x444D5048
 #define DMOD_CONTEXT_SIGNATURE          0x646D6F64
 #define DMOD_MAX_ARCH_NAME_LENGTH       10
 #define DMOD_MAX_MODULE_NAME_LENGTH		32
