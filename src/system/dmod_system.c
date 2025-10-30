@@ -276,7 +276,7 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
     }
 
     Dmod_Event_ModuleLoadingInProgress( slot->FilePath, 15 );
-    void* buffer = Dmod_AlignedMalloc( slot->PackageSize, DMOD_STACK_ALIGNMENT );
+    void* buffer = Dmod_AlignedMalloc( moduleEntry->FileSize, DMOD_STACK_ALIGNMENT );
     if( buffer == NULL )
     {
         DMOD_LOG_ERROR("Cannot load module - cannot allocate memory\n");
