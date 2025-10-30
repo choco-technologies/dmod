@@ -78,7 +78,8 @@ jobs:
       - name: Create DMP package from DMF files
         working-directory: build
         run: |
-          # Rebuild DMF files first
+          # Rebuild DMF files (remove artifacts to force rebuild after dmf was deleted)
+          rm -rf examples/module examples/dif templates/module/output
           cmake .. -DDMOD_MODE=DMOD_MODULE -DDMOD_TOOLS_NAME=arch/x86_64
           cmake --build .
           # Create DMP package with vfs as main module
@@ -149,7 +150,8 @@ jobs:
       
       - name: Create DMP package from DMF files
         run: |
-          # Rebuild DMF files first
+          # Rebuild DMF files (remove artifacts to force rebuild)
+          rm -rf build/examples/module build/examples/dif build/templates/module/output
           make DMOD_MODE=DMOD_MODULE
           # Create DMP package with vfs as main module
           ./build/bin/tools/todmp test_package ./build/dmf ./build/test_package.dmp vfs
