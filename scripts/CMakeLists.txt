@@ -6,6 +6,11 @@ endif()
 #   Creates makefile for the given library.
 #
 function( create_library_makefile targetName )
+    # Check if DMOD_DIR is defined
+    if(NOT DEFINED DMOD_DIR)
+        message(FATAL_ERROR "DMOD_DIR is not defined. Please set DMOD_DIR variable before calling create_library_makefile function.")
+    endif()
+    
     # Configure the Makefile
     if(DMOD_MODE STREQUAL "DMOD_SYSTEM")
         set(DMOD_SYSTEM ON)
