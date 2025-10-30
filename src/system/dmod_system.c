@@ -293,11 +293,11 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
     }
 
     void* dmfData = buffer;
-    size_t dmfSize = slot->PackageSize;
-    if( Dmod_IsDMFC(buffer, slot->PackageSize) )
+    size_t dmfSize = moduleEntry->FileSize;
+    if( Dmod_IsDMFC(buffer, moduleEntry->FileSize) )
     {
         DMOD_LOG_INFO("Module is compressed - decompressing\n");
-        if( !Dmod_FromDMFC(buffer, slot->PackageSize, &dmfData, &dmfSize) )
+        if( !Dmod_FromDMFC(buffer, moduleEntry->FileSize, &dmfData, &dmfSize) )
         {
             DMOD_LOG_ERROR("Cannot load module - failed to convert from DMFC\n");
             Dmod_Free( buffer );
