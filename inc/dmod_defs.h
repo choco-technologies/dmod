@@ -41,6 +41,10 @@ extern "C" {
 #   define DMOD_DMFC_VERSION		0x0100
 #endif
 
+#ifndef DMOD_DMP_VERSION
+#   define DMOD_DMP_VERSION		0x0100
+#endif
+
 #ifndef DMOD_MAX_MODULES
 #   define DMOD_MAX_MODULES		50
 #endif

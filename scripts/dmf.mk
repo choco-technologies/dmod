@@ -56,6 +56,14 @@ DMOD_MODULE_DMFC_FILE_NAME = $(DMOD_MODULE_NAME).dmfc
 DMOD_MODULE_DMF_FILE_PATH  = $(DMOD_DMF_DIR)/$(DMOD_MODULE_DMF_FILE_NAME)
 DMOD_MODULE_DMFC_FILE_PATH = $(DMOD_DMFC_DIR)/$(DMOD_MODULE_DMFC_FILE_NAME)
 TODMFC 					 := $(shell command -v todmfc || command -v "$(DMOD_TOOLS_BIN_DIR)/todmfc")
+TODMP 					 := $(shell command -v todmp || command -v "$(DMOD_TOOLS_BIN_DIR)/todmp")
+
+# DMP package configuration
+ifneq ($(DMOD_PACKAGE_NAME),)
+	DMOD_DMP_DIR = $(DMOD_BUILD_DIR)/dmp
+	DMOD_DMP_DMF_FILE_PATH = $(DMOD_DMP_DIR)/$(DMOD_PACKAGE_NAME)_dmf.dmp
+	DMOD_DMP_DMFC_FILE_PATH = $(DMOD_DMP_DIR)/$(DMOD_PACKAGE_NAME)_dmfc.dmp
+endif
 
 # -----------------------------------------------------------------------------
 # 	Add extra sources
@@ -120,6 +128,9 @@ create_dirs:
 	@$(MKDIR) -p $(DMOD_DMFC_DIR)
 	@$(MKDIR) -p $(DMOD_LIBS_DIR)
 	@$(MKDIR) -p $(DMOD_LIB_OBJS_DIR)
+ifneq ($(DMOD_PACKAGE_NAME),)
+	@$(MKDIR) -p $(DMOD_DMP_DIR)
+endif
 
 ifeq ($(DMOD_CONFIGURE_FILE_RULES),ON)
 $(call generate_headers_rules,$(DMOD_GEN_HEADERS_IN))
@@ -142,6 +153,19 @@ ifneq ($(TODMFC),)
 	@$(TODMFC) $(DMOD_MODULE_DMF_FILE_PATH) $(DMOD_MODULE_DMFC_FILE_PATH) $(DMOD_COMPRESSION_METHOD)
 else
 	@echo "todmfc is not found. Skipping compression..."
+endif
+ifneq ($(DMOD_PACKAGE_NAME),)
+ifneq ($(TODMP),)
+	@echo "Creating DMP package: $(DMOD_PACKAGE_NAME)"
+	@echo "  - DMF package: $(DMOD_DMP_DMF_FILE_PATH)"
+	@$(TODMP) $(DMOD_PACKAGE_NAME) $(DMOD_DMF_DIR) $(DMOD_DMP_DMF_FILE_PATH) $(DMOD_MAIN_MODULE_NAME)
+ifneq ($(TODMFC),)
+	@echo "  - DMFC package: $(DMOD_DMP_DMFC_FILE_PATH)"
+	@$(TODMP) $(DMOD_PACKAGE_NAME) $(DMOD_DMFC_DIR) $(DMOD_DMP_DMFC_FILE_PATH) $(DMOD_MAIN_MODULE_NAME)
+endif
+else
+	@echo "todmp is not found. Skipping DMP package creation..."
+endif
 endif
 
 $(call generate_cobjects_rule,$(DMOD_CSOURCES))
