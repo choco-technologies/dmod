@@ -7,7 +7,7 @@ DMOD_DIR=../..
 #   Subdirectories
 # -----------------------------------------------------------------------------
 SUBDIRS = 
-SYSTEM_SUBDIRS = todmfc
+SYSTEM_SUBDIRS = todmfc todmp
 MODULE_SUBDIRS = 
 
 # -----------------------------------------------------------------------------
