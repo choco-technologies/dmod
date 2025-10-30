@@ -7,6 +7,7 @@
 #include "private/dmod_ldr.h"
 #include "private/dmod_mgr.h"
 #include "private/dmod_rmod.h"
+#include "private/dmod_pck.h"
 #include "dmod_system.h"
 #include <stdbool.h>
 #include <string.h>
@@ -16,7 +17,7 @@
 //                              LOCAL FUNCTION PROTOTYPES
 //==============================================================================
 
-static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* File );
+static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* File, long FilePos );
 static bool IsAllApiConnected( Dmod_Context_t* Context );
 static bool PrepareModulePath( const char* RepoDir, const char* ModuleName, bool Compressed, char* Path, size_t MaxLength );
 
@@ -37,6 +38,33 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
     {
         DMOD_LOG_ERROR("Cannot load module - invalid path\n");
         return NULL;
+    }
+
+    if( Dmod_IsDMPFile(Path) )
+    {
+        uint32_t nIndex = UINT32_MAX;
+        DMOD_LOG_INFO("Module is DMP package - loading from package\n");
+        if( !Dmod_AddPackageFile( Path, &nIndex ) )
+        {
+            DMOD_LOG_ERROR("Cannot load module - failed to add DMP package\n");
+            return NULL;
+        }
+
+        Dmod_PackageSlot_t* slot = Dmod_Pck_GetSlotByIndex( nIndex );
+        if( !Dmod_Pck_IsValidSlot( slot ) )
+        {
+            DMOD_LOG_ERROR("Cannot load module - failed to get DMP package slot\n");
+            return NULL;
+        }
+
+        const char* mainModuleName = Dmod_Pck_GetMainModuleName( slot );
+        if( mainModuleName == NULL )
+        {
+            DMOD_LOG_ERROR("Cannot load module - failed to get main module name from DMP package\n");
+            return NULL;    
+        }
+
+        return Dmod_LoadFromPackage( Dmod_Pck_GetPackageName( slot ), mainModuleName );
     }
 
     Dmod_Event_ModuleLoadingInProgress( Path, 10 );
@@ -67,7 +95,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
 
     Dmod_Event_ModuleLoadingInProgress( Path, 20 );
 
-    if(!ReadFile( Path, buffer, fileSize, file ))
+    if(!ReadFile( Path, buffer, fileSize, file, 0 ))
     {
         Dmod_FileClose( file );
         return NULL;
@@ -125,6 +153,33 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
         return NULL;
     }
 
+    if( Dmod_IsDMP(Data, Size) )
+    {
+        uint32_t nIndex = UINT32_MAX;
+        DMOD_LOG_INFO("Module is DMP package - loading from package\n");
+        if( !Dmod_AddPackageBuffer( Data, Size, &nIndex ) )
+        {
+            DMOD_LOG_ERROR("Cannot load module - failed to add DMP package\n");
+            return NULL;
+        }
+
+        Dmod_PackageSlot_t* slot = Dmod_Pck_GetSlotByIndex( nIndex );
+        if( !Dmod_Pck_IsValidSlot( slot ) )
+        {
+            DMOD_LOG_ERROR("Cannot load module - failed to get DMP package slot\n");
+            return NULL;
+        }
+
+        const char* mainModuleName = Dmod_Pck_GetMainModuleName( slot );
+        if( mainModuleName == NULL )
+        {
+            DMOD_LOG_ERROR("Cannot load module - failed to get main module name from DMP package\n");
+            return NULL;    
+        }
+
+        return Dmod_LoadFromPackage( Dmod_Pck_GetPackageName( slot ), mainModuleName );
+    }
+
     Dmod_Event_ModuleLoadingInProgress( "Unknown", 10 );
 
     void* dmfData = NULL;
@@ -159,6 +214,117 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
 
     DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
     Dmod_Event_ModuleLoaded( context );
+
+    return context;
+}
+
+/**
+ * @brief Load module from package
+ * 
+ * The function loads a module from a package by its name.
+ * 
+ * @param PackageName Name of the package
+ * @param ModuleName Name of the module
+ * 
+ * @return Pointer to the context
+ */
+Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* ModuleName )
+{
+    Dmod_Context_t* context = NULL;
+    if( PackageName == NULL || ModuleName == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load module from package - invalid package or module name\n");
+        return NULL;
+    }
+
+    Dmod_PackageSlot_t* slot = Dmod_Pck_FindSlotByName( PackageName, NULL );
+    if( slot == NULL || !Dmod_Pck_IsValidSlot( slot ) )
+    {
+        DMOD_LOG_ERROR("Cannot load module from package - package not found or invalid: %s\n", PackageName);
+        return NULL;
+    }
+
+    Dmod_DmpModuleEntry_t* moduleEntry = Dmod_Pck_FindModuleEntry( slot, ModuleName );
+    if( moduleEntry == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load module from package - module not found: %s\n", ModuleName);
+        return NULL;
+    }
+
+    if( slot->PackageBuffer != NULL )
+    {
+        const void* moduleData = (const uint8_t*)slot->PackageBuffer + moduleEntry->ModuleOffset;
+        context = Dmod_Load( moduleData, moduleEntry->FileSize );
+        if( context != NULL )
+        {
+            context->PackageName = PackageName;
+        }
+        return context;
+    }
+
+    if( slot->FilePath == NULL || slot->DmpHeader == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load module from package - invalid package slot\n");
+        return NULL;
+    }
+
+    void* file = Dmod_FileOpen( slot->FilePath, "rb" );
+    if( file == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load module from package - cannot open package file: %s\n", slot->FilePath);
+        return NULL;
+    }
+
+    Dmod_Event_ModuleLoadingInProgress( slot->FilePath, 15 );
+    void* buffer = Dmod_AlignedMalloc( slot->PackageSize, DMOD_STACK_ALIGNMENT );
+    if( buffer == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load module - cannot allocate memory\n");
+        Dmod_FileClose( file );
+        return NULL;
+    }
+
+    Dmod_Event_ModuleLoadingInProgress( slot->FilePath, 20 );
+
+    if(!ReadFile( slot->FilePath, buffer, moduleEntry->FileSize, file, moduleEntry->ModuleOffset ))
+    {
+        Dmod_FileClose( file );
+        return NULL;
+    }
+
+    void* dmfData = buffer;
+    size_t dmfSize = slot->PackageSize;
+    if( Dmod_IsDMFC(buffer, slot->PackageSize) )
+    {
+        DMOD_LOG_INFO("Module is compressed - decompressing\n");
+        if( !Dmod_FromDMFC(buffer, slot->PackageSize, &dmfData, &dmfSize) )
+        {
+            DMOD_LOG_ERROR("Cannot load module - failed to convert from DMFC\n");
+            Dmod_Free( buffer );
+            Dmod_FileClose( file );
+            return NULL;
+        }
+        Dmod_Free( buffer );
+    }
+
+    Dmod_Event_ModuleLoadingInProgress( slot->FilePath, 78 );
+    context = Dmod_Context_New( dmfData, dmfSize );
+    Dmod_FileClose( file );
+    if( context == NULL )
+    {
+        return NULL;
+    }
+    if( !Dmod_Ldr_Load( context ) || !Dmod_Context_Add( context ) )
+    {
+        Dmod_Context_Delete( context );
+        return NULL;
+    }
+    context->PackageName = PackageName;
+
+    Dmod_PrintAllApis( context );
+    Dmod_Event_ModuleLoadingInProgress( slot->FilePath, 100 );
+
+    DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
 
     return context;
 }
@@ -246,8 +412,52 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
         }
     } while( repoDir != NULL && !lastTry );
     Dmod_Free( repoEnv );
+    Dmod_PackageSlot_t* slot = NULL;
+    Dmod_DmpModuleEntry_t* moduleEntry = Dmod_Pck_FindModuleEntryInPackages( ModuleName, &slot );
+    if( moduleEntry != NULL && slot != NULL )
+    {
+        DMOD_LOG_INFO("Using module '%s' from package '%s'\n", ModuleName, Dmod_Pck_GetPackageName( slot ));
+        Dmod_Context_t* context = Dmod_LoadFromPackage( Dmod_Pck_GetPackageName( slot ), ModuleName );
+        if( context != NULL )
+        {
+            return true;
+        }
+    }
     DMOD_LOG_ERROR("Cannot load module by name - module not found: %s\n", ModuleName);
     return false;
+}
+
+/**
+ * @brief Load module by name from package
+ * 
+ * @param ModuleName Name of the module
+ * @param PackageName Name of the package
+ * 
+ * @return True if module was loaded
+ */
+bool Dmod_LoadModuleFromPackage(const char* ModuleName, const char* PackageName)
+{
+    if( ModuleName == NULL || PackageName == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load module by name from package - invalid name\n");
+        return false;
+    }
+
+    if(Dmod_Mgr_IsLoaded(ModuleName))
+    {
+        DMOD_LOG_INFO("Module %s is already loaded\n", ModuleName);
+        return true;
+    }
+
+    Dmod_Context_t* context = Dmod_LoadFromPackage( PackageName, ModuleName );
+    if( context == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot load module by name from package - module not found: %s in package %s\n", ModuleName, PackageName);
+        return false;
+    }
+
+    DMOD_LOG_INFO("Using module '%s' from package '%s'\n", ModuleName, PackageName);
+    return true;
 }
 
 /**
@@ -1085,10 +1295,11 @@ bool Dmod_IsFunctionConnected( void* FunctionPointer )
  * @param Data Destination for data to read
  * @param Size Size of the buffer 
  * @param File File to read
+ * @param FilePos Position in the file to start reading from
  * 
  * @return True if file was read successfully, false otherwise
  */
-static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* File )
+static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* File, long FilePos  )
 {
     if( Data == NULL || File == NULL )
     {
@@ -1096,7 +1307,7 @@ static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* Fil
     }
 
     // Seek to the beginning of the file
-    if( Dmod_FileSeek( File, 0, DMOD_SEEK_SET ) != 0 )
+    if( Dmod_FileSeek( File, FilePos, DMOD_SEEK_SET ) != 0 )
     {
         DMOD_LOG_ERROR("Cannot read file - cannot seek to the beginning of the file\n");
         return false;

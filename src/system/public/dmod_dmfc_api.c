@@ -55,8 +55,71 @@ bool Dmod_IsDMFC( const void* Data, size_t Size )
         return false;
     }
 
-    Dmod_DmfcHeader_t* header = (Dmod_DmfcHeader_t*)Data;
+    const Dmod_DmfcHeader_t* header = (const Dmod_DmfcHeader_t*)Data;
     return header->Signature == DMOD_DMFC_SIGNATURE;
+}
+
+/**
+ * @brief Checks if the given file is DMF file
+ * 
+ * This function checks if the given file is DMF file.
+ * 
+ * @param Data Data to check
+ * @param Size Size of the data
+ * 
+ * @return true if the data is DMF data, false otherwise
+ */
+bool Dmod_IsDMP( const void* Data, size_t Size )
+{
+    if( Data == NULL || Size < sizeof(Dmod_DmpHeader_t) )
+    {
+        return false;
+    }
+
+    const Dmod_DmpHeader_t* header = (const Dmod_DmpHeader_t*)Data;
+    return header->Signature == DMOD_DMP_SIGNATURE;
+}
+
+/**
+ * @brief Checks if the given file is DMP file
+ * 
+ * This function checks if the given file is DMP file.
+ * 
+ * @param Path Path to the file
+ * 
+ * @return true if the file is DMP file, false otherwise
+ */
+bool Dmod_IsDMPFile( const char* Path )
+{
+    if( Path == NULL )
+    {
+        return false;
+    }
+
+    void* file = Dmod_FileOpen( Path, "rb" );
+    if( file == NULL )
+    {
+        return false;
+    }
+
+    size_t fileSize = Dmod_FileSize( file );
+    if( fileSize == 0 )
+    {
+        Dmod_FileClose( file );
+        return false;
+    }
+
+    Dmod_DmpHeader_t header;
+
+    size_t read = Dmod_FileRead( &header, 1, sizeof(header), file );
+    Dmod_FileClose( file );
+    if( read != sizeof(header) )
+    {
+        return false;
+    }
+
+    bool result = Dmod_IsDMP( &header, sizeof(header) );
+    return result;
 }
 
 /**

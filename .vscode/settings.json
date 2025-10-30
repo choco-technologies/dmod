@@ -27,6 +27,7 @@
         "dmod_vars.h": "c",
         "new": "cpp",
         "difs.h": "c",
-        "difs_defs.h": "c"
+        "difs_defs.h": "c",
+        "typeinfo": "c"
     }
 }

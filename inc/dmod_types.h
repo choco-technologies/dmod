@@ -89,6 +89,32 @@ typedef struct
 
 typedef struct 
 {
+    uint32_t       Signature;       //!< DMPH
+    uint16_t       HeaderSize;      //!< Size of this header
+    uint16_t       HeaderVersion;   //!< Header version
+    char           Name[DMOD_MAX_PACKAGE_NAME_LENGTH];   //!< Package name
+    uint32_t       MainIndex;       //!< Index of the main module
+    uint32_t       ModuleCount;     //!< Number of modules
+} Dmod_DmpHeader_t;
+
+typedef struct 
+{
+    uint32_t       ModuleOffset;    //!< Offset of the module
+    uint32_t       FileSize;        //!< Size of the module's file
+    char           ModuleName[DMOD_MAX_MODULE_NAME_LENGTH]; //!< Name of the module
+} Dmod_DmpModuleEntry_t;
+
+typedef struct 
+{
+    const void*             PackageBuffer;      //!< Pointer to the package buffer
+    size_t                  PackageSize;        //!< Size of the package
+    const char*             FilePath;           //!< File path if loaded from file
+    Dmod_DmpHeader_t*       DmpHeader;          //!< DMP Header
+    Dmod_DmpModuleEntry_t*  ModuleEntries;      //!< Module entries
+} Dmod_PackageSlot_t;
+
+typedef struct 
+{
     uint32_t       SectionStart;
     uint32_t       SectionSize;
 } Dmod_ModuleSection_t;
@@ -169,6 +195,7 @@ typedef struct
     Dmod_RequiredModule_t    RequiredModules[DMOD_MAX_REQUIRED_MODULES];
     bool                     Enabled;
     bool                     Running;
+    const char*              PackageName;  
 } Dmod_Context_t;
 
 /**

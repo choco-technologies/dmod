@@ -38,6 +38,7 @@ Dmod_Context_t* Dmod_Context_New( void* Data, size_t FileSize )
     Context->Enabled    = false;
     Context->Running    = false;
     Context->UsageCounter = 0;
+    Context->PackageName = NULL;
 
     if( Context->Data == NULL )
     {

@@ -104,6 +104,7 @@ DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsModuleRequired, (const char* Module
 DMOD_BUILTIN_API( Dmod, 1.0, const char*, _GetModuleVersion, (const char* ModuleName) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _LoadModule, (const char* FilePath) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _LoadModuleByName, (const char* ModuleName) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _LoadModuleFromPackage, (const char* PackageName, const char* ModuleName) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _UnloadModule, (const char* ModuleName, bool Force) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _EnableModule, (const char* ModuleName, bool Force, const Dmod_Config_t* Config) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _DisableModule, (const char* ModuleName, bool Force ) );
@@ -111,6 +112,16 @@ DMOD_BUILTIN_API( Dmod, 1.0, int        , _RunModule, (const char* ModuleName, i
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsFunctionConnected, (void* FunctionPointer) );
 DMOD_BUILTIN_API( Dmod, 1.0, Dmod_Context_t*, _GetNextDifModule, (const char* DifSignature, Dmod_Context_t* Previous) );
 DMOD_BUILTIN_API( Dmod, 1.0, void*      , _GetDifFunction, (Dmod_Context_t* Context, const char* DifSignature) );
+
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _AddPackageBuffer, ( const void* Buffer, size_t Size, uint32_t* outIndex ) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _AddPackageFile, ( const char* FilePath, uint32_t* outIndex ) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _RemovePackage, ( const char* PackageName ) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _RemovePackageBuffer, ( const void* Buffer ) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _RemovePackageFile, ( const char* FilePath ) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsPackageAvailable, ( const char* PackageName ) );
+DMOD_BUILTIN_API( Dmod, 1.0, size_t     , _GetNumberOfPackages, ( void ) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _GetPackageInfo, ( uint32_t PackageIndex, char* outName, size_t NameMaxLength, size_t* outSize ) );
+DMOD_BUILTIN_API( Dmod, 1.0, uint32_t   , _GetMainIndexFromPackage, ( const char* PackageName ) );
 
 //! @}
 

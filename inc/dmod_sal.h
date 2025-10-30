@@ -233,6 +233,20 @@ DMOD_BUILTIN_API(Dmod, 1.0, const char*, _Compression_GetNextSupported, ( const 
 
 //! @}
 
+/**
+ * @defgroup DMOD_SAL_STRING String Interface
+ * @ingroup DMOD_SAL
+ * 
+ * This interface is used to handle strings in the system.
+ * 
+ * @addtogroup DMOD_SAL_STRING
+ * @{
+ */
+
+DMOD_BUILTIN_API(Dmod, 1.0, char*     , _StrDup,        ( const char* Str ) );
+
+//! @}
+
 #ifdef __cplusplus
 }
 #endif

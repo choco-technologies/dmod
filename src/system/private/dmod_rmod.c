@@ -268,6 +268,16 @@ bool Dmod_RMod_LoadRequiredModules( Dmod_Context_t* Context )
             continue;
         }
 
+        if(Context->PackageName != NULL)
+        {
+            DMOD_LOG_VERBOSE("Loading required module '%s' for '%s' from package '%s'\n", Context->RequiredModules[i].Name, Dmod_Context_GetModuleName( Context ), Context->PackageName);
+            if( Dmod_LoadModuleFromPackage( Context->RequiredModules[i].Name, Context->PackageName ) )
+            {
+                continue;
+            }
+            DMOD_LOG_VERBOSE("Cannot load required module '%s' for '%s' from package '%s' - trying to load from repository\n", Context->RequiredModules[i].Name, Dmod_Context_GetModuleName( Context ), Context->PackageName);
+        }
+
         if( !Dmod_LoadModuleByName( Context->RequiredModules[i].Name ) )
         {
             DMOD_LOG_ERROR("Cannot load required module '%s'\n", Context->RequiredModules[i].Name);
