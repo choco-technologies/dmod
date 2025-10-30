@@ -445,6 +445,18 @@ bool Dmod_ToDMPFile( const char* PackageName, const char* InputDir, const char* 
     }
     Dmod_CloseDir( dir );
 
+    // Print list of modules being added
+    DMOD_LOG_INFO("Adding %u module(s) to package '%s':\n", moduleCount, PackageName);
+    for( uint32_t i = 0; i < moduleCount; i++ )
+    {
+        DMOD_LOG_INFO("  [%u] %s (size: %u bytes, offset: %u)%s\n", 
+            i, 
+            moduleEntries[i].ModuleName, 
+            moduleEntries[i].FileSize,
+            moduleEntries[i].ModuleOffset,
+            (i == mainIndex) ? " [MAIN]" : "");
+    }
+
     // Create DMP header
     Dmod_DmpHeader_t header;
     header.Signature = DMOD_DMP_SIGNATURE;

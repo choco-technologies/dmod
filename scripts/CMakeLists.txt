@@ -228,48 +228,6 @@ function(dmod_create_module moduleName version moduleType)
 
     # Print the source files
     message(STATUS "SOURCES for module ${moduleName}: ${SOURCES}")
-    
-    # Check if we should create DMP packages
-    if(DEFINED DMOD_PACKAGE_NAME AND NOT "${DMOD_PACKAGE_NAME}" STREQUAL "")
-        # Find todmp tool
-        find_program(TODMP 
-                todmp
-                HINTS ${DMOD_TOOLS_BIN_DIR}
-                )
-        
-        if(TODMP)
-            message(STATUS "todmp found: ${TODMP}")
-            message(STATUS "Will create DMP packages for package name: ${DMOD_PACKAGE_NAME}")
-            
-            # Set main module name if provided
-            set(MAIN_MODULE_ARG "")
-            if(DEFINED DMOD_MAIN_MODULE_NAME AND NOT "${DMOD_MAIN_MODULE_NAME}" STREQUAL "")
-                set(MAIN_MODULE_ARG ${DMOD_MAIN_MODULE_NAME})
-                message(STATUS "  Main module will be: ${DMOD_MAIN_MODULE_NAME}")
-            endif()
-            
-            # Create DMP package from dmf directory
-            set(DMP_DMF_OUTPUT "${DMOD_BUILD_DIR}/dmp/${DMOD_PACKAGE_NAME}_dmf.dmp")
-            add_custom_command(
-                TARGET ${moduleName} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E make_directory ${DMOD_BUILD_DIR}/dmp
-                COMMAND ${TODMP} ${DMOD_PACKAGE_NAME} ${DMOD_DMF_DIR} ${DMP_DMF_OUTPUT} ${MAIN_MODULE_ARG}
-                COMMENT "Creating DMP package from DMF modules: ${DMP_DMF_OUTPUT}"
-            )
-            
-            # Create DMP package from dmfc directory (if todmfc is available)
-            if(TODMFC)
-                set(DMP_DMFC_OUTPUT "${DMOD_BUILD_DIR}/dmp/${DMOD_PACKAGE_NAME}_dmfc.dmp")
-                add_custom_command(
-                    TARGET ${moduleName} POST_BUILD
-                    COMMAND ${TODMP} ${DMOD_PACKAGE_NAME} ${DMOD_DMFC_DIR} ${DMP_DMFC_OUTPUT} ${MAIN_MODULE_ARG}
-                    COMMENT "Creating DMP package from DMFC modules: ${DMP_DMFC_OUTPUT}"
-                )
-            endif()
-        else()
-            message(WARNING "todmp not found, DMP packages will not be created")
-        endif()
-    endif()
 endfunction()
 
 #

@@ -5,18 +5,105 @@
 
 // -----------------------------------------
 //
+//      Lists contents of a DMP package
+//
+// -----------------------------------------
+int ListDMPPackage( const char* packageFile )
+{
+    printf("Reading DMP package: %s\n", packageFile);
+    
+    // Open the file
+    void* file = Dmod_FileOpen( packageFile, "rb" );
+    if( file == NULL )
+    {
+        printf("Error: Cannot open file '%s'\n", packageFile);
+        return -1;
+    }
+    
+    // Read header
+    Dmod_DmpHeader_t header;
+    if( Dmod_FileRead( &header, sizeof(header), 1, file ) != 1 )
+    {
+        printf("Error: Cannot read DMP header\n");
+        Dmod_FileClose( file );
+        return -1;
+    }
+    
+    // Verify signature
+    if( header.Signature != DMOD_DMP_SIGNATURE )
+    {
+        printf("Error: Invalid DMP signature (0x%08X)\n", header.Signature);
+        Dmod_FileClose( file );
+        return -1;
+    }
+    
+    // Print header info
+    printf("\nPackage Information:\n");
+    printf("  Name: %s\n", header.Name);
+    printf("  Version: 0x%04X\n", header.HeaderVersion);
+    printf("  Module Count: %u\n", header.ModuleCount);
+    printf("  Main Module Index: %u\n", header.MainIndex);
+    printf("  Header Size: %u bytes\n", header.HeaderSize);
+    
+    // Read module entries
+    if( header.ModuleCount == 0 )
+    {
+        printf("\nNo modules in package.\n");
+        Dmod_FileClose( file );
+        return 0;
+    }
+    
+    Dmod_DmpModuleEntry_t* entries = (Dmod_DmpModuleEntry_t*)malloc( header.ModuleCount * sizeof(Dmod_DmpModuleEntry_t) );
+    if( entries == NULL )
+    {
+        printf("Error: Cannot allocate memory for module entries\n");
+        Dmod_FileClose( file );
+        return -1;
+    }
+    
+    if( Dmod_FileRead( entries, sizeof(Dmod_DmpModuleEntry_t), header.ModuleCount, file ) != header.ModuleCount )
+    {
+        printf("Error: Cannot read module entries\n");
+        free( entries );
+        Dmod_FileClose( file );
+        return -1;
+    }
+    
+    // Print module list
+    printf("\nModules:\n");
+    for( uint32_t i = 0; i < header.ModuleCount; i++ )
+    {
+        printf("  [%u] %s\n", i, entries[i].ModuleName);
+        printf("      Offset: %u bytes\n", entries[i].ModuleOffset);
+        printf("      Size: %u bytes\n", entries[i].FileSize);
+        if( i == header.MainIndex )
+        {
+            printf("      [MAIN MODULE]\n");
+        }
+    }
+    
+    free( entries );
+    Dmod_FileClose( file );
+    
+    return 0;
+}
+
+// -----------------------------------------
+//
 //      Prints usage message
 //
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
     printf("Usage: %s <package_name> <input_dir> [output_file] [module_name]\n", AppName);
+    printf("       %s -l <package_file>\n", AppName);
     printf("\n");
     printf("Arguments:\n");
     printf("  <package_name>   - Name of the package (for the header)\n");
     printf("  <input_dir>      - Folder with modules to pack (.dmf or .dmfc files)\n");
     printf("  [output_file]    - (optional) Path to output .dmp file (default: ./package_name.dmp)\n");
     printf("  [module_name]    - (optional) Name of the main module in the package\n");
+    printf("  -l <package_file> - List contents of a DMP package\n");
 }
 
 // -----------------------------------------
@@ -34,11 +121,13 @@ void PrintHelp( const char* AppName )
     printf("Options:\n");
     printf("  -h, --help            Print this help message\n");
     printf("  -v, --version         Print version information\n");
+    printf("  -l, --list <file>     List contents of a DMP package\n");
     printf("\n");
     printf("Examples:\n");
     printf("  %s kernel ./dmfc main-app ./out/kernel.dmp\n", AppName);
     printf("  %s mypackage ./modules\n", AppName);
     printf("  %s mypackage ./modules ./output/mypackage.dmp\n", AppName);
+    printf("  %s -l ./mypackage.dmp\n", AppName);
 }
 
 // -----------------------------------------
@@ -64,6 +153,18 @@ int main( int argc, char *argv[] )
     {
         printf("Dynamic Module Loader ver. " DMOD_VERSION_STRING "\n");
         return 0;
+    }
+
+    // Handle list option
+    if( strcmp( argv[1], "-l" ) == 0 || strcmp( argv[1], "--list" ) == 0 )
+    {
+        if( argc < 3 )
+        {
+            printf("Error: Missing package file argument\n");
+            printf("Usage: %s -l <package_file>\n", argv[0]);
+            return -1;
+        }
+        return ListDMPPackage( argv[2] );
     }
 
     if( argc < 3 )
