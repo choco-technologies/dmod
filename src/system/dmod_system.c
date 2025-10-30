@@ -276,7 +276,7 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
     }
 
     Dmod_Event_ModuleLoadingInProgress( slot->FilePath, 15 );
-    void* buffer = Dmod_AlignedMalloc( slot->PackageSize, DMOD_STACK_ALIGNMENT );
+    void* buffer = Dmod_AlignedMalloc( moduleEntry->FileSize, DMOD_STACK_ALIGNMENT );
     if( buffer == NULL )
     {
         DMOD_LOG_ERROR("Cannot load module - cannot allocate memory\n");
@@ -293,11 +293,11 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
     }
 
     void* dmfData = buffer;
-    size_t dmfSize = slot->PackageSize;
-    if( Dmod_IsDMFC(buffer, slot->PackageSize) )
+    size_t dmfSize = moduleEntry->FileSize;
+    if( Dmod_IsDMFC(buffer, moduleEntry->FileSize) )
     {
         DMOD_LOG_INFO("Module is compressed - decompressing\n");
-        if( !Dmod_FromDMFC(buffer, slot->PackageSize, &dmfData, &dmfSize) )
+        if( !Dmod_FromDMFC(buffer, moduleEntry->FileSize, &dmfData, &dmfSize) )
         {
             DMOD_LOG_ERROR("Cannot load module - failed to convert from DMFC\n");
             Dmod_Free( buffer );

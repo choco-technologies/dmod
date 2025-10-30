@@ -385,12 +385,6 @@ bool Dmod_FromDMFC( const void* DmfcData, size_t DmfcSize, void** outDmfData, si
         return false;
     }
 
-    if( header->OriginalSize < (DmfcSize - sizeof(Dmod_DmfcHeader_t)) )
-    {
-        DMOD_LOG_ERROR("Cannot convert from DMFC - invalid DMFC original size\n");
-        return false;
-    }
-
     if( strlen(header->Compression) > DMOD_MAX_COMPRESSION_NAME_LENGTH )
     {
         DMOD_LOG_ERROR("Cannot convert from DMFC - compression algorithm name is too long (max: %d)\n", DMOD_MAX_COMPRESSION_NAME_LENGTH);

@@ -1136,7 +1136,7 @@ TEST_F(DmodDmfcTest, FromDMFCInvalidHeaderVersion)
 /**
  * @brief Test for Dmod_FromDMFC
  * 
- * The test checks if the function returns false for an invalid original size.
+ * The test checks if the function returns false for an invalid original size (zero).
  */
 TEST_F(DmodDmfcTest, FromDMFCInvalidOriginalSize)
 {
@@ -1147,15 +1147,12 @@ TEST_F(DmodDmfcTest, FromDMFCInvalidOriginalSize)
     header->HeaderSize = sizeof(Dmod_DmfcHeader_t);
     header->HeaderVersion = DMOD_DMFC_VERSION;
     header->OriginalSize = 0;
+    strncpy(header->Compression, "fastlz", sizeof(header->Compression));
     void* dmfcData = header;
 
     void* dmfData = nullptr;
     size_t dmfSize = 0;
     bool result = Dmod_FromDMFC(dmfcData, dmfcSize, &dmfData, &dmfSize);
-    ASSERT_FALSE(result);
-
-    header->OriginalSize = 1;
-    result = Dmod_FromDMFC(dmfcData, dmfcSize, &dmfData, &dmfSize);
     ASSERT_FALSE(result);
 
     free(header);
