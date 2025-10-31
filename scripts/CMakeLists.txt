@@ -152,7 +152,8 @@ function( create_executable_makefile targetName )
         endif()
         list(APPEND PROCESSED_LIBS ${CURRENT_LIB})
         
-        # Special case: if LIB is "dmod" and it's not a target yet, expand it manually
+        # Special case: if the library is "dmod" INTERFACE library and it's not a target yet
+        # (due to forward reference), expand it manually to its constituent libraries
         if(CURRENT_LIB STREQUAL "dmod" AND NOT TARGET ${CURRENT_LIB})
             # Add the standard include directories
             list(APPEND ALL_INC_DIRS "${DMOD_DIR}/inc")

@@ -3,7 +3,7 @@
 #
 #     This Makefile is used to build the @DMOD_EXE_NAME@ executable
 #
-#   DONT EDIT THIS FILE - it is automatically generated. 
+#   DON'T EDIT THIS FILE - it is automatically generated. 
 #   Edit the scripts/Makefile-exe.in file instead.
 #       
 # ##############################################################################
