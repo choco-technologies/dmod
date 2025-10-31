@@ -128,8 +128,10 @@ function( create_executable_makefile targetName )
     string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" DMOD_PROJECT_DIR "${DMOD_PROJECT_DIR}")
     
     set(DMOD_EXE_NAME ${targetName})
-    file(RELATIVE_PATH DMOD_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}")
-    set(DMOD_OUTPUT_DIR ${DMOD_OUTPUT_DIR})
+    # Use DMOD_BUILD_DIR variable instead of relative path
+    set(DMOD_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+    string(REPLACE "${DMOD_BUILD_DIR}" "$(DMOD_BUILD_DIR)" DMOD_OUTPUT_DIR "${DMOD_OUTPUT_DIR}")
+    string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" DMOD_OUTPUT_DIR "${DMOD_OUTPUT_DIR}")
     
     set(DMOD_EXE_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR})
     string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" DMOD_EXE_SRC_PATH "${DMOD_EXE_SRC_PATH}")

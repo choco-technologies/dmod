@@ -33,7 +33,7 @@ include $(DMOD_DIR)/paths.mk
 # -----------------------------------------------------------------------------
 # 	Project's definitions
 # -----------------------------------------------------------------------------
-OUTPUT_DIR		= ../../../build/examples/system/dmod_loader
+OUTPUT_DIR		= $(DMOD_BUILD_DIR)/examples/system/dmod_loader
 MAIN_LD			= $(DMOD_SCRIPTS_DIR)/main.ld
 DMOD_EXE_SRC_PATH = $(DMOD_DIR)/examples/system/dmod_loader
 OBJ_OUTPUT_DIR	= $(DMOD_OBJS_DIR)/$(PROJECT_NAME)
