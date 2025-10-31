@@ -90,6 +90,8 @@ void Dmod_Context_Delete( Dmod_Context_t* Context )
     {
         return;
     }
+    char moduleName[DMOD_MAX_MODULE_NAME_LENGTH] = {0};
+    strncpy( moduleName, Dmod_Context_GetModuleName( Context ), sizeof(moduleName)-1 );
 
     Dmod_Mutex_Delete( Context->Mutex );
     if( Context->Data != NULL )
@@ -97,6 +99,7 @@ void Dmod_Context_Delete( Dmod_Context_t* Context )
         Dmod_Free( Context->Data );
     }
     Dmod_Free( Context );
+    Dmod_FreeModule( moduleName );
 }
 
 /**
