@@ -47,12 +47,15 @@ function( create_library_makefile targetName )
     foreach(LIB ${DMOD_LINKED_LIBRARIES})
         message(STATUS "LIB: ${LIB}")
         
-        get_target_property(LIB_INC_DIRS ${LIB} INTERFACE_INCLUDE_DIRECTORIES)
-        if(LIB_INC_DIRS)
-            foreach(LIB_INC_DIR ${LIB_INC_DIRS})
-                message(STATUS "LIB_INC_DIR: ${LIB_INC_DIR}")
-                list(APPEND DMOD_INC_DIRS ${LIB_INC_DIR})
-            endforeach()
+        # Check if LIB is a target
+        if(TARGET ${LIB})
+            get_target_property(LIB_INC_DIRS ${LIB} INTERFACE_INCLUDE_DIRECTORIES)
+            if(LIB_INC_DIRS)
+                foreach(LIB_INC_DIR ${LIB_INC_DIRS})
+                    message(STATUS "LIB_INC_DIR: ${LIB_INC_DIR}")
+                    list(APPEND DMOD_INC_DIRS ${LIB_INC_DIR})
+                endforeach()
+            endif()
         endif()
     endforeach()
 
@@ -87,6 +90,166 @@ function( create_library_makefile targetName )
     string(REPLACE ";" "\\\n\t\t" DMOD_LIBS "${DMOD_LINKED_LIBRARIES}")
     string(REPLACE "Threads::Threads" "pthread" DMOD_LIBS "${DMOD_LIBS}")
     configure_file(${DMOD_DIR}/scripts/Makefile-lib.in ${CMAKE_CURRENT_SOURCE_DIR}/Makefile)
+endfunction()
+
+#
+#   Creates makefile for the given executable.
+#
+function( create_executable_makefile targetName )
+    # Check if DMOD_DIR is defined
+    if(NOT DEFINED DMOD_DIR)
+        message(FATAL_ERROR "DMOD_DIR is not defined. Please set DMOD_DIR variable before calling create_executable_makefile function.")
+    endif()
+    
+    # Configure the Makefile
+    if(DMOD_MODE STREQUAL "DMOD_SYSTEM")
+        set(DMOD_SYSTEM ON)
+        set(DMOD_MODULE OFF)
+    elseif(DMOD_MODE STREQUAL "DMOD_MODULE")
+        set(DMOD_SYSTEM OFF)
+        set(DMOD_MODULE ON)
+    else()
+        set(DMOD_SYSTEM OFF)
+        set(DMOD_MODULE OFF)
+    endif()
+    file(RELATIVE_PATH DMOD_PROJECT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" "${DMOD_DIR}")
+    string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" DMOD_PROJECT_DIR "${DMOD_PROJECT_DIR}")
+    
+    set(DMOD_EXE_NAME ${targetName})
+    file(RELATIVE_PATH DMOD_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}")
+    set(DMOD_OUTPUT_DIR ${DMOD_OUTPUT_DIR})
+    
+    set(DMOD_EXE_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+    string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" DMOD_EXE_SRC_PATH "${DMOD_EXE_SRC_PATH}")
+    
+    set(DMOD_LIBS_DIR ${CMAKE_BINARY_DIR}/libs)
+    string(REPLACE "${DMOD_BUILD_DIR}" "$(DMOD_BUILD_DIR)" DMOD_LIBS_DIR "${DMOD_LIBS_DIR}")
+    
+    get_target_property(DMOD_SOURCES ${targetName} SOURCES)
+    get_target_property(DMOD_INC_DIRS ${targetName} INCLUDE_DIRECTORIES)
+    get_target_property(DMOD_LINKED_LIBRARIES ${targetName} LINK_LIBRARIES)
+    get_target_property(DMOD_COMPILE_DEFINITIONS ${targetName} COMPILE_DEFINITIONS)
+    
+    # Initialize lists for collecting all libraries and include directories
+    set(ALL_LIBS "")
+    set(ALL_INC_DIRS "")
+    
+    # Check if the executable has any linked libraries
+    if(NOT DMOD_LINKED_LIBRARIES)
+        set(DMOD_LINKED_LIBRARIES "")
+    endif()
+
+    # Recursively collect libraries and include directories
+    set(LIBS_TO_PROCESS ${DMOD_LINKED_LIBRARIES})
+    set(PROCESSED_LIBS "")
+    
+    while(LIBS_TO_PROCESS)
+        list(POP_FRONT LIBS_TO_PROCESS CURRENT_LIB)
+        
+        # Skip if already processed
+        if(CURRENT_LIB IN_LIST PROCESSED_LIBS)
+            continue()
+        endif()
+        list(APPEND PROCESSED_LIBS ${CURRENT_LIB})
+        
+        # Special case: if LIB is "dmod" and it's not a target yet, expand it manually
+        if(CURRENT_LIB STREQUAL "dmod" AND NOT TARGET ${CURRENT_LIB})
+            # Add the standard include directories
+            list(APPEND ALL_INC_DIRS "${DMOD_DIR}/inc")
+            list(APPEND ALL_INC_DIRS "${DMOD_BUILD_DIR}")
+            
+            # Add the constituent libraries that dmod links to
+            list(APPEND ALL_LIBS "dmod_common")
+            if(DMOD_USE_FASTLZ)
+                list(APPEND ALL_LIBS "dmod_fastlz")
+            endif()
+            if(DMOD_SYSTEM)
+                list(APPEND ALL_LIBS "dmod_system")
+            elseif(DMOD_MODULE)
+                list(APPEND ALL_LIBS "dmod_module")
+            endif()
+            list(APPEND ALL_LIBS "pthread")
+            continue()
+        endif()
+        
+        # Check if CURRENT_LIB is a target
+        if(NOT TARGET ${CURRENT_LIB})
+            # Not a target, add to libs as-is (e.g., system libraries like pthread)
+            list(APPEND ALL_LIBS ${CURRENT_LIB})
+            continue()
+        endif()
+        
+        get_target_property(LIB_TYPE ${CURRENT_LIB} TYPE)
+        if(LIB_TYPE)
+            
+            # Get include directories
+            get_target_property(LIB_INC_DIRS ${CURRENT_LIB} INTERFACE_INCLUDE_DIRECTORIES)
+            if(LIB_INC_DIRS)
+                foreach(LIB_INC_DIR ${LIB_INC_DIRS})
+                    if(NOT LIB_INC_DIR IN_LIST ALL_INC_DIRS)
+                        list(APPEND ALL_INC_DIRS ${LIB_INC_DIR})
+                    endif()
+                endforeach()
+            endif()
+            
+            # For INTERFACE libraries, recursively get their linked libraries
+            if(LIB_TYPE STREQUAL "INTERFACE_LIBRARY")
+                # Try both INTERFACE_LINK_LIBRARIES and LINK_LIBRARIES
+                get_target_property(INTERFACE_LINK_LIBS ${CURRENT_LIB} INTERFACE_LINK_LIBRARIES)
+                if(NOT INTERFACE_LINK_LIBS OR INTERFACE_LINK_LIBS STREQUAL "INTERFACE_LINK_LIBRARIES-NOTFOUND")
+                    get_target_property(INTERFACE_LINK_LIBS ${CURRENT_LIB} LINK_LIBRARIES)
+                endif()
+                if(INTERFACE_LINK_LIBS AND NOT INTERFACE_LINK_LIBS STREQUAL "INTERFACE_LINK_LIBRARIES-NOTFOUND" AND NOT INTERFACE_LINK_LIBS STREQUAL "LINK_LIBRARIES-NOTFOUND")
+                    foreach(INTERFACE_LIB ${INTERFACE_LINK_LIBS})
+                        if(NOT INTERFACE_LIB IN_LIST PROCESSED_LIBS)
+                            list(APPEND LIBS_TO_PROCESS ${INTERFACE_LIB})
+                        endif()
+                    endforeach()
+                endif()
+            else()
+                # For non-interface libraries, add to the list
+                list(APPEND ALL_LIBS ${CURRENT_LIB})
+            endif()
+        else()
+            # Could not get type, add to libs as-is
+            list(APPEND ALL_LIBS ${CURRENT_LIB})
+        endif()
+    endwhile()
+    
+    # Combine with target's own include directories
+    if(DMOD_INC_DIRS)
+        list(APPEND ALL_INC_DIRS ${DMOD_INC_DIRS})
+    endif()
+
+    set(DMOD_DEFINITIONS "")
+    if(DMOD_COMPILE_DEFINITIONS)
+        foreach(DEFINITION ${DMOD_COMPILE_DEFINITIONS})
+            list(APPEND DMOD_DEFINITIONS ${DEFINITION})
+        endforeach()
+    endif()
+
+    set(DMOD_RELATIVE_HEADER_PATHS "")
+    foreach(HEADER_PATH ${ALL_INC_DIRS})
+        # Check if path is absolute
+        if(IS_ABSOLUTE "${HEADER_PATH}")
+            # First try to replace with dmod variables
+            string(REPLACE "${DMOD_BUILD_DIR}" "$(DMOD_BUILD_DIR)" HEADER_PATH "${HEADER_PATH}")
+            string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" HEADER_PATH "${HEADER_PATH}")
+            
+            # If still absolute, convert to relative path relative to CMAKE_CURRENT_SOURCE_DIR
+            if(IS_ABSOLUTE "${HEADER_PATH}")
+                file(RELATIVE_PATH RELATIVE_HEADER_PATH "${CMAKE_CURRENT_SOURCE_DIR}" "${HEADER_PATH}")
+                set(HEADER_PATH "${RELATIVE_HEADER_PATH}")
+            endif()
+        endif()
+        
+        list(APPEND DMOD_RELATIVE_HEADER_PATHS "${HEADER_PATH}")
+    endforeach()
+    string(REPLACE ";" "\\\n\t\t" DMOD_SOURCES "${DMOD_SOURCES}")
+    string(REPLACE ";" "\\\n\t\t" DMOD_INC_DIRS "${DMOD_RELATIVE_HEADER_PATHS}")
+    string(REPLACE ";" "\\\n\t\t" DMOD_LIBS "${ALL_LIBS}")
+    string(REPLACE "Threads::Threads" "pthread" DMOD_LIBS "${DMOD_LIBS}")
+    configure_file(${DMOD_DIR}/scripts/Makefile-exe.in ${CMAKE_CURRENT_SOURCE_DIR}/Makefile)
 endfunction()
 
 
