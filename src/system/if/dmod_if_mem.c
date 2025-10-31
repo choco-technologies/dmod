@@ -52,6 +52,20 @@
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _Malloc, ( size_t Size ))
 {
+    return Dmod_MallocEx(Size, NULL);
+}
+
+/**
+ * @brief Allocate memory
+ * 
+ * @param Size Size of memory to allocate
+ * @param ModuleName Name of the module requesting memory
+ * 
+ * @return Pointer to allocated memory
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _MallocEx, ( size_t Size, const char* ModuleName ))
+{
+    DMOD_LOG_VERBOSE("Allocating %zu bytes for module: %s\n", Size, ModuleName ? ModuleName : "NULL");
 #if DMOD_USE_ALIGNED_MALLOC_MOCK
     return Dmod_AlignedMalloc(Size, sizeof(void*));
 #elif DMOD_USE_STDLIB
@@ -71,6 +85,20 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _Malloc, ( size_t Size ))
  * @return Pointer to reallocated memory
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _Realloc, ( void* Ptr, size_t Size ))
+{
+    return Dmod_ReallocEx(Ptr, Size, NULL);
+}
+
+/**
+ * @brief Reallocate memory
+ * 
+ * @param Ptr Pointer to memory to reallocate
+ * @param Size Size of memory to allocate
+ * @param ModuleName Name of the module requesting memory
+ * 
+ * @return Pointer to reallocated memory
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _ReallocEx, ( void* Ptr, size_t Size, const char* ModuleName ))
 {
 #if DMOD_USE_STDLIB && DMOD_USE_REALLOC
     return realloc(Ptr, Size);
@@ -96,6 +124,21 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _Realloc, ( void* Ptr, size_t 
  * @note Optional - set to NULL if not supported
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _AlignedMalloc, ( size_t Size, size_t Alignment ))
+{
+    return Dmod_AlignedMallocEx(Size, Alignment, NULL);
+}
+
+/**
+ * @brief Allocate aligned memory
+ * 
+ * @param Size Size of memory to allocate
+ * @param Alignment Alignment of memory
+ * 
+ * @return Pointer to allocated memory
+ * 
+ * @note Optional - set to NULL if not supported
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _AlignedMallocEx, ( size_t Size, size_t Alignment, const char* ModuleName ))
 {
     void* mem = NULL;
     size_t pagesize = Alignment;
@@ -144,12 +187,23 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _AlignedMalloc, ( size_t Size,
     return mem;
 }
 
+
 /**
  * @brief Free memory
  * 
  * @param ptr Pointer to memory to free
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Free, ( void* ptr ))
+{
+    Dmod_FreeEx(ptr, false);
+}
+
+/**
+ * @brief Free memory
+ * 
+ * @param ptr Pointer to memory to free
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _FreeEx, ( void* ptr, const bool concatenate ))
 {
 #if DMOD_USE_ALIGNED_MALLOC_MOCK
     #if !DMOD_USE_STDLIB
@@ -162,4 +216,15 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Free, ( void* ptr ))
 #else 
     DMOD_LOG_ERROR("Dmod_Free interface not implemented");
 #endif
+}
+
+/**
+ * @brief Free all memory allocated by a module
+ * 
+ * @param ModuleName Name of the module
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _FreeModule, ( const char* ModuleName ))
+{
+    (void)ModuleName;
+    DMOD_LOG_WARN("Dmod_FreeModule interface not implemented");
 }

@@ -64,11 +64,23 @@ extern "C" {
  * 
  * @addtogroup DMOD_SAL_MEM
  * @{
- */ 
-DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Malloc ,           ( size_t Size )                     );
-DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Realloc,           ( void* Ptr, size_t Size )          );
-DMOD_BUILTIN_API(Dmod, 1.0, void ,  _Free   ,           ( void* Ptr )                       );
-DMOD_BUILTIN_API(Dmod, 1.0, void*,  _AlignedMalloc,     ( size_t Size, size_t Alignment )   );
+ */
+#if defined(DMOD_MODULE_NAME)
+#   define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, DMOD_MODULE_NAME)
+#   define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, DMOD_MODULE_NAME)
+#   define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, DMOD_MODULE_NAME)
+#   define Dmod_Free(Ptr)                           Dmod_FreeEx(Ptr, false)
+#else 
+    DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Malloc ,           ( size_t Size )                     );
+    DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Realloc,           ( void* Ptr, size_t Size )          );
+    DMOD_BUILTIN_API(Dmod, 1.0, void ,  _Free   ,           ( void* Ptr )                       );
+    DMOD_BUILTIN_API(Dmod, 1.0, void*,  _AlignedMalloc,     ( size_t Size, size_t Alignment )   );
+#endif
+DMOD_BUILTIN_API(Dmod, 1.0, void*,  _MallocEx,          ( size_t Size, const char* ModuleName ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void*,  _ReallocEx,         ( void* Ptr, size_t Size, const char* ModuleName ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void ,  _FreeEx ,           ( void* Ptr, bool Concatenate ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void*,  _AlignedMallocEx,   ( size_t Size, size_t Alignment, const char* ModuleName ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void,   _FreeModule,        ( const char* ModuleName )          );
 DMOD_BUILTIN_API(Dmod, 1.0, size_t, _ReadMemory,        ( uintptr_t Address, void* Buffer, size_t Size ) );
 DMOD_BUILTIN_API(Dmod, 1.0, size_t, _WriteMemory,       ( uintptr_t Address, const void* Buffer, size_t Size ) );
 //! @}
