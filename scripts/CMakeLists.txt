@@ -178,6 +178,8 @@ function(dmod_create_module moduleName version moduleType)
         PUBLIC
             DMOD_${moduleName}
             DMOD_MODE="DMOD_MODULE"
+            DMOD_MODULE_NAME="${moduleName}"
+            DMOD_MODULE_VERSION="${version}"
             DMOD_MODULE=1
             DMOD_SYSTEM=0
         )

@@ -50,5 +50,12 @@ int main(int argc, char** argv)
 
     _print("Hello from main using _print");
 
+    void* mem = Dmod_Malloc(128);
+    if (mem != NULL)
+    {
+        Dmod_Printf("Allocated 128 bytes at %p\n", mem);
+        Dmod_Free(mem);
+    }
+
     return 0;
 }

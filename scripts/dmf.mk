@@ -75,6 +75,8 @@ DMOD_CSOURCES	    += $(DMOD_MODULE_HEADER_SOURCE_FILE_PATH)
 DMOD_MAL_DEFS       += $(foreach impl,$(DMOD_MAL_IMPLS),DMOD_MAL_$(impl))
 DMOD_DIF_DEFS       += $(foreach impl,$(DMOD_DIF_IMPLS),DMOD_DIF_$(impl))
 DMOD_DEFINITIONS    += DMOD_${DMOD_MODULE_NAME} \
+					   DMOD_MODULE_NAME=\"$(DMOD_MODULE_NAME)\" \
+					   DMOD_MODULE_VERSION=\"$(DMOD_MODULE_VERSION)\" \
             		   DMOD_MODULE=1 \
             		   DMOD_SYSTEM=0 \
 					   $(DMOD_MAL_DEFS) \

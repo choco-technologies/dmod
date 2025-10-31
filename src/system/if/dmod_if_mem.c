@@ -65,6 +65,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _Malloc, ( size_t Size ))
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _MallocEx, ( size_t Size, const char* ModuleName ))
 {
+    DMOD_LOG_VERBOSE("Allocating %zu bytes for module: %s\n", Size, ModuleName ? ModuleName : "NULL");
 #if DMOD_USE_ALIGNED_MALLOC_MOCK
     return Dmod_AlignedMalloc(Size, sizeof(void*));
 #elif DMOD_USE_STDLIB
