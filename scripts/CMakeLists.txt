@@ -94,6 +94,18 @@ endfunction()
 
 #
 #   Creates makefile for the given executable.
+#   
+#   This function generates a Makefile for an executable target using the Makefile-exe.in template.
+#   It extracts build information from the CMake target including sources, include directories,
+#   linked libraries, and compile definitions.
+#
+#   Parameters:
+#       targetName - Name of the executable target (created with add_executable)
+#
+#   Example usage:
+#       add_executable(my_app main.c)
+#       target_link_libraries(my_app dmod)
+#       create_executable_makefile(my_app)
 #
 function( create_executable_makefile targetName )
     # Check if DMOD_DIR is defined
