@@ -64,9 +64,9 @@ endif()
 # ==============================================================================
 #                         CMake Configuration
 # ==============================================================================
-set(CPUCONFIG_CFLAGS "-mcpu=cortex-m7 -mthumb -mno-unaligned-access -DGCC_ARMCM7 -mpic-data-is-text-relative" CACHE STRING "C compiler flags")
-set(CPUCONFIG_CXXFLAGS "-mcpu=cortex-m7 -mthumb -mno-unaligned-access -DGCC_ARMCM7 -mpic-data-is-text-relative" CACHE STRING "C++ compiler flags")
-set(CPUCONFIG_LDFLAGS "-mcpu=cortex-m7 -mthumb -mno-unaligned-access -Wl,--gc-sections -Wl,-static" CACHE STRING "Linker flags")
+set(CPUCONFIG_CFLAGS "-mcpu=cortex-m7 -mthumb -mno-unaligned-access -DGCC_ARMCM7 -mpic-data-is-text-relative -mabi=aapcs" CACHE STRING "C compiler flags")
+set(CPUCONFIG_CXXFLAGS "-mcpu=cortex-m7 -mthumb -mno-unaligned-access -DGCC_ARMCM7 -mpic-data-is-text-relative -mabi=aapcs" CACHE STRING "C++ compiler flags")
+set(CPUCONFIG_LDFLAGS "-mcpu=cortex-m7 -mthumb -mno-unaligned-access -Wl,--gc-sections -Wl,-static -mabi=aapcs" CACHE STRING "Linker flags")
 set(CMAKE_C_COMPILER "${ARM_GCC}" CACHE STRING "C compiler")
 set(CMAKE_CXX_COMPILER "${ARM_GXX}" CACHE STRING "C++ compiler")
 set(CMAKE_LINKER "${ARM_LD}" CACHE STRING "Linker")
