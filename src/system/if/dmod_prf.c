@@ -32,7 +32,7 @@
  */
 
 #define DMOD_PRIVATE
-#include "dmod_prf.h"
+#include "private/dmod_prf.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
