@@ -93,7 +93,7 @@
             "description": "Select the architecture",
             "options": [
                 "arch/x86_64",
-                "arch/armv7"
+                "arch/armv7/cortex-m7"
             ]
         }
     ],
