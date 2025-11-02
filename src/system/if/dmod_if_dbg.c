@@ -40,7 +40,7 @@
 #endif
 #if DMOD_IMPLEMENT_PRINTF
 #   define DMOD_PRIVATE
-#   include "dmod_prf.h"
+#   include "private/dmod_prf.h"
 #   include <stdarg.h>
 #endif
 
