@@ -26,10 +26,42 @@ static bool PrepareModulePath( const char* RepoDir, const char* ModuleName, bool
 //==============================================================================
 
 /**
+ * @brief Initialize DMOD system
+ * 
+ * @return True if initialization was successful, false otherwise
+ */
+bool Dmod_Initialize(void)
+{
+    if(Dmod_BuiltinInputApi.SectionSize == 0)
+    {
+        Dmod_BuiltinInputApi.SectionSize = (size_t)((void*)&__dmod_inputs_end - (void*)&__dmod_inputs_start);
+        Dmod_BuiltinInputApi.ApiType = Dmod_ApiType_Input;
+        Dmod_BuiltinInputApi.InputSection = (Dmod_InputsSection_t*)&__dmod_inputs_start;
+    }
+    if(Dmod_BuiltinOutputApi.SectionSize == 0)
+    {
+        Dmod_BuiltinOutputApi.SectionSize = (size_t)((void*)&__dmod_outputs_end - (void*)&__dmod_outputs_start);
+        Dmod_BuiltinOutputApi.ApiType = Dmod_ApiType_Output;
+        Dmod_BuiltinOutputApi.OutputSection = (Dmod_OutputsSection_t*)&__dmod_outputs_start;
+    }
+    return Dmod_BuiltinInputApi.InputSection != NULL && Dmod_BuiltinOutputApi.OutputSection != NULL;
+}
+
+/**
+ * @brief Deinitialize DMOD system
+ * 
+ * @return True if deinitialization was successful, false otherwise
+ */
+bool Dmod_Deinitialize(void)
+{
+    return true;
+}
+
+/**
  * @brief Load module
- * 
+ *
  * @param Path Path to the module
- * 
+ *
  * @return Pointer to the context
  */
 Dmod_Context_t* Dmod_LoadFile( const char* Path )

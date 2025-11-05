@@ -54,6 +54,8 @@ extern "C" {
  * @addtogroup DMOD-System
  * @{
  */
+extern bool             Dmod_Initialize         ( void );
+extern bool             Dmod_Deinitialize       ( void );
 extern Dmod_Context_t*  Dmod_LoadFile           ( const char* Path );
 extern Dmod_Context_t*  Dmod_Load               ( const void* Data, size_t Size );
 extern Dmod_Context_t*  Dmod_LoadFromPackage    ( const char* PackageName, const char* ModuleName );
