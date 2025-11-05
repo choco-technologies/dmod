@@ -45,6 +45,13 @@ void PrintHelp( const char* AppName )
 // -----------------------------------------
 int main( int argc, char *argv[] )
 {
+    // Initialize Dmod system
+    if (!Dmod_Initialize())
+    {
+        printf("Error: Failed to initialize Dmod system\n");
+        return -1;
+    }
+
     if( argc < 2 )
     {
         PrintUsage( argv[0] );

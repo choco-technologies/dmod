@@ -17,6 +17,13 @@ extern const char* const dmod_difs_fopen_sig;
 
 int main( int argc, char *argv[] )
 {
+    // Initialize Dmod system
+    if (!Dmod_Initialize())
+    {
+        printf("Error: Failed to initialize Dmod system\n");
+        return -1;
+    }
+
     printf("\n=== Testing Direct DIF Access from System ===\n\n");
 
     // Load modules
