@@ -32,6 +32,8 @@ static bool PrepareModulePath( const char* RepoDir, const char* ModuleName, bool
  */
 bool Dmod_Initialize(void)
 {
+    Dmod_Printf("== dmod ver. " DMOD_VERSION_STRING " ==\n");
+    
     if(Dmod_BuiltinInputApi.SectionSize == 0)
     {
         Dmod_BuiltinInputApi.SectionSize = (size_t)((void*)&__dmod_inputs_end - (void*)&__dmod_inputs_start);
