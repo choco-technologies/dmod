@@ -12,6 +12,13 @@
 
 int main( int argc, char *argv[] )
 {
+    // Initialize Dmod system
+    if (!Dmod_Initialize())
+    {
+        printf("Error: Failed to initialize Dmod system\n");
+        return -1;
+    }
+
     printf("\n");
     printf("========================================\n");
     printf("  DIF (Dmod Interface) Test Application\n");

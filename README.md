@@ -554,6 +554,31 @@ It is also **recommended** (but not mandatory) to define those:
 | `Dmod_Mutex_Lock`    | *Locks the mutex*                     |
 | `Dmod_Mutex_Unlock`  | *Unlocks the mutex*                   |
 
+6. **Initialize the Dmod system**: Before using any Dmod functions, you must call `Dmod_Initialize()` to initialize the system's global variables. This function should be called once at the beginning of your application, before loading any modules.
+
+```c
+#include "dmod.h"
+
+int main(void)
+{
+    // Initialize Dmod system
+    if (!Dmod_Initialize())
+    {
+        // Handle initialization failure
+        return -1;
+    }
+    
+    // Now you can use Dmod functions
+    // Load modules, run applications, etc.
+    
+    // ...
+    
+    return 0;
+}
+```
+
+> **⚠️ Important**: Calling `Dmod_Initialize()` is required to ensure that the builtin API sections are properly initialized. While theoretically this might not be necessary in all cases, in practice it prevents linker-related issues and ensures that global variables are properly initialized.
+
 
 ### Module Development
 
