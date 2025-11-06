@@ -59,9 +59,6 @@ Thumbs.db
 *.dmfc
 *.dmp
 
-# Architecture-specific config (copy from configs/arch/<arch>/)
-tools-cfg.cmake
-
 # Build directories (use build/ for standard builds, not build_module/)
 build/
 build_module*/
