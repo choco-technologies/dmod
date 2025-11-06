@@ -59,7 +59,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _FileOpen, ( const char* Path,
     #if DMOD_USE_STDIO
     return fopen(Path, Mode);
     #else 
-    DMOD_LOG_ERROR("Dmod_FileOpen interface not implemented");
+    DMOD_LOG_ERROR("Dmod_FileOpen interface not implemented\n");
     return NULL;
     #endif
 }
@@ -79,7 +79,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileRead, ( void* Buffer, si
     #if DMOD_USE_STDIO
     return fread(Buffer, Size, Count, File);
     #else
-    DMOD_LOG_ERROR("Dmod_FileRead interface not implemented");
+    DMOD_LOG_ERROR("Dmod_FileRead interface not implemented\n");
     return 0;
     #endif
 }
@@ -99,7 +99,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileWrite, ( const void* Buf
     #if DMOD_USE_STDIO
     return fwrite(Buffer, Size, Count, File);
     #else
-    DMOD_LOG_ERROR("Dmod_FileWrite interface not implemented");
+    DMOD_LOG_ERROR("Dmod_FileWrite interface not implemented\n");
     return 0;
     #endif
 }
@@ -118,7 +118,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileSeek, ( void* File, long Of
     #if DMOD_USE_STDIO
     return fseek(File, Offset, Origin);
     #else 
-    DMOD_LOG_ERROR("Dmod_FileSeek interface not implemented");
+    DMOD_LOG_ERROR("Dmod_FileSeek interface not implemented\n");
     return -1;
     #endif
 }
@@ -135,7 +135,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileTell, ( void* File ))
     #if DMOD_USE_STDIO
     return ftell(File);
     #else 
-    DMOD_LOG_ERROR("Dmod_FileTell interface not implemented");
+    DMOD_LOG_ERROR("Dmod_FileTell interface not implemented\n");
     return 0;
     #endif
 }
@@ -176,7 +176,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _FileClose, ( void* File ))
     #if DMOD_USE_STDIO
     fclose(File);
     #else 
-    DMOD_LOG_ERROR("Dmod_FileClose interface not implemented");
+    DMOD_LOG_ERROR("Dmod_FileClose interface not implemented\n");
     #endif
 }
 
@@ -220,7 +220,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _OpenDir, ( const char* Path )
     #if DMOD_USE_DIRENT
     return opendir(Path);
     #else
-    DMOD_LOG_ERROR("Dmod_OpenDir interface not implemented");
+    DMOD_LOG_ERROR("Dmod_OpenDir interface not implemented\n");
     return NULL;
     #endif
 }
@@ -238,7 +238,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _ReadDir, ( void* Dir ))
     struct dirent* entry = readdir((DIR*)Dir);
     return entry ? entry->d_name : NULL;
     #else
-    DMOD_LOG_ERROR("Dmod_ReadDir interface not implemented");
+    DMOD_LOG_ERROR("Dmod_ReadDir interface not implemented\n");
     return NULL;
     #endif
 }
@@ -253,7 +253,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _CloseDir, ( void* Dir ))
     #if DMOD_USE_DIRENT
     closedir((DIR*)Dir);
     #else
-    DMOD_LOG_ERROR("Dmod_CloseDir interface not implemented");
+    DMOD_LOG_ERROR("Dmod_CloseDir interface not implemented\n");
     #endif
 }
 
@@ -270,7 +270,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _MakeDir, ( const char* Path, in
     #if DMOD_USE_DIRENT
     return mkdir(Path, (mode_t)Mode);
     #else
-    DMOD_LOG_ERROR("Dmod_MakeDir interface not implemented");
+    DMOD_LOG_ERROR("Dmod_MakeDir interface not implemented\n");
     return -1;
     #endif
 }
