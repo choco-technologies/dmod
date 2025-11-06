@@ -81,7 +81,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _Mutex_New, ( bool Recursive )
 
     return Mutex;
     #else
-    DMOD_LOG_WARN("Dmod_Mutex_New interface not implemented");
+    DMOD_LOG_WARN("Dmod_Mutex_New interface not implemented\n");
     return NULL;
     #endif
 }
@@ -102,8 +102,15 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Mutex_Lock, ( void* Mutex ))
 
     return pthread_mutex_lock( Mutex );
     #else
-    DMOD_LOG_WARN("Dmod_Mutex_Lock interface not implemented");
-    return -ENOSYS;
+    if( Mutex == NULL )
+    {
+        return 0; // No-op if mutex is NULL
+    }
+    else 
+    {
+        DMOD_LOG_WARN("Dmod_Mutex_Lock interface not implemented\n");
+        return -ENOSYS;
+    }
     #endif
 }
 
@@ -123,8 +130,15 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Mutex_Unlock, ( void* Mutex ))
 
     return pthread_mutex_unlock( Mutex );
     #else
-    DMOD_LOG_WARN("Dmod_Mutex_Unlock interface not implemented");
-    return -ENOSYS;
+    if(Mutex == NULL )
+    {
+        return 0; // No-op if mutex is NULL
+    }
+    else 
+    {
+        DMOD_LOG_WARN("Dmod_Mutex_Unlock interface not implemented\n");
+        return -ENOSYS;
+    }
     #endif
 }
 
@@ -149,6 +163,13 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Mutex_Delete, ( void* Mutex ))
 
     Dmod_Free( Mutex );
     #else
-    DMOD_LOG_WARN("Dmod_Mutex_Delete interface not implemented");
+    if(Mutex == NULL )
+    {
+        return; // No-op if mutex is NULL
+    }
+    else
+    {
+        DMOD_LOG_WARN("Dmod_Mutex_Delete interface not implemented\n");
+    }
     #endif
 }
