@@ -1,29 +1,24 @@
 # ##############################################################################
-#  Makefile for the dmod_loader executable
+#  Makefile for the @DMOD_EXE_NAME@ executable
 #
-#     This Makefile is used to build the dmod_loader executable
+#     This Makefile is used to build the @DMOD_EXE_NAME@ executable
 #
 #   DON'T EDIT THIS FILE - it is automatically generated. 
 #   Edit the scripts/Makefile-exe.in file instead.
 #       
 # ##############################################################################
 ifeq ($(DMOD_DIR),)
-    DMOD_DIR = ../../../
+    DMOD_DIR = @DMOD_PROJECT_DIR@
 endif
 
 #
 #  Name of the executable
 #
-PROJECT_NAME=dmod_loader
-DMOD_SOURCES=main.c
-DMOD_INC_DIRS = $(DMOD_DIR)/inc\
-		$(DMOD_BUILD_DIR)\
-		$(DMOD_DIR)/examples/system/dmod_loader
-DMOD_LIBS = dmod_common\
-		dmod_fastlz\
-		dmod_system\
-		pthread
-DEFINITIONS = 
+PROJECT_NAME=@DMOD_EXE_NAME@
+DMOD_SOURCES=@DMOD_SOURCES@
+DMOD_INC_DIRS = @DMOD_INC_DIRS@
+DMOD_LIBS = @DMOD_LIBS@
+DEFINITIONS = @DMOD_DEFINITIONS@
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths
@@ -33,9 +28,9 @@ include $(DMOD_DIR)/paths.mk
 # -----------------------------------------------------------------------------
 # 	Project's definitions
 # -----------------------------------------------------------------------------
-OUTPUT_DIR		= $(DMOD_BUILD_DIR)/examples/system/dmod_loader
+OUTPUT_DIR		= @DMOD_OUTPUT_DIR@
 MAIN_LD			= $(DMOD_SCRIPTS_DIR)/main.ld
-DMOD_EXE_SRC_PATH = $(DMOD_DIR)/examples/system/dmod_loader
+DMOD_EXE_SRC_PATH = @DMOD_EXE_SRC_PATH@
 OBJ_OUTPUT_DIR	= $(DMOD_OBJS_DIR)/$(PROJECT_NAME)
 
 # -----------------------------------------------------------------------------
