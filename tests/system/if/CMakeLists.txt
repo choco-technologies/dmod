@@ -4,5 +4,6 @@ set(TEST_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_mock_memory.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_dir.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_snprintf.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_env.cpp
         PARENT_SCOPE
         )
