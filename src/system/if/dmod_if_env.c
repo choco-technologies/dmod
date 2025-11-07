@@ -68,3 +68,24 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetEnv, ( const char* N
     return value;
 }
 
+/**
+ * @brief Set environment variable
+ * 
+ * @param Name Name of the environment variable
+ * @param Value Value to set for the environment variable
+ * @param Overwrite If non-zero, overwrite existing variable, otherwise do not change it
+ * 
+ * @return 0 on success, -1 on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _SetEnv, ( const char* Name, const char* Value, int Overwrite ))
+{
+#if DMOD_USE_STDLIB && DMOD_USE_GETENV
+    return setenv(Name, Value, Overwrite);
+#else
+    (void)Name;
+    (void)Value;
+    (void)Overwrite;
+    return -1;
+#endif
+}
+

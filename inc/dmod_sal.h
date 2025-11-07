@@ -121,13 +121,14 @@ DMOD_BUILTIN_API(Dmod, 1.0, int         , _MakeDir,     ( const char* Path, int 
  * @defgroup DMOD_SAL_ENV Environment Interface
  * @ingroup DMOD_SAL
  * 
- * This interface is used to get environment variables in the system.
+ * This interface is used to get and set environment variables in the system.
  * 
  * @addtogroup DMOD_SAL_ENV
  * @{
  */
 
 DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetEnv, ( const char* Name ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int, _SetEnv, ( const char* Name, const char* Value, int Overwrite ) );
 
 //! @}
 
