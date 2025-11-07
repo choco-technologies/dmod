@@ -32,7 +32,7 @@ static bool PrepareModulePath( const char* RepoDir, const char* ModuleName, bool
  */
 bool Dmod_Initialize(void)
 {
-    Dmod_Printf("== dmod ver. " DMOD_VERSION_STRING " ==\n");
+    DMOD_LOG_INFO("== dmod ver. " DMOD_VERSION_STRING " ==\n");
     
     if(Dmod_BuiltinInputApi.SectionSize == 0)
     {
