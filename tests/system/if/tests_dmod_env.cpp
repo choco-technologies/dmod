@@ -9,14 +9,6 @@
 
 class DmodEnvTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-    }
-
-    void TearDown() override
-    {
-    }
 };
 
 /**
@@ -87,7 +79,7 @@ TEST_F(DmodEnvTest, SetEnvOverwriteDisabled)
     
     // Try to overwrite with overwrite=0
     int result2 = Dmod_SetEnv(testName, newValue, 0);
-    ASSERT_EQ(result2, 0); // setenv returns 0 even when not overwriting
+    ASSERT_EQ(result2, 0); // Should succeed
     
     // Value should remain unchanged
     const char* value2 = Dmod_GetEnv(testName);
