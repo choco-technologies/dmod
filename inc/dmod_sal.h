@@ -260,6 +260,24 @@ DMOD_BUILTIN_API(Dmod, 1.0, char*     , _StrDup,        ( const char* Str ) );
 
 //! @}
 
+/**
+ * @defgroup DMOD_SAL_INPUT User Input Interface
+ * @ingroup DMOD_SAL
+ * 
+ * This interface is used to read data from the user.
+ * The default implementation is provided in the DMOD system as weak symbols
+ * and uses the standard getc, fgets, and scanf functions.
+ * 
+ * @addtogroup DMOD_SAL_INPUT
+ * @{
+ */
+
+DMOD_BUILTIN_API(Dmod, 1.0, int  , _Getc,  ( void ) );
+DMOD_BUILTIN_API(Dmod, 1.0, char*, _Gets,  ( char* Buffer, int Size ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int  , _Scanf, ( const char* Format, ... ) );
+
+//! @}
+
 #ifdef __cplusplus
 }
 #endif
