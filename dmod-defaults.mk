@@ -18,6 +18,15 @@ ifndef DMOD_IMPLEMENT_PRINTF
     endif
 endif
 
+ifndef DMOD_IMPLEMENT_SCANF
+    # Use custom scanf implementation when STDIO is not available
+    ifneq ($(DMOD_USE_STDIO), ON)
+        DMOD_IMPLEMENT_SCANF = ON
+    else
+        DMOD_IMPLEMENT_SCANF = OFF
+    endif
+endif
+
 ifndef DMOD_USE_DIRENT
     DMOD_USE_DIRENT = ON
 endif
