@@ -35,6 +35,11 @@
 #   include <stdio.h>
 #   include <stdarg.h>
 #endif
+#if DMOD_IMPLEMENT_SCANF
+#   define DMOD_PRIVATE
+#   include "private/dmod_scf.h"
+#   include <stdarg.h>
+#endif
 
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
@@ -78,6 +83,60 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, char*, _Gets, ( char* Buffer, int Siz
 }
 
 /**
+ * @brief Vsscanf function - reads formatted input from a string buffer with va_list
+ * 
+ * @param Buffer Input buffer to scan from
+ * @param Format Format string specifying how to read the input
+ * @param Args Variable argument list to store the read values
+ * 
+ * @return Number of input items successfully matched and assigned, 
+ *         or EOF on error or end-of-input
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Vsscanf, ( const char* Buffer, const char* Format, va_list Args ))
+{
+    #if DMOD_USE_STDIO
+    if( Buffer == NULL || Format == NULL )
+    {
+        return EOF;
+    }
+    return vsscanf( Buffer, Format, Args );
+    #elif DMOD_IMPLEMENT_SCANF
+    return Dmod_Vsscanf_Impl( Buffer, Format, Args );
+    #else
+    (void)Buffer;
+    (void)Format;
+    (void)Args;
+    return EOF;
+    #endif
+}
+
+/**
+ * @brief Sscanf function - reads formatted input from a string buffer
+ * 
+ * @param Buffer Input buffer to scan from
+ * @param Format Format string specifying how to read the input
+ * @param ... Variable arguments to store the read values
+ * 
+ * @return Number of input items successfully matched and assigned, 
+ *         or EOF on error or end-of-input
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Sscanf, ( const char* Buffer, const char* Format, ... ))
+{
+    #if DMOD_USE_STDIO || DMOD_IMPLEMENT_SCANF
+    int Ret = 0;
+    va_list Args;
+    va_start( Args, Format );
+    Ret = Dmod_Vsscanf( Buffer, Format, Args );
+    va_end( Args );
+    return Ret;
+    #else
+    (void)Buffer;
+    (void)Format;
+    return EOF;
+    #endif
+}
+
+/**
  * @brief Vscanf function - reads formatted input from standard input with va_list
  * 
  * @param Format Format string specifying how to read the input
@@ -108,7 +167,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Vscanf, ( const char* Format, v
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Scanf, ( const char* Format, ... ))
 {
-    #if DMOD_USE_STDIO
+    #if DMOD_USE_STDIO || DMOD_IMPLEMENT_SCANF
     int Ret = 0;
     va_list Args;
     va_start( Args, Format );
