@@ -450,6 +450,56 @@ Total file systems found: 2
 For a complete working example, see the [DIF examples directory](examples/dif/).
 
 ---
+
+### Module Listing API
+
+The DMOD library provides an API to iterate through all loaded modules in the system. This is useful for debugging, monitoring, and management applications.
+
+#### API Reference
+
+**`Dmod_GetNextModule( const Dmod_ModuleInfo_t* Last )`**
+
+Iterates through all loaded modules in the system.
+- **Last**: Pointer to the previous module info (NULL to start from the beginning)
+- **Returns**: Pointer to the next module info, or NULL if no more modules
+
+The returned `Dmod_ModuleInfo_t` structure contains:
+- `ModuleName`: Name of the module
+- `Version`: Version string of the module
+- `State`: Current state of the module:
+  - `Dmod_ModuleState_Available`: Module is available but not loaded
+  - `Dmod_ModuleState_Loaded`: Module is loaded but not enabled
+  - `Dmod_ModuleState_Enabled`: Module is enabled (library modules)
+  - `Dmod_ModuleState_Running`: Module is running (application modules)
+
+#### Usage Example
+
+```c
+#include "dmod.h"
+
+void ListAllModules(void)
+{
+    const Dmod_ModuleInfo_t* moduleInfo = Dmod_GetNextModule(NULL);
+    
+    while(moduleInfo != NULL)
+    {
+        printf("Module: %s, Version: %s, State: %d\n",
+               moduleInfo->ModuleName,
+               moduleInfo->Version,
+               moduleInfo->State);
+        
+        moduleInfo = Dmod_GetNextModule(moduleInfo);
+    }
+}
+```
+
+For a complete working example with formatted output, see the `dmod_loader` example with the `--list` command:
+
+```bash
+./dmod_loader --list
+```
+
+---
 ## Getting Started
 
 To use the **Dmod** repository, you need to integrate it into your project first. This section will guide you through the initial steps to get started with Dmod, including integration into your project and developing your first module.
