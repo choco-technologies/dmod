@@ -272,9 +272,10 @@ DMOD_BUILTIN_API(Dmod, 1.0, char*     , _StrDup,        ( const char* Str ) );
  * @{
  */
 
-DMOD_BUILTIN_API(Dmod, 1.0, int  , _Getc,  ( void ) );
-DMOD_BUILTIN_API(Dmod, 1.0, char*, _Gets,  ( char* Buffer, int Size ) );
-DMOD_BUILTIN_API(Dmod, 1.0, int  , _Scanf, ( const char* Format, ... ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int  , _Getc,   ( void ) );
+DMOD_BUILTIN_API(Dmod, 1.0, char*, _Gets,   ( char* Buffer, int Size ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int  , _Vscanf, ( const char* Format, va_list Args ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int  , _Scanf,  ( const char* Format, ... ) );
 
 //! @}
 

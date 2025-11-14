@@ -78,6 +78,26 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, char*, _Gets, ( char* Buffer, int Siz
 }
 
 /**
+ * @brief Vscanf function - reads formatted input from standard input with va_list
+ * 
+ * @param Format Format string specifying how to read the input
+ * @param Args Variable argument list to store the read values
+ * 
+ * @return Number of input items successfully matched and assigned, 
+ *         or EOF on error or end-of-file
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Vscanf, ( const char* Format, va_list Args ))
+{
+    #if DMOD_USE_STDIO
+    return vscanf( Format, Args );
+    #else
+    (void)Format;
+    (void)Args;
+    return EOF;
+    #endif
+}
+
+/**
  * @brief Scanf function - reads formatted input from standard input
  * 
  * @param Format Format string specifying how to read the input
@@ -92,7 +112,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Scanf, ( const char* Format, ..
     int Ret = 0;
     va_list Args;
     va_start( Args, Format );
-    Ret = vscanf( Format, Args );
+    Ret = Dmod_Vscanf( Format, Args );
     va_end( Args );
     return Ret;
     #else
