@@ -84,4 +84,22 @@ clean:
 	@$(RM) -rf $(OUTPUT_DIR)/$(PROJECT_NAME)
 	@$(RM) -rf $(OBJ_OUTPUT_DIR)
 
-.PHONY: all clean
+# -----------------------------------------------------------------------------
+# 	Install rules
+# -----------------------------------------------------------------------------
+# Installation directory - can be overridden by setting INSTALL_PREFIX
+INSTALL_PREFIX ?= /usr/local
+INSTALL_BIN_DIR = $(INSTALL_PREFIX)/bin
+
+install: $(PROJECT_NAME)
+	@echo "Installing $(PROJECT_NAME) to $(INSTALL_BIN_DIR)..."
+	@$(MKDIR) -p $(INSTALL_BIN_DIR)
+	@install -m 755 $(OUTPUT_DIR)/$(PROJECT_NAME) $(INSTALL_BIN_DIR)/$(PROJECT_NAME)
+	@echo "$(PROJECT_NAME) installed successfully to $(INSTALL_BIN_DIR)/$(PROJECT_NAME)"
+
+uninstall:
+	@echo "Uninstalling $(PROJECT_NAME) from $(INSTALL_BIN_DIR)..."
+	@$(RM) -f $(INSTALL_BIN_DIR)/$(PROJECT_NAME)
+	@echo "$(PROJECT_NAME) uninstalled successfully"
+
+.PHONY: all clean install uninstall

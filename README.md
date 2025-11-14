@@ -730,6 +730,52 @@ cmake -DDMOD_MODE=DMOD_SYSTEM -B build -S .
 cmake --build build/
 ```
 
+### Installing Tools
+
+Dmod includes utility tools like `todmfc` (DMF Compressor) and `todmp` (DMP Package Creator) that can be installed to your system for easy access.
+
+#### Installing with CMake
+
+To install the tools using CMake, build the project in SYSTEM mode with tools enabled, then use the install target:
+
+```sh
+cmake -DDMOD_MODE=DMOD_SYSTEM -DDMOD_BUILD_TOOLS=ON -B build -S .
+cmake --build build/
+cmake --install build/
+```
+
+By default, tools are installed to `/usr/local/bin`. You can change the installation prefix:
+
+```sh
+cmake --install build/ --prefix /custom/path
+```
+
+#### Installing with Make
+
+To install tools using Make, navigate to the tool directory and use the install target:
+
+```sh
+cd tools/system/todmfc
+make install
+```
+
+By default, tools are installed to `/usr/local/bin`. You can customize the installation directory:
+
+```sh
+make install INSTALL_PREFIX=/custom/path
+```
+
+#### Uninstalling Tools
+
+To uninstall a tool installed with Make:
+
+```sh
+cd tools/system/todmfc
+make uninstall INSTALL_PREFIX=/custom/path
+```
+
+Note: Tools installed with CMake should be uninstalled using your package manager or by manually removing the files from the installation directory.
+
 
 ---
 
