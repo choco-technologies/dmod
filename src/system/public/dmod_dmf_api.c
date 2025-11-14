@@ -501,3 +501,96 @@ void* Dmod_GetDifFunction( Dmod_Context_t* Context, const char* DifSignature )
     return NULL;
 }
 
+/**
+ * @brief Get next module in the system
+ * 
+ * @param Last Pointer to the last module info (NULL to start from beginning)
+ * 
+ * @return Pointer to the next module info or NULL if no more modules
+ * 
+ * @note This function iterates through all loaded modules in the system.
+ *       Call with NULL to start iteration, then pass the returned pointer
+ *       repeatedly until NULL is returned.
+ */
+const Dmod_ModuleInfo_t* Dmod_GetNextModule( const Dmod_ModuleInfo_t* Last )
+{
+    static Dmod_ModuleInfo_t moduleInfo;
+    
+    Dmod_EnterCritical();
+    
+    size_t startIndex = 0;
+    
+    // If Last is provided, find the starting point for iteration
+    if( Last != NULL )
+    {
+        // Find the module by name to get the next one
+        bool foundLast = false;
+        for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+        {
+            if( Dmod_Contexts[i] == NULL || !Dmod_Context_IsValid( Dmod_Contexts[i] ) )
+            {
+                continue;
+            }
+            
+            if( Dmod_Contexts[i]->Header == NULL )
+            {
+                continue;
+            }
+            
+            if( strcmp( Dmod_Contexts[i]->Header->Name, Last->ModuleName ) == 0 )
+            {
+                startIndex = i + 1;
+                foundLast = true;
+                break;
+            }
+        }
+        
+        if( !foundLast )
+        {
+            // Last module not found, start from beginning
+            startIndex = 0;
+        }
+    }
+    
+    // Search for the next valid module
+    for(size_t i = startIndex; i < DMOD_MAX_MODULES; i++)
+    {
+        if( Dmod_Contexts[i] == NULL || !Dmod_Context_IsValid( Dmod_Contexts[i] ) )
+        {
+            continue;
+        }
+        
+        if( Dmod_Contexts[i]->Header == NULL )
+        {
+            continue;
+        }
+        
+        // Fill in module info
+        strncpy( moduleInfo.ModuleName, Dmod_Contexts[i]->Header->Name, DMOD_MAX_MODULE_NAME_LENGTH - 1 );
+        moduleInfo.ModuleName[DMOD_MAX_MODULE_NAME_LENGTH - 1] = '\0';
+        
+        strncpy( moduleInfo.Version, Dmod_Contexts[i]->Header->Version, DMOD_MAX_VERSION_LENGTH - 1 );
+        moduleInfo.Version[DMOD_MAX_VERSION_LENGTH - 1] = '\0';
+        
+        // Determine module state
+        if( Dmod_Contexts[i]->Running )
+        {
+            moduleInfo.State = Dmod_ModuleState_Running;
+        }
+        else if( Dmod_Contexts[i]->Enabled )
+        {
+            moduleInfo.State = Dmod_ModuleState_Enabled;
+        }
+        else
+        {
+            moduleInfo.State = Dmod_ModuleState_Loaded;
+        }
+        
+        Dmod_ExitCritical();
+        return &moduleInfo;
+    }
+    
+    Dmod_ExitCritical();
+    return NULL;
+}
+

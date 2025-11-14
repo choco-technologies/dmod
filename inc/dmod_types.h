@@ -27,6 +27,16 @@ typedef enum
     Dmod_ModuleType_Count,
 } Dmod_ModuleType_t;
 
+typedef enum 
+{
+    Dmod_ModuleState_Available,     //!< Module is available but not loaded
+    Dmod_ModuleState_Loaded,        //!< Module is loaded but not enabled
+    Dmod_ModuleState_Enabled,       //!< Module is enabled (library) 
+    Dmod_ModuleState_Running,       //!< Module is running (application)
+
+    Dmod_ModuleState_Count,
+} Dmod_ModuleState_t;
+
 typedef struct 
 {
     uint32_t       Size;
@@ -175,6 +185,18 @@ typedef struct
     char           Name[DMOD_MAX_MODULE_NAME_LENGTH];
     char           Version[DMOD_MAX_VERSION_LENGTH];
 } Dmod_RequiredModule_t;
+
+/**
+ * @brief Module information structure
+ * 
+ * @note This structure is used to retrieve information about loaded or available modules
+ */
+typedef struct 
+{
+    char                    ModuleName[DMOD_MAX_MODULE_NAME_LENGTH];
+    char                    Version[DMOD_MAX_VERSION_LENGTH];
+    Dmod_ModuleState_t      State;
+} Dmod_ModuleInfo_t;
 
 /**
  * @brief Context handle
