@@ -149,6 +149,16 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Vscanf, ( const char* Format, v
 {
     #if DMOD_USE_STDIO
     return vscanf( Format, Args );
+    #elif DMOD_IMPLEMENT_SCANF
+    // When custom scanf implementation is available but stdio is not,
+    // read a line of input and use Vsscanf to parse it
+    char buffer[256];
+    char* result = Dmod_Gets( buffer, sizeof(buffer) );
+    if( result == NULL )
+    {
+        return EOF;
+    }
+    return Dmod_Vsscanf( buffer, Format, Args );
     #else
     (void)Format;
     (void)Args;
