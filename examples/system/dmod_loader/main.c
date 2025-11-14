@@ -14,6 +14,56 @@ void PrintUsage( const char* AppName )
 
 // -----------------------------------------
 //
+//      Lists all loaded modules
+//
+// -----------------------------------------
+void ListModules( void )
+{
+    printf("Loaded modules:\n");
+    printf("%-30s %-15s %-15s\n", "Module Name", "Version", "State");
+    printf("%-30s %-15s %-15s\n", "----------", "-------", "-----");
+    
+    const Dmod_ModuleInfo_t* moduleInfo = Dmod_GetNextModule( NULL );
+    int count = 0;
+    
+    while( moduleInfo != NULL )
+    {
+        const char* stateStr = "Unknown";
+        switch( moduleInfo->State )
+        {
+            case Dmod_ModuleState_Available:
+                stateStr = "Available";
+                break;
+            case Dmod_ModuleState_Loaded:
+                stateStr = "Loaded";
+                break;
+            case Dmod_ModuleState_Enabled:
+                stateStr = "Enabled";
+                break;
+            case Dmod_ModuleState_Running:
+                stateStr = "Running";
+                break;
+            default:
+                break;
+        }
+        
+        printf("%-30s %-15s %-15s\n", moduleInfo->ModuleName, moduleInfo->Version, stateStr);
+        count++;
+        moduleInfo = Dmod_GetNextModule( moduleInfo );
+    }
+    
+    if( count == 0 )
+    {
+        printf("No modules loaded.\n");
+    }
+    else
+    {
+        printf("\nTotal modules: %d\n", count);
+    }
+}
+
+// -----------------------------------------
+//
 //      Prints help message
 //
 // -----------------------------------------
@@ -26,6 +76,7 @@ void PrintHelp( const char* AppName )
     printf("Options:\n");
     printf("  -h, --help                Print this help message\n");
     printf("  -v, --version             Print version information\n");
+    printf("  -l, --list                List all loaded modules\n");
     printf("  --module <module_name>    Specify which module to load from a DMP package\n");
     printf("  --args <arguments>        Arguments to pass to the application module\n\n");
     printf("Module Types:\n");
@@ -36,6 +87,7 @@ void PrintHelp( const char* AppName )
     printf("  %s my-package.dmp --module my_module\n", AppName);
     printf("  %s my-app.dmf --args \"arg1 arg2\"\n", AppName);
     printf("  %s my-package.dmp --module my_module --args \"--verbose\"\n", AppName);
+    printf("  %s -l\n", AppName);
 }
 
 // -----------------------------------------
@@ -67,6 +119,12 @@ int main( int argc, char *argv[] )
     if( strcmp( argv[1], "-v" ) == 0 || strcmp( argv[1], "--version" ) == 0 )
     {
         printf("Dynamic Module Loader ver. " DMOD_VERSION_STRING "\n");
+        return 0;
+    }
+
+    if( strcmp( argv[1], "-l" ) == 0 || strcmp( argv[1], "--list" ) == 0 )
+    {
+        ListModules();
         return 0;
     }
 
@@ -187,6 +245,11 @@ int main( int argc, char *argv[] )
             return -1;
         }
         printf("Library module enabled successfully\n");
+        
+        // List loaded modules to demonstrate the API
+        printf("\n");
+        ListModules();
+        printf("\n");
         
         printf("Disabling library module...\n");
         if( !Dmod_Disable( context, false ) )
