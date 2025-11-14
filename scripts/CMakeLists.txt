@@ -274,4 +274,10 @@ function(dmod_add_tool toolName)
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${toolName}> ${DMOD_TOOLS_BIN_DIR}/${toolName}
         COMMENT "Copying the binary to the tools directory"
     )
+
+    # Install the tool to the system bin directory
+    install(TARGETS ${toolName}
+        RUNTIME DESTINATION bin
+        COMPONENT tools
+    )
 endfunction()
