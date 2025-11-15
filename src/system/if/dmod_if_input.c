@@ -122,18 +122,12 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Vsscanf, ( const char* Buffer, 
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Sscanf, ( const char* Buffer, const char* Format, ... ))
 {
-    #if DMOD_USE_STDIO || DMOD_IMPLEMENT_SCANF
     int Ret = 0;
     va_list Args;
     va_start( Args, Format );
     Ret = Dmod_Vsscanf( Buffer, Format, Args );
     va_end( Args );
     return Ret;
-    #else
-    (void)Buffer;
-    (void)Format;
-    return EOF;
-    #endif
 }
 
 /**
@@ -177,15 +171,10 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Vscanf, ( const char* Format, v
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Scanf, ( const char* Format, ... ))
 {
-    #if DMOD_USE_STDIO || DMOD_IMPLEMENT_SCANF
     int Ret = 0;
     va_list Args;
     va_start( Args, Format );
     Ret = Dmod_Vscanf( Format, Args );
     va_end( Args );
     return Ret;
-    #else
-    (void)Format;
-    return EOF;
-    #endif
 }
