@@ -273,3 +273,60 @@ TEST_F(DmodGetNextModuleTest, GetNextModuleWithGaps)
     info = Dmod_GetNextModule(info);
     EXPECT_EQ(info, nullptr);
 }
+
+TEST_F(DmodGetNextModuleTest, GetNextModuleWithPackages)
+{
+    // Create a mock package with modules
+    // First, initialize package slots
+    extern Dmod_PackageSlot_t Dmod_Packages[DMOD_MAX_NUMBER_OF_PACKAGES];
+    
+    // Create a mock DMP header
+    Dmod_DmpHeader_t* dmpHeader = (Dmod_DmpHeader_t*)malloc(sizeof(Dmod_DmpHeader_t));
+    ASSERT_NE(dmpHeader, nullptr);
+    dmpHeader->Signature = DMOD_DMP_SIGNATURE;
+    dmpHeader->ModuleCount = 2;
+    strncpy(dmpHeader->Name, "test_package", DMOD_MAX_PACKAGE_NAME_LENGTH);
+    
+    // Create mock module entries
+    Dmod_DmpModuleEntry_t* entries = (Dmod_DmpModuleEntry_t*)malloc(sizeof(Dmod_DmpModuleEntry_t) * 2);
+    ASSERT_NE(entries, nullptr);
+    strncpy(entries[0].ModuleName, "available_module1", DMOD_MAX_MODULE_NAME_LENGTH);
+    strncpy(entries[1].ModuleName, "available_module2", DMOD_MAX_MODULE_NAME_LENGTH);
+    
+    // Set up package slot
+    Dmod_Packages[0].DmpHeader = dmpHeader;
+    Dmod_Packages[0].ModuleEntries = entries;
+    Dmod_Packages[0].PackageBuffer = (void*)0x1; // Non-null to indicate slot is used
+    
+    // Also add one loaded module
+    Dmod_Context_t* ctx = CreateMockContext("loaded_module", "1.0", true, false);
+    ASSERT_NE(ctx, nullptr);
+    Dmod_Context_Add(ctx);
+    
+    // Iterate through modules
+    const Dmod_ModuleInfo_t* info = Dmod_GetNextModule(NULL);
+    ASSERT_NE(info, nullptr);
+    EXPECT_STREQ(info->ModuleName, "loaded_module");
+    EXPECT_EQ(info->State, Dmod_ModuleState_Enabled);
+    
+    // Next should be available modules from package
+    info = Dmod_GetNextModule(info);
+    ASSERT_NE(info, nullptr);
+    EXPECT_STREQ(info->ModuleName, "available_module1");
+    EXPECT_EQ(info->State, Dmod_ModuleState_Available);
+    
+    info = Dmod_GetNextModule(info);
+    ASSERT_NE(info, nullptr);
+    EXPECT_STREQ(info->ModuleName, "available_module2");
+    EXPECT_EQ(info->State, Dmod_ModuleState_Available);
+    
+    info = Dmod_GetNextModule(info);
+    EXPECT_EQ(info, nullptr);
+    
+    // Clean up
+    Dmod_Packages[0].DmpHeader = NULL;
+    Dmod_Packages[0].ModuleEntries = NULL;
+    Dmod_Packages[0].PackageBuffer = NULL;
+    free(dmpHeader);
+    free(entries);
+}

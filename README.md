@@ -453,13 +453,13 @@ For a complete working example, see the [DIF examples directory](examples/dif/).
 
 ### Module Listing API
 
-The DMOD library provides an API to iterate through all loaded modules in the system. This is useful for debugging, monitoring, and management applications.
+The DMOD library provides an API to iterate through all loaded modules and available modules in loaded packages. This is useful for debugging, monitoring, and management applications.
 
 #### API Reference
 
 **`Dmod_GetNextModule( const Dmod_ModuleInfo_t* Last )`**
 
-Iterates through all loaded modules in the system.
+Iterates through all loaded modules and available modules in loaded packages.
 - **Last**: Pointer to the previous module info (NULL to start from the beginning)
 - **Returns**: Pointer to the next module info, or NULL if no more modules
 

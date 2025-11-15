@@ -2,6 +2,8 @@
 #include "dmod.h"
 #include "private/dmod_ctx.h"
 #include "private/dmod_vars.h"
+#include "private/dmod_pck.h"
+#include "private/dmod_mgr.h"
 #include <string.h>
 
 
@@ -508,52 +510,34 @@ void* Dmod_GetDifFunction( Dmod_Context_t* Context, const char* DifSignature )
  * 
  * @return Pointer to the next module info or NULL if no more modules
  * 
- * @note This function iterates through all loaded modules in the system.
- *       Call with NULL to start iteration, then pass the returned pointer
- *       repeatedly until NULL is returned.
+ * @note This function iterates through all loaded modules and available modules
+ *       in loaded packages. Call with NULL to start iteration, then pass the 
+ *       returned pointer repeatedly until NULL is returned.
  */
 const Dmod_ModuleInfo_t* Dmod_GetNextModule( const Dmod_ModuleInfo_t* Last )
 {
     static Dmod_ModuleInfo_t moduleInfo;
+    static size_t contextIndex = 0;
+    static size_t packageIndex = 0;
+    static size_t moduleInPackageIndex = 0;
     
     Dmod_EnterCritical();
     
-    size_t startIndex = 0;
-    
-    // If Last is provided, find the starting point for iteration
-    if( Last != NULL )
+    // Reset iteration state if starting from beginning
+    if( Last == NULL )
     {
-        // Find the module by name to get the next one
-        bool foundLast = false;
-        for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
-        {
-            if( Dmod_Contexts[i] == NULL || !Dmod_Context_IsValid( Dmod_Contexts[i] ) )
-            {
-                continue;
-            }
-            
-            if( Dmod_Contexts[i]->Header == NULL )
-            {
-                continue;
-            }
-            
-            if( strcmp( Dmod_Contexts[i]->Header->Name, Last->ModuleName ) == 0 )
-            {
-                startIndex = i + 1;
-                foundLast = true;
-                break;
-            }
-        }
-        
-        if( !foundLast )
-        {
-            // Last module not found, start from beginning
-            startIndex = 0;
-        }
+        contextIndex = 0;
+        packageIndex = 0;
+        moduleInPackageIndex = 0;
+    }
+    else
+    {
+        // Advance to next position based on current state
+        // The logic will increment indices as we iterate
     }
     
-    // Search for the next valid module
-    for(size_t i = startIndex; i < DMOD_MAX_MODULES; i++)
+    // First, iterate through loaded modules
+    for(size_t i = contextIndex; i < DMOD_MAX_MODULES; i++)
     {
         if( Dmod_Contexts[i] == NULL || !Dmod_Context_IsValid( Dmod_Contexts[i] ) )
         {
@@ -586,8 +570,59 @@ const Dmod_ModuleInfo_t* Dmod_GetNextModule( const Dmod_ModuleInfo_t* Last )
             moduleInfo.State = Dmod_ModuleState_Loaded;
         }
         
+        // Save state for next iteration
+        contextIndex = i + 1;
+        
         Dmod_ExitCritical();
         return &moduleInfo;
+    }
+    
+    // After loaded modules, iterate through modules in packages
+    for(size_t pkgIdx = packageIndex; pkgIdx < DMOD_MAX_NUMBER_OF_PACKAGES; pkgIdx++)
+    {
+        Dmod_PackageSlot_t* slot = &Dmod_Packages[pkgIdx];
+        
+        if( !Dmod_Pck_IsSlotUsed( slot ) || !Dmod_Pck_IsValidSlot( slot ) )
+        {
+            continue;
+        }
+        
+        if( slot->DmpHeader == NULL || slot->ModuleEntries == NULL )
+        {
+            continue;
+        }
+        
+        // Iterate through modules in this package
+        for(size_t modIdx = moduleInPackageIndex; modIdx < slot->DmpHeader->ModuleCount; modIdx++)
+        {
+            const char* moduleName = slot->ModuleEntries[modIdx].ModuleName;
+            
+            // Skip if this module is already loaded
+            if( Dmod_Mgr_IsLoaded( moduleName ) )
+            {
+                continue;
+            }
+            
+            // Fill in module info for available module
+            strncpy( moduleInfo.ModuleName, moduleName, DMOD_MAX_MODULE_NAME_LENGTH - 1 );
+            moduleInfo.ModuleName[DMOD_MAX_MODULE_NAME_LENGTH - 1] = '\0';
+            
+            // We don't have version info for modules in packages until they're loaded
+            moduleInfo.Version[0] = '\0';
+            
+            // Module is available but not loaded
+            moduleInfo.State = Dmod_ModuleState_Available;
+            
+            // Save state for next iteration
+            packageIndex = pkgIdx;
+            moduleInPackageIndex = modIdx + 1;
+            
+            Dmod_ExitCritical();
+            return &moduleInfo;
+        }
+        
+        // Reset module index when moving to next package
+        moduleInPackageIndex = 0;
     }
     
     Dmod_ExitCritical();
