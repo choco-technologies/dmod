@@ -44,3 +44,21 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y gcovr
 
 RUN apt-get update && apt-get install -y git
+
+COPY . /tmp/dmod
+WORKDIR /tmp/dmod
+RUN rm -rf build
+RUN ls -la /tmp/dmod
+RUN mkdir -p build && \
+    cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    make todmfc todmp dmod_loader -j$(nproc) && \
+    cmake --install . --prefix=/usr/local --component tools
+
+# Clean up source code to keep image minimal
+RUN rm -rf /tmp/dmod
+
+# Ensure tools are in PATH
+ENV PATH=$PATH:/usr/local/bin
+
+WORKDIR /

@@ -6,8 +6,10 @@
 #
 #   Path to the directory with this script
 #
-THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-
+THIS_SCRIPT_PATH="${BASH_SOURCE[0]}"
+THIS_DIR="$( cd "$( dirname "$THIS_SCRIPT_PATH" )" >/dev/null && pwd )"
+ROOT_DIR="$THIS_DIR/.."
+DOCKERFILE_PATH="$THIS_DIR/Dockerfile"
 
 #
 #   Path to the configuration file
@@ -82,7 +84,10 @@ function prepareScript()
 #   
 function build()
 {
-    doCommandAsStepWithSpinner "Building the image $IMAGE_NAME:$IMAGE_VERSION" docker build --squash -t "$IMAGE_NAME:$IMAGE_VERSION" "$THIS_DIR"
+    local old_pwd=$(pwd)
+    cd "$THIS_DIR/.."
+    doCommandAsStepWithSpinner "Building the image $IMAGE_NAME:$IMAGE_VERSION" docker build --squash -t "$IMAGE_NAME:$IMAGE_VERSION" -f "$DOCKERFILE_PATH" "$ROOT_DIR"
+    cd "$old_pwd"
 }
 
 #######################################################################################
