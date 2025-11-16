@@ -776,6 +776,32 @@ make uninstall INSTALL_PREFIX=/custom/path
 
 Note: Tools installed with CMake should be uninstalled using your package manager or by manually removing the files from the installation directory.
 
+### Installing Modules
+
+When building modules in MODULE mode, you can use the install target to copy the compiled module files (.dmf and .dmfc) to a specified repository directory.
+
+#### Installing with CMake
+
+To install modules, build the project in MODULE mode and use the install target with the `modules` component:
+
+```sh
+cmake -DDMOD_MODE=DMOD_MODULE -B build -S .
+cmake --build build/
+cmake --install build/ --component modules
+```
+
+By default, modules are installed to the directory specified by `DMOD_REPO_DIR` in your configuration. You can override this by setting the `DMOD_REPO_DIR` environment variable during the CMake configuration step:
+
+```sh
+DMOD_REPO_DIR=/custom/module/repository cmake -DDMOD_MODE=DMOD_MODULE -B build -S .
+cmake --build build/
+cmake --install build/ --component modules
+```
+
+This will copy all built module files (.dmf and .dmfc) to `/custom/module/repository`.
+
+**Note**: The `DMOD_REPO_DIR` environment variable must be set during the CMake configuration step (not during the build or install steps) for the custom path to take effect.
+
 
 ---
 
