@@ -21,6 +21,7 @@
 #define DEFAULT_DMF_DIR "./dmf"
 #define DEFAULT_DMFC_DIR "./dmfc"
 #define DEFAULT_MANIFEST "manifest.dmm"
+#define DEFAULT_MANIFEST_URL "https://raw.githubusercontent.com/choco-technologies/dmod-registry/refs/heads/main/manifest.dmm"
 
 // Environment variables
 #define ENV_TOOLS_NAME "DMOD_TOOLS_NAME"
@@ -132,6 +133,76 @@ static bool DownloadFile(const char* url, const char* output_path) {
     }
     
     DMOD_LOG_INFO("Downloaded: %s (%zu bytes)\n", output_path, size);
+    return true;
+}
+
+/**
+ * @brief Extract ZIP file and find DMF/DMFC file
+ * 
+ * @param zip_path Path to the ZIP file
+ * @param output_dir Directory to extract to
+ * @param module_name Module name to search for
+ * @param output_file Buffer to store the path to found DMF/DMFC file
+ * @param output_file_size Size of output_file buffer
+ * @return true if extraction succeeded and DMF/DMFC file was found
+ */
+static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir, 
+                                     const char* module_name, char* output_file, 
+                                     size_t output_file_size) {
+    // Create extraction directory
+    char extract_dir[512];
+    Dmod_SnPrintf(extract_dir, sizeof(extract_dir), "%s/%s_extracted", output_dir, module_name);
+    
+    if (Dmod_MakeDir(extract_dir, 0755) != 0) {
+        // Directory might already exist, which is fine
+    }
+    
+    // Use system unzip command
+    char unzip_cmd[1024];
+    Dmod_SnPrintf(unzip_cmd, sizeof(unzip_cmd), "unzip -o -q \"%s\" -d \"%s\"", zip_path, extract_dir);
+    
+    int result = system(unzip_cmd);
+    if (result != 0) {
+        DMOD_LOG_ERROR("Failed to extract ZIP file: %s\n", zip_path);
+        return false;
+    }
+    
+    DMOD_LOG_INFO("Extracted ZIP to: %s\n", extract_dir);
+    
+    // Search for .dmf or .dmfc files in the extracted directory
+    void* dir = Dmod_OpenDir(extract_dir);
+    if (!dir) {
+        DMOD_LOG_ERROR("Cannot open extracted directory: %s\n", extract_dir);
+        return false;
+    }
+    
+    const char* entry_name;
+    bool found = false;
+    
+    while ((entry_name = Dmod_ReadDir(dir)) != NULL) {
+        // Skip . and ..
+        if (strcmp(entry_name, ".") == 0 || strcmp(entry_name, "..") == 0) {
+            continue;
+        }
+        
+        // Check if it's a .dmf or .dmfc file
+        size_t len = strlen(entry_name);
+        if ((len > 4 && strcmp(entry_name + len - 4, ".dmf") == 0) ||
+            (len > 5 && strcmp(entry_name + len - 5, ".dmfc") == 0)) {
+            Dmod_SnPrintf(output_file, output_file_size, "%s/%s", extract_dir, entry_name);
+            found = true;
+            break;
+        }
+    }
+    
+    Dmod_CloseDir(dir);
+    
+    if (!found) {
+        DMOD_LOG_ERROR("No .dmf or .dmfc file found in ZIP archive\n");
+        return false;
+    }
+    
+    DMOD_LOG_INFO("Found module file: %s\n", output_file);
     return true;
 }
 
@@ -311,7 +382,7 @@ int main(int argc, char* argv[]) {
     
     // Get manifest path
     if (!manifest_path) {
-        manifest_path = getenv(ENV_MANIFEST);
+        manifest_path = Dmod_GetEnv(ENV_MANIFEST);
         if (!manifest_path) {
             const char* dmf_dir = GetEnvOrDefault(ENV_DMF_DIR, DEFAULT_DMF_DIR);
             const char* dmfc_dir = GetEnvOrDefault(ENV_DMFC_DIR, DEFAULT_DMFC_DIR);
@@ -321,9 +392,9 @@ int main(int argc, char* argv[]) {
                 manifest_path = found_manifest;
                 DMOD_LOG_INFO("Using manifest: %s\n", manifest_path);
             } else {
-                DMOD_LOG_ERROR("Error: No manifest found. Use -m to specify one.\n");
-                curl_global_cleanup();
-                return 1;
+                // Use default manifest URL from dmod-registry
+                manifest_path = DEFAULT_MANIFEST_URL;
+                DMOD_LOG_INFO("Using default manifest: %s\n", manifest_path);
             }
         }
     }
@@ -401,14 +472,14 @@ int main(int argc, char* argv[]) {
     
     if (ext && (strcmp(ext, ".dmf") == 0 || strcmp(ext, ".dmfc") == 0 || 
                 strcmp(ext, ".zip") == 0 || strcmp(ext, ".dmp") == 0)) {
-        snDMOD_LOG_INFO(output_file, sizeof(output_file), "%s/%s%s%s%s",
+        Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s%s",
                 output_dir, entry.name,
                 entry.version[0] ? "-" : "",
                 entry.version[0] ? entry.version : "",
                 ext);
     } else {
         // Default to .dmf if no extension
-        snDMOD_LOG_INFO(output_file, sizeof(output_file), "%s/%s%s%s.dmf",
+        Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s.dmf",
                 output_dir, entry.name,
                 entry.version[0] ? "-" : "",
                 entry.version[0] ? entry.version : "");
@@ -416,13 +487,26 @@ int main(int argc, char* argv[]) {
     
     // Download the file
     if (!DownloadFile(entry.url, output_file)) {
-        DMOD_LOG_ERROR( "Error: Failed to download module\n");
+        DMOD_LOG_ERROR("Error: Failed to download module\n");
         Dmod_Manifest_Free(ctx);
         curl_global_cleanup();
         return 1;
     }
     
-    DMOD_LOG_INFO("Successfully downloaded: %s\n", output_file);
+    // If it's a ZIP file, extract it and find the DMF/DMFC file
+    if (ext && strcmp(ext, ".zip") == 0) {
+        char final_output[512];
+        if (!ExtractZipAndFindModule(output_file, output_dir, entry.name, 
+                                      final_output, sizeof(final_output))) {
+            DMOD_LOG_ERROR("Error: Failed to extract and find module from ZIP\n");
+            Dmod_Manifest_Free(ctx);
+            curl_global_cleanup();
+            return 1;
+        }
+        DMOD_LOG_INFO("Successfully extracted and found module: %s\n", final_output);
+    } else {
+        DMOD_LOG_INFO("Successfully downloaded: %s\n", output_file);
+    }
     
     // TODO: Handle dependencies if not --no-dependencies
     if (!no_dependencies) {

@@ -9,7 +9,7 @@
  * - Comments (lines starting with #)
  * - Module entries: module[@version] url
  * - Include directives: $include url
- * - Variable substitution: <tools_name> and <arch_name>
+ * - Variable substitution: <tools_name>, <arch_name>, and <version>
  */
 
 #ifndef DMOD_MANIFEST_H

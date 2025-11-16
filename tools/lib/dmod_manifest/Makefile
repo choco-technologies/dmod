@@ -19,9 +19,11 @@ DMOD_SOURCES=dmod_manifest.c
 DMOD_INC_DIRS = $(DMOD_DIR)/tools/lib/dmod_manifest\
 		$(DMOD_DIR)/inc\
 		$(DMOD_BUILD_DIR)\
-		$(DMOD_DIR)/src/common
+		$(DMOD_DIR)/src/common\
+		$(DMOD_DIR)/src/system
 DMOD_LIBS = dmod_inc\
-		dmod_common
+		dmod_common\
+		dmod_system
 DMOD_GEN_HEADERS_IN = 
 DMOD_DEFINITIONS = 
 
