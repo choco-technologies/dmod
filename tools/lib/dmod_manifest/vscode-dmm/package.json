@@ -1,0 +1,39 @@
+{
+  "name": "dmod-manifest",
+  "displayName": "DMOD Manifest Language Support",
+  "description": "Syntax highlighting for DMOD Manifest (.dmm) files",
+  "version": "1.0.0",
+  "publisher": "choco-technologies",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/choco-technologies/dmod"
+  },
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "dmm",
+        "aliases": [
+          "DMOD Manifest",
+          "dmm"
+        ],
+        "extensions": [
+          ".dmm"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "dmm",
+        "scopeName": "source.dmm",
+        "path": "./syntaxes/dmm.tmLanguage.json"
+      }
+    ]
+  }
+}
