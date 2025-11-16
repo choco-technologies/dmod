@@ -135,7 +135,6 @@ macro(dmod_setup_external_module)
 	if(NOT TARGET dmod)
 		# Generate configuration header
 		configure_file(${DMOD_DIR}/dmod-config.h.in ${CMAKE_CURRENT_BINARY_DIR}/dmod-config.h)
-		configure_file(${DMOD_VERSION_IN_FILE_NAME} ${DMOD_VERSION_IN_FILE_NAME} @ONLY)
 
 		# Add dmod library subdirectories
 		add_subdirectory(${DMOD_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/dmod_lib)
