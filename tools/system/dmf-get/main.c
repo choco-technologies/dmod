@@ -147,8 +147,8 @@ static bool DownloadFile(const char* url, const char* output_path) {
  * @return true if extraction succeeded and DMF/DMFC file was found
  */
 static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir, 
-                                     const char* module_name, char* output_file, 
-                                     size_t output_file_size) {
+                                     const char* module_name, const char* preferred_type,
+                                     char* output_file, size_t output_file_size) {
     // Create extraction directory
     char extract_dir[512];
     Dmod_SnPrintf(extract_dir, sizeof(extract_dir), "%s/%s_extracted", output_dir, module_name);
@@ -177,7 +177,9 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
     }
     
     const char* entry_name;
-    bool found = false;
+    char best_match[512] = "";
+    char fallback_match[512] = "";
+    int best_priority = 0;
     
     while ((entry_name = Dmod_ReadDir(dir)) != NULL) {
         // Skip . and ..
@@ -187,20 +189,71 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
         
         // Check if it's a .dmf or .dmfc file
         size_t len = strlen(entry_name);
-        if ((len > 4 && strcmp(entry_name + len - 4, ".dmf") == 0) ||
-            (len > 5 && strcmp(entry_name + len - 5, ".dmfc") == 0)) {
-            Dmod_SnPrintf(output_file, output_file_size, "%s/%s", extract_dir, entry_name);
-            found = true;
-            break;
+        bool is_dmf = (len > 4 && strcmp(entry_name + len - 4, ".dmf") == 0);
+        bool is_dmfc = (len > 5 && strcmp(entry_name + len - 5, ".dmfc") == 0);
+        
+        if (!is_dmf && !is_dmfc) continue;
+        
+        // Save as fallback if we don't have one yet
+        if (fallback_match[0] == '\0') {
+            Dmod_SnPrintf(fallback_match, sizeof(fallback_match), "%s/%s", extract_dir, entry_name);
+        }
+        
+        int priority = 0;
+        
+        // Priority 4: Exact match with module name and preferred type
+        if (preferred_type) {
+            if ((strcmp(preferred_type, "dmf") == 0 && is_dmf) || 
+                (strcmp(preferred_type, "dmfc") == 0 && is_dmfc)) {
+                // Check if filename matches module name
+                char expected_name[256];
+                Dmod_SnPrintf(expected_name, sizeof(expected_name), "%s.%s", 
+                             module_name, preferred_type);
+                if (strcmp(entry_name, expected_name) == 0) {
+                    priority = 4;
+                }
+            }
+        }
+        
+        // Priority 3: Exact match with module name (any type)
+        if (priority == 0) {
+            char expected_dmf[256];
+            char expected_dmfc[256];
+            Dmod_SnPrintf(expected_dmf, sizeof(expected_dmf), "%s.dmf", module_name);
+            Dmod_SnPrintf(expected_dmfc, sizeof(expected_dmfc), "%s.dmfc", module_name);
+            if (strcmp(entry_name, expected_dmf) == 0 || strcmp(entry_name, expected_dmfc) == 0) {
+                priority = 3;
+            }
+        }
+        
+        // Priority 2: Preferred type match
+        if (priority == 0 && preferred_type) {
+            if ((strcmp(preferred_type, "dmf") == 0 && is_dmf) || 
+                (strcmp(preferred_type, "dmfc") == 0 && is_dmfc)) {
+                priority = 2;
+            }
+        }
+        
+        // Priority 1: Any valid file (already handled as fallback)
+        
+        if (priority > best_priority) {
+            best_priority = priority;
+            Dmod_SnPrintf(best_match, sizeof(best_match), "%s/%s", extract_dir, entry_name);
         }
     }
     
     Dmod_CloseDir(dir);
     
-    if (!found) {
+    // Use best match or fallback
+    const char* selected = (best_match[0] != '\0') ? best_match : fallback_match;
+    
+    if (selected[0] == '\0') {
         DMOD_LOG_ERROR("No .dmf or .dmfc file found in ZIP archive\n");
         return false;
     }
+    
+    strncpy(output_file, selected, output_file_size - 1);
+    output_file[output_file_size - 1] = '\0';
     
     DMOD_LOG_INFO("Found module file: %s\n", output_file);
     return true;
@@ -276,6 +329,8 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  -m, --manifest <path>     Path or URL to manifest file\n");
     Dmod_Printf("  -o, --output-dir <path>   Output directory for downloaded modules\n");
     Dmod_Printf("  -t, --tools-name <name>   Tools name for variable substitution\n");
+    Dmod_Printf("  -a, --arch-name <name>    Architecture name for variable substitution\n");
+    Dmod_Printf("  --type <dmf|dmfc>         Prefer dmf or dmfc file type\n");
     Dmod_Printf("  --no-dependencies         Don't download dependencies\n");
     Dmod_Printf("  -h, --help                Show this help message\n");
     Dmod_Printf("  -v, --version             Show version information\n\n");
@@ -288,6 +343,8 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s mymodule              # Download latest version\n", app_name);
     Dmod_Printf("  %s mymodule@1.0          # Download specific version\n", app_name);
     Dmod_Printf("  %s -m http://... module  # Use custom manifest\n", app_name);
+    Dmod_Printf("  %s --type dmfc module    # Prefer dmfc files\n", app_name);
+    Dmod_Printf("  %s -a armv7-cortex-m7 module  # Use arch name directly\n", app_name);
 }
 
 /**
@@ -307,6 +364,8 @@ int main(int argc, char* argv[]) {
     const char* manifest_path = NULL;
     const char* output_dir = NULL;
     const char* tools_name = NULL;
+    const char* arch_name = NULL;
+    const char* preferred_type = NULL;
     bool no_dependencies = false;
     
     for (int i = 1; i < argc; i++) {
@@ -338,6 +397,24 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
             tools_name = argv[i];
+        }
+        else if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--arch-name") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
+                return 1;
+            }
+            arch_name = argv[i];
+        }
+        else if (strcmp(argv[i], "--type") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
+                return 1;
+            }
+            if (strcmp(argv[i], "dmf") != 0 && strcmp(argv[i], "dmfc") != 0) {
+                DMOD_LOG_ERROR("Error: --type must be either 'dmf' or 'dmfc'\n");
+                return 1;
+            }
+            preferred_type = argv[i];
         }
         else if (strcmp(argv[i], "--no-dependencies") == 0) {
             no_dependencies = true;
@@ -420,7 +497,7 @@ int main(int argc, char* argv[]) {
     }
     
     // Initialize manifest parser
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init(tools_name, DownloadWithCurl, NULL);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init(tools_name, arch_name, DownloadWithCurl, NULL);
     if (!ctx) {
         DMOD_LOG_ERROR("Error: Failed to initialize manifest parser\n");
         curl_global_cleanup();
@@ -536,7 +613,7 @@ int main(int argc, char* argv[]) {
     // If it's a ZIP file, extract it and find the DMF/DMFC file
     if (ext && strcmp(ext, ".zip") == 0) {
         char final_output[512];
-        if (!ExtractZipAndFindModule(output_file, output_dir, entry.name, 
+        if (!ExtractZipAndFindModule(output_file, output_dir, entry.name, preferred_type,
                                       final_output, sizeof(final_output))) {
             DMOD_LOG_ERROR("Error: Failed to extract and find module from ZIP\n");
             Dmod_Manifest_Free(ctx);

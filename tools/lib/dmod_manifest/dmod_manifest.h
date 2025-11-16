@@ -66,12 +66,16 @@ typedef bool (*Dmod_DownloadFunc_t)(const char* url, char** buffer, size_t* size
  * @brief Initialize a new manifest context
  * 
  * @param tools_name The tools name for variable substitution (e.g., "arch/x86_64")
+ *                   Can be NULL if arch_name is provided
+ * @param arch_name The architecture name for variable substitution (e.g., "armv7-cortex-m7")
+ *                  Can be NULL if tools_name is provided (will be derived from tools_name)
  * @param download_func Function to download content from URLs
  * @param user_data User data to pass to download function
  * @return Pointer to manifest context, or NULL on failure
  */
 Dmod_ManifestContext_t* Dmod_Manifest_Init(
     const char* tools_name,
+    const char* arch_name,
     Dmod_DownloadFunc_t download_func,
     void* user_data
 );

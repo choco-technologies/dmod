@@ -256,6 +256,7 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
 
 Dmod_ManifestContext_t* Dmod_Manifest_Init(
     const char* tools_name,
+    const char* arch_name,
     Dmod_DownloadFunc_t download_func,
     void* user_data
 ) {
@@ -267,11 +268,25 @@ Dmod_ManifestContext_t* Dmod_Manifest_Init(
     if (tools_name) {
         size_t len = strlen(tools_name);
         ctx->tools_name = Dmod_Malloc(len + 1);
-        if (ctx->tools_name) {
-            strcpy(ctx->tools_name, tools_name);
+        if (!ctx->tools_name) {
+            Dmod_Manifest_Free(ctx);
+            return NULL;
         }
+        strcpy(ctx->tools_name, tools_name);
+    }
+    
+    // Use provided arch_name or convert from tools_name
+    if (arch_name) {
+        size_t len = strlen(arch_name);
+        ctx->arch_name = Dmod_Malloc(len + 1);
+        if (!ctx->arch_name) {
+            Dmod_Manifest_Free(ctx);
+            return NULL;
+        }
+        strcpy(ctx->arch_name, arch_name);
+    } else if (tools_name) {
         ctx->arch_name = ConvertToArchName(tools_name);
-        if (!ctx->tools_name || !ctx->arch_name) {
+        if (!ctx->arch_name) {
             Dmod_Manifest_Free(ctx);
             return NULL;
         }
