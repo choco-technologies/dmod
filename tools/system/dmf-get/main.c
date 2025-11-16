@@ -459,14 +459,54 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
+    // Determine which version to use for URL substitution
+    // If user specified a version, use that; otherwise use entry's version
+    const char* version_to_use = module_version[0] ? module_version : 
+                                  (entry.version[0] ? entry.version : NULL);
+    
+    // Substitute <version> in URL if needed
+    char final_url[1024];
+    const char* url_ptr = entry.url;
+    const char* version_placeholder = strstr(entry.url, "<version>");
+    
+    // Check if version is required but not provided
+    if (version_placeholder && !version_to_use) {
+        DMOD_LOG_ERROR("Error: Module URL requires a version, but none was specified\n");
+        DMOD_LOG_ERROR("       Use %s@<version> to specify a version\n", entry.name);
+        Dmod_Manifest_Free(ctx);
+        curl_global_cleanup();
+        return 1;
+    }
+    
+    if (version_placeholder && version_to_use) {
+        // Need to substitute <version>
+        char* dst = final_url;
+        const char* src = entry.url;
+        char* dst_end = final_url + sizeof(final_url) - 1;
+        
+        while (*src && dst < dst_end) {
+            if (strncmp(src, "<version>", 9) == 0) {
+                size_t len = strlen(version_to_use);
+                if (dst + len >= dst_end) break;
+                strcpy(dst, version_to_use);
+                dst += len;
+                src += 9;
+            } else {
+                *dst++ = *src++;
+            }
+        }
+        *dst = '\0';
+        url_ptr = final_url;
+    }
+    
     DMOD_LOG_INFO("Found: %s%s%s at %s\n", 
            entry.name,
-           entry.version[0] ? "@" : "",
-           entry.version[0] ? entry.version : "",
-           entry.url);
+           version_to_use ? "@" : "",
+           version_to_use ? version_to_use : "",
+           url_ptr);
     
     // Determine output file name and extension
-    const char* url = entry.url;
+    const char* url = url_ptr;
     const char* ext = strrchr(url, '.');
     char output_file[512];
     
@@ -474,19 +514,19 @@ int main(int argc, char* argv[]) {
                 strcmp(ext, ".zip") == 0 || strcmp(ext, ".dmp") == 0)) {
         Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s%s",
                 output_dir, entry.name,
-                entry.version[0] ? "-" : "",
-                entry.version[0] ? entry.version : "",
+                version_to_use ? "-" : "",
+                version_to_use ? version_to_use : "",
                 ext);
     } else {
         // Default to .dmf if no extension
         Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s.dmf",
                 output_dir, entry.name,
-                entry.version[0] ? "-" : "",
-                entry.version[0] ? entry.version : "");
+                version_to_use ? "-" : "",
+                version_to_use ? version_to_use : "");
     }
     
     // Download the file
-    if (!DownloadFile(entry.url, output_file)) {
+    if (!DownloadFile(url, output_file)) {
         DMOD_LOG_ERROR("Error: Failed to download module\n");
         Dmod_Manifest_Free(ctx);
         curl_global_cleanup();

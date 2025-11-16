@@ -106,8 +106,14 @@ static bool SubstituteVariables(Dmod_ManifestContext_t* ctx, const char* input, 
                     if (dst + len >= dst_end) return false;
                     strcpy(dst, version);
                     dst += len;
+                    src += 9;
+                } else {
+                    // Keep the placeholder if no version available
+                    if (dst + 9 >= dst_end) return false;
+                    strcpy(dst, "<version>");
+                    dst += 9;
+                    src += 9;
                 }
-                src += 9;
             }
             else {
                 *dst++ = *src++;
