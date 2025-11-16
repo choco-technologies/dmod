@@ -53,6 +53,17 @@ jobs:
           ./examples/system/dif_test/dif_test
           ./examples/system/dif_test/test_direct_access
       
+      - name: Install dependencies for dmf-get
+        run: apt-get update && apt-get install -y libcurl4-openssl-dev
+      
+      - name: Run manifest library tests
+        working-directory: build
+        run: ./tests/tests_dmod_manifest
+      
+      - name: Run dmf-get integration tests
+        working-directory: tests/integration
+        run: bash test_dmf_get.sh ../../build
+      
       - name: Run coverage check
         working-directory: build
         run: cmake --build . --target coverage_check
