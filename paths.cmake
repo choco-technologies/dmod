@@ -70,6 +70,8 @@ set(DMOD_MODULE_HEADER_SOURCE_IN_FILE_NAME dmod_header.c.in)
 set(DMOD_INFO_MK_FILE_NAME dmod-info.cmake)
 set(DMOD_COVERAGE_FILE_NAME coverage.html)
 set(DMOD_COVERAGE_SUMMARY_FILE_NAME coverage.txt)
+set(DMOD_VERSION_FILE_NAME version.txt)
+set(DMOD_VERSION_IN_FILE_NAME ${DMOD_VERSION_FILE_NAME}.in)
 
 # -----------------------------------------------------------------------------
 #   Makefile file paths
@@ -96,6 +98,8 @@ set(DMOD_INFO_MK_FILE_PATH ${DMOD_DIR}/${DMOD_INFO_MK_FILE_NAME})
 set(DMOD_COVERAGE_FILE_PATH ${DMOD_BUILD_DIR}/${DMOD_COVERAGE_FILE_NAME})
 set(DMOD_COVERAGE_SUMMARY_FILE_PATH ${DMOD_BUILD_DIR}/${DMOD_COVERAGE_SUMMARY_FILE_NAME})
 set(DMOD_DEFAULTS_FILE_PATH ${DMOD_DIR}/${DMOD_DEFAULTS_FILE_NAME})
+set(DMOD_VERSION_FILE_PATH ${DMOD_BUILD_DIR}/${DMOD_VERSION_FILE_NAME})
+set(DMOD_VERSION_IN_FILE_PATH ${DMOD_SCRIPTS_DIR}/${DMOD_VERSION_IN_FILE_NAME})
 
 # -----------------------------------------------------------------------------
 #   Include the dmod configuration
@@ -131,7 +135,8 @@ macro(dmod_setup_external_module)
 	if(NOT TARGET dmod)
 		# Generate configuration header
 		configure_file(${DMOD_DIR}/dmod-config.h.in ${CMAKE_CURRENT_BINARY_DIR}/dmod-config.h)
-		
+		configure_file(${DMOD_VERSION_IN_FILE_NAME} ${DMOD_VERSION_IN_FILE_NAME} @ONLY)
+
 		# Add dmod library subdirectories
 		add_subdirectory(${DMOD_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/dmod_lib)
 		add_subdirectory(${DMOD_DIR}/inc ${CMAKE_CURRENT_BINARY_DIR}/dmod_inc)

@@ -173,6 +173,8 @@ endif()
 configure_file(dmod-config.h.in dmod-config.h)
 # Prepare the info file for the makefiles
 configure_file(scripts/dmod-info.mk.in ${DMOD_DIR}/dmod-info.mk)
+# Prepare the version file
+configure_file(${DMOD_VERSION_IN_FILE_PATH} ${DMOD_VERSION_FILE_PATH} @ONLY)
 
 # ===========================================================================
 #       				Main library
