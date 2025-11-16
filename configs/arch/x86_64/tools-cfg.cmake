@@ -68,11 +68,6 @@ if(NOT SIZE)
     message(FATAL_ERROR "size not found")
 endif()
 
-find_program(GDB ${CROSS_COMPILE}gdb)
-if(NOT GDB)
-    message(FATAL_ERROR "GDB not found")
-endif()
-
 # ==============================================================================
 #                         CMake Configuration
 # ==============================================================================
