@@ -14,6 +14,7 @@ target_link_libraries(${MODULE_NAME}
     PUBLIC
         dmod_inc
         dmod_common
+        dmod_system
 )
 
 # Install headers
