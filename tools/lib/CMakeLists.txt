@@ -1,0 +1,1 @@
+add_subdirectory(dmod_manifest)

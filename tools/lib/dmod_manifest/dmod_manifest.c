@@ -3,14 +3,8 @@
  * @brief DMOD Manifest Parser Library Implementation
  */
 
-// For strdup
-#ifndef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 200809L
-#endif
-
 #include "dmod_manifest.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "dmod.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -53,7 +47,7 @@ static char* ConvertToArchName(const char* tools_name) {
     }
     
     // Allocate buffer
-    char* arch_name = malloc(strlen(start) + 1);
+    char* arch_name = Dmod_Malloc(strlen(start) + 1);
     if (!arch_name) return NULL;
     
     // Copy and replace '/' with '-'
@@ -159,7 +153,7 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
         
         char url[DMOD_MANIFEST_MAX_URL_LEN];
         if (!SubstituteVariables(ctx, url_start, url, sizeof(url))) {
-            snprintf(ctx->error, sizeof(ctx->error), "URL too long in $include: %s", url_start);
+            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "URL too long in $include: %s", url_start);
             return false;
         }
         
@@ -182,14 +176,14 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
     }
     
     if (!space) {
-        snprintf(ctx->error, sizeof(ctx->error), "Invalid manifest entry: %s", line);
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Invalid manifest entry: %s", line);
         return false;
     }
     
     // Extract module identifier (name[@version])
     size_t id_len = space - line;
     if (id_len >= DMOD_MANIFEST_MAX_NAME_LEN) {
-        snprintf(ctx->error, sizeof(ctx->error), "Module identifier too long: %s", line);
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Module identifier too long: %s", line);
         return false;
     }
     
@@ -216,9 +210,9 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
     url_raw[sizeof(url_raw) - 1] = '\0';
     
     // Create new entry
-    Dmod_ManifestNode_t* node = malloc(sizeof(Dmod_ManifestNode_t));
+    Dmod_ManifestNode_t* node = Dmod_Malloc(sizeof(Dmod_ManifestNode_t));
     if (!node) {
-        snprintf(ctx->error, sizeof(ctx->error), "Out of memory");
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
         return false;
     }
     
@@ -230,8 +224,8 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
     node->entry.version[sizeof(node->entry.version) - 1] = '\0';
     
     if (!SubstituteVariables(ctx, url_raw, node->entry.url, sizeof(node->entry.url))) {
-        snprintf(ctx->error, sizeof(ctx->error), "URL too long after substitution: %s", url_raw);
-        free(node);
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "URL too long after substitution: %s", url_raw);
+        Dmod_Free(node);
         return false;
     }
     
@@ -248,13 +242,17 @@ Dmod_ManifestContext_t* Dmod_Manifest_Init(
     Dmod_DownloadFunc_t download_func,
     void* user_data
 ) {
-    Dmod_ManifestContext_t* ctx = malloc(sizeof(Dmod_ManifestContext_t));
+    Dmod_ManifestContext_t* ctx = Dmod_Malloc(sizeof(Dmod_ManifestContext_t));
     if (!ctx) return NULL;
     
     memset(ctx, 0, sizeof(Dmod_ManifestContext_t));
     
     if (tools_name) {
-        ctx->tools_name = strdup(tools_name);
+        size_t len = strlen(tools_name);
+        ctx->tools_name = Dmod_Malloc(len + 1);
+        if (ctx->tools_name) {
+            strcpy(ctx->tools_name, tools_name);
+        }
         ctx->arch_name = ConvertToArchName(tools_name);
         if (!ctx->tools_name || !ctx->arch_name) {
             Dmod_Manifest_Free(ctx);
@@ -275,25 +273,27 @@ void Dmod_Manifest_Free(Dmod_ManifestContext_t* ctx) {
     Dmod_ManifestNode_t* node = ctx->entries;
     while (node) {
         Dmod_ManifestNode_t* next = node->next;
-        free(node);
+        Dmod_Free(node);
         node = next;
     }
     
     // Free strings
-    free(ctx->tools_name);
-    free(ctx->arch_name);
-    free(ctx);
+    if (ctx->tools_name) Dmod_Free(ctx->tools_name);
+    if (ctx->arch_name) Dmod_Free(ctx->arch_name);
+    Dmod_Free(ctx);
 }
 
 bool Dmod_Manifest_Parse(Dmod_ManifestContext_t* ctx, const char* manifest_content) {
     if (!ctx || !manifest_content) return false;
     
     // Make a copy of the content as we'll modify it
-    char* content = strdup(manifest_content);
+    size_t len = strlen(manifest_content);
+    char* content = Dmod_Malloc(len + 1);
     if (!content) {
-        snprintf(ctx->error, sizeof(ctx->error), "Out of memory");
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
         return false;
     }
+    strcpy(content, manifest_content);
     
     bool success = true;
     char* line = content;
@@ -316,45 +316,43 @@ bool Dmod_Manifest_Parse(Dmod_ManifestContext_t* ctx, const char* manifest_conte
         line = next_line;
     }
     
-    free(content);
+    Dmod_Free(content);
     return success;
 }
 
 bool Dmod_Manifest_ParseFile(Dmod_ManifestContext_t* ctx, const char* file_path) {
     if (!ctx || !file_path) return false;
     
-    FILE* file = fopen(file_path, "r");
+    void* file = Dmod_FileOpen(file_path, "r");
     if (!file) {
-        snprintf(ctx->error, sizeof(ctx->error), "Cannot open file: %s", file_path);
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Cannot open file: %s", file_path);
         return false;
     }
     
     // Get file size
-    fseek(file, 0, SEEK_END);
-    long size = ftell(file);
-    fseek(file, 0, SEEK_SET);
+    size_t size = Dmod_FileSize(file);
     
-    if (size < 0 || size > 1024 * 1024) { // Limit to 1MB
-        snprintf(ctx->error, sizeof(ctx->error), "File too large: %s", file_path);
-        fclose(file);
+    if (size > 1024 * 1024) { // Limit to 1MB
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "File too large: %s", file_path);
+        Dmod_FileClose(file);
         return false;
     }
     
     // Read file content
-    char* content = malloc(size + 1);
+    char* content = Dmod_Malloc(size + 1);
     if (!content) {
-        snprintf(ctx->error, sizeof(ctx->error), "Out of memory");
-        fclose(file);
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
+        Dmod_FileClose(file);
         return false;
     }
     
-    size_t read = fread(content, 1, size, file);
+    size_t read = Dmod_FileRead(content, 1, size, file);
     content[read] = '\0';
-    fclose(file);
+    Dmod_FileClose(file);
     
     // Parse content
     bool result = Dmod_Manifest_Parse(ctx, content);
-    free(content);
+    Dmod_Free(content);
     
     return result;
 }
@@ -363,7 +361,7 @@ bool Dmod_Manifest_ParseUrl(Dmod_ManifestContext_t* ctx, const char* url) {
     if (!ctx || !url) return false;
     
     if (!ctx->download_func) {
-        snprintf(ctx->error, sizeof(ctx->error), "No download function provided");
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "No download function provided");
         return false;
     }
     
@@ -371,17 +369,17 @@ bool Dmod_Manifest_ParseUrl(Dmod_ManifestContext_t* ctx, const char* url) {
     size_t size = 0;
     
     if (!ctx->download_func(url, &content, &size, ctx->user_data)) {
-        snprintf(ctx->error, sizeof(ctx->error), "Failed to download manifest from: %s", url);
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Failed to download manifest from: %s", url);
         return false;
     }
     
     if (!content) {
-        snprintf(ctx->error, sizeof(ctx->error), "Download returned NULL content");
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Download returned NULL content");
         return false;
     }
     
     bool result = Dmod_Manifest_Parse(ctx, content);
-    free(content);
+    Dmod_Free(content);
     
     return result;
 }
@@ -424,7 +422,7 @@ bool Dmod_Manifest_FindEntry(
         return true;
     }
     
-    snprintf(ctx->error, sizeof(ctx->error), "Module not found: %s%s%s",
+    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Module not found: %s%s%s",
              name, has_version ? "@" : "", has_version ? version : "");
     return false;
 }

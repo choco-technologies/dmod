@@ -43,9 +43,9 @@ static size_t CurlWriteCallback(void* contents, size_t size, size_t nmemb, void*
     size_t realsize = size * nmemb;
     DownloadBuffer_t* buffer = (DownloadBuffer_t*)userp;
     
-    char* new_data = realloc(buffer->data, buffer->size + realsize + 1);
+    char* new_data = Dmod_Realloc(buffer->data, buffer->size + realsize + 1);
     if (!new_data) {
-        fprintf(stderr, "Out of memory\n");
+        DMOD_LOG_ERROR("Out of memory\n");
         return 0;
     }
     
@@ -63,7 +63,7 @@ static size_t CurlWriteCallback(void* contents, size_t size, size_t nmemb, void*
 static bool DownloadWithCurl(const char* url, char** buffer, size_t* size, void* user_data) {
     CURL* curl = curl_easy_init();
     if (!curl) {
-        fprintf(stderr, "Failed to initialize curl\n");
+        DMOD_LOG_ERROR("Failed to initialize curl\n");
         return false;
     }
     
@@ -79,8 +79,8 @@ static bool DownloadWithCurl(const char* url, char** buffer, size_t* size, void*
     CURLcode res = curl_easy_perform(curl);
     
     if (res != CURLE_OK) {
-        fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-        free(download.data);
+        DMOD_LOG_ERROR("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        Dmod_Free(download.data);
         curl_easy_cleanup(curl);
         return false;
     }
@@ -91,8 +91,8 @@ static bool DownloadWithCurl(const char* url, char** buffer, size_t* size, void*
     curl_easy_cleanup(curl);
     
     if (response_code != 200) {
-        fprintf(stderr, "HTTP error %ld for URL: %s\n", response_code, url);
-        free(download.data);
+        DMOD_LOG_ERROR("HTTP error %ld for URL: %s\n", response_code, url);
+        Dmod_Free(download.data);
         return false;
     }
     
@@ -106,7 +106,7 @@ static bool DownloadWithCurl(const char* url, char** buffer, size_t* size, void*
  * @brief Download a file from URL to local path
  */
 static bool DownloadFile(const char* url, const char* output_path) {
-    printf("Downloading: %s\n", url);
+    DMOD_LOG_INFO("Downloading: %s\n", url);
     
     char* buffer = NULL;
     size_t size = 0;
@@ -115,23 +115,23 @@ static bool DownloadFile(const char* url, const char* output_path) {
         return false;
     }
     
-    FILE* file = fopen(output_path, "wb");
+    void* file = Dmod_FileOpen(output_path, "wb");
     if (!file) {
-        fprintf(stderr, "Cannot create file: %s\n", output_path);
-        free(buffer);
+        DMOD_LOG_ERROR("Cannot create file: %s\n", output_path);
+        Dmod_Free(buffer);
         return false;
     }
     
-    size_t written = fwrite(buffer, 1, size, file);
-    fclose(file);
-    free(buffer);
+    size_t written = Dmod_FileWrite(buffer, 1, size, file);
+    Dmod_FileClose(file);
+    Dmod_Free(buffer);
     
     if (written != size) {
-        fprintf(stderr, "Failed to write complete file: %s\n", output_path);
+        DMOD_LOG_ERROR("Failed to write complete file: %s\n", output_path);
         return false;
     }
     
-    printf("Downloaded: %s (%zu bytes)\n", output_path, size);
+    DMOD_LOG_INFO("Downloaded: %s (%zu bytes)\n", output_path, size);
     return true;
 }
 
@@ -139,7 +139,7 @@ static bool DownloadFile(const char* url, const char* output_path) {
  * @brief Get environment variable or default value
  */
 static const char* GetEnvOrDefault(const char* env_name, const char* default_value) {
-    const char* value = getenv(env_name);
+    const char* value = Dmod_GetEnv(env_name);
     return value ? value : default_value;
 }
 
@@ -147,17 +147,15 @@ static const char* GetEnvOrDefault(const char* env_name, const char* default_val
  * @brief Create directory if it doesn't exist
  */
 static bool EnsureDirectory(const char* path) {
-    struct stat st = {0};
+    // Check if directory exists by trying to access it
+    if (Dmod_Access(path, DMOD_F_OK) == 0) {
+        return true;  // Directory already exists
+    }
     
-    if (stat(path, &st) == -1) {
-        #ifdef _WIN32
-        if (mkdir(path) != 0) {
-        #else
-        if (mkdir(path, 0755) != 0) {
-        #endif
-            fprintf(stderr, "Failed to create directory: %s\n", path);
-            return false;
-        }
+    // Create directory
+    if (Dmod_MakeDir(path, 0755) != 0) {
+        DMOD_LOG_ERROR("Failed to create directory: %s\n", path);
+        return false;
     }
     
     return true;
@@ -170,20 +168,29 @@ static char* FindManifest(const char* dmf_dir, const char* dmfc_dir) {
     char path[512];
     
     // Check dmf directory
-    snprintf(path, sizeof(path), "%s/%s", dmf_dir, DEFAULT_MANIFEST);
-    if (access(path, R_OK) == 0) {
-        return strdup(path);
+    Dmod_SnPrintf(path, sizeof(path), "%s/%s", dmf_dir, DEFAULT_MANIFEST);
+    if (Dmod_Access(path, DMOD_R_OK) == 0) {
+        size_t len = strlen(path);
+        char* result = Dmod_Malloc(len + 1);
+        if (result) strcpy(result, path);
+        return result;
     }
     
     // Check dmfc directory
-    snprintf(path, sizeof(path), "%s/%s", dmfc_dir, DEFAULT_MANIFEST);
-    if (access(path, R_OK) == 0) {
-        return strdup(path);
+    Dmod_SnPrintf(path, sizeof(path), "%s/%s", dmfc_dir, DEFAULT_MANIFEST);
+    if (Dmod_Access(path, DMOD_R_OK) == 0) {
+        size_t len = strlen(path);
+        char* result = Dmod_Malloc(len + 1);
+        if (result) strcpy(result, path);
+        return result;
     }
     
     // Check current directory
-    if (access(DEFAULT_MANIFEST, R_OK) == 0) {
-        return strdup(DEFAULT_MANIFEST);
+    if (Dmod_Access(DEFAULT_MANIFEST, DMOD_R_OK) == 0) {
+        size_t len = strlen(DEFAULT_MANIFEST);
+        char* result = Dmod_Malloc(len + 1);
+        if (result) strcpy(result, DEFAULT_MANIFEST);
+        return result;
     }
     
     return NULL;
@@ -193,31 +200,31 @@ static char* FindManifest(const char* dmf_dir, const char* dmfc_dir) {
  * @brief Print usage information
  */
 static void PrintUsage(const char* app_name) {
-    printf("Usage: %s [options] <module_name>[@version]\n\n", app_name);
-    printf("Options:\n");
-    printf("  -m, --manifest <path>     Path or URL to manifest file\n");
-    printf("  -o, --output-dir <path>   Output directory for downloaded modules\n");
-    printf("  -t, --tools-name <name>   Tools name for variable substitution\n");
-    printf("  --no-dependencies         Don't download dependencies\n");
-    printf("  -h, --help                Show this help message\n");
-    printf("  -v, --version             Show version information\n\n");
-    printf("Environment Variables:\n");
-    printf("  %s       Tools name (e.g., arch/x86_64)\n", ENV_TOOLS_NAME);
-    printf("  %s          DMF output directory\n", ENV_DMF_DIR);
-    printf("  %s         DMFC output directory\n", ENV_DMFC_DIR);
-    printf("  %s      Default manifest path or URL\n\n", ENV_MANIFEST);
-    printf("Examples:\n");
-    printf("  %s mymodule              # Download latest version\n", app_name);
-    printf("  %s mymodule@1.0          # Download specific version\n", app_name);
-    printf("  %s -m http://... module  # Use custom manifest\n", app_name);
+    Dmod_Printf("Usage: %s [options] <module_name>[@version]\n\n", app_name);
+    Dmod_Printf("Options:\n");
+    Dmod_Printf("  -m, --manifest <path>     Path or URL to manifest file\n");
+    Dmod_Printf("  -o, --output-dir <path>   Output directory for downloaded modules\n");
+    Dmod_Printf("  -t, --tools-name <name>   Tools name for variable substitution\n");
+    Dmod_Printf("  --no-dependencies         Don't download dependencies\n");
+    Dmod_Printf("  -h, --help                Show this help message\n");
+    Dmod_Printf("  -v, --version             Show version information\n\n");
+    Dmod_Printf("Environment Variables:\n");
+    Dmod_Printf("  %s       Tools name (e.g., arch/x86_64)\n", ENV_TOOLS_NAME);
+    Dmod_Printf("  %s          DMF output directory\n", ENV_DMF_DIR);
+    Dmod_Printf("  %s         DMFC output directory\n", ENV_DMFC_DIR);
+    Dmod_Printf("  %s      Default manifest path or URL\n\n", ENV_MANIFEST);
+    Dmod_Printf("Examples:\n");
+    Dmod_Printf("  %s mymodule              # Download latest version\n", app_name);
+    Dmod_Printf("  %s mymodule@1.0          # Download specific version\n", app_name);
+    Dmod_Printf("  %s -m http://... module  # Use custom manifest\n", app_name);
 }
 
 /**
  * @brief Print version information
  */
 static void PrintVersion() {
-    printf("dmf-get version " DMOD_VERSION_STRING "\n");
-    printf("DMOD Package Manager\n");
+    Dmod_Printf("dmf-get version " DMOD_VERSION_STRING "\n");
+    Dmod_Printf("DMOD Package Manager\n");
 }
 
 /**
@@ -242,21 +249,21 @@ int main(int argc, char* argv[]) {
         }
         else if (strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--manifest") == 0) {
             if (++i >= argc) {
-                fprintf(stderr, "Error: %s requires an argument\n", argv[i-1]);
+                DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
                 return 1;
             }
             manifest_path = argv[i];
         }
         else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output-dir") == 0) {
             if (++i >= argc) {
-                fprintf(stderr, "Error: %s requires an argument\n", argv[i-1]);
+                DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
                 return 1;
             }
             output_dir = argv[i];
         }
         else if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--tools-name") == 0) {
             if (++i >= argc) {
-                fprintf(stderr, "Error: %s requires an argument\n", argv[i-1]);
+                DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
                 return 1;
             }
             tools_name = argv[i];
@@ -265,13 +272,13 @@ int main(int argc, char* argv[]) {
             no_dependencies = true;
         }
         else if (argv[i][0] == '-') {
-            fprintf(stderr, "Error: Unknown option: %s\n", argv[i]);
+            DMOD_LOG_ERROR("Error: Unknown option: %s\n", argv[i]);
             PrintUsage(argv[0]);
             return 1;
         }
         else {
             if (module_spec) {
-                fprintf(stderr, "Error: Multiple module names specified\n");
+                DMOD_LOG_ERROR("Error: Multiple module names specified\n");
                 return 1;
             }
             module_spec = argv[i];
@@ -279,7 +286,7 @@ int main(int argc, char* argv[]) {
     }
     
     if (!module_spec) {
-        fprintf(stderr, "Error: No module name specified\n");
+        DMOD_LOG_ERROR("Error: No module name specified\n");
         PrintUsage(argv[0]);
         return 1;
     }
@@ -312,9 +319,9 @@ int main(int argc, char* argv[]) {
             char* found_manifest = FindManifest(dmf_dir, dmfc_dir);
             if (found_manifest) {
                 manifest_path = found_manifest;
-                printf("Using manifest: %s\n", manifest_path);
+                DMOD_LOG_INFO("Using manifest: %s\n", manifest_path);
             } else {
-                fprintf(stderr, "Error: No manifest found. Use -m to specify one.\n");
+                DMOD_LOG_ERROR("Error: No manifest found. Use -m to specify one.\n");
                 curl_global_cleanup();
                 return 1;
             }
@@ -329,7 +336,7 @@ int main(int argc, char* argv[]) {
     if (at_sign) {
         size_t name_len = at_sign - module_spec;
         if (name_len >= sizeof(module_name)) {
-            fprintf(stderr, "Error: Module name too long\n");
+            DMOD_LOG_ERROR("Error: Module name too long\n");
             curl_global_cleanup();
             return 1;
         }
@@ -344,13 +351,13 @@ int main(int argc, char* argv[]) {
     // Initialize manifest parser
     Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init(tools_name, DownloadWithCurl, NULL);
     if (!ctx) {
-        fprintf(stderr, "Error: Failed to initialize manifest parser\n");
+        DMOD_LOG_ERROR("Error: Failed to initialize manifest parser\n");
         curl_global_cleanup();
         return 1;
     }
     
     // Parse manifest
-    printf("Parsing manifest: %s\n", manifest_path);
+    DMOD_LOG_INFO("Parsing manifest: %s\n", manifest_path);
     bool parse_success = false;
     
     if (strncmp(manifest_path, "http://", 7) == 0 || 
@@ -361,27 +368,27 @@ int main(int argc, char* argv[]) {
     }
     
     if (!parse_success) {
-        fprintf(stderr, "Error: Failed to parse manifest: %s\n", 
+        DMOD_LOG_ERROR( "Error: Failed to parse manifest: %s\n", 
                 Dmod_Manifest_GetError(ctx));
         Dmod_Manifest_Free(ctx);
         curl_global_cleanup();
         return 1;
     }
     
-    printf("Manifest loaded with %zu entries\n", Dmod_Manifest_GetEntryCount(ctx));
+    DMOD_LOG_INFO("Manifest loaded with %zu entries\n", Dmod_Manifest_GetEntryCount(ctx));
     
     // Find the module
     Dmod_ManifestEntry_t entry;
     if (!Dmod_Manifest_FindEntry(ctx, module_name, 
                                   module_version[0] ? module_version : NULL, 
                                   &entry)) {
-        fprintf(stderr, "Error: %s\n", Dmod_Manifest_GetError(ctx));
+        DMOD_LOG_ERROR( "Error: %s\n", Dmod_Manifest_GetError(ctx));
         Dmod_Manifest_Free(ctx);
         curl_global_cleanup();
         return 1;
     }
     
-    printf("Found: %s%s%s at %s\n", 
+    DMOD_LOG_INFO("Found: %s%s%s at %s\n", 
            entry.name,
            entry.version[0] ? "@" : "",
            entry.version[0] ? entry.version : "",
@@ -394,14 +401,14 @@ int main(int argc, char* argv[]) {
     
     if (ext && (strcmp(ext, ".dmf") == 0 || strcmp(ext, ".dmfc") == 0 || 
                 strcmp(ext, ".zip") == 0 || strcmp(ext, ".dmp") == 0)) {
-        snprintf(output_file, sizeof(output_file), "%s/%s%s%s%s",
+        snDMOD_LOG_INFO(output_file, sizeof(output_file), "%s/%s%s%s%s",
                 output_dir, entry.name,
                 entry.version[0] ? "-" : "",
                 entry.version[0] ? entry.version : "",
                 ext);
     } else {
         // Default to .dmf if no extension
-        snprintf(output_file, sizeof(output_file), "%s/%s%s%s.dmf",
+        snDMOD_LOG_INFO(output_file, sizeof(output_file), "%s/%s%s%s.dmf",
                 output_dir, entry.name,
                 entry.version[0] ? "-" : "",
                 entry.version[0] ? entry.version : "");
@@ -409,18 +416,18 @@ int main(int argc, char* argv[]) {
     
     // Download the file
     if (!DownloadFile(entry.url, output_file)) {
-        fprintf(stderr, "Error: Failed to download module\n");
+        DMOD_LOG_ERROR( "Error: Failed to download module\n");
         Dmod_Manifest_Free(ctx);
         curl_global_cleanup();
         return 1;
     }
     
-    printf("Successfully downloaded: %s\n", output_file);
+    DMOD_LOG_INFO("Successfully downloaded: %s\n", output_file);
     
     // TODO: Handle dependencies if not --no-dependencies
     if (!no_dependencies) {
         // For now, just print a message
-        printf("Note: Dependency resolution not yet implemented\n");
+        DMOD_LOG_INFO("Note: Dependency resolution not yet implemented\n");
     }
     
     // Cleanup

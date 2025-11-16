@@ -11,5 +11,5 @@ target_link_libraries(dmf-get
 )
 
 target_include_directories(dmf-get PRIVATE
-    ${CMAKE_SOURCE_DIR}/lib/dmod_manifest
+    ${CMAKE_SOURCE_DIR}/tools/lib/dmod_manifest
 )
