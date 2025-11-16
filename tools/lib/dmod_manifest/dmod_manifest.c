@@ -63,15 +63,16 @@ static char* ConvertToArchName(const char* tools_name) {
 /**
  * @brief Substitute variables in a string
  * 
- * Replaces <tools_name> and <arch_name> with actual values
+ * Replaces <tools_name>, <arch_name>, and <version> with actual values
  * 
  * @param ctx Manifest context
  * @param input Input string
  * @param output Output buffer
  * @param output_size Size of output buffer
+ * @param version Optional version string (can be NULL)
  * @return true if substitution succeeded, false otherwise
  */
-static bool SubstituteVariables(Dmod_ManifestContext_t* ctx, const char* input, char* output, size_t output_size) {
+static bool SubstituteVariables(Dmod_ManifestContext_t* ctx, const char* input, char* output, size_t output_size, const char* version) {
     const char* src = input;
     char* dst = output;
     char* dst_end = output + output_size - 1;
@@ -97,6 +98,16 @@ static bool SubstituteVariables(Dmod_ManifestContext_t* ctx, const char* input, 
                     dst += len;
                 }
                 src += 11;
+            }
+            // Check for <version>
+            else if (strncmp(src, "<version>", 9) == 0) {
+                if (version && version[0] != '\0') {
+                    size_t len = strlen(version);
+                    if (dst + len >= dst_end) return false;
+                    strcpy(dst, version);
+                    dst += len;
+                }
+                src += 9;
             }
             else {
                 *dst++ = *src++;
@@ -152,7 +163,7 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
         url_start = TrimWhitespace(url_start);
         
         char url[DMOD_MANIFEST_MAX_URL_LEN];
-        if (!SubstituteVariables(ctx, url_start, url, sizeof(url))) {
+        if (!SubstituteVariables(ctx, url_start, url, sizeof(url), NULL)) {
             Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "URL too long in $include: %s", url_start);
             return false;
         }
@@ -223,7 +234,7 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
     strncpy(node->entry.version, version, sizeof(node->entry.version) - 1);
     node->entry.version[sizeof(node->entry.version) - 1] = '\0';
     
-    if (!SubstituteVariables(ctx, url_raw, node->entry.url, sizeof(node->entry.url))) {
+    if (!SubstituteVariables(ctx, url_raw, node->entry.url, sizeof(node->entry.url), version)) {
         Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "URL too long after substitution: %s", url_raw);
         Dmod_Free(node);
         return false;
