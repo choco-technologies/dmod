@@ -25,12 +25,18 @@ set(SYSTEM_SOURCES
     if/dmod_if_comp.c
     if/dmod_if_env.c
     if/dmod_if_str.c
+    if/dmod_if_input.c
     Dmod.cpp
 )
 
 # Add custom printf implementation if enabled
 if(DMOD_IMPLEMENT_PRINTF)
     list(APPEND SYSTEM_SOURCES if/dmod_prf.c)
+endif()
+
+# Add custom scanf implementation if enabled
+if(DMOD_IMPLEMENT_SCANF)
+    list(APPEND SYSTEM_SOURCES if/dmod_scf.c)
 endif()
 
 add_library(${MODULE_NAME} STATIC ${SYSTEM_SOURCES})

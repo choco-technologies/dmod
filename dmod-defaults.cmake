@@ -18,6 +18,15 @@ if (NOT DEFINED DMOD_IMPLEMENT_PRINTF)
     endif()
 endif()
 
+if (NOT DEFINED DMOD_IMPLEMENT_SCANF)
+    # Use custom scanf implementation when STDIO is not available
+    if(NOT DMOD_USE_STDIO)
+        set(DMOD_IMPLEMENT_SCANF ON)
+    else()
+        set(DMOD_IMPLEMENT_SCANF OFF)
+    endif()
+endif()
+
 if (NOT DEFINED DMOD_USE_DIRENT)
     set(DMOD_USE_DIRENT ON)
 endif()
