@@ -235,6 +235,38 @@ function(dmod_create_module moduleName version moduleType)
 
     # Print the source files
     message(STATUS "SOURCES for module ${moduleName}: ${SOURCES}")
+
+    # ===========================================================================
+    # Install target for modules
+    # ===========================================================================
+    # Determine installation directory for module files
+    # Priority: Environment variable > Configuration variable > DMF_DIR default
+    if(DEFINED ENV{DMOD_REPO_DIR})
+        set(INSTALL_REPO_DIR $ENV{DMOD_REPO_DIR})
+        message(STATUS "Module ${moduleName}: Will install to DMOD_REPO_DIR from environment: ${INSTALL_REPO_DIR}")
+    elseif(DEFINED DMOD_REPO_DIR)
+        set(INSTALL_REPO_DIR ${DMOD_REPO_DIR})
+        message(STATUS "Module ${moduleName}: Will install to DMOD_REPO_DIR from configuration: ${INSTALL_REPO_DIR}")
+    else()
+        set(INSTALL_REPO_DIR ${DMOD_DMF_DIR})
+        message(STATUS "Module ${moduleName}: Will install to default location: ${INSTALL_REPO_DIR}")
+    endif()
+
+    # Install DMF file
+    install(FILES ${DMF_OUTPUT}
+        DESTINATION ${INSTALL_REPO_DIR}
+        COMPONENT modules
+        OPTIONAL
+    )
+
+    # Install DMFC file if compression is enabled
+    if(TODMFC)
+        install(FILES ${DMFC_OUTPUT}
+            DESTINATION ${INSTALL_REPO_DIR}
+            COMPONENT modules
+            OPTIONAL
+        )
+    endif()
 endfunction()
 
 #
