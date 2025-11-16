@@ -144,6 +144,14 @@ function(dmod_create_module moduleName version moduleType)
         endif()
     endif()
 
+    execute_process(
+        COMMAND git rev-parse --short HEAD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE DMOD_MODULE_COMMIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+
     configure_file(${DMOD_VERSION_IN_FILE_PATH} ${DMOD_DMF_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_version.txt @ONLY)
     configure_file(${DMOD_SCRIPTS_DIR}/api.h.in ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_defs.h)
     configure_file(${DMOD_MODULE_HEADER_SOURCE_IN_FILE_PATH} ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_header.c)
