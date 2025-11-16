@@ -59,10 +59,10 @@ set(DMOD_BUILD_TEMPLATES ON CACHE BOOL "Enable to build templates")
 set(DMOD_USE_EXCEPTIONS OFF CACHE BOOL "Enable to use exceptions")
 
 # Directory for DMFC files
-set(DMOD_DMFC_DIR               "${CMAKE_CURRENT_BINARY_DIR}/dmfc"                  CACHE STRING "Directory for DMFC files")
+set(DMOD_DMFC_DIR               "${CMAKE_BINARY_DIR}/dmfc"                          CACHE STRING "Directory for DMFC files")
 
 # Directory for DMF files
-set(DMOD_DMF_DIR                "${CMAKE_CURRENT_BINARY_DIR}/dmf"                   CACHE STRING "Directory for DMF files")
+set(DMOD_DMF_DIR                "${CMAKE_BINARY_DIR}/dmf"                           CACHE STRING "Directory for DMF files")
 
 # Path to the default repository inside the system
 set(DMOD_REPO_DIR               "${DMOD_DMF_DIR}" 				                    CACHE STRING "Directory for DMF files inside the system")
