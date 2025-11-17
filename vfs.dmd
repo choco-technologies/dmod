@@ -1,7 +1,0 @@
-# DMOD Dependencies File
-# Generated from module: vfs
-# Source file: build-module/dmf/vfs.dmf
-#
-# This file lists all non-system modules required by the module.
-# Use with dmf-get: dmf-get -d vfs.dmd
-
