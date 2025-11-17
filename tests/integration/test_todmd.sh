@@ -70,8 +70,16 @@ else
 fi
 
 # If we have built modules, test with real DMF files
-MODULE_BUILD_DIR="$BUILD_DIR/../build-module"
-if [ -d "$MODULE_BUILD_DIR/dmf" ]; then
+# Check in the same build directory first (CI case), then in build-module (local dev case)
+if [ -d "$BUILD_DIR/dmf" ] && [ -n "$(ls -A "$BUILD_DIR/dmf" 2>/dev/null)" ]; then
+    MODULE_BUILD_DIR="$BUILD_DIR"
+elif [ -d "$BUILD_DIR/../build-module/dmf" ]; then
+    MODULE_BUILD_DIR="$BUILD_DIR/../build-module"
+else
+    MODULE_BUILD_DIR=""
+fi
+
+if [ -n "$MODULE_BUILD_DIR" ] && [ -d "$MODULE_BUILD_DIR/dmf" ]; then
     echo ""
     echo "Test 5: Generate .dmd from example_app module"
     
