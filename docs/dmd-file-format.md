@@ -129,17 +129,17 @@ $include https://registry.example.com/common-modules.dmd
 # Change to hardware-specific registry
 $from https://hw-vendor.com/manifest.dmm
 
-# Hardware drivers
-spi@1.0
-i2c@2.0
-uart@1.5
+# Hardware drivers with version ranges
+spi@>=1.0<=2.0       # SPI driver, any version between 1.0 and 2.0
+i2c@>=2.0            # I2C driver, version 2.0 or newer
+uart@1.5             # UART driver, exact version 1.5
 
 # Change to third-party registry
 $from https://third-party.org/dmod/manifest.dmm
 
-# Third-party libraries
-json_parser@3.2
-crypto_lib@1.8
+# Third-party libraries with version constraints
+json_parser@>=3.0    # JSON parser, version 3.0 or newer
+crypto_lib@<=2.0     # Crypto library, version 2.0 or older
 ```
 
 ## Usage with dmf-get
@@ -319,7 +319,7 @@ See `tools/lib/dmod_dependencies/vscode-dmd/` for installation instructions.
 ## Related Documentation
 
 - [dmf-get Tool](dmf-get-tool.md) - Package manager using .dmd files
-- [DMM File Format](manifest-format.md) - Manifest file format
+- [DMM File Format](dmm-file-format.md) - Manifest file format with version directives
 - [DMOD Architecture](../README.md) - Overview of DMOD system
 
 ## Compatibility
