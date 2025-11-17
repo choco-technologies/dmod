@@ -1,8 +1,8 @@
-set(MODULE_NAME dmod_manifest)
+set(MODULE_NAME dmod_version)
 
-# Create static library for manifest parsing
+# Create static library for version utilities
 add_library(${MODULE_NAME} STATIC
-    dmod_manifest.c
+    dmod_version.c
 )
 
 target_include_directories(${MODULE_NAME} PUBLIC
@@ -15,11 +15,10 @@ target_link_libraries(${MODULE_NAME}
         dmod_inc
         dmod_common
         dmod_system
-        dmod_version
 )
 
 # Install headers
-install(FILES dmod_manifest.h
+install(FILES dmod_version.h
     DESTINATION include/dmod
 )
 

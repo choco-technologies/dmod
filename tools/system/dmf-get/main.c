@@ -17,6 +17,7 @@
 #include "dmod.h"
 #include "dmod_manifest.h"
 #include "dmod_dependencies.h"
+#include "dmod_version.h"
 
 // Default paths
 #define DEFAULT_DMF_DIR "./dmf"
@@ -143,7 +144,17 @@ static int DownloadModule(const char* module_name, const char* module_version,
                           const char* output_dir, const char* tools_name,
                           const char* arch_name, const char* preferred_type,
                           bool download_dependencies, const char* default_manifest,
-                          bool ignore_missing);
+                          bool ignore_missing, bool skip_dmod_ver_check);
+
+/**
+ * @brief Convert DMOD_VERSION hex to semantic version
+ */
+static void GetCurrentDmodVersion(Dmod_SemanticVersion_t* version) {
+    // DMOD_VERSION format: 0xMMmmpppp (Major, minor, patch)
+    version->major = (DMOD_VERSION >> 16) & 0xFF;
+    version->minor = (DMOD_VERSION >> 8) & 0xFF;
+    version->patch = DMOD_VERSION & 0xFF;
+}
 
 /**
  * @brief Extract ZIP file and find DMF/DMFC file
@@ -373,7 +384,8 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
 static int ProcessModuleDependencies(const char* module_file_path, const char* dmd_file_path,
                                       const char* output_dir, const char* tools_name,
                                       const char* arch_name, const char* preferred_type,
-                                      const char* default_manifest, bool ignore_missing) {
+                                      const char* default_manifest, bool ignore_missing,
+                                      bool skip_dmod_ver_check) {
     int failed_count = 0;
     
     // First, try to load dependencies from .dmd file if provided
@@ -449,7 +461,8 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                 preferred_type,
                 true,  // download dependencies recursively
                 default_manifest,
-                ignore_missing
+                ignore_missing,
+                skip_dmod_ver_check
             );
             
             Dmod_Manifest_Free(man_ctx);
@@ -548,7 +561,8 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                         preferred_type,
                         true,  // download dependencies recursively
                         default_manifest,
-                        ignore_missing
+                        ignore_missing,
+                        skip_dmod_ver_check
                     );
                     
                     Dmod_Manifest_Free(man_ctx);
@@ -644,6 +658,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --no-dependencies         Don't download dependencies\n");
     Dmod_Printf("  --ignore-missing          Ignore missing dependencies and continue\n");
     Dmod_Printf("  --skip-arch-check         Skip architecture compatibility check\n");
+    Dmod_Printf("  --skip-dmod-ver-check     Skip DMOD version compatibility check\n");
     Dmod_Printf("  -h, --help                Show this help message\n");
     Dmod_Printf("  -v, --version             Show version information\n\n");
     Dmod_Printf("Environment Variables:\n");
@@ -654,6 +669,8 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("Examples:\n");
     Dmod_Printf("  %s mymodule              # Download latest version\n", app_name);
     Dmod_Printf("  %s mymodule@1.0          # Download specific version\n", app_name);
+    Dmod_Printf("  %s mymodule@>=1.0        # Download version >= 1.0\n", app_name);
+    Dmod_Printf("  %s mymodule@>=1.0<=2.0   # Download version in range [1.0, 2.0]\n", app_name);
     Dmod_Printf("  %s -d deps.dmd           # Download all modules from deps.dmd\n", app_name);
     Dmod_Printf("  %s -m http://... module  # Use custom manifest\n", app_name);
     Dmod_Printf("  %s --type dmfc module    # Prefer dmfc files\n", app_name);
@@ -688,11 +705,15 @@ static int DownloadModule(const char* module_name, const char* module_version,
                           const char* output_dir, const char* tools_name,
                           const char* arch_name, const char* preferred_type,
                           bool download_dependencies, const char* default_manifest,
-                          bool ignore_missing) {
+                          bool ignore_missing, bool skip_dmod_ver_check) {
     // Try to find entries for this module, checking architecture for each
     Dmod_ManifestNode_t* last_node = NULL;
     Dmod_ManifestEntry_t entry;
     bool found_any = false;
+    
+    // Get current DMOD version for compatibility checking
+    Dmod_SemanticVersion_t current_dmod_version;
+    GetCurrentDmodVersion(&current_dmod_version);
     
     while (true) {
         // Find next entry matching the module name
@@ -711,6 +732,20 @@ static int DownloadModule(const char* module_name, const char* module_version,
         
         found_any = true;
         last_node = current_node;
+        
+        // Check DMOD version compatibility
+        if (!skip_dmod_ver_check) {
+            if (!Dmod_Manifest_IsEntryCompatible(&entry, &current_dmod_version)) {
+                char entry_ver_str[32];
+                char current_ver_str[32];
+                Dmod_Version_ToString(&entry.dmod_version, entry_ver_str, sizeof(entry_ver_str));
+                Dmod_Version_ToString(&current_dmod_version, current_ver_str, sizeof(current_ver_str));
+                
+                DMOD_LOG_WARN("Skipping entry for %s: requires DMOD %s but current is %s (incompatible major version)\n",
+                             module_name, entry_ver_str, current_ver_str);
+                continue; // Try next entry
+            }
+        }
     
         // Determine which version to use for URL substitution
         const char* version_to_use = module_version ? module_version : 
@@ -845,7 +880,8 @@ static int DownloadModule(const char* module_name, const char* module_version,
                 arch_name,
                 preferred_type,
                 default_manifest,
-                ignore_missing
+                ignore_missing,
+                skip_dmod_ver_check
             );
             
             if (dep_result > 0) {
@@ -873,6 +909,7 @@ int main(int argc, char* argv[]) {
     bool no_dependencies = false;
     bool ignore_missing = false;
     bool skip_arch_check = false;
+    bool skip_dmod_ver_check = false;
     
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
@@ -937,6 +974,9 @@ int main(int argc, char* argv[]) {
         }
         else if (strcmp(argv[i], "--skip-arch-check") == 0) {
             skip_arch_check = true;
+        }
+        else if (strcmp(argv[i], "--skip-dmod-ver-check") == 0) {
+            skip_dmod_ver_check = true;
         }
         else if (argv[i][0] == '-') {
             DMOD_LOG_ERROR("Error: Unknown option: %s\n", argv[i]);
@@ -1095,7 +1135,8 @@ int main(int argc, char* argv[]) {
                 preferred_type,
                 true,  // download dependencies
                 manifest_path,
-                ignore_missing
+                ignore_missing,
+                skip_dmod_ver_check
             );
             
             Dmod_Manifest_Free(man_ctx);
@@ -1178,7 +1219,8 @@ int main(int argc, char* argv[]) {
             preferred_type,
             !no_dependencies,  // download dependencies unless --no-dependencies is set
             manifest_path,
-            ignore_missing
+            ignore_missing,
+            skip_dmod_ver_check
         );
         
         // Cleanup

@@ -17,6 +17,8 @@ target_include_directories(dmod_dependencies
 
 # Link dependencies
 target_link_libraries(dmod_dependencies
+    PUBLIC
+        dmod_version
     PRIVATE
         dmod_common
         dmod_system

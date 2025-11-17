@@ -1,6 +1,9 @@
 # DMOD Manifest Example
 # This file demonstrates the syntax of DMOD manifest files
 
+# Set DMOD version requirement for following entries
+$dmod-version 1.0
+
 # Simple module with version
 kernel@1.0 https://registry.chocotechnologies.com/modules/kernel.dmf
 

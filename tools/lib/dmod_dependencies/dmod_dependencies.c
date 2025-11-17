@@ -5,6 +5,7 @@
 
 #include "dmod_dependencies.h"
 #include "dmod.h"
+#include "dmod_version.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -72,10 +73,18 @@ static bool AddEntry(Dmod_DependenciesContext_t* ctx, const char* name,
     strncpy(node->entry.name, name, DMOD_DEPENDENCIES_MAX_NAME_LEN - 1);
     node->entry.name[DMOD_DEPENDENCIES_MAX_NAME_LEN - 1] = '\0';
     
-    // Copy version if provided
+    // Copy version if provided and parse constraint
     if (version) {
         strncpy(node->entry.version, version, DMOD_DEPENDENCIES_MAX_VERSION_LEN - 1);
         node->entry.version[DMOD_DEPENDENCIES_MAX_VERSION_LEN - 1] = '\0';
+        
+        // Try to parse version constraint
+        if (Dmod_Version_ParseConstraint(version, &node->entry.constraint)) {
+            node->entry.has_constraint = true;
+        } else {
+            // Failed to parse constraint
+            node->entry.has_constraint = false;
+        }
     }
     
     // Copy manifest

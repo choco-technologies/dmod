@@ -25,7 +25,7 @@ Lines starting with `#` are treated as comments and ignored:
 
 ### Module Entries
 
-Modules are specified by name, optionally followed by a version:
+Modules are specified by name, optionally followed by a version or version constraint:
 
 ```dmd
 # Module without version (downloads latest available)
@@ -34,7 +34,32 @@ dmffs
 # Module with specific version
 driver@1.0
 spi@2.5.1
+
+# Module with version range - all versions >= 1.0
+dmffs@>=1.0
+
+# Module with version range - versions <= 2.0
+uart@<=2.0
+
+# Module with version range - versions between 1.0 and 2.0 (inclusive)
+spi@>=1.0<=2.0
+
+# Version constraints with other operators
+i2c@>1.0      # Greater than 1.0 (exclusive)
+can@<2.0      # Less than 2.0 (exclusive)
 ```
+
+#### Version Constraint Syntax
+
+Version constraints support the following operators:
+- `@1.0` - Exact version match
+- `@>=1.0` - Greater than or equal to version 1.0
+- `@<=2.0` - Less than or equal to version 2.0
+- `@>1.0` - Greater than version 1.0 (exclusive)
+- `@<2.0` - Less than version 2.0 (exclusive)
+- `@>=1.0<=2.0` - Combined constraint: version between 1.0 and 2.0 (inclusive)
+
+Versions follow semantic versioning (major.minor.patch) where omitted parts default to 0.
 
 ### From Directive
 

@@ -7,7 +7,8 @@
  * 
  * Dependencies format supports:
  * - Comments (lines starting with #)
- * - Module entries: module[@version]
+ * - Module entries: module[@version] or module[@version_constraint]
+ * - Version constraints: >=1.0, <=2.0, >=1.0<=2.0
  * - Include directives: $include url
  * - Source directives: from: manifest_url
  */
@@ -17,6 +18,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include "dmod_version.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,8 +44,10 @@ extern "C" {
  */
 typedef struct {
     char name[DMOD_DEPENDENCIES_MAX_NAME_LEN];      /**< Module name */
-    char version[DMOD_DEPENDENCIES_MAX_VERSION_LEN]; /**< Module version (empty if not specified) */
+    char version[DMOD_DEPENDENCIES_MAX_VERSION_LEN]; /**< Module version or constraint (empty if not specified) */
     char manifest[DMOD_DEPENDENCIES_MAX_URL_LEN];   /**< Manifest URL to use for this module */
+    Dmod_VersionConstraint_t constraint;             /**< Parsed version constraint */
+    bool has_constraint;                             /**< Whether constraint is parsed and valid */
 } Dmod_DependencyEntry_t;
 
 /**

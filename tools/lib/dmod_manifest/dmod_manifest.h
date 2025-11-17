@@ -9,6 +9,7 @@
  * - Comments (lines starting with #)
  * - Module entries: module[@version] url
  * - Include directives: $include url
+ * - DMOD version directive: $dmod-version version
  * - Variable substitution: <tools_name>, <arch_name>, and <version>
  */
 
@@ -17,6 +18,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include "dmod_version.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,6 +46,8 @@ typedef struct {
     char name[DMOD_MANIFEST_MAX_NAME_LEN];      /**< Module name */
     char version[DMOD_MANIFEST_MAX_VERSION_LEN]; /**< Module version (empty if not specified) */
     char url[DMOD_MANIFEST_MAX_URL_LEN];        /**< Download URL */
+    Dmod_SemanticVersion_t dmod_version;        /**< Required DMOD version for this entry */
+    bool has_dmod_version;                      /**< Whether dmod_version is set */
 } Dmod_ManifestEntry_t;
 
 /**
@@ -170,6 +174,22 @@ bool Dmod_Manifest_GetEntry(
  * @return Error message string, or NULL if no error
  */
 const char* Dmod_Manifest_GetError(Dmod_ManifestContext_t* ctx);
+
+/**
+ * @brief Check if a manifest entry is compatible with the current DMOD version
+ * 
+ * Checks if the entry's required DMOD version is compatible (same major version)
+ * with the current DMOD version. If the entry has no DMOD version requirement,
+ * it is considered compatible.
+ * 
+ * @param entry Manifest entry to check
+ * @param current_dmod_version Current DMOD version
+ * @return true if compatible, false otherwise
+ */
+bool Dmod_Manifest_IsEntryCompatible(
+    const Dmod_ManifestEntry_t* entry,
+    const Dmod_SemanticVersion_t* current_dmod_version
+);
 
 #ifdef __cplusplus
 }

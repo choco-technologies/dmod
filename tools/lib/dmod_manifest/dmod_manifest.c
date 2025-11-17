@@ -5,6 +5,7 @@
 
 #include "dmod_manifest.h"
 #include "dmod.h"
+#include "dmod_version.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -27,6 +28,8 @@ struct Dmod_ManifestContext {
     Dmod_ManifestNode_t* entries;        /**< Linked list of entries */
     size_t entry_count;                  /**< Number of entries */
     char error[256];                     /**< Last error message */
+    Dmod_SemanticVersion_t current_dmod_version; /**< Current DMOD version for entries */
+    bool has_dmod_version;               /**< Whether current_dmod_version is set */
 };
 
 /**
@@ -163,6 +166,31 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
         return true;
     }
     
+    // Check for $dmod-version directive
+    if (strncmp(line, "$dmod-version", 13) == 0) {
+        char* version_start = line + 13;
+        version_start = TrimWhitespace(version_start);
+        
+        if (version_start[0] == '\0') {
+            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "$dmod-version directive requires a version");
+            return false;
+        }
+        
+        Dmod_SemanticVersion_t version;
+        if (!Dmod_Version_Parse(version_start, &version)) {
+            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Invalid version in $dmod-version: %s", version_start);
+            return false;
+        }
+        
+        ctx->current_dmod_version = version;
+        ctx->has_dmod_version = true;
+        
+        DMOD_LOG_VERBOSE("Set DMOD version requirement to %d.%d.%d\n", 
+                        version.major, version.minor, version.patch);
+        
+        return true;
+    }
+    
     // Check for $include directive
     if (strncmp(line, "$include", 8) == 0) {
         char* url_start = line + 8;
@@ -246,6 +274,14 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
         Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "URL too long after substitution: %s", url_raw);
         Dmod_Free(node);
         return false;
+    }
+    
+    // Store DMOD version requirement if set
+    if (ctx->has_dmod_version) {
+        node->entry.dmod_version = ctx->current_dmod_version;
+        node->entry.has_dmod_version = true;
+    } else {
+        node->entry.has_dmod_version = false;
     }
     
     // Add to linked list
@@ -430,6 +466,13 @@ Dmod_ManifestNode_t* Dmod_Manifest_FindEntry(
 
     bool has_version = version && version[0] != '\0';
     Dmod_ManifestNode_t* best_match = NULL;
+    
+    // Parse version constraint if provided
+    Dmod_VersionConstraint_t constraint;
+    bool has_constraint = false;
+    if (has_version) {
+        has_constraint = Dmod_Version_ParseConstraint(version, &constraint);
+    }
 
     Dmod_ManifestNode_t* start_node = last_node ? last_node->next : ctx->entries;
 
@@ -450,10 +493,21 @@ Dmod_ManifestNode_t* Dmod_Manifest_FindEntry(
             break;
         }
 
-        // Check version match
-        if (strcmp(node->entry.version, version) == 0) {
-            best_match = node;
-            break;
+        // If we have a constraint, check if node version satisfies it
+        if (has_constraint) {
+            Dmod_SemanticVersion_t node_version;
+            if (Dmod_Version_Parse(node->entry.version, &node_version)) {
+                if (Dmod_Version_Satisfies(&node_version, &constraint)) {
+                    best_match = node;
+                    break;
+                }
+            }
+        } else {
+            // No constraint parsed, try exact match
+            if (strcmp(node->entry.version, version) == 0) {
+                best_match = node;
+                break;
+            }
         }
     }
 
@@ -496,4 +550,21 @@ bool Dmod_Manifest_GetEntry(
 const char* Dmod_Manifest_GetError(Dmod_ManifestContext_t* ctx) {
     if (!ctx || ctx->error[0] == '\0') return NULL;
     return ctx->error;
+}
+
+bool Dmod_Manifest_IsEntryCompatible(
+    const Dmod_ManifestEntry_t* entry,
+    const Dmod_SemanticVersion_t* current_dmod_version
+) {
+    if (!entry || !current_dmod_version) {
+        return false;
+    }
+    
+    // If entry has no DMOD version requirement, it's compatible
+    if (!entry->has_dmod_version) {
+        return true;
+    }
+    
+    // Check major version compatibility
+    return Dmod_Version_IsCompatible(&entry->dmod_version, current_dmod_version);
 }
