@@ -15,10 +15,8 @@
 #include <unistd.h>
 #include <curl/curl.h>
 #include "dmod.h"
-#include "dmod_arch_defs.h"
 #include "dmod_manifest.h"
 #include "dmod_dependencies.h"
-#include "dmod_system.h"
 
 // Default paths
 #define DEFAULT_DMF_DIR "./dmf"
@@ -697,14 +695,11 @@ static int DownloadModule(const char* module_name, const char* module_version,
     
     while (true) {
         // Find next entry matching the module name
-        Dmod_ManifestNode_t* current_node = NULL;
-        if (!Dmod_Manifest_FindEntryAfter(manifest_ctx, module_name, module_version, last_node, &entry, &current_node)) {
+        Dmod_ManifestNode_t* current_node = Dmod_Manifest_FindEntry(manifest_ctx, module_name, module_version, last_node, &entry);
+        if (!current_node) {
             // No more entries found
             if (!found_any) {
-                DMOD_LOG_ERROR("Error: Module not found: %s%s%s\n",
-                    module_name, 
-                    module_version ? "@" : "", 
-                    module_version ? module_version : "");
+                DMOD_LOG_ERROR("Error: %s\n", Dmod_Manifest_GetError(manifest_ctx));
                 return ignore_missing ? 0 : 1;
             } else {
                 // We tried all entries but none matched architecture

@@ -247,7 +247,8 @@ TEST_F(DmodManifestTest, FindEntryByNameOnly) {
     ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
     
     Dmod_ManifestEntry_t entry;
-    ASSERT_TRUE(Dmod_Manifest_FindEntry(ctx, "mymodule", nullptr, &entry));
+    Dmod_ManifestNode_t* node = Dmod_Manifest_FindEntry(ctx, "mymodule", nullptr, nullptr, &entry);
+    ASSERT_NE(node, nullptr);
     EXPECT_STREQ(entry.name, "mymodule");
     // Should return first match
     
@@ -266,7 +267,8 @@ TEST_F(DmodManifestTest, FindEntryByNameAndVersion) {
     ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
     
     Dmod_ManifestEntry_t entry;
-    ASSERT_TRUE(Dmod_Manifest_FindEntry(ctx, "mymodule", "1.1", &entry));
+    Dmod_ManifestNode_t* node = Dmod_Manifest_FindEntry(ctx, "mymodule", "1.1", nullptr, &entry);
+    ASSERT_NE(node, nullptr);
     EXPECT_STREQ(entry.name, "mymodule");
     EXPECT_STREQ(entry.version, "1.1");
     EXPECT_STREQ(entry.url, "https://example.com/mymodule-1.1.dmf");
@@ -283,7 +285,8 @@ TEST_F(DmodManifestTest, FindEntryNotFound) {
     ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
     
     Dmod_ManifestEntry_t entry;
-    ASSERT_FALSE(Dmod_Manifest_FindEntry(ctx, "nonexistent", nullptr, &entry));
+    Dmod_ManifestNode_t* node = Dmod_Manifest_FindEntry(ctx, "nonexistent", nullptr, nullptr, &entry);
+    ASSERT_EQ(node, nullptr);
     EXPECT_NE(Dmod_Manifest_GetError(ctx), nullptr);
     
     Dmod_Manifest_Free(ctx);
@@ -300,9 +303,9 @@ TEST_F(DmodManifestTest, FindEntryVersionNotExactMatch) {
     ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
     
     Dmod_ManifestEntry_t entry;
-    // Request version 1.5 which doesn't exist - should return first match
-    ASSERT_TRUE(Dmod_Manifest_FindEntry(ctx, "mymodule", "1.5", &entry));
-    EXPECT_STREQ(entry.name, "mymodule");
+    // Request version 1.5 which doesn't exist - should not find anything
+    Dmod_ManifestNode_t* node = Dmod_Manifest_FindEntry(ctx, "mymodule", "1.5", nullptr, &entry);
+    ASSERT_EQ(node, nullptr);
     
     Dmod_Manifest_Free(ctx);
 }

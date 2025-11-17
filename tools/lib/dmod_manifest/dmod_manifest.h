@@ -124,41 +124,21 @@ typedef struct Dmod_ManifestNode Dmod_ManifestNode_t;
  * 
  * Finds the entry that best matches the given module name and version.
  * If version is NULL or empty, returns the latest version or first match.
+ * To continue searching from a previous position, pass the previously returned node as last_node.
  * 
  * @param ctx Manifest context
  * @param name Module name to search for
  * @param version Module version to match (can be NULL for any version)
+ * @param last_node Last node returned (NULL to start from beginning)
  * @param out_entry Pointer to store the found entry
- * @return true if a matching entry was found, false otherwise
+ * @return Pointer to the found node (for next iteration), or NULL if not found
  */
-bool Dmod_Manifest_FindEntry(
-    Dmod_ManifestContext_t* ctx,
-    const char* name,
-    const char* version,
-    Dmod_ManifestEntry_t* out_entry
-);
-
-/**
- * @brief Find the next matching entry for a module after a given node
- * 
- * Continues searching for entries matching the module name and version,
- * starting from the node after last_node.
- * 
- * @param ctx Manifest context
- * @param name Module name to search for
- * @param version Module version to match (can be NULL for any version)
- * @param last_node Last node that was checked (NULL to start from beginning)
- * @param out_entry Pointer to store the found entry
- * @param out_node Pointer to store the found node (for next iteration)
- * @return true if a matching entry was found, false otherwise
- */
-bool Dmod_Manifest_FindEntryAfter(
+Dmod_ManifestNode_t* Dmod_Manifest_FindEntry(
     Dmod_ManifestContext_t* ctx,
     const char* name,
     const char* version,
     Dmod_ManifestNode_t* last_node,
-    Dmod_ManifestEntry_t* out_entry,
-    Dmod_ManifestNode_t** out_node
+    Dmod_ManifestEntry_t* out_entry
 );
 
 /**
