@@ -103,6 +103,7 @@ extern "C" {
 #define DMOD_MAKE_IRQ_SIGNATURE( NAME )		                    DMOD_IRQ_SIGNATURE_PREFIX #NAME 
 #define DMOD_MAKE_MAL_SIGNATURE( MODULE, VERSION, NAME )	    DMOD_MAL_SIGNATURE_PREFIX #NAME "@" #MODULE ":" #VERSION DMOD_SIGNATURE_SUFFIX
 #define DMOD_MAKE_DIF_SIGNATURE( MODULE, VERSION, NAME )	    DMOD_DIF_SIGNATURE_PREFIX #NAME "@" #MODULE ":" #VERSION DMOD_SIGNATURE_SUFFIX
+#define DMOD_MAKE_VERSION(API_VERSION, MODULE_VERSION)              API_VERSION/MODULE_VERSION
 
 //==============================================================================
 //                              DMOD_API definitions
