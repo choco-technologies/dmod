@@ -117,13 +117,17 @@ bool Dmod_RMod_AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignat
     }
 
     strncpy( requiredModule->Name, moduleName, sizeof(requiredModule->Name) );
-    if(Dmod_ApiSignature_ReadVersion( ApiSignature, requiredModule->Version, sizeof(requiredModule->Version) ) == false)
+    requiredModule->SystemModule = Dmod_Mgr_IsSystemModule( moduleName );
+    if(requiredModule->SystemModule)
     {
-        DMOD_LOG_ERROR("Cannot add required module - cannot read version\n");
-        return false;
+        strncpy( requiredModule->Version, DMOD_VERSION_STRING, sizeof(requiredModule->Version) );
+    }
+    else if(Dmod_ApiSignature_ReadModuleVersion( ApiSignature, requiredModule->Version, sizeof(requiredModule->Version) ) == false)
+    {
+        DMOD_LOG_WARN("Version of the module is not given for: %s\n", moduleName);
     }
 
-    DMOD_LOG_VERBOSE("Required module '%s' added to '%s'\n", requiredModule->Name, Dmod_Context_GetModuleName( Context ));
+    DMOD_LOG_VERBOSE("Required %smodule '%s@%s' added to '%s'\n", requiredModule->SystemModule ? "system " : "", requiredModule->Name, requiredModule->Version, Dmod_Context_GetModuleName( Context ));
 
     return true;
 }

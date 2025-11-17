@@ -86,9 +86,11 @@ extern bool         Dmod_ApiSignature_IsModuleNameGiven( const char* Signature )
 extern bool         Dmod_ApiSignature_IsModule( const char* Signature, const char* ModuleName );
 extern const char*  Dmod_ApiSignature_GetName( const char *Signature );
 extern const char*  Dmod_ApiSignature_GetVersion( const char* Signature );
+extern const char*  Dmod_ApiSignature_GetModuleVersion( const char* Signature );
 extern const char*  Dmod_ApiSignature_GetModule( const char* Signature );
 extern bool         Dmod_ApiSignature_ReadModuleName( const char* Signature, char* ModuleName, size_t MaxLength );
 extern bool         Dmod_ApiSignature_ReadVersion( const char* Signature, char* Version, size_t MaxLength );
+extern bool         Dmod_ApiSignature_ReadModuleVersion( const char* Signature, char* ModuleVersion, size_t MaxLength );
 extern bool         Dmod_ApiSignature_AreEqual( const char* Signature1, const char* Signature2 );
 extern bool         Dmod_ApiSignature_IsMal( const char* Signature );
 

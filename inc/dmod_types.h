@@ -172,6 +172,7 @@ typedef struct
  */
 typedef struct 
 {
+    bool           SystemModule;
     char           Name[DMOD_MAX_MODULE_NAME_LENGTH];
     char           Version[DMOD_MAX_VERSION_LENGTH];
 } Dmod_RequiredModule_t;

@@ -6,6 +6,7 @@
 //==============================================================================
 static const char* ApiSignature_GetName( const char* Signature );
 static const char* ApiSignature_GetVersion( const char* Signature );
+static const char* ApiSignature_GetModuleVersion( const char* Signature );
 static const char* ApiSignature_GetModule( const char* Signature );
 static bool ApiSignature_AreNamesEqual( const char* Signature1, const char* Signature2 );
 static bool ApiSignature_AreModulesEqual( const char* Signature1, const char* Signature2 );
@@ -177,6 +178,23 @@ const char*  Dmod_ApiSignature_GetVersion( const char* Signature )
 }
 
 /**
+ * @brief Get module version from the API signature
+ * 
+ * @param Signature API signature
+ * 
+ * @return Module version
+ */
+const char*  Dmod_ApiSignature_GetModuleVersion( const char* Signature )
+{
+    if( Dmod_ApiSignature_IsValid( Signature ) == false )
+    {
+        return NULL;
+    }
+
+    return ApiSignature_GetModuleVersion( Signature );
+}
+
+/**
  * @brief Get module name from the API signature
  * 
  * @param Signature API signature
@@ -264,7 +282,58 @@ bool Dmod_ApiSignature_ReadVersion( const char* Signature, char* Version, size_t
         return false;
     }
 
-    return strncpy( Version, version, MaxLength ) != NULL;
+    for(size_t i = 0; i < MaxLength - 1; i++)
+    {
+        if( version[i] == '\0' || version[i] == '/' )
+        {
+            Version[i] = '\0';
+            return true;
+        }
+        Version[i] = version[i];
+    }
+
+    Version[MaxLength - 1] = '\0';
+    return true;
+}
+
+/**
+ * @brief Reads module version from the API signature
+ * 
+ * @param Signature API signature
+ * @param ModuleVersion Buffer to store module version
+ * @param MaxLength Maximum length of the module version
+ * 
+ * @return true if module version was read successfully, false otherwise
+ */
+bool Dmod_ApiSignature_ReadModuleVersion( const char* Signature, char* ModuleVersion, size_t MaxLength )
+{
+    if(MaxLength == 0)
+    {
+        return false;
+    }
+    if( !Dmod_ApiSignature_IsValid( Signature ) )
+    {
+        return false;
+    }
+
+    const char* moduleVersion = ApiSignature_GetModuleVersion( Signature );
+    if( moduleVersion == NULL )
+    {
+        return false;
+    }
+
+    for(size_t i = 0; i < MaxLength - 1; i++)
+    {
+        if( moduleVersion[i] == '\0' )
+        {
+            ModuleVersion[i] = '\0';
+            return true;
+        }
+        ModuleVersion[i] = moduleVersion[i];
+    }
+
+    ModuleVersion[MaxLength - 1] = '\0';
+    return true;
 }
 
 /**
@@ -332,6 +401,30 @@ static const char* ApiSignature_GetVersion( const char* Signature )
     }
 
     return version + 1;
+}
+
+/**
+ * @brief Get module version from the API signature
+ * 
+ * @param Signature API signature
+ * 
+ * @return Module version
+ */
+static const char* ApiSignature_GetModuleVersion( const char* Signature )
+{
+    const char* version = ApiSignature_GetVersion( Signature );
+    if( version == NULL )
+    {
+        return NULL;
+    }
+
+    const char* moduleVersion = strchr( version, '/' );
+    if( moduleVersion == NULL )
+    {
+        return NULL;
+    }
+
+    return moduleVersion + 1;
 }
 
 /**
