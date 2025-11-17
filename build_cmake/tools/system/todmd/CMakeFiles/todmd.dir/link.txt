@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wall -std=c++17  -L /home/runner/work/dmod/dmod/scripts -T /home/runner/work/dmod/dmod/scripts/main.ld -Wl,--dependency-file=CMakeFiles/todmd.dir/link.d CMakeFiles/todmd.dir/main.c.o -o todmd  ../../../src/system/libdmod_system.a ../../../src/common/libdmod_common.a ../../../lib/third-party/FastLZ/libdmod_fastlz.a
