@@ -137,6 +137,9 @@ dmf-get mymodule
 # Specific version
 dmf-get mymodule@1.0
 
+# Download multiple modules from a file
+dmf-get -f modules.txt
+
 # Custom manifest
 dmf-get -m https://registry.example.com/manifest.dmm mymodule
 
@@ -145,7 +148,42 @@ dmf-get -o /custom/path mymodule
 
 # With tools name for substitution
 dmf-get -t arch/armv7/cortex-m7 mymodule
+
+# Batch download with custom settings
+dmf-get -m custom-manifest.dmm -o ./output -f modules.txt
 ```
+
+### Module List File Format
+
+When using the `-f, --file` option, create a text file with one module per line:
+
+```
+# Comment lines start with #
+module_name
+module_name@version
+
+# Empty lines are ignored
+another_module@1.2.3
+```
+
+Example:
+```
+# Core modules
+dmffs
+driver@1.0
+make_dmffs
+
+# Utilities
+utility@1.5
+```
+
+The tool will:
+- Process each module sequentially
+- Skip comments (lines starting with `#`)
+- Ignore empty lines
+- Trim whitespace
+- Continue even if some downloads fail
+- Display a summary at the end
 
 ## Future Enhancements
 
