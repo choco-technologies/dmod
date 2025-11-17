@@ -137,6 +137,13 @@ static bool DownloadFile(const char* url, const char* output_path) {
     return true;
 }
 
+// Forward declarations
+static int DownloadModule(const char* module_name, const char* module_version,
+                          Dmod_ManifestContext_t* manifest_ctx, 
+                          const char* output_dir, const char* tools_name,
+                          const char* arch_name, const char* preferred_type,
+                          bool download_dependencies, const char* default_manifest);
+
 /**
  * @brief Extract ZIP file and find DMF/DMFC file
  * 
@@ -146,11 +153,14 @@ static bool DownloadFile(const char* url, const char* output_path) {
  * @param preferred_type Preferred file type (dmf or dmfc)
  * @param output_file Buffer to store the path to the final installed file
  * @param output_file_size Size of output_file buffer
+ * @param output_dmd_file Buffer to store the path to the .dmd file if found (can be NULL)
+ * @param output_dmd_file_size Size of output_dmd_file buffer
  * @return true if extraction succeeded and DMF/DMFC file was found and copied
  */
 static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir, 
                                      const char* module_name, const char* preferred_type,
-                                     char* output_file, size_t output_file_size) {
+                                     char* output_file, size_t output_file_size,
+                                     char* output_dmd_file, size_t output_dmd_file_size) {
     // Create temporary extraction directory in /tmp
     char extract_dir[512];
     Dmod_SnPrintf(extract_dir, sizeof(extract_dir), "/tmp/dmod_extract_%s_%d", module_name, (int)getpid());
@@ -190,6 +200,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
     const char* entry_name;
     char best_match[512] = "";
     char fallback_match[512] = "";
+    char dmd_file[512] = "";
     int best_priority = 0;
     
     while ((entry_name = Dmod_ReadDir(dir)) != NULL) {
@@ -198,10 +209,22 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
             continue;
         }
         
-        // Check if it's a .dmf or .dmfc file
+        // Check if it's a .dmf, .dmfc or .dmd file
         size_t len = strlen(entry_name);
         bool is_dmf = (len > 4 && strcmp(entry_name + len - 4, ".dmf") == 0);
         bool is_dmfc = (len > 5 && strcmp(entry_name + len - 5, ".dmfc") == 0);
+        bool is_dmd = (len > 4 && strcmp(entry_name + len - 4, ".dmd") == 0);
+        
+        // If it's a .dmd file, check if it matches the module name
+        if (is_dmd) {
+            char expected_dmd[256];
+            Dmod_SnPrintf(expected_dmd, sizeof(expected_dmd), "%s.dmd", module_name);
+            if (strcmp(entry_name, expected_dmd) == 0) {
+                Dmod_SnPrintf(dmd_file, sizeof(dmd_file), "%s/%s", extract_dir, entry_name);
+                DMOD_LOG_INFO("Found dependencies file: %s\n", entry_name);
+            }
+            continue;
+        }
         
         if (!is_dmf && !is_dmfc) continue;
         
@@ -297,6 +320,29 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
     strncpy(output_file, dest_path, output_file_size - 1);
     output_file[output_file_size - 1] = '\0';
     
+    // Copy the .dmd file if found and if caller wants it
+    if (dmd_file[0] != '\0' && output_dmd_file != NULL && output_dmd_file_size > 0) {
+        const char* dmd_filename = strrchr(dmd_file, '/');
+        if (dmd_filename) {
+            dmd_filename++; // Skip the '/'
+        } else {
+            dmd_filename = dmd_file;
+        }
+        
+        char dmd_dest_path[512];
+        Dmod_SnPrintf(dmd_dest_path, sizeof(dmd_dest_path), "%s/%s", output_dir, dmd_filename);
+        
+        char cp_dmd_cmd[1024];
+        Dmod_SnPrintf(cp_dmd_cmd, sizeof(cp_dmd_cmd), "cp \"%s\" \"%s\"", dmd_file, dmd_dest_path);
+        result = system(cp_dmd_cmd);
+        
+        if (result == 0) {
+            strncpy(output_dmd_file, dmd_dest_path, output_dmd_file_size - 1);
+            output_dmd_file[output_dmd_file_size - 1] = '\0';
+            DMOD_LOG_INFO("Dependencies file copied to: %s\n", output_dmd_file);
+        }
+    }
+    
     // Clean up: remove ZIP file and temp directory
     char rm_zip_cmd[1024];
     Dmod_SnPrintf(rm_zip_cmd, sizeof(rm_zip_cmd), "rm -f \"%s\"", zip_path);
@@ -308,6 +354,214 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
     
     DMOD_LOG_INFO("Module installed to: %s\n", output_file);
     return true;
+}
+
+/**
+ * @brief Process and download dependencies for a module
+ * 
+ * @param module_file_path Path to the DMF/DMFC file
+ * @param dmd_file_path Path to the .dmd file (can be NULL)
+ * @param output_dir Output directory for dependencies
+ * @param tools_name Tools name for substitution
+ * @param arch_name Architecture name for substitution
+ * @param preferred_type Preferred file type
+ * @param default_manifest Default manifest URL
+ * @return 0 on success, non-zero on failure
+ */
+static int ProcessModuleDependencies(const char* module_file_path, const char* dmd_file_path,
+                                      const char* output_dir, const char* tools_name,
+                                      const char* arch_name, const char* preferred_type,
+                                      const char* default_manifest) {
+    int failed_count = 0;
+    
+    // First, try to load dependencies from .dmd file if provided
+    if (dmd_file_path != NULL && Dmod_Access(dmd_file_path, DMOD_R_OK) == 0) {
+        DMOD_LOG_INFO("Processing dependencies from: %s\n", dmd_file_path);
+        
+        // Initialize dependencies parser
+        Dmod_DependenciesContext_t* dep_ctx = Dmod_Dependencies_Init(default_manifest, DownloadWithCurl, NULL);
+        if (!dep_ctx) {
+            DMOD_LOG_ERROR("Failed to initialize dependencies parser\n");
+            return 1;
+        }
+        
+        // Parse the .dmd file
+        if (!Dmod_Dependencies_ParseFile(dep_ctx, dmd_file_path)) {
+            DMOD_LOG_ERROR("Failed to parse dependencies file: %s\n", 
+                    Dmod_Dependencies_GetError(dep_ctx));
+            Dmod_Dependencies_Free(dep_ctx);
+            return 1;
+        }
+        
+        size_t dep_count = Dmod_Dependencies_GetEntryCount(dep_ctx);
+        DMOD_LOG_INFO("Found %zu dependencies in .dmd file\n", dep_count);
+        
+        // Download each dependency
+        for (size_t i = 0; i < dep_count; i++) {
+            Dmod_DependencyEntry_t dep_entry;
+            if (!Dmod_Dependencies_GetEntry(dep_ctx, i, &dep_entry)) {
+                DMOD_LOG_ERROR("Failed to get dependency entry %zu\n", i);
+                failed_count++;
+                continue;
+            }
+            
+            DMOD_LOG_INFO("  [%zu/%zu] %s%s%s\n", 
+                   i + 1, dep_count,
+                   dep_entry.name,
+                   dep_entry.version[0] ? "@" : "",
+                   dep_entry.version[0] ? dep_entry.version : "");
+            
+            // Initialize manifest parser for this dependency
+            Dmod_ManifestContext_t* man_ctx = Dmod_Manifest_Init(tools_name, arch_name, DownloadWithCurl, NULL);
+            if (!man_ctx) {
+                DMOD_LOG_ERROR("    Failed to initialize manifest parser\n");
+                failed_count++;
+                continue;
+            }
+            
+            // Parse manifest
+            bool man_parse_success = false;
+            if (strncmp(dep_entry.manifest, "http://", 7) == 0 || 
+                strncmp(dep_entry.manifest, "https://", 8) == 0) {
+                man_parse_success = Dmod_Manifest_ParseUrl(man_ctx, dep_entry.manifest);
+            } else {
+                man_parse_success = Dmod_Manifest_ParseFile(man_ctx, dep_entry.manifest);
+            }
+            
+            if (!man_parse_success) {
+                DMOD_LOG_ERROR("    Failed to parse manifest: %s\n", 
+                        Dmod_Manifest_GetError(man_ctx));
+                Dmod_Manifest_Free(man_ctx);
+                failed_count++;
+                continue;
+            }
+            
+            // Download the dependency (with its own dependencies)
+            int download_result = DownloadModule(
+                dep_entry.name,
+                dep_entry.version[0] ? dep_entry.version : NULL,
+                man_ctx,
+                output_dir,
+                tools_name,
+                arch_name,
+                preferred_type,
+                true,  // download dependencies recursively
+                default_manifest
+            );
+            
+            Dmod_Manifest_Free(man_ctx);
+            
+            if (download_result != 0) {
+                failed_count++;
+            }
+        }
+        
+        Dmod_Dependencies_Free(dep_ctx);
+    }
+    // If no .dmd file, try to extract dependencies from the module itself
+    else if (module_file_path != NULL) {
+        DMOD_LOG_INFO("No .dmd file found, checking module for dependencies\n");
+        
+        // Initialize Dmod system if not already initialized
+        static bool dmod_initialized = false;
+        if (!dmod_initialized) {
+            if (!Dmod_Initialize()) {
+                DMOD_LOG_ERROR("Failed to initialize Dmod system\n");
+                return 1;
+            }
+            dmod_initialized = true;
+        }
+        
+        // Enable crossplatform mode as required
+        Dmod_SetCrossplatformMode(true);
+        
+        // Try to read dependencies from the module file
+        Dmod_RequiredModule_t required_modules[DMOD_MAX_REQUIRED_MODULES];
+        memset(required_modules, 0, sizeof(required_modules));
+        
+        if (Dmod_ReadRequiredModules(module_file_path, required_modules, DMOD_MAX_REQUIRED_MODULES)) {
+            DMOD_LOG_INFO("Reading dependencies from module file\n");
+            
+            // Count non-system dependencies
+            int dep_count = 0;
+            for (size_t i = 0; i < DMOD_MAX_REQUIRED_MODULES; i++) {
+                if (required_modules[i].Name[0] != '\0' && !required_modules[i].SystemModule) {
+                    dep_count++;
+                }
+            }
+            
+            if (dep_count > 0) {
+                DMOD_LOG_INFO("Found %d non-system dependencies in module\n", dep_count);
+                
+                // Download each dependency
+                int processed = 0;
+                for (size_t i = 0; i < DMOD_MAX_REQUIRED_MODULES; i++) {
+                    if (required_modules[i].Name[0] == '\0') continue;
+                    if (required_modules[i].SystemModule) {
+                        DMOD_LOG_INFO("  Skipping system module: %s\n", required_modules[i].Name);
+                        continue;
+                    }
+                    
+                    processed++;
+                    DMOD_LOG_INFO("  [%d/%d] %s%s%s\n", 
+                           processed, dep_count,
+                           required_modules[i].Name,
+                           required_modules[i].Version[0] ? "@" : "",
+                           required_modules[i].Version[0] ? required_modules[i].Version : "");
+                    
+                    // Initialize manifest parser
+                    Dmod_ManifestContext_t* man_ctx = Dmod_Manifest_Init(tools_name, arch_name, DownloadWithCurl, NULL);
+                    if (!man_ctx) {
+                        DMOD_LOG_ERROR("    Failed to initialize manifest parser\n");
+                        failed_count++;
+                        continue;
+                    }
+                    
+                    // Parse default manifest
+                    bool man_parse_success = false;
+                    if (strncmp(default_manifest, "http://", 7) == 0 || 
+                        strncmp(default_manifest, "https://", 8) == 0) {
+                        man_parse_success = Dmod_Manifest_ParseUrl(man_ctx, default_manifest);
+                    } else {
+                        man_parse_success = Dmod_Manifest_ParseFile(man_ctx, default_manifest);
+                    }
+                    
+                    if (!man_parse_success) {
+                        DMOD_LOG_ERROR("    Failed to parse manifest: %s\n", 
+                                Dmod_Manifest_GetError(man_ctx));
+                        Dmod_Manifest_Free(man_ctx);
+                        failed_count++;
+                        continue;
+                    }
+                    
+                    // Download the dependency (with its own dependencies)
+                    int download_result = DownloadModule(
+                        required_modules[i].Name,
+                        required_modules[i].Version[0] ? required_modules[i].Version : NULL,
+                        man_ctx,
+                        output_dir,
+                        tools_name,
+                        arch_name,
+                        preferred_type,
+                        true,  // download dependencies recursively
+                        default_manifest
+                    );
+                    
+                    Dmod_Manifest_Free(man_ctx);
+                    
+                    if (download_result != 0) {
+                        failed_count++;
+                    }
+                }
+            } else {
+                DMOD_LOG_INFO("No non-system dependencies found in module\n");
+            }
+        } else {
+            DMOD_LOG_INFO("Could not read dependencies from module (may not have any)\n");
+        }
+    }
+    
+    return failed_count;
 }
 
 /**
@@ -418,12 +672,15 @@ static void PrintVersion() {
  * @param tools_name Tools name for substitution
  * @param arch_name Architecture name for substitution
  * @param preferred_type Preferred file type (dmf or dmfc)
+ * @param download_dependencies Whether to download dependencies
+ * @param default_manifest Default manifest URL
  * @return 0 on success, non-zero on failure
  */
 static int DownloadModule(const char* module_name, const char* module_version,
                           Dmod_ManifestContext_t* manifest_ctx, 
                           const char* output_dir, const char* tools_name,
-                          const char* arch_name, const char* preferred_type) {
+                          const char* arch_name, const char* preferred_type,
+                          bool download_dependencies, const char* default_manifest) {
     // Find the module
     Dmod_ManifestEntry_t entry;
     if (!Dmod_Manifest_FindEntry(manifest_ctx, module_name, module_version, &entry)) {
@@ -495,28 +752,51 @@ static int DownloadModule(const char* module_name, const char* module_version,
     }
     
     // Check if file already exists
-    if (Dmod_Access(output_file, DMOD_F_OK) == 0) {
+    bool already_exists = (Dmod_Access(output_file, DMOD_F_OK) == 0);
+    if (already_exists) {
         DMOD_LOG_INFO("File already exists, skipping download: %s\n", output_file);
-        return 0;
+    } else {
+        // Download the file
+        if (!DownloadFile(url, output_file)) {
+            DMOD_LOG_ERROR("Error: Failed to download module\n");
+            return 1;
+        }
     }
     
-    // Download the file
-    if (!DownloadFile(url, output_file)) {
-        DMOD_LOG_ERROR("Error: Failed to download module\n");
-        return 1;
-    }
+    char final_module_path[512];
+    char dmd_file_path[512] = "";
     
     // If it's a ZIP file, extract it and find the DMF/DMFC file
     if (ext && strcmp(ext, ".zip") == 0) {
-        char final_output[512];
         if (!ExtractZipAndFindModule(output_file, output_dir, entry.name, preferred_type,
-                                      final_output, sizeof(final_output))) {
+                                      final_module_path, sizeof(final_module_path),
+                                      dmd_file_path, sizeof(dmd_file_path))) {
             DMOD_LOG_ERROR("Error: Failed to extract and find module from ZIP\n");
             return 1;
         }
         // ExtractZipAndFindModule already prints where it was installed
     } else {
         DMOD_LOG_INFO("Module installed to: %s\n", output_file);
+        strncpy(final_module_path, output_file, sizeof(final_module_path) - 1);
+        final_module_path[sizeof(final_module_path) - 1] = '\0';
+    }
+    
+    // Process dependencies if requested and not already processed
+    if (download_dependencies && !already_exists) {
+        DMOD_LOG_INFO("\nProcessing dependencies for %s\n", entry.name);
+        int dep_result = ProcessModuleDependencies(
+            final_module_path,
+            dmd_file_path[0] != '\0' ? dmd_file_path : NULL,
+            output_dir,
+            tools_name,
+            arch_name,
+            preferred_type,
+            default_manifest
+        );
+        
+        if (dep_result > 0) {
+            DMOD_LOG_INFO("Warning: %d dependencies failed to download\n", dep_result);
+        }
     }
     
     return 0;
@@ -735,7 +1015,7 @@ int main(int argc, char* argv[]) {
                 continue;
             }
             
-            // Download the module
+            // Download the module (with dependencies)
             int download_result = DownloadModule(
                 dep_entry.name,
                 dep_entry.version[0] ? dep_entry.version : NULL,
@@ -743,7 +1023,9 @@ int main(int argc, char* argv[]) {
                 output_dir,
                 tools_name,
                 arch_name,
-                preferred_type
+                preferred_type,
+                true,  // download dependencies
+                manifest_path
             );
             
             Dmod_Manifest_Free(man_ctx);
@@ -815,7 +1097,7 @@ int main(int argc, char* argv[]) {
         
         DMOD_LOG_INFO("Manifest loaded with %zu entries\n", Dmod_Manifest_GetEntryCount(ctx));
         
-        // Download the module
+        // Download the module (with or without dependencies based on flag)
         result = DownloadModule(
             module_name,
             module_version[0] ? module_version : NULL,
@@ -823,17 +1105,13 @@ int main(int argc, char* argv[]) {
             output_dir,
             tools_name,
             arch_name,
-            preferred_type
+            preferred_type,
+            !no_dependencies,  // download dependencies unless --no-dependencies is set
+            manifest_path
         );
         
         // Cleanup
         Dmod_Manifest_Free(ctx);
-        
-        // TODO: Handle dependencies if not --no-dependencies
-        if (!no_dependencies && result == 0) {
-            // For now, just print a message
-            DMOD_LOG_INFO("Note: Dependency resolution not yet implemented\n");
-        }
     }
     
     // Cleanup
