@@ -75,6 +75,61 @@ else
 fi
 
 echo ""
+echo "Test 6: Test file-based module list"
+cat > modules_list.txt << 'EOF'
+# List of modules to download
+testmod@1.0
+mymod
+EOF
+
+if $DMF_GET -m manifest.dmm -o output -f modules_list.txt 2>&1 | grep -q "Processing module: testmod@1.0"; then
+    echo "✓ File-based module list processed"
+else
+    echo "✗ File-based module list failed"
+    exit 1
+fi
+
+echo ""
+echo "Test 7: Test file with comments and empty lines"
+cat > modules_with_comments.txt << 'EOF'
+# Comment line
+testmod@1.0
+
+# Another comment
+mymod
+EOF
+
+if $DMF_GET -m manifest.dmm -o output -f modules_with_comments.txt 2>&1 | grep -q "Processing module: testmod@1.0"; then
+    if $DMF_GET -m manifest.dmm -o output -f modules_with_comments.txt 2>&1 | grep -q "Processing module: mymod"; then
+        echo "✓ File with comments and empty lines processed correctly"
+    else
+        echo "✗ File with comments and empty lines failed (mymod not found)"
+        exit 1
+    fi
+else
+    echo "✗ File with comments and empty lines failed (testmod not found)"
+    exit 1
+fi
+
+echo ""
+echo "Test 8: Test error when both file and module specified"
+if $DMF_GET -m manifest.dmm -o output -f modules_list.txt testmod 2>&1 | grep -q "Cannot specify both module name and file"; then
+    echo "✓ Correctly rejects both file and module name"
+else
+    echo "✗ Should reject both file and module name"
+    exit 1
+fi
+
+echo ""
+echo "Test 9: Test summary output for file-based download"
+if $DMF_GET -m manifest.dmm -o output -f modules_list.txt 2>&1 | grep -q "=== Summary ==="; then
+    echo "✓ Summary output displayed"
+else
+    echo "✗ Summary output missing"
+    exit 1
+fi
+
+echo ""
 echo "=== All dmf-get integration tests passed! ==="
 cd ..
 rm -rf "$TEST_DIR"

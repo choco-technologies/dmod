@@ -34,6 +34,9 @@ dmf-get mymodule
 # Download specific version
 dmf-get mymodule@1.0
 
+# Download multiple modules from a file
+dmf-get -f modules.txt
+
 # Use custom manifest
 dmf-get -m path/to/manifest.dmm mymodule
 
@@ -46,9 +49,12 @@ dmf-get -t arch/armv7/cortex-m7 mymodule
 
 ### Command-Line Options
 
+- `-f, --file <path>` - File containing list of modules to download (one per line)
 - `-m, --manifest <path>` - Path or URL to manifest file
 - `-o, --output-dir <path>` - Output directory for downloaded modules
 - `-t, --tools-name <name>` - Tools name for variable substitution
+- `-a, --arch-name <name>` - Architecture name for variable substitution
+- `--type <dmf|dmfc>` - Prefer dmf or dmfc file type
 - `--no-dependencies` - Don't download dependencies (not yet implemented)
 - `-h, --help` - Show help message
 - `-v, --version` - Show version information
@@ -74,7 +80,55 @@ dmf-get -t arch/armv7/cortex-m7 mymodule@1.0
 
 # Download to specific directory
 dmf-get -o ./my_modules mymodule
+
+# Download multiple modules from a file
+cat > modules.txt << EOF
+# Core modules
+dmffs
+driver@1.0
+make_dmffs
+EOF
+dmf-get -f modules.txt
+
+# Download modules with custom manifest and output directory
+dmf-get -m manifest.dmm -o ./output -f modules.txt
 ```
+
+## Module List File Format
+
+When using the `-f, --file` option, you can provide a text file containing a list of modules to download. The format is simple:
+
+```
+# Comment lines start with #
+module_name
+module_name@version
+
+# Empty lines are ignored
+another_module@1.2.3
+```
+
+### Example Module List File
+
+```
+# Essential DMOD modules
+dmffs
+driver@1.0
+make_dmffs
+
+# Optional modules
+utility@2.1
+helper
+```
+
+### Rules
+
+1. One module per line
+2. Comments start with `#` and are ignored
+3. Empty lines are ignored
+4. Leading and trailing whitespace is trimmed
+5. Module specifications follow the same format as command-line arguments (`name` or `name@version`)
+6. All modules are processed sequentially, and the tool continues even if some downloads fail
+7. A summary is displayed at the end showing successful and failed downloads
 
 ## Manifest File Format
 

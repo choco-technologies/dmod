@@ -324,8 +324,10 @@ static char* FindManifest(const char* dmf_dir, const char* dmfc_dir) {
  * @brief Print usage information
  */
 static void PrintUsage(const char* app_name) {
-    Dmod_Printf("Usage: %s [options] <module_name>[@version]\n\n", app_name);
+    Dmod_Printf("Usage: %s [options] <module_name>[@version]\n", app_name);
+    Dmod_Printf("       %s [options] -f <file>\n\n", app_name);
     Dmod_Printf("Options:\n");
+    Dmod_Printf("  -f, --file <path>         File with list of modules to download\n");
     Dmod_Printf("  -m, --manifest <path>     Path or URL to manifest file\n");
     Dmod_Printf("  -o, --output-dir <path>   Output directory for downloaded modules\n");
     Dmod_Printf("  -t, --tools-name <name>   Tools name for variable substitution\n");
@@ -345,6 +347,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s -m http://... module  # Use custom manifest\n", app_name);
     Dmod_Printf("  %s --type dmfc module    # Prefer dmfc files\n", app_name);
     Dmod_Printf("  %s -a armv7-cortex-m7 module  # Use arch name directly\n", app_name);
+    Dmod_Printf("  %s -f modules.txt        # Download all modules listed in file\n", app_name);
 }
 
 /**
@@ -356,11 +359,144 @@ static void PrintVersion() {
 }
 
 /**
+ * @brief Download a single module
+ * 
+ * @param ctx Initialized manifest context
+ * @param module_spec Module specification (name[@version])
+ * @param output_dir Output directory for downloaded module
+ * @param preferred_type Preferred file type (dmf or dmfc), or NULL
+ * @param no_dependencies Whether to skip dependencies
+ * @return true if successful, false otherwise
+ */
+static bool DownloadModule(Dmod_ManifestContext_t* ctx, const char* module_spec,
+                          const char* output_dir, const char* preferred_type,
+                          bool no_dependencies) {
+    // Parse module specification
+    char module_name[DMOD_MANIFEST_MAX_NAME_LEN];
+    char module_version[DMOD_MANIFEST_MAX_VERSION_LEN] = {0};
+    
+    const char* at_sign = strchr(module_spec, '@');
+    if (at_sign) {
+        size_t name_len = at_sign - module_spec;
+        if (name_len >= sizeof(module_name)) {
+            DMOD_LOG_ERROR("Error: Module name too long: %s\n", module_spec);
+            return false;
+        }
+        strncpy(module_name, module_spec, name_len);
+        module_name[name_len] = '\0';
+        strncpy(module_version, at_sign + 1, sizeof(module_version) - 1);
+    } else {
+        strncpy(module_name, module_spec, sizeof(module_name) - 1);
+        module_name[sizeof(module_name) - 1] = '\0';
+    }
+    
+    // Find the module
+    Dmod_ManifestEntry_t entry;
+    if (!Dmod_Manifest_FindEntry(ctx, module_name, 
+                                  module_version[0] ? module_version : NULL, 
+                                  &entry)) {
+        DMOD_LOG_ERROR("Error: %s\n", Dmod_Manifest_GetError(ctx));
+        return false;
+    }
+    
+    // Determine which version to use for URL substitution
+    const char* version_to_use = module_version[0] ? module_version : 
+                                  (entry.version[0] ? entry.version : NULL);
+    
+    // Substitute <version> in URL if needed
+    char final_url[1024];
+    const char* url_ptr = entry.url;
+    const char* version_placeholder = strstr(entry.url, "<version>");
+    
+    // Check if version is required but not provided
+    if (version_placeholder && !version_to_use) {
+        DMOD_LOG_ERROR("Error: Module URL requires a version, but none was specified\n");
+        DMOD_LOG_ERROR("       Use %s@<version> to specify a version\n", entry.name);
+        return false;
+    }
+    
+    if (version_placeholder && version_to_use) {
+        // Need to substitute <version>
+        char* dst = final_url;
+        const char* src = entry.url;
+        char* dst_end = final_url + sizeof(final_url) - 1;
+        
+        while (*src && dst < dst_end) {
+            if (strncmp(src, "<version>", 9) == 0) {
+                size_t len = strlen(version_to_use);
+                if (dst + len >= dst_end) break;
+                strcpy(dst, version_to_use);
+                dst += len;
+                src += 9;
+            } else {
+                *dst++ = *src++;
+            }
+        }
+        *dst = '\0';
+        url_ptr = final_url;
+    }
+    
+    DMOD_LOG_INFO("Found: %s%s%s at %s\n", 
+           entry.name,
+           version_to_use ? "@" : "",
+           version_to_use ? version_to_use : "",
+           url_ptr);
+    
+    // Determine output file name and extension
+    const char* url = url_ptr;
+    const char* ext = strrchr(url, '.');
+    char output_file[512];
+    
+    if (ext && (strcmp(ext, ".dmf") == 0 || strcmp(ext, ".dmfc") == 0 || 
+                strcmp(ext, ".zip") == 0 || strcmp(ext, ".dmp") == 0)) {
+        Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s%s",
+                output_dir, entry.name,
+                version_to_use ? "-" : "",
+                version_to_use ? version_to_use : "",
+                ext);
+    } else {
+        // Default to .dmf if no extension
+        Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s.dmf",
+                output_dir, entry.name,
+                version_to_use ? "-" : "",
+                version_to_use ? version_to_use : "");
+    }
+    
+    // Download the file
+    if (!DownloadFile(url, output_file)) {
+        DMOD_LOG_ERROR("Error: Failed to download module\n");
+        return false;
+    }
+    
+    // If it's a ZIP file, extract it and find the DMF/DMFC file
+    if (ext && strcmp(ext, ".zip") == 0) {
+        char final_output[512];
+        if (!ExtractZipAndFindModule(output_file, output_dir, entry.name, preferred_type,
+                                      final_output, sizeof(final_output))) {
+            DMOD_LOG_ERROR("Error: Failed to extract and find module from ZIP\n");
+            return false;
+        }
+        DMOD_LOG_INFO("Successfully extracted and found module: %s\n", final_output);
+    } else {
+        DMOD_LOG_INFO("Successfully downloaded: %s\n", output_file);
+    }
+    
+    // TODO: Handle dependencies if not --no-dependencies
+    if (!no_dependencies) {
+        // For now, just print a message
+        DMOD_LOG_INFO("Note: Dependency resolution not yet implemented\n");
+    }
+    
+    return true;
+}
+
+/**
  * @brief Main function
  */
 int main(int argc, char* argv[]) {
     // Parse command line arguments
     const char* module_spec = NULL;
+    const char* modules_file = NULL;
     const char* manifest_path = NULL;
     const char* output_dir = NULL;
     const char* tools_name = NULL;
@@ -376,6 +512,13 @@ int main(int argc, char* argv[]) {
         else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
             PrintVersion();
             return 0;
+        }
+        else if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--file") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
+                return 1;
+            }
+            modules_file = argv[i];
         }
         else if (strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--manifest") == 0) {
             if (++i >= argc) {
@@ -433,8 +576,16 @@ int main(int argc, char* argv[]) {
         }
     }
     
-    if (!module_spec) {
-        DMOD_LOG_ERROR("Error: No module name specified\n");
+    // Check that either module_spec or modules_file is provided
+    if (!module_spec && !modules_file) {
+        DMOD_LOG_ERROR("Error: No module name or file specified\n");
+        PrintUsage(argv[0]);
+        return 1;
+    }
+    
+    // Check that both are not provided
+    if (module_spec && modules_file) {
+        DMOD_LOG_ERROR("Error: Cannot specify both module name and file\n");
         PrintUsage(argv[0]);
         return 1;
     }
@@ -476,26 +627,6 @@ int main(int argc, char* argv[]) {
         }
     }
     
-    // Parse module specification
-    char module_name[DMOD_MANIFEST_MAX_NAME_LEN];
-    char module_version[DMOD_MANIFEST_MAX_VERSION_LEN] = {0};
-    
-    const char* at_sign = strchr(module_spec, '@');
-    if (at_sign) {
-        size_t name_len = at_sign - module_spec;
-        if (name_len >= sizeof(module_name)) {
-            DMOD_LOG_ERROR("Error: Module name too long\n");
-            curl_global_cleanup();
-            return 1;
-        }
-        strncpy(module_name, module_spec, name_len);
-        module_name[name_len] = '\0';
-        strncpy(module_version, at_sign + 1, sizeof(module_version) - 1);
-    } else {
-        strncpy(module_name, module_spec, sizeof(module_name) - 1);
-        module_name[sizeof(module_name) - 1] = '\0';
-    }
-    
     // Initialize manifest parser
     Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init(tools_name, arch_name, DownloadWithCurl, NULL);
     if (!ctx) {
@@ -525,115 +656,125 @@ int main(int argc, char* argv[]) {
     
     DMOD_LOG_INFO("Manifest loaded with %zu entries\n", Dmod_Manifest_GetEntryCount(ctx));
     
-    // Find the module
-    Dmod_ManifestEntry_t entry;
-    if (!Dmod_Manifest_FindEntry(ctx, module_name, 
-                                  module_version[0] ? module_version : NULL, 
-                                  &entry)) {
-        DMOD_LOG_ERROR( "Error: %s\n", Dmod_Manifest_GetError(ctx));
-        Dmod_Manifest_Free(ctx);
-        curl_global_cleanup();
-        return 1;
-    }
+    // Process modules
+    int result = 0;
+    int success_count = 0;
+    int failed_count = 0;
     
-    // Determine which version to use for URL substitution
-    // If user specified a version, use that; otherwise use entry's version
-    const char* version_to_use = module_version[0] ? module_version : 
-                                  (entry.version[0] ? entry.version : NULL);
-    
-    // Substitute <version> in URL if needed
-    char final_url[1024];
-    const char* url_ptr = entry.url;
-    const char* version_placeholder = strstr(entry.url, "<version>");
-    
-    // Check if version is required but not provided
-    if (version_placeholder && !version_to_use) {
-        DMOD_LOG_ERROR("Error: Module URL requires a version, but none was specified\n");
-        DMOD_LOG_ERROR("       Use %s@<version> to specify a version\n", entry.name);
-        Dmod_Manifest_Free(ctx);
-        curl_global_cleanup();
-        return 1;
-    }
-    
-    if (version_placeholder && version_to_use) {
-        // Need to substitute <version>
-        char* dst = final_url;
-        const char* src = entry.url;
-        char* dst_end = final_url + sizeof(final_url) - 1;
-        
-        while (*src && dst < dst_end) {
-            if (strncmp(src, "<version>", 9) == 0) {
-                size_t len = strlen(version_to_use);
-                if (dst + len >= dst_end) break;
-                strcpy(dst, version_to_use);
-                dst += len;
-                src += 9;
-            } else {
-                *dst++ = *src++;
-            }
-        }
-        *dst = '\0';
-        url_ptr = final_url;
-    }
-    
-    DMOD_LOG_INFO("Found: %s%s%s at %s\n", 
-           entry.name,
-           version_to_use ? "@" : "",
-           version_to_use ? version_to_use : "",
-           url_ptr);
-    
-    // Determine output file name and extension
-    const char* url = url_ptr;
-    const char* ext = strrchr(url, '.');
-    char output_file[512];
-    
-    if (ext && (strcmp(ext, ".dmf") == 0 || strcmp(ext, ".dmfc") == 0 || 
-                strcmp(ext, ".zip") == 0 || strcmp(ext, ".dmp") == 0)) {
-        Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s%s",
-                output_dir, entry.name,
-                version_to_use ? "-" : "",
-                version_to_use ? version_to_use : "",
-                ext);
-    } else {
-        // Default to .dmf if no extension
-        Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s.dmf",
-                output_dir, entry.name,
-                version_to_use ? "-" : "",
-                version_to_use ? version_to_use : "");
-    }
-    
-    // Download the file
-    if (!DownloadFile(url, output_file)) {
-        DMOD_LOG_ERROR("Error: Failed to download module\n");
-        Dmod_Manifest_Free(ctx);
-        curl_global_cleanup();
-        return 1;
-    }
-    
-    // If it's a ZIP file, extract it and find the DMF/DMFC file
-    if (ext && strcmp(ext, ".zip") == 0) {
-        char final_output[512];
-        if (!ExtractZipAndFindModule(output_file, output_dir, entry.name, preferred_type,
-                                      final_output, sizeof(final_output))) {
-            DMOD_LOG_ERROR("Error: Failed to extract and find module from ZIP\n");
+    if (modules_file) {
+        // Read modules from file
+        void* file = Dmod_FileOpen(modules_file, "rb");
+        if (!file) {
+            DMOD_LOG_ERROR("Error: Cannot open file: %s\n", modules_file);
             Dmod_Manifest_Free(ctx);
             curl_global_cleanup();
             return 1;
         }
-        DMOD_LOG_INFO("Successfully extracted and found module: %s\n", final_output);
+        
+        // Get file size
+        size_t file_size = Dmod_FileSize(file);
+        if (file_size == 0) {
+            DMOD_LOG_ERROR("Error: File is empty: %s\n", modules_file);
+            Dmod_FileClose(file);
+            Dmod_Manifest_Free(ctx);
+            curl_global_cleanup();
+            return 1;
+        }
+        
+        // Read entire file content
+        char* content = (char*)Dmod_Malloc(file_size + 1);
+        if (!content) {
+            DMOD_LOG_ERROR("Error: Out of memory\n");
+            Dmod_FileClose(file);
+            Dmod_Manifest_Free(ctx);
+            curl_global_cleanup();
+            return 1;
+        }
+        
+        size_t bytes_read = Dmod_FileRead(content, 1, file_size, file);
+        Dmod_FileClose(file);
+        
+        if (bytes_read != file_size) {
+            DMOD_LOG_ERROR("Error: Failed to read file: %s\n", modules_file);
+            Dmod_Free(content);
+            Dmod_Manifest_Free(ctx);
+            curl_global_cleanup();
+            return 1;
+        }
+        content[file_size] = '\0';
+        
+        // Process line by line
+        char* line_start = content;
+        char* line_end;
+        int line_num = 0;
+        
+        while (*line_start != '\0') {
+            line_num++;
+            
+            // Find end of line
+            line_end = line_start;
+            while (*line_end != '\0' && *line_end != '\n' && *line_end != '\r') {
+                line_end++;
+            }
+            
+            // Save the line terminator and null-terminate the line
+            char saved_char = *line_end;
+            *line_end = '\0';
+            
+            // Trim trailing whitespace
+            char* trim_end = line_end - 1;
+            while (trim_end >= line_start && (*trim_end == ' ' || *trim_end == '\t')) {
+                *trim_end = '\0';
+                trim_end--;
+            }
+            
+            // Trim leading whitespace
+            while (*line_start == ' ' || *line_start == '\t') {
+                line_start++;
+            }
+            
+            // Process non-empty lines that aren't comments
+            if (*line_start != '\0' && *line_start != '#') {
+                DMOD_LOG_INFO("\n=== Processing module: %s (line %d) ===\n", line_start, line_num);
+                
+                if (DownloadModule(ctx, line_start, output_dir, preferred_type, no_dependencies)) {
+                    success_count++;
+                } else {
+                    failed_count++;
+                    result = 1;  // Set error code but continue processing
+                }
+            }
+            
+            // Move to next line
+            if (saved_char == '\0') {
+                break;
+            }
+            line_start = line_end + 1;
+            // Skip \r\n sequences
+            if (saved_char == '\r' && *line_start == '\n') {
+                line_start++;
+            }
+        }
+        
+        Dmod_Free(content);
+        
+        DMOD_LOG_INFO("\n=== Summary ===\n");
+        DMOD_LOG_INFO("Successful: %d\n", success_count);
+        DMOD_LOG_INFO("Failed: %d\n", failed_count);
+        DMOD_LOG_INFO("Total: %d\n", success_count + failed_count);
+        
     } else {
-        DMOD_LOG_INFO("Successfully downloaded: %s\n", output_file);
-    }
-    
-    // TODO: Handle dependencies if not --no-dependencies
-    if (!no_dependencies) {
-        // For now, just print a message
-        DMOD_LOG_INFO("Note: Dependency resolution not yet implemented\n");
+        // Download single module
+        if (DownloadModule(ctx, module_spec, output_dir, preferred_type, no_dependencies)) {
+            result = 0;
+        } else {
+            result = 1;
+        }
     }
     
     // Cleanup
     Dmod_Manifest_Free(ctx);
     curl_global_cleanup();
     
-    return 0;
+    return result;
 }
