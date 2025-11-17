@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <curl/curl.h>
 #include "dmod.h"
+#include "dmod_arch_defs.h"
 #include "dmod_manifest.h"
 #include "dmod_dependencies.h"
 
@@ -781,15 +782,15 @@ static int DownloadModule(const char* module_name, const char* module_version,
         final_module_path[sizeof(final_module_path) - 1] = '\0';
     }
     
-    // Verify architecture matches expected architecture (if specified)
+    // Verify architecture matches expected architecture
     if (!already_exists && arch_name != NULL && arch_name[0] != '\0') {
         char package_arch[DMOD_MAX_ARCH_NAME_LENGTH];
-        if (Dmod_GetPackageArchitecture(final_module_path, package_arch, sizeof(package_arch))) {
+        if (Dmod_GetFileArchitecture(final_module_path, package_arch, sizeof(package_arch))) {
             // Compare with the expected architecture
             if (strcmp(package_arch, arch_name) != 0) {
-                DMOD_LOG_ERROR("Architecture mismatch: package is '%s', expected '%s'\n", 
+                DMOD_LOG_INFO("Warning: Architecture mismatch: package is '%s', expected '%s'\n", 
                        package_arch, arch_name);
-                DMOD_LOG_ERROR("Removing incompatible module file: %s\n", final_module_path);
+                DMOD_LOG_INFO("Removing incompatible module file and continuing search: %s\n", final_module_path);
                 
                 // Delete the incompatible file
                 remove(final_module_path);
@@ -799,8 +800,8 @@ static int DownloadModule(const char* module_name, const char* module_version,
                     remove(dmd_file_path);
                 }
                 
-                DMOD_LOG_ERROR("Error: Architecture mismatch - module not installed\n");
-                return 1;
+                // Continue searching - don't process dependencies for this file
+                return 0;
             } else {
                 DMOD_LOG_INFO("Architecture verified: %s\n", package_arch);
             }
@@ -934,6 +935,11 @@ int main(int argc, char* argv[]) {
     // Get configuration
     if (!tools_name) {
         tools_name = GetEnvOrDefault(ENV_TOOLS_NAME, "arch/x86_64");
+    }
+    
+    // If arch_name not specified, default to system architecture
+    if (!arch_name) {
+        arch_name = DMOD_ARCH;
     }
     
     if (!output_dir) {
