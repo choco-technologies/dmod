@@ -1,6 +1,8 @@
 #================================================================================================================================
 # 	Default tools configuration
 #================================================================================================================================
+DMOD_ARCH=armv7-cortex-m4
+DMOD_CPU=cortex-m4
 
 #
 #	Toolchain configuration
@@ -9,10 +11,10 @@ ifeq ($(CROSS_COMPILE),)
 	CROSS_COMPILE=arm-none-eabi-
 endif
 ifeq ($(CPUCONFIG_CFLAGS),)
-	CPUCONFIG_CFLAGS=-mcpu=cortex-m4 -mthumb -mno-unaligned-access -DGCC_ARMCM4 -mpic-data-is-text-relative
+	CPUCONFIG_CFLAGS=-mcpu=cortex-m4 -mthumb -mno-unaligned-access -DGCC_ARMCM4 -DDMOD_ARCH="$(DMOD_ARCH)" -DDMOD_CPU="$(DMOD_CPU)" -mpic-data-is-text-relative
 endif
 ifeq ($(CPUCONFIG_CXXFLAGS),)
-	CPUCONFIG_CXXFLAGS=-mcpu=cortex-m4 -mthumb -mno-unaligned-access -DGCC_ARMCM4 -mpic-data-is-text-relative
+	CPUCONFIG_CXXFLAGS=-mcpu=cortex-m4 -mthumb -mno-unaligned-access -DGCC_ARMCM4 -DDMOD_ARCH="$(DMOD_ARCH)" -DDMOD_CPU="$(DMOD_CPU)" -mpic-data-is-text-relative
 endif
 CC=$(CROSS_COMPILE)gcc
 CXX=$(CROSS_COMPILE)g++
