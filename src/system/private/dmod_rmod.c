@@ -126,8 +126,14 @@ bool Dmod_RMod_AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignat
     {
         DMOD_LOG_WARN("Version of the module is not given for: %s\n", moduleName);
     }
+    bool versionGiven = requiredModule->Version[0] != '\0';
 
-    DMOD_LOG_VERBOSE("Required %smodule '%s@%s' added to '%s'\n", requiredModule->SystemModule ? "system " : "", requiredModule->Name, requiredModule->Version, Dmod_Context_GetModuleName( Context ));
+    DMOD_LOG_VERBOSE("Required %smodule '%s%s%s' added to '%s'\n", 
+        requiredModule->SystemModule ? "system " : "", 
+        requiredModule->Name, 
+        versionGiven ? "@" : "",
+        requiredModule->Version, 
+        Dmod_Context_GetModuleName( Context ));
 
     return true;
 }
