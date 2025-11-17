@@ -424,37 +424,44 @@ Dmod_ManifestNode_t* Dmod_Manifest_FindEntry(
     const char* version,
     Dmod_ManifestNode_t* last_node,
     Dmod_ManifestEntry_t* out_entry
-) {
+    ) 
+{
     if (!ctx || !name || !out_entry) return NULL;
-    
+
     bool has_version = version && version[0] != '\0';
-    
-    // Start from the node after last_node, or from beginning if NULL
+    Dmod_ManifestNode_t* best_match = NULL;
+
     Dmod_ManifestNode_t* start_node = last_node ? last_node->next : ctx->entries;
-    
+
     // Search for matching entry
     for (Dmod_ManifestNode_t* node = start_node; node; node = node->next) {
         if (strcmp(node->entry.name, name) != 0) continue;
-        
+
         // If no version specified, take first match
         if (!has_version) {
-            *out_entry = node->entry;
-            return node;
+            best_match = node;
+            break;
         }
-        
+
         // Check version match
         if (strcmp(node->entry.version, version) == 0) {
-            *out_entry = node->entry;
-            return node;
+            best_match = node;
+            break;
+        }
+        
+        // If no exact match yet, keep this as potential match
+        if (!best_match) {
+            best_match = node;
         }
     }
-    
-    // No match found
-    if (!last_node) {
-        // Only set error on first search attempt
-        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Module not found: %s%s%s",
-                 name, has_version ? "@" : "", has_version ? version : "");
+
+    if (best_match) {
+        memcpy( out_entry, &best_match->entry, sizeof(Dmod_ManifestEntry_t) );
+        return best_match;
     }
+    
+    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Module not found: %s%s%s",
+                name, has_version ? "@" : "", has_version ? version : "");
     return NULL;
 }
 

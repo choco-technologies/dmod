@@ -278,8 +278,8 @@ TEST_F(DmodLdrTest, LoadHeaderMissingInitDeinitFunction)
     strcpy(header->CpuName, DMOD_CPU_NAME);
     strcpy(header->Name, "TestModule");
     header->ModuleType = Dmod_ModuleType_Library;
-    header->Init = NULL;
-    header->Deinit = NULL;
+    header->Init = 0;
+    header->Deinit = 0;
 
     ASSERT_FALSE(Dmod_Ldr_LoadHeader(context));
 
@@ -332,7 +332,7 @@ TEST_F(DmodLdrTest, LoadHeaderMissingMainFunction)
     strcpy(header->CpuName, DMOD_CPU_NAME);
     strcpy(header->Name, "TestModule");
     header->ModuleType = Dmod_ModuleType_Application;
-    header->Main = NULL;
+    header->Main = 0;
 
     ASSERT_FALSE(Dmod_Ldr_LoadHeader(context));
 
@@ -360,12 +360,13 @@ TEST_F(DmodLdrTest, LoadHeaderValidLicense)
     strcpy(header->Name, "TestModule");
     uint8_t* license = &(((uint8_t*)data)[500]);
     char* licenseText = &(((char*)data)[600]);
-    header->License = (Dmod_License_t*)license;
-    header->License->Text = (char*)600;
+    header->License = (uint64_t)license;
+    Dmod_License_t* licenseStruct = (Dmod_License_t*)license;
+    licenseStruct->Text = (char*)600;
     strcpy(licenseText, "License");
     
     // Convert pointers into offsets
-    header->License       = (Dmod_License_t*)500;
+    header->License       = (uint64_t)500;
 
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
 
@@ -388,7 +389,7 @@ TEST_F(DmodLdrTest, LoadHeaderInvalidLicense)
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
     
     // Invalidate license
-    header->License = (Dmod_License_t*)(fileSize + 1);
+    header->License = fileSize + 1;
 
     ASSERT_FALSE(Dmod_Ldr_LoadHeader(context));
 
@@ -411,10 +412,11 @@ TEST_F(DmodLdrTest, LoadHeaderInvalidLicenseTextPointer)
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
     
     uint8_t* license = &(((uint8_t*)data)[500]);
-    header->License = (Dmod_License_t*)license;
-    header->License->Text = (char*)(fileSize + 1);
+    header->License = (uint64_t)license;
+    Dmod_License_t* licenseStruct = (Dmod_License_t*)license;
+    licenseStruct->Text = (char*)(fileSize + 1);
     // Invalidate license text pointer
-    header->License = (Dmod_License_t*)500;
+    header->License = (uint64_t)500;
 
     ASSERT_FALSE(Dmod_Ldr_LoadHeader(context));
 
@@ -441,7 +443,7 @@ TEST_F(DmodLdrTest, LoadHeaderInvalidFooterPointer)
     strcpy(header->CpuName, DMOD_CPU_NAME);
     strcpy(header->Name, "TestModule");
 
-    header->Footer = (void*)(fileSize + 1);
+    header->Footer = (uint64_t)(fileSize + 1);
 
     ASSERT_FALSE(Dmod_Ldr_LoadHeader(context));
 
@@ -632,9 +634,9 @@ TEST_F(DmodLdrTest, LoadInputEmptyInputEntriesNoFunctionsToCall)
     input->SectionSize = 0;
 
     Dmod_ModuleHeader_t* header = context->Header;
-    header->Init = NULL;
-    header->Main = NULL;
-    header->Deinit = NULL;
+    header->Init = 0;
+    header->Main = 0;
+    header->Deinit = 0;
 
     ASSERT_FALSE(Dmod_Ldr_LoadInput(context));
 

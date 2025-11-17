@@ -16,13 +16,13 @@ void Dmod_Preinit( Dmod_Context_t* Context )
         return;
     }
 
-    if( Context->Header->Preinit == NULL )
+    Dmod_Preinit_t preinit = (Dmod_Preinit_t)Context->Header->Preinit;
+    if( preinit == NULL )
     {
         DMOD_LOG_INFO("Preinit function not set\n");
         return;
     }
-
-    Context->Header->Preinit();
+    preinit();
 }
 
 /**
@@ -38,14 +38,15 @@ int Dmod_Init( Dmod_Context_t* Context, const Dmod_Config_t* Config )
     int result = -EINVAL;
     if( Dmod_Context_IsValid( Context ) )
     {
-        if( Context->Header->Init == NULL )
+        Dmod_Init_t init = (Dmod_Init_t)Context->Header->Init;
+        if( init == NULL )
         {
             DMOD_LOG_INFO("Init function not set\n");
             result = 0;
         }
         else 
         {
-            result = Context->Header->Init( Config );
+            result = init( Config );
         }
     }
     return result;
@@ -65,14 +66,15 @@ int Dmod_Main( Dmod_Context_t* Context, int argc, char *argv[] )
     int result = -EINVAL;
     if( Dmod_Context_IsValid( Context ) )
     {
-        if( Context->Header->Main == NULL )
+        Dmod_Main_t mainFunc = (Dmod_Main_t)Context->Header->Main;
+        if( mainFunc == NULL )
         {
             DMOD_LOG_INFO("Main function not set\n");
             result = 0;
         }
         else 
         {
-            result = Context->Header->Main( argc, argv );
+            result = mainFunc( argc, argv );
         }
     }
     return result;
@@ -90,14 +92,15 @@ int Dmod_Deinit( Dmod_Context_t* Context )
     int result = -EINVAL;
     if( Dmod_Context_IsValid( Context ) )
     {
-        if( Context->Header->Deinit == NULL )
+        Dmod_Deinit_t deinit = (Dmod_Deinit_t)Context->Header->Deinit;
+        if( deinit == NULL )
         {
             DMOD_LOG_INFO("Deinit function not set\n");
             result = 0;
         }
         else 
         {
-            result = Context->Header->Deinit();
+            result = deinit();
         }
     }
     return result;
@@ -116,14 +119,15 @@ int Dmod_Signal( Dmod_Context_t* Context, int SignalNumber )
     int result = -EINVAL;
     if( Dmod_Context_IsValid( Context ) )
     {
-        if( Context->Header->Signal == NULL )
+        Dmod_Signal_t signal = (Dmod_Signal_t)Context->Header->Signal;
+        if( signal == NULL )
         {
             DMOD_LOG_INFO("Signal function not set\n");
             result = 0;
         }
         else 
         {
-            result = Context->Header->Signal( SignalNumber );
+            result = signal( SignalNumber );
         }
     }
     return result;

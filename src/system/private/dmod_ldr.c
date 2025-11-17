@@ -102,7 +102,8 @@ bool Dmod_Ldr_LoadHeader( Dmod_Context_t* Context )
         DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize license pointer\n", header->Name);
         return false;
     }
-    if(header->License != NULL && !Dmod_Hlp_InitPointer(Context, (void**)&header->License->Text, "License Text"))
+    Dmod_License_t* license = (Dmod_License_t*)header->License;
+    if(header->License != NULL && !Dmod_Hlp_InitPointer(Context, (void**)&license->Text, "License Text"))
     {
         DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize license text pointer\n", header->Name);
         return false;

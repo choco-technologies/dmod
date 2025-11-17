@@ -643,6 +643,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --type <dmf|dmfc>         Prefer dmf or dmfc file type\n");
     Dmod_Printf("  --no-dependencies         Don't download dependencies\n");
     Dmod_Printf("  --ignore-missing          Ignore missing dependencies and continue\n");
+    Dmod_Printf("  --skip-arch-check         Skip architecture compatibility check\n");
     Dmod_Printf("  -h, --help                Show this help message\n");
     Dmod_Printf("  -v, --version             Show version information\n\n");
     Dmod_Printf("Environment Variables:\n");
@@ -711,130 +712,131 @@ static int DownloadModule(const char* module_name, const char* module_version,
         found_any = true;
         last_node = current_node;
     
-    // Determine which version to use for URL substitution
-    const char* version_to_use = module_version ? module_version : 
-                                  (entry.version[0] ? entry.version : NULL);
-    
-    // Substitute <version> in URL if needed
-    char final_url[1024];
-    const char* url_ptr = entry.url;
-    const char* version_placeholder = strstr(entry.url, "<version>");
-    
-    // Check if version is required but not provided
-    if (version_placeholder && !version_to_use) {
-        // Use "latest" as default version when required
-        version_to_use = "latest";
-        DMOD_LOG_INFO("Version required but not specified, using 'latest'\n");
-    }
-    
-    if (version_placeholder && version_to_use) {
-        // Need to substitute <version>
-        char* dst = final_url;
-        const char* src = entry.url;
-        char* dst_end = final_url + sizeof(final_url) - 1;
+        // Determine which version to use for URL substitution
+        const char* version_to_use = module_version ? module_version : 
+                                    (entry.version[0] ? entry.version : NULL);
         
-        while (*src && dst < dst_end) {
-            if (strncmp(src, "<version>", 9) == 0) {
-                size_t len = strlen(version_to_use);
-                if (dst + len >= dst_end) break;
-                strcpy(dst, version_to_use);
-                dst += len;
-                src += 9;
-            } else {
-                *dst++ = *src++;
+        // Substitute <version> in URL if needed
+        char final_url[1024];
+        const char* url_ptr = entry.url;
+        const char* version_placeholder = strstr(entry.url, "<version>");
+        
+        // Check if version is required but not provided
+        if (version_placeholder && !version_to_use) {
+            // Use "latest" as default version when required
+            version_to_use = "latest";
+            DMOD_LOG_INFO("Version required but not specified, using 'latest'\n");
+        }
+        
+        if (version_placeholder && version_to_use) {
+            // Need to substitute <version>
+            char* dst = final_url;
+            const char* src = entry.url;
+            char* dst_end = final_url + sizeof(final_url) - 1;
+            
+            while (*src && dst < dst_end) {
+                if (strncmp(src, "<version>", 9) == 0) {
+                    size_t len = strlen(version_to_use);
+                    if (dst + len >= dst_end) break;
+                    strcpy(dst, version_to_use);
+                    dst += len;
+                    src += 9;
+                } else {
+                    *dst++ = *src++;
+                }
+            }
+            *dst = '\0';
+            url_ptr = final_url;
+        }
+        
+        DMOD_LOG_INFO("Found: %s%s%s at %s\n", 
+            entry.name,
+            version_to_use ? "@" : "",
+            version_to_use ? version_to_use : "",
+            url_ptr);
+        
+        // Determine output file name and extension
+        const char* url = url_ptr;
+        const char* ext = strrchr(url, '.');
+        char output_file[512];
+        
+        if (ext && (strcmp(ext, ".dmf") == 0 || strcmp(ext, ".dmfc") == 0 || 
+                    strcmp(ext, ".zip") == 0 || strcmp(ext, ".dmp") == 0)) {
+            Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s%s",
+                    output_dir, entry.name,
+                    version_to_use ? "-" : "",
+                    version_to_use ? version_to_use : "",
+                    ext);
+        } else {
+            // Default to .dmf if no extension
+            Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s.dmf",
+                    output_dir, entry.name,
+                    version_to_use ? "-" : "",
+                    version_to_use ? version_to_use : "");
+        }
+        
+        // Check if file already exists
+        bool already_exists = (Dmod_Access(output_file, DMOD_F_OK) == 0);
+        if (already_exists) {
+            DMOD_LOG_INFO("File already exists, skipping download: %s\n", output_file);
+        } else {
+            // Download the file
+            if (!DownloadFile(url, output_file)) {
+                DMOD_LOG_ERROR("Error: Failed to download module\n");
+                return 1;
             }
         }
-        *dst = '\0';
-        url_ptr = final_url;
-    }
-    
-    DMOD_LOG_INFO("Found: %s%s%s at %s\n", 
-           entry.name,
-           version_to_use ? "@" : "",
-           version_to_use ? version_to_use : "",
-           url_ptr);
-    
-    // Determine output file name and extension
-    const char* url = url_ptr;
-    const char* ext = strrchr(url, '.');
-    char output_file[512];
-    
-    if (ext && (strcmp(ext, ".dmf") == 0 || strcmp(ext, ".dmfc") == 0 || 
-                strcmp(ext, ".zip") == 0 || strcmp(ext, ".dmp") == 0)) {
-        Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s%s",
-                output_dir, entry.name,
-                version_to_use ? "-" : "",
-                version_to_use ? version_to_use : "",
-                ext);
-    } else {
-        // Default to .dmf if no extension
-        Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s.dmf",
-                output_dir, entry.name,
-                version_to_use ? "-" : "",
-                version_to_use ? version_to_use : "");
-    }
-    
-    // Check if file already exists
-    bool already_exists = (Dmod_Access(output_file, DMOD_F_OK) == 0);
-    if (already_exists) {
-        DMOD_LOG_INFO("File already exists, skipping download: %s\n", output_file);
-    } else {
-        // Download the file
-        if (!DownloadFile(url, output_file)) {
-            DMOD_LOG_ERROR("Error: Failed to download module\n");
-            return 1;
+        
+        char final_module_path[512];
+        char dmd_file_path[512] = "";
+        
+        // If it's a ZIP file, extract it and find the DMF/DMFC file
+        if (ext && strcmp(ext, ".zip") == 0) {
+            if (!ExtractZipAndFindModule(output_file, output_dir, entry.name, preferred_type,
+                                        final_module_path, sizeof(final_module_path),
+                                        dmd_file_path, sizeof(dmd_file_path))) {
+                DMOD_LOG_ERROR("Error: Failed to extract and find module from ZIP\n");
+                return 1;
+            }
+            // ExtractZipAndFindModule already prints where it was installed
+        } else {
+            DMOD_LOG_INFO("Module installed to: %s\n", output_file);
+            strncpy(final_module_path, output_file, sizeof(final_module_path) - 1);
+            final_module_path[sizeof(final_module_path) - 1] = '\0';
         }
-    }
-    
-    char final_module_path[512];
-    char dmd_file_path[512] = "";
-    
-    // If it's a ZIP file, extract it and find the DMF/DMFC file
-    if (ext && strcmp(ext, ".zip") == 0) {
-        if (!ExtractZipAndFindModule(output_file, output_dir, entry.name, preferred_type,
-                                      final_module_path, sizeof(final_module_path),
-                                      dmd_file_path, sizeof(dmd_file_path))) {
-            DMOD_LOG_ERROR("Error: Failed to extract and find module from ZIP\n");
-            return 1;
-        }
-        // ExtractZipAndFindModule already prints where it was installed
-    } else {
-        DMOD_LOG_INFO("Module installed to: %s\n", output_file);
-        strncpy(final_module_path, output_file, sizeof(final_module_path) - 1);
-        final_module_path[sizeof(final_module_path) - 1] = '\0';
-    }
-    
+        
         // Verify architecture matches expected architecture
         if (!already_exists && arch_name != NULL && arch_name[0] != '\0') {
             char package_arch[DMOD_MAX_ARCH_NAME_LENGTH];
-            if (Dmod_GetFileArchitecture(final_module_path, package_arch, sizeof(package_arch))) {
-                // Compare with the expected architecture
-                if (strcmp(package_arch, arch_name) != 0) {
-                    DMOD_LOG_INFO("Warning: Architecture mismatch: package is '%s', expected '%s'\n", 
-                           package_arch, arch_name);
-                    DMOD_LOG_INFO("Removing incompatible module file and continuing search: %s\n", final_module_path);
-                    
-                    // Delete the incompatible file
-                    remove(final_module_path);
-                    
-                    // Also remove .dmd file if it exists
-                    if (dmd_file_path[0] != '\0') {
-                        remove(dmd_file_path);
-                    }
-                    
-                    // Continue searching for next entry
-                    continue;
-                } else {
-                    DMOD_LOG_INFO("Architecture verified: %s\n", package_arch);
+            bool arch_read = Dmod_GetFileArchitecture(final_module_path, package_arch, sizeof(package_arch));
+            bool arch_valid = arch_read && strcmp(package_arch, arch_name) == 0;
+            bool can_use = arch_valid;
+            if (!can_use) {
+                if(!arch_read) {
+                    DMOD_LOG_WARN("Could not read architecture from module file: %s\n", final_module_path);
                 }
-            } else {
-                DMOD_LOG_INFO("Warning: Could not verify architecture (may be an older module format)\n");
-            }
+                else if(!arch_valid) {
+                    DMOD_LOG_WARN("Module architecture '%s' does not match expected '%s'\n", 
+                        package_arch, arch_name);
+                }
+                DMOD_LOG_INFO("Removing incompatible module file and continuing search: %s\n", final_module_path);
+
+                // Delete the incompatible file
+                remove(final_module_path);
+                
+                // Also remove .dmd file if it exists
+                if (dmd_file_path[0] != '\0') {
+                    remove(dmd_file_path);
+                }
+                continue;  // Try next entry in manifest
+            } 
+            DMOD_LOG_VERBOSE("Module architecture '%s' matches expected '%s'\n", 
+                package_arch, arch_name);
         }
         
         // Architecture matches or check not required - process dependencies and return success
         if (download_dependencies && !already_exists) {
-            DMOD_LOG_INFO("\nProcessing dependencies for %s\n", entry.name);
+            DMOD_LOG_INFO("Processing dependencies for %s\n", entry.name);
             int dep_result = ProcessModuleDependencies(
                 final_module_path,
                 dmd_file_path[0] != '\0' ? dmd_file_path : NULL,
@@ -847,12 +849,13 @@ static int DownloadModule(const char* module_name, const char* module_version,
             );
             
             if (dep_result > 0) {
-                DMOD_LOG_INFO("Warning: %d dependencies failed to download\n", dep_result);
+                DMOD_LOG_WARN("%d dependencies failed to download\n", dep_result);
             }
         }
         
         return 0;  // Success - found and installed compatible module
     } // end while loop
+    return -1;  // Should not reach here
 }
 
 /**
@@ -869,6 +872,7 @@ int main(int argc, char* argv[]) {
     const char* preferred_type = NULL;
     bool no_dependencies = false;
     bool ignore_missing = false;
+    bool skip_arch_check = false;
     
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
@@ -931,6 +935,9 @@ int main(int argc, char* argv[]) {
         else if (strcmp(argv[i], "--ignore-missing") == 0) {
             ignore_missing = true;
         }
+        else if (strcmp(argv[i], "--skip-arch-check") == 0) {
+            skip_arch_check = true;
+        }
         else if (argv[i][0] == '-') {
             DMOD_LOG_ERROR("Error: Unknown option: %s\n", argv[i]);
             PrintUsage(argv[0]);
@@ -966,7 +973,7 @@ int main(int argc, char* argv[]) {
     }
     
     // If arch_name not specified, default to system architecture
-    if (!arch_name) {
+    if (!arch_name && !skip_arch_check) {
         arch_name = DMOD_ARCH;
     }
     

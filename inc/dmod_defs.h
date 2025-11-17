@@ -24,7 +24,7 @@ extern "C" {
 #define DMOD_USED_SECTION( NAME )        __attribute__((used, section(NAME)))
 #define DMOD_UNUSED_SECTION( NAME )      __attribute__((unused, section(NAME)))
 #define DMOD_GLOBAL_POINTER             DMOD_SECTION(".got")
-
+#define DMOD_PACKED                      __attribute__((__packed__))
 
 #define DMOD_FUNCTION_REDEFINITION( NEW_FUNCTION, OLD_FUNCTION )  \
         DMOD_WEAK_DEFAULT(NEW_FUNCTION, OLD_FUNCTION)

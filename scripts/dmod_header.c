@@ -16,7 +16,7 @@
 #endif
 
 #ifndef DMOD_MODULE_TYPE
-#   define DMOD_MODULE_TYPE Unknown
+#   define DMOD_MODULE_TYPE Dmod_ModuleType_Unknown
 #endif
 
 #ifndef DMOD_STACK_SIZE
@@ -25,6 +25,10 @@
 
 #ifndef DMOD_PRIORITY
 #   define DMOD_PRIORITY 0
+#endif
+
+#ifndef DMOD_MANUAL_LOAD
+#   define DMOD_MANUAL_LOAD false
 #endif
 
 extern void DMOD_WEAK_SYMBOL dmod_preinit(void);
@@ -45,15 +49,15 @@ volatile const Dmod_ModuleHeader_t ModuleHeader DMOD_SECTION(".header") DMOD_USE
     .Name               = DMOD_MODULE_NAME,
     .Author             = DMOD_AUTHOR_NAME,
     .Version            = DMOD_MODULE_VERSION,
-    .Preinit            = dmod_preinit,
-    .Init               = dmod_init,
-    .Main               = main,
-    .Deinit             = dmod_deinit,
-    .Signal             = dmod_signal,
+    .Preinit            = (uint64_t)dmod_preinit,
+    .Init               = (uint64_t)dmod_init,
+    .Main               = (uint64_t)main,
+    .Deinit             = (uint64_t)dmod_deinit,
+    .Signal             = (uint64_t)dmod_signal,
     .RequiredStackSize  = DMOD_STACK_SIZE,
     .Priority           = DMOD_PRIORITY,
     .ModuleType         = DMOD_MODULE_TYPE,
-    .License            = &License,
+    .License            = (uint64_t)&License,
     .Footer             = &__footer_start,
     .ManualLoad         = DMOD_MANUAL_LOAD,
 };
