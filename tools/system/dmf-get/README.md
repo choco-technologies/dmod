@@ -6,12 +6,14 @@
 
 - **Manifest Parsing**: Read and parse `.dmm` (DMOD Manifest) files
 - **Dependencies Files**: Support for `.dmd` (DMOD Dependencies) files to download multiple modules
+- **Automatic Dependency Resolution**: Automatically download module dependencies from `.dmd` files or extract from `.dmf` modules
 - **Version Management**: Download specific versions of modules
 - **Variable Substitution**: Support for `<tools_name>` and `<arch_name>` variables in URLs
 - **Include Directives**: Support for `$include` to include other manifests/dependencies
 - **Source Switching**: Change manifest sources with `from:` directive in .dmd files
 - **Network Downloads**: Download modules from HTTP/HTTPS URLs using libcurl
 - **Flexible Configuration**: Configure via command-line arguments or environment variables
+- **ZIP Package Support**: Automatic extraction of ZIP packages and detection of `.dmd` dependency files
 
 ## Installation
 
@@ -72,7 +74,7 @@ dmf-get -d deps.dmd -t arch/armv7/cortex-m7
 - `-t, --tools-name <name>` - Tools name for variable substitution
 - `-a, --arch-name <name>` - Architecture name for variable substitution
 - `--type <dmf|dmfc>` - Prefer dmf or dmfc file type
-- `--no-dependencies` - Don't download dependencies (not yet implemented)
+- `--no-dependencies` - Don't download dependencies automatically
 - `-h, --help` - Show help message
 - `-v, --version` - Show version information
 
@@ -136,6 +138,57 @@ crypto_lib@1.8
 ```
 
 For detailed documentation on the `.dmd` format, see [DMD File Format Documentation](../../../docs/dmd-file-format.md).
+
+## Automatic Dependency Resolution
+
+`dmf-get` automatically resolves and downloads module dependencies using two mechanisms:
+
+### 1. Dependencies from ZIP Packages (Preferred Method)
+
+When downloading ZIP packages, `dmf-get` looks for a `.dmd` file with the same name as the module:
+
+- **Example**: For `mymodule.dmf`, it searches for `mymodule.dmd` in the ZIP
+- If found, the `.dmd` file is extracted and parsed
+- All dependencies listed in the `.dmd` file are automatically downloaded
+- Dependencies are downloaded recursively (dependencies of dependencies)
+
+**Usage**:
+```bash
+# Download module with automatic dependency resolution
+dmf-get mymodule
+
+# Disable automatic dependency resolution
+dmf-get --no-dependencies mymodule
+```
+
+### 2. Dependencies from DMF/DMFC Files (Fallback Method)
+
+If no `.dmd` file is found in a ZIP package, or when downloading standalone `.dmf`/`.dmfc` files, `dmf-get` extracts dependencies directly from the module:
+
+- Enables crossplatform mode for safe module inspection
+- Uses `Dmod_ReadRequiredModules()` to read module metadata
+- Automatically filters out system modules
+- Downloads only non-system dependencies recursively
+
+**Example**:
+```bash
+# When mymodule.dmf has dependencies but no .dmd file
+dmf-get mymodule  # Will extract and download dependencies from the .dmf file
+```
+
+### Controlling Dependency Resolution
+
+The `--no-dependencies` flag disables automatic dependency resolution:
+
+```bash
+# Download only the requested module, no dependencies
+dmf-get --no-dependencies mymodule
+
+# Works with .dmd files too
+dmf-get --no-dependencies -d project-deps.dmd
+```
+
+**Note**: By default, dependencies are downloaded recursively. Each dependency's own dependencies are also resolved and downloaded automatically.
 
 ## Manifest File Format (.dmm)
 
