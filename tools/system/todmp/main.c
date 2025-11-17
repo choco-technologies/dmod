@@ -115,9 +115,14 @@ static bool FileExistsInDir( const char* dir, const char* moduleName, char* outP
                 }
                 else
                 {
-                    DMOD_LOG_WARN("Module '%s' has different architecture ('%s' vs '%s'), skipping\n", moduleName, fileArch, targetArch);
-                    return false;
+                    DMOD_LOG_WARN("Module '%s.dmf' has different architecture ('%s' vs '%s'), skipping\n", moduleName, fileArch, targetArch);
+                    // Don't return false - try .dmfc extension
                 }
+            }
+            else
+            {
+                DMOD_LOG_WARN("Cannot read architecture from '%s', skipping\n", outPath);
+                // Don't return false - try .dmfc extension
             }
         }
         else
@@ -142,9 +147,14 @@ static bool FileExistsInDir( const char* dir, const char* moduleName, char* outP
                 }
                 else
                 {
-                    DMOD_LOG_WARN("Module '%s' has different architecture ('%s' vs '%s'), skipping\n", moduleName, fileArch, targetArch);
+                    DMOD_LOG_WARN("Module '%s.dmfc' has different architecture ('%s' vs '%s'), skipping\n", moduleName, fileArch, targetArch);
                     return false;
                 }
+            }
+            else
+            {
+                DMOD_LOG_WARN("Cannot read architecture from '%s', skipping\n", outPath);
+                return false;
             }
         }
         else
