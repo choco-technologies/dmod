@@ -596,6 +596,44 @@ const Dmod_RequiredModule_t* Dmod_GetNextRequiredModule( Dmod_Context_t* Context
 }
 
 /**
+ * @brief Read required modules from module file
+ * 
+ * @param Path Path to the module file
+ * @param outRequiredModules Output array of required modules
+ * @param MaxModules Maximum number of modules to read
+ * 
+ * @return true on success, false on error
+ */
+bool Dmod_ReadRequiredModules( const char* Path, Dmod_RequiredModule_t* outRequiredModules, size_t MaxModules )
+{
+    if( Path == NULL || outRequiredModules == NULL || MaxModules == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot read required modules - invalid parameters\n");
+        return false;
+    }
+
+    Dmod_Context_t* context = Dmod_LoadFile( Path );
+    if( context == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot read required modules - cannot load module file: %s\n", Path);
+        return false;
+    }
+
+    size_t count = 0;
+    const Dmod_RequiredModule_t* reqModule = Dmod_GetNextRequiredModule( context, NULL );
+    while( reqModule != NULL && count < MaxModules )
+    {
+        memcpy( &outRequiredModules[count], reqModule, sizeof(Dmod_RequiredModule_t) );
+        count++;
+        reqModule = Dmod_GetNextRequiredModule( context, reqModule );
+    }
+
+    Dmod_Unload( context, true );
+
+    return true;
+}
+
+/**
  * @brief Get stack size
  * 
  * @param Context Context to get stack size from
