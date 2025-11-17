@@ -63,4 +63,5 @@ Thumbs.db
 build/
 build_module*/
 build-*/
+build_cmake/
 _codeql_*

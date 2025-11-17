@@ -14,8 +14,8 @@ TOOL_SRC_DIR=$(THIS_DIR)
 # -----------------------------------------------------------------------------
 PROJECT_NAME    = todmp
 DMOD_SOURCES	= main.c
-DMOD_INC_DIRS 	= 
-DMOD_LIBS 	  	= 
+DMOD_INC_DIRS 	= $(DMOD_DIR)/tools/lib/dmod_dependencies
+DMOD_LIBS 	  	= dmod_dependencies dmod_common dmod_fastlz
 DEFINITIONS 	= 
 
 # -----------------------------------------------------------------------------
