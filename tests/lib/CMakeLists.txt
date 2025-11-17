@@ -1,3 +1,6 @@
+# Add version library tests
+list(APPEND TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_version.cpp)
+
 # Add manifest library tests
 list(APPEND TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_manifest.cpp)
 

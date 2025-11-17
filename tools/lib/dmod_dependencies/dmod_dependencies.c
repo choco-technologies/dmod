@@ -79,12 +79,7 @@ static bool AddEntry(Dmod_DependenciesContext_t* ctx, const char* name,
         node->entry.version[DMOD_DEPENDENCIES_MAX_VERSION_LEN - 1] = '\0';
         
         // Try to parse version constraint
-        if (Dmod_Version_ParseConstraint(version, &node->entry.constraint)) {
-            node->entry.has_constraint = true;
-        } else {
-            // Failed to parse constraint
-            node->entry.has_constraint = false;
-        }
+        node->entry.has_constraint = Dmod_Version_ParseConstraint(version, &node->entry.constraint);
     }
     
     // Copy manifest
