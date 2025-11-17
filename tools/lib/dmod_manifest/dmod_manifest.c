@@ -459,6 +459,45 @@ bool Dmod_Manifest_FindEntry(
     return false;
 }
 
+bool Dmod_Manifest_FindEntryAfter(
+    Dmod_ManifestContext_t* ctx,
+    const char* name,
+    const char* version,
+    Dmod_ManifestNode_t* last_node,
+    Dmod_ManifestEntry_t* out_entry,
+    Dmod_ManifestNode_t** out_node
+) {
+    if (!ctx || !name || !out_entry) return false;
+    
+    bool has_version = version && version[0] != '\0';
+    
+    // Start from the node after last_node, or from beginning if NULL
+    Dmod_ManifestNode_t* start_node = last_node ? last_node->next : ctx->entries;
+    
+    // Search for matching entry
+    for (Dmod_ManifestNode_t* node = start_node; node; node = node->next) {
+        if (strcmp(node->entry.name, name) != 0) continue;
+        
+        // If no version specified, take this match
+        if (!has_version) {
+            *out_entry = node->entry;
+            if (out_node) *out_node = node;
+            return true;
+        }
+        
+        // Check version match
+        if (strcmp(node->entry.version, version) == 0) {
+            *out_entry = node->entry;
+            if (out_node) *out_node = node;
+            return true;
+        }
+    }
+    
+    // No more matches found
+    if (out_node) *out_node = NULL;
+    return false;
+}
+
 size_t Dmod_Manifest_GetEntryCount(Dmod_ManifestContext_t* ctx) {
     return ctx ? ctx->entry_count : 0;
 }

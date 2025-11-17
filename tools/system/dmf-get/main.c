@@ -18,6 +18,7 @@
 #include "dmod_arch_defs.h"
 #include "dmod_manifest.h"
 #include "dmod_dependencies.h"
+#include "dmod_system.h"
 
 // Default paths
 #define DEFAULT_DMF_DIR "./dmf"
@@ -143,7 +144,8 @@ static int DownloadModule(const char* module_name, const char* module_version,
                           Dmod_ManifestContext_t* manifest_ctx, 
                           const char* output_dir, const char* tools_name,
                           const char* arch_name, const char* preferred_type,
-                          bool download_dependencies, const char* default_manifest);
+                          bool download_dependencies, const char* default_manifest,
+                          bool ignore_missing);
 
 /**
  * @brief Extract ZIP file and find DMF/DMFC file
@@ -367,12 +369,13 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
  * @param arch_name Architecture name for substitution
  * @param preferred_type Preferred file type
  * @param default_manifest Default manifest URL
+ * @param ignore_missing Whether to ignore missing dependencies
  * @return 0 on success, non-zero on failure
  */
 static int ProcessModuleDependencies(const char* module_file_path, const char* dmd_file_path,
                                       const char* output_dir, const char* tools_name,
                                       const char* arch_name, const char* preferred_type,
-                                      const char* default_manifest) {
+                                      const char* default_manifest, bool ignore_missing) {
     int failed_count = 0;
     
     // First, try to load dependencies from .dmd file if provided
@@ -447,7 +450,8 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                 arch_name,
                 preferred_type,
                 true,  // download dependencies recursively
-                default_manifest
+                default_manifest,
+                ignore_missing
             );
             
             Dmod_Manifest_Free(man_ctx);
@@ -545,7 +549,8 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                         arch_name,
                         preferred_type,
                         true,  // download dependencies recursively
-                        default_manifest
+                        default_manifest,
+                        ignore_missing
                     );
                     
                     Dmod_Manifest_Free(man_ctx);
@@ -639,6 +644,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  -a, --arch-name <name>    Architecture name for variable substitution\n");
     Dmod_Printf("  --type <dmf|dmfc>         Prefer dmf or dmfc file type\n");
     Dmod_Printf("  --no-dependencies         Don't download dependencies\n");
+    Dmod_Printf("  --ignore-missing          Ignore missing dependencies and continue\n");
     Dmod_Printf("  -h, --help                Show this help message\n");
     Dmod_Printf("  -v, --version             Show version information\n\n");
     Dmod_Printf("Environment Variables:\n");
@@ -675,19 +681,40 @@ static void PrintVersion() {
  * @param preferred_type Preferred file type (dmf or dmfc)
  * @param download_dependencies Whether to download dependencies
  * @param default_manifest Default manifest URL
+ * @param ignore_missing Whether to ignore missing modules (continue on arch mismatch)
  * @return 0 on success, non-zero on failure
  */
 static int DownloadModule(const char* module_name, const char* module_version,
                           Dmod_ManifestContext_t* manifest_ctx, 
                           const char* output_dir, const char* tools_name,
                           const char* arch_name, const char* preferred_type,
-                          bool download_dependencies, const char* default_manifest) {
-    // Find the module
+                          bool download_dependencies, const char* default_manifest,
+                          bool ignore_missing) {
+    // Try to find entries for this module, checking architecture for each
+    Dmod_ManifestNode_t* last_node = NULL;
     Dmod_ManifestEntry_t entry;
-    if (!Dmod_Manifest_FindEntry(manifest_ctx, module_name, module_version, &entry)) {
-        DMOD_LOG_ERROR("Error: %s\n", Dmod_Manifest_GetError(manifest_ctx));
-        return 1;
-    }
+    bool found_any = false;
+    
+    while (true) {
+        // Find next entry matching the module name
+        Dmod_ManifestNode_t* current_node = NULL;
+        if (!Dmod_Manifest_FindEntryAfter(manifest_ctx, module_name, module_version, last_node, &entry, &current_node)) {
+            // No more entries found
+            if (!found_any) {
+                DMOD_LOG_ERROR("Error: Module not found: %s%s%s\n",
+                    module_name, 
+                    module_version ? "@" : "", 
+                    module_version ? module_version : "");
+                return ignore_missing ? 0 : 1;
+            } else {
+                // We tried all entries but none matched architecture
+                DMOD_LOG_ERROR("Error: No compatible architecture found for module: %s\n", module_name);
+                return ignore_missing ? 0 : 1;
+            }
+        }
+        
+        found_any = true;
+        last_node = current_node;
     
     // Determine which version to use for URL substitution
     const char* version_to_use = module_version ? module_version : 
@@ -782,53 +809,55 @@ static int DownloadModule(const char* module_name, const char* module_version,
         final_module_path[sizeof(final_module_path) - 1] = '\0';
     }
     
-    // Verify architecture matches expected architecture
-    if (!already_exists && arch_name != NULL && arch_name[0] != '\0') {
-        char package_arch[DMOD_MAX_ARCH_NAME_LENGTH];
-        if (Dmod_GetFileArchitecture(final_module_path, package_arch, sizeof(package_arch))) {
-            // Compare with the expected architecture
-            if (strcmp(package_arch, arch_name) != 0) {
-                DMOD_LOG_INFO("Warning: Architecture mismatch: package is '%s', expected '%s'\n", 
-                       package_arch, arch_name);
-                DMOD_LOG_INFO("Removing incompatible module file and continuing search: %s\n", final_module_path);
-                
-                // Delete the incompatible file
-                remove(final_module_path);
-                
-                // Also remove .dmd file if it exists
-                if (dmd_file_path[0] != '\0') {
-                    remove(dmd_file_path);
+        // Verify architecture matches expected architecture
+        if (!already_exists && arch_name != NULL && arch_name[0] != '\0') {
+            char package_arch[DMOD_MAX_ARCH_NAME_LENGTH];
+            if (Dmod_GetFileArchitecture(final_module_path, package_arch, sizeof(package_arch))) {
+                // Compare with the expected architecture
+                if (strcmp(package_arch, arch_name) != 0) {
+                    DMOD_LOG_INFO("Warning: Architecture mismatch: package is '%s', expected '%s'\n", 
+                           package_arch, arch_name);
+                    DMOD_LOG_INFO("Removing incompatible module file and continuing search: %s\n", final_module_path);
+                    
+                    // Delete the incompatible file
+                    remove(final_module_path);
+                    
+                    // Also remove .dmd file if it exists
+                    if (dmd_file_path[0] != '\0') {
+                        remove(dmd_file_path);
+                    }
+                    
+                    // Continue searching for next entry
+                    continue;
+                } else {
+                    DMOD_LOG_INFO("Architecture verified: %s\n", package_arch);
                 }
-                
-                // Continue searching - don't process dependencies for this file
-                return 0;
             } else {
-                DMOD_LOG_INFO("Architecture verified: %s\n", package_arch);
+                DMOD_LOG_INFO("Warning: Could not verify architecture (may be an older module format)\n");
             }
-        } else {
-            DMOD_LOG_INFO("Warning: Could not verify architecture (may be an older module format)\n");
         }
-    }
-    
-    // Process dependencies if requested and not already processed
-    if (download_dependencies && !already_exists) {
-        DMOD_LOG_INFO("\nProcessing dependencies for %s\n", entry.name);
-        int dep_result = ProcessModuleDependencies(
-            final_module_path,
-            dmd_file_path[0] != '\0' ? dmd_file_path : NULL,
-            output_dir,
-            tools_name,
-            arch_name,
-            preferred_type,
-            default_manifest
-        );
         
-        if (dep_result > 0) {
-            DMOD_LOG_INFO("Warning: %d dependencies failed to download\n", dep_result);
+        // Architecture matches or check not required - process dependencies and return success
+        if (download_dependencies && !already_exists) {
+            DMOD_LOG_INFO("\nProcessing dependencies for %s\n", entry.name);
+            int dep_result = ProcessModuleDependencies(
+                final_module_path,
+                dmd_file_path[0] != '\0' ? dmd_file_path : NULL,
+                output_dir,
+                tools_name,
+                arch_name,
+                preferred_type,
+                default_manifest,
+                ignore_missing
+            );
+            
+            if (dep_result > 0) {
+                DMOD_LOG_INFO("Warning: %d dependencies failed to download\n", dep_result);
+            }
         }
-    }
-    
-    return 0;
+        
+        return 0;  // Success - found and installed compatible module
+    } // end while loop
 }
 
 /**
@@ -844,6 +873,7 @@ int main(int argc, char* argv[]) {
     const char* arch_name = NULL;
     const char* preferred_type = NULL;
     bool no_dependencies = false;
+    bool ignore_missing = false;
     
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
@@ -902,6 +932,9 @@ int main(int argc, char* argv[]) {
         }
         else if (strcmp(argv[i], "--no-dependencies") == 0) {
             no_dependencies = true;
+        }
+        else if (strcmp(argv[i], "--ignore-missing") == 0) {
+            ignore_missing = true;
         }
         else if (argv[i][0] == '-') {
             DMOD_LOG_ERROR("Error: Unknown option: %s\n", argv[i]);
@@ -1059,7 +1092,8 @@ int main(int argc, char* argv[]) {
                 arch_name,
                 preferred_type,
                 true,  // download dependencies
-                manifest_path
+                manifest_path,
+                ignore_missing
             );
             
             Dmod_Manifest_Free(man_ctx);
@@ -1141,7 +1175,8 @@ int main(int argc, char* argv[]) {
             arch_name,
             preferred_type,
             !no_dependencies,  // download dependencies unless --no-dependencies is set
-            manifest_path
+            manifest_path,
+            ignore_missing
         );
         
         // Cleanup
