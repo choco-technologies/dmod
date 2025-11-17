@@ -1,0 +1,39 @@
+{
+  "name": "dmod-dependencies",
+  "displayName": "DMOD Dependencies Language Support",
+  "description": "Syntax highlighting for DMOD Dependencies (.dmd) files",
+  "version": "1.0.0",
+  "publisher": "ChocoTechnologiesDMOD",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/choco-technologies/dmod"
+  },
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "dmd",
+        "aliases": [
+          "DMOD Dependencies",
+          "dmd"
+        ],
+        "extensions": [
+          ".dmd"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "dmd",
+        "scopeName": "source.dmd",
+        "path": "./syntaxes/dmd.tmLanguage.json"
+      }
+    ]
+  }
+}

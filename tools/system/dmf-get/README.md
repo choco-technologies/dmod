@@ -5,9 +5,11 @@
 ## Features
 
 - **Manifest Parsing**: Read and parse `.dmm` (DMOD Manifest) files
+- **Dependencies Files**: Support for `.dmd` (DMOD Dependencies) files to download multiple modules
 - **Version Management**: Download specific versions of modules
 - **Variable Substitution**: Support for `<tools_name>` and `<arch_name>` variables in URLs
-- **Include Directives**: Support for `$include` to include other manifests
+- **Include Directives**: Support for `$include` to include other manifests/dependencies
+- **Source Switching**: Change manifest sources with `from:` directive in .dmd files
 - **Network Downloads**: Download modules from HTTP/HTTPS URLs using libcurl
 - **Flexible Configuration**: Configure via command-line arguments or environment variables
 
@@ -27,6 +29,8 @@ The tool will be available at `build/bin/tools/dmf-get`.
 
 ### Basic Usage
 
+#### Single Module Download
+
 ```bash
 # Download latest version of a module
 dmf-get mymodule
@@ -44,11 +48,30 @@ dmf-get -o /path/to/output mymodule
 dmf-get -t arch/armv7/cortex-m7 mymodule
 ```
 
+#### Multiple Modules with Dependencies File (.dmd)
+
+```bash
+# Download all modules from a dependencies file
+dmf-get -d project-deps.dmd
+
+# With custom output directory
+dmf-get -d project-deps.dmd -o ./modules
+
+# From a URL
+dmf-get -d https://example.com/deps.dmd
+
+# With architecture specification
+dmf-get -d deps.dmd -t arch/armv7/cortex-m7
+```
+
 ### Command-Line Options
 
+- `-d, --dependencies <path>` - Path or URL to dependencies (.dmd) file
 - `-m, --manifest <path>` - Path or URL to manifest file
 - `-o, --output-dir <path>` - Output directory for downloaded modules
 - `-t, --tools-name <name>` - Tools name for variable substitution
+- `-a, --arch-name <name>` - Architecture name for variable substitution
+- `--type <dmf|dmfc>` - Prefer dmf or dmfc file type
 - `--no-dependencies` - Don't download dependencies (not yet implemented)
 - `-h, --help` - Show help message
 - `-v, --version` - Show version information
@@ -76,7 +99,45 @@ dmf-get -t arch/armv7/cortex-m7 mymodule@1.0
 dmf-get -o ./my_modules mymodule
 ```
 
-## Manifest File Format
+## Dependencies File Format (.dmd)
+
+The dependencies file (`.dmd`) allows you to specify multiple modules to download. It supports:
+
+```
+# This is a comment
+module_name              # Download latest version
+module_name@version      # Download specific version
+$include url             # Include another .dmd file
+$from manifest_url       # Change manifest source for subsequent modules
+```
+
+### Example Dependencies File
+
+```dmd
+# Project Dependencies
+
+# Core modules from default manifest
+dmffs
+driver@1.0
+make_dmffs
+
+# Include common dependencies
+$include https://example.com/common-deps.dmd
+
+# Change manifest source for hardware modules
+$from https://hw-vendor.com/manifest.dmm
+spi@1.0
+i2c@2.0
+
+# Change to another registry
+$from https://third-party.org/manifest.dmm
+json_parser@3.2
+crypto_lib@1.8
+```
+
+For detailed documentation on the `.dmd` format, see [DMD File Format Documentation](../../../docs/dmd-file-format.md).
+
+## Manifest File Format (.dmm)
 
 The manifest file (`.dmm`) uses the following format:
 
@@ -109,26 +170,42 @@ The manifest supports two variables that are automatically substituted:
 - `<tools_name>` - Replaced with the value from `DMOD_TOOLS_NAME` or `-t` option (e.g., `arch/armv7/cortex-m7`)
 - `<arch_name>` - Derived from `<tools_name>` by removing `arch/` prefix and replacing `/` with `-` (e.g., `armv7-cortex-m7`)
 
-## Manifest Parser Library
+## Parser Libraries
 
-The manifest parsing functionality is implemented as a separate static library (`libdmod_manifest`) that can be used in other projects. See `lib/dmod_manifest/dmod_manifest.h` for the API documentation.
+### Manifest Parser Library
 
-### Library Features
+The manifest parsing functionality is implemented as a separate static library (`libdmod_manifest`) that can be used in other projects. See `tools/lib/dmod_manifest/dmod_manifest.h` for the API documentation.
 
+**Features:**
 - Parse manifest files from strings, files, or URLs
 - Variable substitution
 - Recursive include directives
 - Best-match version finding
 - Pluggable download function (function pointer)
 
+### Dependencies Parser Library
+
+The dependencies parsing functionality is implemented as a separate static library (`libdmod_dependencies`) that can be used in other projects. See `tools/lib/dmod_dependencies/dmod_dependencies.h` for the API documentation.
+
+**Features:**
+- Parse .dmd files from strings, files, or URLs
+- Support for module entries with optional versions
+- Support for `$include` directive (recursive)
+- Support for `from:` directive to change manifest sources
+- Pluggable download function (function pointer)
+
 ## Testing
 
-Unit tests for the manifest library:
+Unit tests:
 ```bash
+# Manifest parser library tests
 ./build/tests/tests_dmod_manifest
+
+# Dependencies parser library tests
+./build/tests/tests_dmod_dependencies
 ```
 
-Integration tests for dmf-get:
+Integration tests for dmf-get (includes .dmd file tests):
 ```bash
 ./tests/integration/test_dmf_get.sh build
 ```

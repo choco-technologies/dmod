@@ -75,6 +75,65 @@ else
 fi
 
 echo ""
+echo "Test 6: Parse .dmd dependencies file"
+cat > deps.dmd << 'EOF'
+# Test dependencies file
+testmod@1.0
+mymod
+EOF
+
+# Test that dmf-get can parse a .dmd file
+if $DMF_GET -d deps.dmd -m manifest.dmm -o output 2>&1 | grep -q "Loading dependencies"; then
+    echo "✓ Dependencies file parsing attempted"
+else
+    echo "✗ Dependencies file parsing failed"
+    exit 1
+fi
+
+echo ""
+echo "Test 7: Test .dmd with $from directive"
+cat > deps_with_from.dmd << 'EOF'
+# Dependencies with source change
+testmod@1.0
+$from https://example.com/manifest.dmm
+mymod
+EOF
+
+if $DMF_GET -d deps_with_from.dmd -m manifest.dmm -o output 2>&1 | grep -q "Loading dependencies"; then
+    echo "✓ Dependencies with $from directive parsed"
+else
+    echo "✗ Dependencies with $from directive failed"
+    exit 1
+fi
+
+echo ""
+echo "Test 8: Test .dmd with comments and blank lines"
+cat > deps_comments.dmd << 'EOF'
+# Main dependencies
+
+testmod@1.0
+
+# Another module
+mymod
+EOF
+
+if $DMF_GET -d deps_comments.dmd -m manifest.dmm -o output 2>&1 | grep -q "Loading dependencies"; then
+    echo "✓ Dependencies with comments parsed"
+else
+    echo "✗ Dependencies with comments failed"
+    exit 1
+fi
+
+echo ""
+echo "Test 9: Test error when both module and dependencies file specified"
+if $DMF_GET -d deps.dmd -m manifest.dmm -o output testmod 2>&1 | grep -q "Cannot specify both"; then
+    echo "✓ Correctly rejects both module and dependencies file"
+else
+    echo "✗ Should reject both module and dependencies file"
+    exit 1
+fi
+
+echo ""
 echo "=== All dmf-get integration tests passed! ==="
 cd ..
 rm -rf "$TEST_DIR"

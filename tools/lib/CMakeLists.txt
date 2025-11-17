@@ -1,1 +1,2 @@
 add_subdirectory(dmod_manifest)
+add_subdirectory(dmod_dependencies)
