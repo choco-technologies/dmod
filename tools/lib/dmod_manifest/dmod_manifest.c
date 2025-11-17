@@ -443,15 +443,17 @@ Dmod_ManifestNode_t* Dmod_Manifest_FindEntry(
             break;
         }
 
+        bool node_has_version = node->entry.version[0] != '\0';
+        if(!node_has_version)
+        {
+            best_match = node;
+            break;
+        }
+
         // Check version match
         if (strcmp(node->entry.version, version) == 0) {
             best_match = node;
             break;
-        }
-        
-        // If no exact match yet, keep this as potential match
-        if (!best_match) {
-            best_match = node;
         }
     }
 
