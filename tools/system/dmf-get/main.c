@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <curl/curl.h>
 #include "dmod.h"
+#include "dmod_arch_defs.h"
 #include "dmod_manifest.h"
 #include "dmod_dependencies.h"
 
@@ -779,6 +780,34 @@ static int DownloadModule(const char* module_name, const char* module_version,
         DMOD_LOG_INFO("Module installed to: %s\n", output_file);
         strncpy(final_module_path, output_file, sizeof(final_module_path) - 1);
         final_module_path[sizeof(final_module_path) - 1] = '\0';
+    }
+    
+    // Verify architecture matches current system
+    if (!already_exists) {
+        char package_arch[DMOD_MAX_ARCH_NAME_LENGTH];
+        if (Dmod_GetPackageArchitecture(final_module_path, package_arch, sizeof(package_arch))) {
+            // Compare with the current system architecture
+            if (strcmp(package_arch, DMOD_ARCH) != 0) {
+                DMOD_LOG_ERROR("Architecture mismatch: package is '%s', system is '%s'\n", 
+                       package_arch, DMOD_ARCH);
+                DMOD_LOG_ERROR("Removing incompatible module file: %s\n", final_module_path);
+                
+                // Delete the incompatible file
+                remove(final_module_path);
+                
+                // Also remove .dmd file if it exists
+                if (dmd_file_path[0] != '\0') {
+                    remove(dmd_file_path);
+                }
+                
+                DMOD_LOG_ERROR("Error: Architecture mismatch - module not installed\n");
+                return 1;
+            } else {
+                DMOD_LOG_INFO("Architecture verified: %s\n", package_arch);
+            }
+        } else {
+            DMOD_LOG_INFO("Warning: Could not verify architecture (may be an older module format)\n");
+        }
     }
     
     // Process dependencies if requested and not already processed
