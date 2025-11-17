@@ -28,6 +28,7 @@
         "new": "cpp",
         "difs.h": "c",
         "difs_defs.h": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "stdlib.h": "c"
     }
 }

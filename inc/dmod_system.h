@@ -60,6 +60,10 @@ extern Dmod_Context_t*  Dmod_LoadFile           ( const char* Path );
 extern Dmod_Context_t*  Dmod_Load               ( const void* Data, size_t Size );
 extern Dmod_Context_t*  Dmod_LoadFromPackage    ( const char* PackageName, const char* ModuleName );
 extern bool             Dmod_Unload             ( Dmod_Context_t* Context, bool Force );
+extern void             Dmod_SetCrossplatformMode ( bool Enable );
+extern bool             Dmod_IsCrossplatformMode ( void );
+
+extern const Dmod_RequiredModule_t* Dmod_GetNextRequiredModule( Dmod_Context_t* Context, const Dmod_RequiredModule_t* Last );
 
 // DMF API
 extern bool             Dmod_ConnectApi         ( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi );

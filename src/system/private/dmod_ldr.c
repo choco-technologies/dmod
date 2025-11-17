@@ -32,22 +32,27 @@ bool Dmod_Ldr_LoadHeader( Dmod_Context_t* Context )
     }
     Dmod_Event_ModuleLoadingInProgress( header->Name, 80 );
 
+    if( Dmod_SystemCrossplatformMode )
+    {
+        DMOD_LOG_WARN("Crossplatform mode enabled - skipping version and architecture checks\n");
+    }
+
     // Check version
-    if( !DMOD_COMPATIBLE_VERSION(header->DmodVersion) )
+    if( !Dmod_SystemCrossplatformMode && !DMOD_COMPATIBLE_VERSION(header->DmodVersion) )
     {
         DMOD_LOG_ERROR("Cannot load header - incompatible version: 0x%08X != 0x%08X "DMOD_VERSION_STRING"\n", header->Version, (uint32_t)DMOD_VERSION );
         return false;
     }
 
     // Check architecture
-    if( strcmp( header->Arch, DMOD_ARCH ) != 0 )
+    if( !Dmod_SystemCrossplatformMode && strcmp( header->Arch, DMOD_ARCH ) != 0 )
     {
         DMOD_LOG_ERROR("Cannot load header - invalid architecture: %s != %s\n", header->Arch, DMOD_ARCH);
         return false;
     }
 
     // Check target cpu 
-    if( header->CpuName[0] != 0 && strcmp( header->CpuName, DMOD_CPU_NAME ) != 0 )
+    if( !Dmod_SystemCrossplatformMode && header->CpuName[0] != 0 && strcmp( header->CpuName, DMOD_CPU_NAME ) != 0 )
     {
         DMOD_LOG_ERROR("Cannot load header - invalid target cpu: %s != %s\n", header->CpuName, DMOD_CPU_NAME);
         return false;

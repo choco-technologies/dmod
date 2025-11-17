@@ -535,6 +535,67 @@ bool Dmod_Unload( Dmod_Context_t* Context, bool Force )
 }
 
 /**
+ * @brief Set crossplatform mode
+ * 
+ * @param Enable If true, crossplatform mode is enabled
+ */
+void Dmod_SetCrossplatformMode ( bool Enable )
+{
+    DMOD_LOG_INFO("Setting crossplatform mode to: %s\n", Enable ? "ENABLED" : "DISABLED");
+    Dmod_SystemCrossplatformMode = Enable;
+    if(Enable)
+    {
+        DMOD_LOG_WARN("Crossplatform mode ENABLED - module compatibility checks are DISABLED\n");
+    }
+}
+
+/**
+ * @brief Check if crossplatform mode is enabled
+ * 
+ * @return true if crossplatform mode is enabled, false otherwise
+ */
+bool Dmod_IsCrossplatformMode ( void )
+{
+    return Dmod_SystemCrossplatformMode;
+}
+
+/**
+ * @brief Get next required module
+ * 
+ * @param Context Context to get required modules from
+ * @param Last Last required module returned, or NULL to get the first one
+ * 
+ * @return Pointer to the next required module, or NULL if there are no more
+ */
+const Dmod_RequiredModule_t* Dmod_GetNextRequiredModule( Dmod_Context_t* Context, const Dmod_RequiredModule_t* Last )
+{
+    if( !Dmod_Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot get next required module - invalid context\n");
+        return NULL;
+    }
+
+    if( Last == NULL )
+    {
+        return &Context->RequiredModules[0];
+    }
+
+    size_t index = Last - &Context->RequiredModules[0];
+    if( index + 1 >= DMOD_MAX_REQUIRED_MODULES )
+    {
+        return NULL;
+    }
+
+    const Dmod_RequiredModule_t* next = &Context->RequiredModules[index + 1];
+    if( next->Name[0] == '\0' )
+    {
+        return NULL;
+    }
+
+    return &Context->RequiredModules[index + 1];
+}
+
+/**
  * @brief Get stack size
  * 
  * @param Context Context to get stack size from

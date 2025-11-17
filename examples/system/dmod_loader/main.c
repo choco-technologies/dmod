@@ -172,6 +172,12 @@ int main( int argc, char *argv[] )
         printf("Cannot load module: %s\n", dmfPath);
         return -1;
     }
+    const Dmod_RequiredModule_t* reqModule = Dmod_GetNextRequiredModule( context, NULL );
+    while( reqModule != NULL)
+    {
+        DMOD_LOG_INFO("Module '%s' requires module '%s' version '%s'\n", Dmod_GetName(context), reqModule->Name, reqModule->Version );
+        reqModule = Dmod_GetNextRequiredModule( context, reqModule );
+    }
 
     // Check module type and handle accordingly
     Dmod_ModuleType_t moduleType = Dmod_GetModuleType( context );
