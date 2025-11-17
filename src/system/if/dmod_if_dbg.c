@@ -70,6 +70,28 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Printf, ( const char* Format, .
 }
 
 /**
+ * @brief FPrintf function - prints to a file
+ * 
+ * @param File File handle
+ * @param Format Format string
+ * 
+ * @return Number of characters printed
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FPrintf, ( void* File, const char* Format, ... ))
+{
+    #if DMOD_USE_STDIO
+    int Ret = 0;
+    va_list Args;
+    va_start( Args, Format );
+    Ret = vfprintf( (FILE*)File, Format, Args );
+    va_end( Args );
+    return Ret;
+    #else
+    return 0;
+    #endif
+}
+
+/**
  * @brief VSnPrintf function
  * 
  * @param Buffer Output buffer (can be NULL to calculate required size)

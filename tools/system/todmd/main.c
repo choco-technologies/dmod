@@ -125,26 +125,26 @@ int main( int argc, char *argv[] )
     }
 
     const char* moduleName = Dmod_GetName( context );
-    printf("Module name: %s\n", moduleName ? moduleName : "<unknown>");
+    Dmod_Printf("Module name: %s\n", moduleName ? moduleName : "<unknown>");
 
     // Open output file
-    FILE* outputFile = fopen( outputPath, "w" );
+    void* outputFile = Dmod_FileOpen( outputPath, "w" );
     if( outputFile == NULL )
     {
-        printf("Error: Cannot create output file: %s\n", outputPath);
+        DMOD_LOG_ERROR("Cannot create output file: %s\n", outputPath);
         Dmod_Unload( context, false );
         Dmod_Deinitialize();
         return -1;
     }
 
     // Write header comment to the .dmd file
-    fprintf( outputFile, "# DMOD Dependencies File\n" );
-    fprintf( outputFile, "# Generated from module: %s\n", moduleName ? moduleName : "<unknown>" );
-    fprintf( outputFile, "# Source file: %s\n", dmfPath );
-    fprintf( outputFile, "#\n");
-    fprintf( outputFile, "# This file lists all non-system modules required by the module.\n" );
-    fprintf( outputFile, "# Use with dmf-get: dmf-get -d %s\n", outputPath );
-    fprintf( outputFile, "\n" );
+    Dmod_FPrintf( outputFile, "# DMOD Dependencies File\n" );
+    Dmod_FPrintf( outputFile, "# Generated from module: %s\n", moduleName ? moduleName : "<unknown>" );
+    Dmod_FPrintf( outputFile, "# Source file: %s\n", dmfPath );
+    Dmod_FPrintf( outputFile, "#\n");
+    Dmod_FPrintf( outputFile, "# This file lists all non-system modules required by the module.\n" );
+    Dmod_FPrintf( outputFile, "# Use with dmf-get: dmf-get -d %s\n", outputPath );
+    Dmod_FPrintf( outputFile, "\n" );
 
     // Iterate through required modules
     int moduleCount = 0;
@@ -161,54 +161,43 @@ int main( int argc, char *argv[] )
                 // Skip system modules but count them
                 systemModuleCount++;
                 DMOD_LOG_INFO("Skipping system module: %s\n", reqModule->Name);
+                reqModule = Dmod_GetNextRequiredModule( context, reqModule );
+                continue;
             }
-            else
-            {
-                // Write non-system module to .dmd file
-                if( reqModule->Version[0] != '\0' )
-                {
-                    // Module with version
-                    fprintf( outputFile, "%s@%s\n", reqModule->Name, reqModule->Version );
-                    printf("  + %s@%s\n", reqModule->Name, reqModule->Version);
-                }
-                else
-                {
-                    // Module without version
-                    fprintf( outputFile, "%s\n", reqModule->Name );
-                    printf("  + %s\n", reqModule->Name);
-                }
-                moduleCount++;
-            }
+            
+            // Write non-system module to .dmd file
+            bool hasVersion = (reqModule->Version[0] != '\0');
+            Dmod_FPrintf( outputFile, "%s%s%s\n", reqModule->Name, hasVersion ? "@" : "", reqModule->Version );
+            Dmod_Printf("  + %s%s%s\n", reqModule->Name, hasVersion ? "@" : "", reqModule->Version);
+            moduleCount++;
         }
         
         reqModule = Dmod_GetNextRequiredModule( context, reqModule );
     }
 
     // Close the output file
-    fclose( outputFile );
+    Dmod_FileClose( outputFile );
 
     // Clean up
     Dmod_Unload( context, false );
     Dmod_Deinitialize();
 
     // Print summary
-    printf("\nSummary:\n");
-    printf("  Non-system modules: %d\n", moduleCount);
-    printf("  System modules (skipped): %d\n", systemModuleCount);
-    printf("  Output file: %s\n", outputPath);
+    Dmod_Printf("\nSummary:\n");
+    Dmod_Printf("  Non-system modules: %d\n", moduleCount);
+    Dmod_Printf("  System modules (skipped): %d\n", systemModuleCount);
+    Dmod_Printf("  Output file: %s\n", outputPath);
     
     if( moduleCount == 0 && systemModuleCount == 0 )
     {
-        printf("\nNote: No dependencies found in this module.\n");
+        DMOD_LOG_INFO("No dependencies found in this module.\n");
     }
     else if( moduleCount == 0 )
     {
-        printf("\nNote: Module only has system dependencies (all were filtered out).\n");
+        DMOD_LOG_INFO("Module only has system dependencies (all were filtered out).\n");
     }
-    else
-    {
-        printf("\nSuccess! .dmd file created successfully.\n");
-    }
+    
+    Dmod_Printf("\nSuccess! .dmd file created successfully.\n");
 
     return 0;
 }
