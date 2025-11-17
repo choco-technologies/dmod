@@ -141,21 +141,23 @@ static bool DownloadFile(const char* url, const char* output_path) {
  * @brief Extract ZIP file and find DMF/DMFC file
  * 
  * @param zip_path Path to the ZIP file
- * @param output_dir Directory to extract to
+ * @param output_dir Directory to copy the extracted file to
  * @param module_name Module name to search for
- * @param output_file Buffer to store the path to found DMF/DMFC file
+ * @param preferred_type Preferred file type (dmf or dmfc)
+ * @param output_file Buffer to store the path to the final installed file
  * @param output_file_size Size of output_file buffer
- * @return true if extraction succeeded and DMF/DMFC file was found
+ * @return true if extraction succeeded and DMF/DMFC file was found and copied
  */
 static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir, 
                                      const char* module_name, const char* preferred_type,
                                      char* output_file, size_t output_file_size) {
-    // Create extraction directory
+    // Create temporary extraction directory in /tmp
     char extract_dir[512];
-    Dmod_SnPrintf(extract_dir, sizeof(extract_dir), "%s/%s_extracted", output_dir, module_name);
+    Dmod_SnPrintf(extract_dir, sizeof(extract_dir), "/tmp/dmod_extract_%s_%d", module_name, (int)getpid());
     
     if (Dmod_MakeDir(extract_dir, 0755) != 0) {
-        // Directory might already exist, which is fine
+        DMOD_LOG_ERROR("Failed to create temporary directory: %s\n", extract_dir);
+        return false;
     }
     
     // Use system unzip command
@@ -165,15 +167,23 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
     int result = system(unzip_cmd);
     if (result != 0) {
         DMOD_LOG_ERROR("Failed to extract ZIP file: %s\n", zip_path);
+        // Clean up temp directory
+        char rm_cmd[1024];
+        Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", extract_dir);
+        system(rm_cmd);
         return false;
     }
     
-    DMOD_LOG_INFO("Extracted ZIP to: %s\n", extract_dir);
+    DMOD_LOG_INFO("Extracted ZIP to temporary directory\n");
     
     // Search for .dmf or .dmfc files in the extracted directory
     void* dir = Dmod_OpenDir(extract_dir);
     if (!dir) {
         DMOD_LOG_ERROR("Cannot open extracted directory: %s\n", extract_dir);
+        // Clean up temp directory
+        char rm_cmd[1024];
+        Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", extract_dir);
+        system(rm_cmd);
         return false;
     }
     
@@ -246,17 +256,57 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
     Dmod_CloseDir(dir);
     
     // Use best match or fallback
-    const char* selected = (best_match[0] != '\0') ? best_match : fallback_match;
+    const char* selected_temp_file = (best_match[0] != '\0') ? best_match : fallback_match;
     
-    if (selected[0] == '\0') {
+    if (selected_temp_file[0] == '\0') {
         DMOD_LOG_ERROR("No .dmf or .dmfc file found in ZIP archive\n");
+        // Clean up temp directory
+        char rm_cmd[1024];
+        Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", extract_dir);
+        system(rm_cmd);
         return false;
     }
     
-    strncpy(output_file, selected, output_file_size - 1);
+    // Get just the filename from the selected path
+    const char* filename = strrchr(selected_temp_file, '/');
+    if (filename) {
+        filename++; // Skip the '/'
+    } else {
+        filename = selected_temp_file;
+    }
+    
+    // Build destination path directly in output_dir
+    char dest_path[512];
+    Dmod_SnPrintf(dest_path, sizeof(dest_path), "%s/%s", output_dir, filename);
+    
+    // Copy the file to the destination
+    char cp_cmd[1024];
+    Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp \"%s\" \"%s\"", selected_temp_file, dest_path);
+    result = system(cp_cmd);
+    
+    if (result != 0) {
+        DMOD_LOG_ERROR("Failed to copy module file to destination\n");
+        // Clean up temp directory
+        char rm_cmd[1024];
+        Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", extract_dir);
+        system(rm_cmd);
+        return false;
+    }
+    
+    // Store the final destination path
+    strncpy(output_file, dest_path, output_file_size - 1);
     output_file[output_file_size - 1] = '\0';
     
-    DMOD_LOG_INFO("Found module file: %s\n", output_file);
+    // Clean up: remove ZIP file and temp directory
+    char rm_zip_cmd[1024];
+    Dmod_SnPrintf(rm_zip_cmd, sizeof(rm_zip_cmd), "rm -f \"%s\"", zip_path);
+    system(rm_zip_cmd);
+    
+    char rm_temp_cmd[1024];
+    Dmod_SnPrintf(rm_temp_cmd, sizeof(rm_temp_cmd), "rm -rf \"%s\"", extract_dir);
+    system(rm_temp_cmd);
+    
+    DMOD_LOG_INFO("Module installed to: %s\n", output_file);
     return true;
 }
 
@@ -392,9 +442,9 @@ static int DownloadModule(const char* module_name, const char* module_version,
     
     // Check if version is required but not provided
     if (version_placeholder && !version_to_use) {
-        DMOD_LOG_ERROR("Error: Module URL requires a version, but none was specified\n");
-        DMOD_LOG_ERROR("       Use %s@<version> to specify a version\n", entry.name);
-        return 1;
+        // Use "latest" as default version when required
+        version_to_use = "latest";
+        DMOD_LOG_INFO("Version required but not specified, using 'latest'\n");
     }
     
     if (version_placeholder && version_to_use) {
@@ -464,9 +514,9 @@ static int DownloadModule(const char* module_name, const char* module_version,
             DMOD_LOG_ERROR("Error: Failed to extract and find module from ZIP\n");
             return 1;
         }
-        DMOD_LOG_INFO("Successfully extracted and found module: %s\n", final_output);
+        // ExtractZipAndFindModule already prints where it was installed
     } else {
-        DMOD_LOG_INFO("Successfully downloaded: %s\n", output_file);
+        DMOD_LOG_INFO("Module installed to: %s\n", output_file);
     }
     
     return 0;
