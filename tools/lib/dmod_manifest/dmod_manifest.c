@@ -173,6 +173,8 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
             Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "URL too long in $include: %s", url_start);
             return false;
         }
+
+        DMOD_LOG_VERBOSE("Including manifest from URL: %s\n", url);
         
         // Parse the included manifest
         if (!Dmod_Manifest_ParseUrl(ctx, url)) {
