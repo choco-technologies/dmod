@@ -444,6 +444,12 @@ static int DownloadModule(const char* module_name, const char* module_version,
                 version_to_use ? version_to_use : "");
     }
     
+    // Check if file already exists
+    if (Dmod_Access(output_file, DMOD_F_OK) == 0) {
+        DMOD_LOG_INFO("File already exists, skipping download: %s\n", output_file);
+        return 0;
+    }
+    
     // Download the file
     if (!DownloadFile(url, output_file)) {
         DMOD_LOG_ERROR("Error: Failed to download module\n");

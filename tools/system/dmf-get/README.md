@@ -108,7 +108,7 @@ The dependencies file (`.dmd`) allows you to specify multiple modules to downloa
 module_name              # Download latest version
 module_name@version      # Download specific version
 $include url             # Include another .dmd file
-from: manifest_url       # Change manifest source for subsequent modules
+$from manifest_url       # Change manifest source for subsequent modules
 ```
 
 ### Example Dependencies File
@@ -125,12 +125,12 @@ make_dmffs
 $include https://example.com/common-deps.dmd
 
 # Change manifest source for hardware modules
-from: https://hw-vendor.com/manifest.dmm
+$from https://hw-vendor.com/manifest.dmm
 spi@1.0
 i2c@2.0
 
 # Change to another registry
-from: https://third-party.org/manifest.dmm
+$from https://third-party.org/manifest.dmm
 json_parser@3.2
 crypto_lib@1.8
 ```

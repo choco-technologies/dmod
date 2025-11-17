@@ -157,13 +157,13 @@ static bool ParseLine(Dmod_DependenciesContext_t* ctx, char* line) {
         return result;
     }
     
-    // Handle from: directive
-    if (strncmp(line, "from:", 5) == 0) {
+    // Handle $from directive
+    if (strncmp(line, "$from", 5) == 0) {
         char* manifest_url = line + 5;
         manifest_url = TrimWhitespace(manifest_url);
         
         if (manifest_url[0] == '\0') {
-            SetError(ctx, "from: directive requires a manifest URL");
+            SetError(ctx, "$from directive requires a manifest URL");
             return false;
         }
         
@@ -183,7 +183,44 @@ static bool ParseLine(Dmod_DependenciesContext_t* ctx, char* line) {
         return true;
     }
     
-    // Parse module entry: module[@version]
+    // Parse module entry: module[@version] [<$from manifest_url>]
+    // First check if there's an inline $from directive
+    char* from_pos = strstr(line, "$from");
+    char* manifest_for_entry = NULL;
+    char line_copy[512];
+    
+    if (from_pos) {
+        // Extract the manifest URL from inline $from
+        char* manifest_url = from_pos + 5;  // Skip "$from"
+        manifest_url = TrimWhitespace(manifest_url);
+        
+        if (manifest_url[0] == '\0') {
+            SetError(ctx, "Inline $from directive requires a manifest URL");
+            return false;
+        }
+        
+        // Allocate memory for this specific manifest
+        size_t len = strlen(manifest_url);
+        manifest_for_entry = (char*)Dmod_Malloc(len + 1);
+        if (!manifest_for_entry) {
+            SetError(ctx, "Out of memory");
+            return false;
+        }
+        strcpy(manifest_for_entry, manifest_url);
+        
+        // Copy line without the $from part
+        size_t module_part_len = from_pos - line;
+        if (module_part_len >= sizeof(line_copy)) {
+            Dmod_Free(manifest_for_entry);
+            SetError(ctx, "Module entry too long");
+            return false;
+        }
+        strncpy(line_copy, line, module_part_len);
+        line_copy[module_part_len] = '\0';
+        line = line_copy;
+        line = TrimWhitespace(line);
+    }
+    
     char* at_sign = strchr(line, '@');
     char module_name[DMOD_DEPENDENCIES_MAX_NAME_LEN];
     char module_version[DMOD_DEPENDENCIES_MAX_VERSION_LEN] = {0};
@@ -193,6 +230,7 @@ static bool ParseLine(Dmod_DependenciesContext_t* ctx, char* line) {
         size_t name_len = at_sign - line;
         if (name_len >= sizeof(module_name)) {
             SetError(ctx, "Module name too long: %s", line);
+            if (manifest_for_entry) Dmod_Free(manifest_for_entry);
             return false;
         }
         
@@ -221,12 +259,21 @@ static bool ParseLine(Dmod_DependenciesContext_t* ctx, char* line) {
     // Validate module name
     if (module_name[0] == '\0') {
         SetError(ctx, "Empty module name");
+        if (manifest_for_entry) Dmod_Free(manifest_for_entry);
         return false;
     }
     
-    // Add entry with current manifest
-    const char* manifest = ctx->current_manifest ? ctx->current_manifest : ctx->default_manifest;
-    return AddEntry(ctx, module_name, module_version[0] ? module_version : NULL, manifest);
+    // Use inline manifest if provided, otherwise use current manifest
+    const char* manifest = manifest_for_entry ? manifest_for_entry : 
+                          (ctx->current_manifest ? ctx->current_manifest : ctx->default_manifest);
+    bool result = AddEntry(ctx, module_name, module_version[0] ? module_version : NULL, manifest);
+    
+    // Free the inline manifest memory after adding the entry
+    if (manifest_for_entry) {
+        Dmod_Free(manifest_for_entry);
+    }
+    
+    return result;
 }
 
 /**

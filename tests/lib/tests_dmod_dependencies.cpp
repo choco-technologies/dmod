@@ -166,7 +166,7 @@ TEST_F(DmodDependenciesTest, ParseFromDirective) {
     
     const char* dependencies = 
         "module1\n"
-        "from: https://new.com/manifest.dmm\n"
+        "$from https://new.com/manifest.dmm\n"
         "module2\n";
     
     ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
@@ -193,9 +193,9 @@ TEST_F(DmodDependenciesTest, ParseMultipleFromDirectives) {
     
     const char* dependencies = 
         "module1\n"
-        "from: https://first.com/manifest.dmm\n"
+        "$from https://first.com/manifest.dmm\n"
         "module2\n"
-        "from: https://second.com/manifest.dmm\n"
+        "$from https://second.com/manifest.dmm\n"
         "module3\n";
     
     ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
@@ -270,7 +270,7 @@ TEST_F(DmodDependenciesTest, ParseComplexExample) {
         "driver@1.0\n"
         "\n"
         "# Change manifest\n"
-        "from: https://new.com/manifest.dmm\n"
+        "$from https://new.com/manifest.dmm\n"
         "spi@1.0\n"
         "# More modules\n"
         "i2c@2.0\n";
@@ -332,7 +332,7 @@ TEST_F(DmodDependenciesTest, ParseEmptyFromDirective) {
     Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
-    const char* dependencies = "from:\n";
+    const char* dependencies = "$from\n";
     
     ASSERT_FALSE(Dmod_Dependencies_Parse(ctx, dependencies));
     EXPECT_NE(Dmod_Dependencies_GetError(ctx), nullptr);
@@ -345,6 +345,51 @@ TEST_F(DmodDependenciesTest, ParseEmptyIncludeDirective) {
     ASSERT_NE(ctx, nullptr);
     
     const char* dependencies = "$include\n";
+    
+    ASSERT_FALSE(Dmod_Dependencies_Parse(ctx, dependencies));
+    EXPECT_NE(Dmod_Dependencies_GetError(ctx), nullptr);
+    
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, ParseInlineFromDirective) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://default.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* dependencies = 
+        "module1\n"
+        "module2@1.0 $from https://special.com/manifest.dmm\n"
+        "module3\n";
+    
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
+    EXPECT_EQ(Dmod_Dependencies_GetEntryCount(ctx), 3);
+    
+    Dmod_DependencyEntry_t entry;
+    
+    // First module should use default manifest
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.name, "module1");
+    EXPECT_STREQ(entry.manifest, "https://default.com/manifest.dmm");
+    
+    // Second module should use inline manifest
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 1, &entry));
+    EXPECT_STREQ(entry.name, "module2");
+    EXPECT_STREQ(entry.version, "1.0");
+    EXPECT_STREQ(entry.manifest, "https://special.com/manifest.dmm");
+    
+    // Third module should use default manifest again
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 2, &entry));
+    EXPECT_STREQ(entry.name, "module3");
+    EXPECT_STREQ(entry.manifest, "https://default.com/manifest.dmm");
+    
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, ParseEmptyInlineFromDirective) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* dependencies = "module1 $from\n";
     
     ASSERT_FALSE(Dmod_Dependencies_Parse(ctx, dependencies));
     EXPECT_NE(Dmod_Dependencies_GetError(ctx), nullptr);

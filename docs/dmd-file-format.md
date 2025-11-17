@@ -38,7 +38,7 @@ spi@2.5.1
 
 ### From Directive
 
-The `from:` directive changes the manifest source for subsequent modules:
+The `$from` directive changes the manifest source for subsequent modules:
 
 ```dmd
 # These modules use the default manifest
@@ -46,14 +46,29 @@ module1
 module2@1.0
 
 # Change manifest source
-from: https://another-registry.com/manifest.dmm
+$from https://another-registry.com/manifest.dmm
 
 # These modules will be downloaded from the new manifest
 module3@2.0
 module4
 ```
 
-You can use multiple `from:` directives in a single file to download modules from different sources.
+You can use multiple `$from` directives in a single file to download modules from different sources.
+
+#### Inline $from for Single Module
+
+You can also specify a manifest source for a single module using inline `$from`:
+
+```dmd
+# This module uses the default manifest
+module1@1.0
+
+# This module uses a specific manifest
+module2@2.0 $from https://special-registry.com/manifest.dmm
+
+# Back to default manifest for this module
+module3@1.5
+```
 
 ### Include Directive
 
@@ -70,7 +85,7 @@ $include ./local-deps.dmd
 my_custom_module@1.0
 ```
 
-Included files are processed recursively and can contain any valid `.dmd` syntax, including their own `$include` and `from:` directives.
+Included files are processed recursively and can contain any valid `.dmd` syntax, including their own `$include` and `$from` directives.
 
 ## Complete Example
 
@@ -87,7 +102,7 @@ make_dmffs
 $include https://registry.example.com/common-modules.dmd
 
 # Change to hardware-specific registry
-from: https://hw-vendor.com/manifest.dmm
+$from https://hw-vendor.com/manifest.dmm
 
 # Hardware drivers
 spi@1.0
@@ -95,7 +110,7 @@ i2c@2.0
 uart@1.5
 
 # Change to third-party registry
-from: https://third-party.org/dmod/manifest.dmm
+$from https://third-party.org/dmod/manifest.dmm
 
 # Third-party libraries
 json_parser@3.2
@@ -144,12 +159,12 @@ dmffs
 driver@1.0
 
 # === Communication Stack ===
-from: https://comms-registry.com/manifest.dmm
+$from https://comms-registry.com/manifest.dmm
 tcp_stack@3.0
 mqtt_client@2.1
 
 # === Application Modules ===
-from: https://app-registry.com/manifest.dmm
+$from https://app-registry.com/manifest.dmm
 my_application@1.5
 ```
 
@@ -200,7 +215,7 @@ module2@1.0
 
 # Vendor registry: https://vendor.com/manifest.dmm
 # Provides: Hardware-specific drivers
-from: https://vendor.com/manifest.dmm
+$from https://vendor.com/manifest.dmm
 
 vendor_driver@3.0
 vendor_hal@2.5
@@ -250,17 +265,17 @@ logger@1.0
 
 ### Dynamic Manifest Selection
 
-Use `from:` to switch between development and production registries:
+Use `$from` to switch between development and production registries:
 
 ```dmd
 # Use development versions during development
-from: https://dev-registry.com/manifest.dmm
+$from https://dev-registry.com/manifest.dmm
 module1
 module2
 
 # Use production versions for release builds
 # (comment out development, uncomment production)
-# from: https://prod-registry.com/manifest.dmm
+# $from https://prod-registry.com/manifest.dmm
 # module1@1.0.0
 # module2@2.0.0
 ```
@@ -270,8 +285,9 @@ module2
 Install the DMOD Dependencies VS Code extension for:
 - Syntax highlighting
 - Comment support
-- Keyword highlighting for `$include` and `from:`
+- Keyword highlighting for `$include` and `$from`
 - Module name and version highlighting
+- Inline `$from` directive support
 
 See `tools/lib/dmod_dependencies/vscode-dmd/` for installation instructions.
 

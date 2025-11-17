@@ -10,5 +10,5 @@ All notable changes to the "dmod-dependencies" extension will be documented in t
 - Support for comments (`#`)
 - Support for module entries with optional versions (`module@version`)
 - Support for `$include` directive
-- Support for `from:` directive
+- Support for `$from` directive
 - Language configuration for VS Code

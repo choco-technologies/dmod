@@ -9,7 +9,7 @@ This extension provides syntax highlighting for DMOD Dependencies (`.dmd`) files
 - Highlighting for:
   - Module entries with optional versions (`module@version`)
   - Include directives (`$include`)
-  - Source directives (`from:`)
+  - Source directives (`$from`)
 
 ## Installation
 
@@ -47,7 +47,7 @@ driver@1.0
 $include http://repo.com/other.dmd
 
 # Change the manifest source
-from: https://repo.com/manifest.dmm
+$from https://repo.com/manifest.dmm
 
 # Modules after this will use the new manifest
 spi@1.0
@@ -59,7 +59,7 @@ i2c@2.0
 - **Comments**: Lines starting with `#` are treated as comments
 - **Module entries**: Module names with optional `@version` suffix
 - **Include directive**: `$include <url>` to include other `.dmd` files
-- **From directive**: `from: <manifest_url>` to change the manifest source
+- **From directive**: `$from <manifest_url>` to change the manifest source
 
 ## Related
 

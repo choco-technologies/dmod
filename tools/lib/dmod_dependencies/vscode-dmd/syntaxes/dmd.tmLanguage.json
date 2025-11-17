@@ -45,7 +45,23 @@
       "patterns": [
         {
           "name": "meta.from.dmd",
-          "match": "^\\s*(from:)\\s+(.+)$",
+          "match": "^\\s*(\\$from)\\s+(.+)$",
+          "captures": {
+            "1": {
+              "name": "keyword.control.from.dmd"
+            },
+            "2": {
+              "name": "string.unquoted.url.dmd"
+            }
+          }
+        }
+      ]
+    },
+    "inline-from": {
+      "patterns": [
+        {
+          "name": "meta.inline-from.dmd",
+          "match": "(\\$from)\\s+(.+)$",
           "captures": {
             "1": {
               "name": "keyword.control.from.dmd"
@@ -61,7 +77,7 @@
       "patterns": [
         {
           "name": "meta.module-entry.dmd",
-          "match": "^\\s*([a-zA-Z0-9_.-]+)(@([0-9a-zA-Z._-]+))?\\s*$",
+          "match": "^\\s*([a-zA-Z0-9_.-]+)(@([0-9a-zA-Z._-]+))?\\s*(\\$from\\s+.+)?$",
           "captures": {
             "1": {
               "name": "entity.name.function.module.dmd"
@@ -71,6 +87,13 @@
             },
             "3": {
               "name": "constant.numeric.version.dmd"
+            },
+            "4": {
+              "patterns": [
+                {
+                  "include": "#inline-from"
+                }
+              ]
             }
           }
         }

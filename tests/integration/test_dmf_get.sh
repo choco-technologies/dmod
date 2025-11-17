@@ -91,18 +91,18 @@ else
 fi
 
 echo ""
-echo "Test 7: Test .dmd with from: directive"
+echo "Test 7: Test .dmd with $from directive"
 cat > deps_with_from.dmd << 'EOF'
 # Dependencies with source change
 testmod@1.0
-from: https://example.com/manifest.dmm
+$from https://example.com/manifest.dmm
 mymod
 EOF
 
 if $DMF_GET -d deps_with_from.dmd -m manifest.dmm -o output 2>&1 | grep -q "Loading dependencies"; then
-    echo "✓ Dependencies with from: directive parsed"
+    echo "✓ Dependencies with $from directive parsed"
 else
-    echo "✗ Dependencies with from: directive failed"
+    echo "✗ Dependencies with $from directive failed"
     exit 1
 fi
 
