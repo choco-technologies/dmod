@@ -1,0 +1,91 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "DMOD Manifest",
+  "scopeName": "source.dmm",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#include-directive"
+    },
+    {
+      "include": "#module-entry"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.dmm",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "include-directive": {
+      "patterns": [
+        {
+          "name": "meta.include.dmm",
+          "match": "^\\s*(\\$include)\\s+(.+)$",
+          "captures": {
+            "1": {
+              "name": "keyword.control.include.dmm"
+            },
+            "2": {
+              "name": "string.unquoted.url.dmm",
+              "patterns": [
+                {
+                  "include": "#url-content"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "module-entry": {
+      "patterns": [
+        {
+          "name": "meta.module-entry.dmm",
+          "match": "^\\s*([a-zA-Z0-9_.-]+)(@([0-9a-zA-Z._-]+))?\\s+(.+)$",
+          "captures": {
+            "1": {
+              "name": "entity.name.function.module.dmm"
+            },
+            "2": {
+              "name": "meta.version.dmm"
+            },
+            "3": {
+              "name": "constant.numeric.version.dmm"
+            },
+            "4": {
+              "name": "string.unquoted.url.dmm",
+              "patterns": [
+                {
+                  "include": "#url-content"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "url-content": {
+      "patterns": [
+        {
+          "name": "variable.other.placeholder.dmm",
+          "match": "<(tools_name|arch_name|version)>",
+          "captures": {
+            "1": {
+              "name": "variable.parameter.dmm"
+            }
+          }
+        },
+        {
+          "name": "string.other.url.dmm",
+          "match": "(https?|file)://[^\\s<>]+"
+        }
+      ]
+    }
+  }
+}

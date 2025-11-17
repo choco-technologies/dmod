@@ -7,6 +7,7 @@ include(FetchContent)
 FetchContent_Declare(
     googletest
     URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(googletest)
 
@@ -29,6 +30,7 @@ add_subdirectory(mocks)
 add_subdirectory(common)
 add_subdirectory(module)
 add_subdirectory(system)
+add_subdirectory(lib)
 
 # ===========================================================================
 # 						Test executable
@@ -36,7 +38,7 @@ add_subdirectory(system)
 foreach(test_src ${TEST_SOURCES})
     get_filename_component(test_name ${test_src} NAME_WE)
     add_executable(${test_name} ${test_src} ut_main.cpp)
-    target_link_libraries(${test_name} gtest gtest_main gmock dmod_system dmod_common dmod_inc dmod_fastlz)
+    target_link_libraries(${test_name} gtest gtest_main gmock dmod_system dmod_common dmod_inc dmod_fastlz dmod_manifest)
     add_test(NAME ${test_name} COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${test_name})
 
     list(APPEND TEST_FILES ${test_name})

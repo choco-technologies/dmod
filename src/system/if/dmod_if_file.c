@@ -41,6 +41,7 @@
 #   include <dirent.h>
 #   include <sys/stat.h>
 #   include <sys/types.h>
+#   include <unistd.h>
 #endif
 
 //==============================================================================
@@ -271,6 +272,29 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _MakeDir, ( const char* Path, in
     return mkdir(Path, (mode_t)Mode);
     #else
     DMOD_LOG_ERROR("Dmod_MakeDir interface not implemented\n");
+    return -1;
+    #endif
+}
+
+/**
+ * @brief Check file accessibility
+ * 
+ * @param Path Path to file to check
+ * @param Mode Access mode to test (R_OK, W_OK, X_OK, F_OK)
+ * 
+ * @return 0 on success (file accessible), -1 on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Access, ( const char* Path, int Mode ))
+{
+    #if DMOD_USE_DIRENT
+    return access(Path, Mode);
+    #else
+    // Fallback: check if file can be opened
+    void* file = Dmod_FileOpen(Path, "rb");
+    if (file) {
+        Dmod_FileClose(file);
+        return 0;
+    }
     return -1;
     #endif
 }

@@ -1,0 +1,32 @@
+# DMOD Manifest Example
+# This file demonstrates the syntax of DMOD manifest files
+
+# Simple module with version
+kernel@1.0 https://registry.chocotechnologies.com/modules/kernel.dmf
+
+# Module using tools_name placeholder
+driver@2.3.1 https://registry.chocotechnologies.com/modules/<tools_name>/driver.dmf
+
+# Module using arch_name placeholder
+app@1.5 https://registry.com/<arch_name>/app.dmfc
+
+# Module using version placeholder (version specified at download time)
+dmffs https://github.com/choco-technologies/dmffs/releases/download/v<version>/dmffs-v<version>-<arch_name>.zip
+
+# Multiple placeholders in one URL
+mymodule https://cdn.example.com/<tools_name>/<version>/mymodule-<arch_name>.dmf
+
+# Local file path
+localmodule@0.1 /data/modules/dmf/localmodule.dmfc
+
+# HTTP URL to another manifest
+secondmodule http://registry.com/<arch_name>/manifest.dmm
+
+# Include directive to import another manifest
+$include https://registry-dmf.com/<arch_name>/manifest.dmm
+
+# Another include with tools_name
+$include https://registry.example.com/modules/<tools_name>/additional.dmm
+
+# Module without version
+testmodule https://example.com/test.dmf
