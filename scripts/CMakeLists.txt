@@ -144,6 +144,12 @@ function(dmod_create_module moduleName version moduleType)
         endif()
     endif()
 
+    # check if todmd tool is available
+    find_program(TODMD 
+            todmd
+            HINTS ${DMOD_TOOLS_BIN_DIR}
+            )
+
     execute_process(
         COMMAND git rev-parse --short HEAD
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -239,6 +245,15 @@ function(dmod_create_module moduleName version moduleType)
             TARGET ${moduleName} POST_BUILD
             COMMAND ${TODMFC} ${DMF_OUTPUT} ${DMFC_OUTPUT} ${DMOD_COMPRESSION_METHOD}
             COMMENT "Compressing the binary"
+        )
+    endif()
+
+    set(DMD_OUTPUT "${DMOD_DMF_DIR}/${moduleName}.dmd")
+    if(TODMD)
+        add_custom_command(
+            TARGET ${moduleName} POST_BUILD
+            COMMAND ${TODMD} ${DMF_OUTPUT} ${DMD_OUTPUT}
+            COMMENT "Generating dependencies file"
         )
     endif()
 

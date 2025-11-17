@@ -57,6 +57,7 @@ DMOD_MODULE_DMF_FILE_PATH  = $(DMOD_DMF_DIR)/$(DMOD_MODULE_DMF_FILE_NAME)
 DMOD_MODULE_DMFC_FILE_PATH = $(DMOD_DMFC_DIR)/$(DMOD_MODULE_DMFC_FILE_NAME)
 TODMFC 					 := $(shell command -v todmfc || command -v "$(DMOD_TOOLS_BIN_DIR)/todmfc")
 TODMP 					 := $(shell command -v todmp || command -v "$(DMOD_TOOLS_BIN_DIR)/todmp")
+TODMD 					 := $(shell command -v todmd || command -v "$(DMOD_TOOLS_BIN_DIR)/todmd")
 
 # DMP package configuration
 ifneq ($(DMOD_PACKAGE_NAME),)
@@ -155,6 +156,12 @@ ifneq ($(TODMFC),)
 	@$(TODMFC) $(DMOD_MODULE_DMF_FILE_PATH) $(DMOD_MODULE_DMFC_FILE_PATH) $(DMOD_COMPRESSION_METHOD)
 else
 	@echo "todmfc is not found. Skipping compression..."
+endif
+ifneq ($(TODMD),)
+	@echo "Generating dependencies file for $(DMOD_MODULE_DMF_FILE_PATH)"
+	@$(TODMD) $(DMOD_MODULE_DMF_FILE_PATH) $(DMOD_DMF_DIR)/$(DMOD_MODULE_NAME).dmd
+else
+	@echo "todmd is not found. Skipping dependencies file generation..."
 endif
 ifneq ($(DMOD_PACKAGE_NAME),)
 ifneq ($(TODMP),)
