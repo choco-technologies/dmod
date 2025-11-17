@@ -15,7 +15,6 @@
 #include <unistd.h>
 #include <curl/curl.h>
 #include "dmod.h"
-#include "dmod_arch_defs.h"
 #include "dmod_manifest.h"
 #include "dmod_dependencies.h"
 
@@ -782,14 +781,14 @@ static int DownloadModule(const char* module_name, const char* module_version,
         final_module_path[sizeof(final_module_path) - 1] = '\0';
     }
     
-    // Verify architecture matches current system
-    if (!already_exists) {
+    // Verify architecture matches expected architecture (if specified)
+    if (!already_exists && arch_name != NULL && arch_name[0] != '\0') {
         char package_arch[DMOD_MAX_ARCH_NAME_LENGTH];
         if (Dmod_GetPackageArchitecture(final_module_path, package_arch, sizeof(package_arch))) {
-            // Compare with the current system architecture
-            if (strcmp(package_arch, DMOD_ARCH) != 0) {
-                DMOD_LOG_ERROR("Architecture mismatch: package is '%s', system is '%s'\n", 
-                       package_arch, DMOD_ARCH);
+            // Compare with the expected architecture
+            if (strcmp(package_arch, arch_name) != 0) {
+                DMOD_LOG_ERROR("Architecture mismatch: package is '%s', expected '%s'\n", 
+                       package_arch, arch_name);
                 DMOD_LOG_ERROR("Removing incompatible module file: %s\n", final_module_path);
                 
                 // Delete the incompatible file

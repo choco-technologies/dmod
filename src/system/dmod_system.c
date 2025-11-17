@@ -1088,82 +1088,24 @@ bool Dmod_GetPackageArchitecture( const char* FilePath, char* outArch, size_t Ma
     // Initialize output buffer
     outArch[0] = '\0';
 
-    // Check if file is DMFC (compressed)
-    if( Dmod_IsDMFCFile( FilePath ) )
+    // Load the module file (handles both DMF and DMFC)
+    Dmod_Context_t* context = Dmod_LoadFile( FilePath );
+    if( context == NULL )
     {
-        // For DMFC files, we need to read the DMFC header first
-        void* file = Dmod_FileOpen( FilePath, "rb" );
-        if( file == NULL )
-        {
-            DMOD_LOG_ERROR("Cannot get package architecture - cannot open DMFC file\n");
-            return false;
-        }
-
-        Dmod_DmfcHeader_t dmfcHeader;
-        if( Dmod_FileRead( &dmfcHeader, sizeof(Dmod_DmfcHeader_t), 1, file ) != 1 )
-        {
-            DMOD_LOG_ERROR("Cannot get package architecture - cannot read DMFC header\n");
-            Dmod_FileClose( file );
-            return false;
-        }
-        Dmod_FileClose( file );
-
-        // We need to decompress the DMFC to read the DMF header
-        // Load the entire file and decompress it
-        file = Dmod_FileOpen( FilePath, "rb" );
-        if( file == NULL )
-        {
-            return false;
-        }
-
-        size_t fileSize = Dmod_FileSize( file );
-        void* dmfcBuffer = Dmod_Malloc( fileSize );
-        if( dmfcBuffer == NULL )
-        {
-            Dmod_FileClose( file );
-            return false;
-        }
-
-        if( Dmod_FileRead( dmfcBuffer, 1, fileSize, file ) != fileSize )
-        {
-            Dmod_Free( dmfcBuffer );
-            Dmod_FileClose( file );
-            return false;
-        }
-        Dmod_FileClose( file );
-
-        // Decompress DMFC to DMF
-        void* dmfData = NULL;
-        size_t dmfSize = 0;
-        if( !Dmod_FromDMFC( dmfcBuffer, fileSize, &dmfData, &dmfSize ) )
-        {
-            Dmod_Free( dmfcBuffer );
-            return false;
-        }
-        Dmod_Free( dmfcBuffer );
-
-        // Read the architecture from decompressed DMF header
-        Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)dmfData;
-        strncpy( outArch, header->Arch, MaxLength - 1 );
-        outArch[MaxLength - 1] = '\0';
-        
-        Dmod_Free( dmfData );
-        return true;
+        return false;
     }
-    else
+
+    // Read architecture from the loaded module header
+    if( context->Header != NULL )
     {
-        // For DMF files, read the header directly
-        Dmod_ModuleHeader_t header;
-        if( !Dmod_ReadModuleHeader( FilePath, &header ) )
-        {
-            return false;
-        }
-
-        // Copy the architecture string
-        strncpy( outArch, header.Arch, MaxLength - 1 );
+        strncpy( outArch, context->Header->Arch, MaxLength - 1 );
         outArch[MaxLength - 1] = '\0';
-        return true;
     }
+
+    // Unload the module
+    Dmod_Unload( context, true );
+
+    return outArch[0] != '\0';
 }
 
 /**
