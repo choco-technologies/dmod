@@ -1,8 +1,8 @@
 # -----------------------------------------------------------------------------
 # 	Project properties
 # -----------------------------------------------------------------------------
-set(dmod_VERSION_MAJOR 0)
-set(dmod_VERSION_MINOR 1)
+set(dmod_VERSION_MAJOR 1)
+set(dmod_VERSION_MINOR 0)
 
 execute_process(
     COMMAND git rev-parse --short HEAD

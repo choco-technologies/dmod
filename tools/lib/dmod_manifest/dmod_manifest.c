@@ -173,6 +173,8 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
             Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "URL too long in $include: %s", url_start);
             return false;
         }
+
+        DMOD_LOG_VERBOSE("Including manifest from URL: %s\n", url);
         
         // Parse the included manifest
         if (!Dmod_Manifest_ParseUrl(ctx, url)) {
@@ -416,47 +418,53 @@ bool Dmod_Manifest_ParseUrl(Dmod_ManifestContext_t* ctx, const char* url) {
     return result;
 }
 
-bool Dmod_Manifest_FindEntry(
+Dmod_ManifestNode_t* Dmod_Manifest_FindEntry(
     Dmod_ManifestContext_t* ctx,
     const char* name,
     const char* version,
+    Dmod_ManifestNode_t* last_node,
     Dmod_ManifestEntry_t* out_entry
-) {
-    if (!ctx || !name || !out_entry) return false;
-    
+    ) 
+{
+    if (!ctx || !name || !out_entry) return NULL;
+
     bool has_version = version && version[0] != '\0';
     Dmod_ManifestNode_t* best_match = NULL;
-    
+
+    Dmod_ManifestNode_t* start_node = last_node ? last_node->next : ctx->entries;
+
     // Search for matching entry
-    for (Dmod_ManifestNode_t* node = ctx->entries; node; node = node->next) {
+    for (Dmod_ManifestNode_t* node = start_node; node; node = node->next) {
         if (strcmp(node->entry.name, name) != 0) continue;
-        
+
         // If no version specified, take first match
         if (!has_version) {
             best_match = node;
             break;
         }
-        
+
+        bool node_has_version = node->entry.version[0] != '\0';
+        if(!node_has_version)
+        {
+            best_match = node;
+            break;
+        }
+
         // Check version match
         if (strcmp(node->entry.version, version) == 0) {
             best_match = node;
             break;
         }
-        
-        // If no exact match yet, keep this as potential match
-        if (!best_match) {
-            best_match = node;
-        }
     }
-    
+
     if (best_match) {
-        *out_entry = best_match->entry;
-        return true;
+        memcpy( out_entry, &best_match->entry, sizeof(Dmod_ManifestEntry_t) );
+        return best_match;
     }
     
     Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Module not found: %s%s%s",
-             name, has_version ? "@" : "", has_version ? version : "");
-    return false;
+                name, has_version ? "@" : "", has_version ? version : "");
+    return NULL;
 }
 
 size_t Dmod_Manifest_GetEntryCount(Dmod_ManifestContext_t* ctx) {

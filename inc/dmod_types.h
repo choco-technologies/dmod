@@ -59,16 +59,16 @@ typedef struct
     char                Name[DMOD_MAX_MODULE_NAME_LENGTH];
     char                Author[DMOD_MAX_AUTHOR_NAME_LENGTH];
     char                Version[DMOD_MAX_VERSION_LENGTH];   //!< Module Version
-    Dmod_Preinit_t      Preinit;
-    Dmod_Init_t         Init;
-    Dmod_Main_t         Main;
-    Dmod_Deinit_t       Deinit;
-    Dmod_Signal_t       Signal;
+    uint64_t            Preinit;
+    uint64_t            Init;
+    uint64_t            Main;
+    uint64_t            Deinit;
+    uint64_t            Signal;
     uint64_t            RequiredStackSize;
     uint32_t            Priority;
     uint8_t             ModuleType;
-    Dmod_License_t*     License;
-    void*               Footer;
+    uint64_t            License;
+    uint64_t            Footer;
     bool                ManualLoad;  
 } Dmod_ModuleHeader_t;
 

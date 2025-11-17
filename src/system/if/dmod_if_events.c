@@ -59,7 +59,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Event_ModuleUnloaded, ( Dmod_C
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Event_ModuleLoadingInProgress, ( const char* Name, uint16_t Progress ))
 {
-    DMOD_LOG_INFO("Loading module %s in progress: %d\n", Name, Progress);
 }
 
 /**

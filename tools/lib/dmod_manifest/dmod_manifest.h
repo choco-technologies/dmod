@@ -115,21 +115,29 @@ bool Dmod_Manifest_ParseFile(Dmod_ManifestContext_t* ctx, const char* file_path)
 bool Dmod_Manifest_ParseUrl(Dmod_ManifestContext_t* ctx, const char* url);
 
 /**
+ * @brief Opaque manifest node structure for iterating
+ */
+typedef struct Dmod_ManifestNode Dmod_ManifestNode_t;
+
+/**
  * @brief Find the best matching entry for a module
  * 
  * Finds the entry that best matches the given module name and version.
  * If version is NULL or empty, returns the latest version or first match.
+ * To continue searching from a previous position, pass the previously returned node as last_node.
  * 
  * @param ctx Manifest context
  * @param name Module name to search for
  * @param version Module version to match (can be NULL for any version)
+ * @param last_node Last node returned (NULL to start from beginning)
  * @param out_entry Pointer to store the found entry
- * @return true if a matching entry was found, false otherwise
+ * @return Pointer to the found node (for next iteration), or NULL if not found
  */
-bool Dmod_Manifest_FindEntry(
+Dmod_ManifestNode_t* Dmod_Manifest_FindEntry(
     Dmod_ManifestContext_t* ctx,
     const char* name,
     const char* version,
+    Dmod_ManifestNode_t* last_node,
     Dmod_ManifestEntry_t* out_entry
 );
 

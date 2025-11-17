@@ -71,7 +71,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _MallocEx, ( size_t Size, cons
 #elif DMOD_USE_STDLIB
     return malloc(Size);
     #else
-    DMOD_LOG_ERROR("Dmod_Malloc interface not implemented");
+    DMOD_LOG_ERROR("Dmod_Malloc interface not implemented\n");
     return NULL;
 #endif
 }
@@ -166,7 +166,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _AlignedMallocEx, ( size_t Siz
     ((void**)aligned)[-1] = original;
     mem = (void*)aligned;
 #else 
-    DMOD_LOG_ERROR("Dmod_AlignedMalloc interface not implemented");
+    DMOD_LOG_ERROR("Dmod_AlignedMalloc interface not implemented\n");
     mem = NULL;
 #endif 
 
@@ -214,7 +214,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _FreeEx, ( void* ptr, const boo
 #elif DMOD_USE_STDLIB
     free(ptr);
 #else 
-    DMOD_LOG_ERROR("Dmod_Free interface not implemented");
+    DMOD_LOG_ERROR("Dmod_Free interface not implemented\n");
 #endif
 }
 
@@ -226,5 +226,5 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _FreeEx, ( void* ptr, const boo
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _FreeModule, ( const char* ModuleName ))
 {
     (void)ModuleName;
-    DMOD_LOG_WARN("Dmod_FreeModule interface not implemented");
+    DMOD_LOG_WARN("Dmod_FreeModule interface not implemented\n");
 }

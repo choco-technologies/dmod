@@ -1070,6 +1070,45 @@ bool Dmod_ReadModuleHeader(const char* FilePath, Dmod_ModuleHeader_t* Header)
 }
 
 /**
+ * @brief Get architecture name from a DMF/DMFC file
+ * 
+ * @param FilePath Path to the DMF or DMFC file
+ * @param outArch Output buffer to store the architecture name
+ * @param MaxLength Maximum length of the output buffer
+ * 
+ * @return true on success, false on error
+ */
+bool Dmod_GetFileArchitecture( const char* FilePath, char* outArch, size_t MaxLength )
+{
+    if( FilePath == NULL || outArch == NULL || MaxLength == 0 )
+    {
+        return false;
+    }
+
+    // Initialize output buffer
+    memset( outArch, 0, MaxLength );
+
+    // Load the module file (handles both DMF and DMFC)
+    Dmod_Context_t* context = Dmod_LoadFile( FilePath );
+    if( context == NULL )
+    {
+        return false;
+    }
+
+    // Read architecture from the loaded module header
+    if( context->Header != NULL )
+    {
+        strncpy( outArch, context->Header->Arch, MaxLength - 1 );
+        outArch[MaxLength - 1] = '\0';
+    }
+
+    // Unload the module
+    Dmod_Unload( context, true );
+
+    return outArch[0] != '\0';
+}
+
+/**
  * @brief Get context by module name
  * 
  * @param ModuleName Name of the module
