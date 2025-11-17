@@ -1,0 +1,29 @@
+# Example DMOD Dependencies File
+# This file demonstrates the .dmd format
+
+# Simple module entries without versions
+dmffs
+driver
+make_dmffs
+
+# Module entries with specific versions
+spi@1.0
+i2c@2.5
+uart@1.2.3
+
+# Include another dependencies file
+$include https://raw.githubusercontent.com/example/deps.dmd
+
+# Change the manifest source for following modules
+from: https://registry.example.com/manifest.dmm
+
+# These modules will be downloaded from the new manifest
+flash_driver@3.0
+eeprom_driver@1.1
+
+# You can change the manifest multiple times
+from: https://another-registry.com/manifest.dmm
+
+# More modules with the new manifest
+sensor_lib@2.0
+display_lib@4.5
