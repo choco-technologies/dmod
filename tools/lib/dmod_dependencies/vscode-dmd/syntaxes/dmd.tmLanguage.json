@@ -77,7 +77,7 @@
       "patterns": [
         {
           "name": "meta.module-entry.dmd",
-          "match": "^\\s*([a-zA-Z0-9_.-]+)(@([0-9a-zA-Z._-]+))?\\s*(\\$from\\s+.+)?$",
+          "match": "^\\s*([a-zA-Z0-9_.-]+)(@([><=]+)?([0-9a-zA-Z._-]+)([><=]+[0-9a-zA-Z._-]+)?)?\\s*(\\$from\\s+.+)?$",
           "captures": {
             "1": {
               "name": "entity.name.function.module.dmd"
@@ -86,9 +86,28 @@
               "name": "meta.version.dmd"
             },
             "3": {
-              "name": "constant.numeric.version.dmd"
+              "name": "keyword.operator.comparison.dmd"
             },
             "4": {
+              "name": "constant.numeric.version.dmd"
+            },
+            "5": {
+              "name": "meta.version-range.dmd",
+              "patterns": [
+                {
+                  "match": "([><=]+)([0-9a-zA-Z._-]+)",
+                  "captures": {
+                    "1": {
+                      "name": "keyword.operator.comparison.dmd"
+                    },
+                    "2": {
+                      "name": "constant.numeric.version.dmd"
+                    }
+                  }
+                }
+              ]
+            },
+            "6": {
               "patterns": [
                 {
                   "include": "#inline-from"

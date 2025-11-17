@@ -2,6 +2,18 @@
 
 All notable changes to the "dmod-dependencies" extension will be documented in this file.
 
+## [1.1.0] - 2024-11-17
+
+### Added
+- Support for version range constraints:
+  - Greater than or equal: `module@>=1.0`
+  - Less than or equal: `module@<=2.0`
+  - Greater than: `module@>1.0`
+  - Less than: `module@<2.0`
+  - Combined ranges: `module@>=1.0<=2.0`
+- Syntax highlighting for comparison operators in version constraints
+- Updated documentation with version range examples
+
 ## [1.0.0] - 2024-11-17
 
 ### Added

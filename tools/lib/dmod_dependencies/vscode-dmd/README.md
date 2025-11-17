@@ -8,6 +8,7 @@ This extension provides syntax highlighting for DMOD Dependencies (`.dmd`) files
 - Comment support (`#`)
 - Highlighting for:
   - Module entries with optional versions (`module@version`)
+  - Version range constraints (`module@>=1.0`, `module@<=2.0`, `module@>=1.0<=2.0`)
   - Include directives (`$include`)
   - Source directives (`$from`)
 
@@ -43,6 +44,11 @@ make_dmffs
 # Module with specific version
 driver@1.0
 
+# Module with version range constraints
+spi@>=1.0         # Version 1.0 or newer
+uart@<=2.0        # Version 2.0 or older
+i2c@>=1.0<=2.0    # Version between 1.0 and 2.0
+
 # Include another dependencies file
 $include http://repo.com/other.dmd
 
@@ -50,14 +56,19 @@ $include http://repo.com/other.dmd
 $from https://repo.com/manifest.dmm
 
 # Modules after this will use the new manifest
-spi@1.0
-i2c@2.0
+can@>=1.5
 ```
 
 ## Language Support
 
 - **Comments**: Lines starting with `#` are treated as comments
 - **Module entries**: Module names with optional `@version` suffix
+- **Version ranges**: Support for version constraints with operators:
+  - `@>=1.0` - Greater than or equal to 1.0
+  - `@<=2.0` - Less than or equal to 2.0
+  - `@>1.0` - Greater than 1.0
+  - `@<2.0` - Less than 2.0
+  - `@>=1.0<=2.0` - Combined range (1.0 to 2.0)
 - **Include directive**: `$include <url>` to include other `.dmd` files
 - **From directive**: `$from <manifest_url>` to change the manifest source
 
