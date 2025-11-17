@@ -152,6 +152,7 @@ DMOD_BUILTIN_API(Dmod, 1.0, int, _SetEnv, ( const char* Name, const char* Value,
  * @{
  */
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_Printf, ( const char* Format, ... ) );
+DMOD_BUILTIN_API( Dmod, 1.0, int  ,_FPrintf, ( void* File, const char* Format, ... ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_VSnPrintf, ( char* Buffer, size_t Size, const char* Format, va_list Args ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_SnPrintf, ( char* Buffer, size_t Size, const char* Format, ... ) );
 DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message, const char* File, int Line, const char* Function ) );
