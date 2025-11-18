@@ -433,6 +433,10 @@ int CreatePackageWithDependencies( const char* packageName, const char* mainDmfP
         *dot = '\0';
     }
     
+    // Deinitialize Dmod system before creating DMP package
+    // This is important to release any loaded modules and clean up state
+    Dmod_Deinitialize();
+    
     // Create DMP package from temp directory
     bool success = Dmod_ToDMPFile( packageName, tempDir, outputFile, mainModuleName );
     
@@ -450,8 +454,6 @@ int CreatePackageWithDependencies( const char* packageName, const char* mainDmfP
         }
         Dmod_CloseDir( dir );
     }
-    
-    Dmod_Deinitialize();
     
     if( !success )
     {
