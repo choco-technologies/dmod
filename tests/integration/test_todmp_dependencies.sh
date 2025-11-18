@@ -35,7 +35,7 @@ cd "$TEST_DIR"
 
 echo ""
 echo "Test 1: Check help output includes dependency mode"
-if $TODMP --help 2>&1 | grep -q "\-d.*dependencies"; then
+if $TODMP --help 2>&1 | grep -q "\-d.*deps"; then
     echo "✓ Help output shows dependency mode"
 else
     echo "✗ Help output missing dependency mode"
@@ -90,11 +90,8 @@ if [ -n "$MODULE_BUILD_DIR" ] && [ -d "$MODULE_BUILD_DIR/dmf" ]; then
         # Copy the DMF file to test directory
         cp "$DMF_FILE" test_main.dmf
         
-        # Set environment variables to search paths
-        export DMOD_DMF_DIR="$MODULE_BUILD_DIR/dmf"
-        export DMOD_DMFC_DIR="$MODULE_BUILD_DIR/dmfc"
-        
-        if $TODMP -d testpkg test_main.dmf test_output.dmp 2>&1 | tee test5_output.log; then
+        # Use --dmf-dir and --dmfc-dir flags
+        if $TODMP -d testpkg test_main.dmf --dmf-dir "$MODULE_BUILD_DIR/dmf" --dmfc-dir "$MODULE_BUILD_DIR/dmfc" -o test_output.dmp 2>&1 | tee test5_output.log; then
             echo "✓ todmp -d command completed"
             
             # Check that output file was created
@@ -134,11 +131,8 @@ fake_module@1.0
 another_module
 EOF
         
-        # Set environment variables
-        export DMOD_DMF_DIR="$MODULE_BUILD_DIR/dmf"
-        export DMOD_DMFC_DIR="$MODULE_BUILD_DIR/dmfc"
-        
-        if $TODMP -d testpkg2 test_main.dmf test_deps.dmd test_output2.dmp 2>&1 | tee test6_output.log; then
+        # Use flags for all options
+        if $TODMP -d testpkg2 test_main.dmf --dmd test_deps.dmd --dmf-dir "$MODULE_BUILD_DIR/dmf" --dmfc-dir "$MODULE_BUILD_DIR/dmfc" -o test_output2.dmp 2>&1 | tee test6_output.log; then
             echo "✓ todmp -d with DMD file completed"
             
             # Check output
@@ -167,10 +161,8 @@ EOF
     echo "Test 7: Test default output filename"
     
     if [ -n "$DMF_FILE" ] && [ -f "$DMF_FILE" ]; then
-        export DMOD_DMF_DIR="$MODULE_BUILD_DIR/dmf"
-        export DMOD_DMFC_DIR="$MODULE_BUILD_DIR/dmfc"
-        
-        if $TODMP -d mypkg test_main.dmf 2>&1 | tee test7_output.log; then
+        # Test with flags but no -o (should use default output name)
+        if $TODMP -d mypkg test_main.dmf --dmf-dir "$MODULE_BUILD_DIR/dmf" --dmfc-dir "$MODULE_BUILD_DIR/dmfc" 2>&1 | tee test7_output.log; then
             echo "✓ todmp -d with default output name completed"
             
             # Check for default output file
@@ -191,11 +183,8 @@ EOF
     echo "Test 8: Verify architecture checking"
     
     if [ -n "$DMF_FILE" ] && [ -f "$DMF_FILE" ]; then
-        export DMOD_DMF_DIR="$MODULE_BUILD_DIR/dmf"
-        export DMOD_DMFC_DIR="$MODULE_BUILD_DIR/dmfc"
-        
-        # Run and capture output
-        $TODMP -d archtest test_main.dmf 2>&1 | tee test8_output.log || true
+        # Run and capture output with flags
+        $TODMP -d archtest test_main.dmf --dmf-dir "$MODULE_BUILD_DIR/dmf" --dmfc-dir "$MODULE_BUILD_DIR/dmfc" 2>&1 | tee test8_output.log || true
         
         # Check that architecture was read
         if grep -q "Target architecture:" test8_output.log; then
@@ -239,10 +228,8 @@ EOF
     echo "Test 10: Verify cross-platform mode is enabled"
     
     if [ -n "$DMF_FILE" ] && [ -f "$DMF_FILE" ]; then
-        export DMOD_DMF_DIR="$MODULE_BUILD_DIR/dmf"
-        export DMOD_DMFC_DIR="$MODULE_BUILD_DIR/dmfc"
-        
-        $TODMP -d xptest test_main.dmf 2>&1 | tee test10_output.log || true
+        # Use flags
+        $TODMP -d xptest test_main.dmf --dmf-dir "$MODULE_BUILD_DIR/dmf" --dmfc-dir "$MODULE_BUILD_DIR/dmfc" 2>&1 | tee test10_output.log || true
         
         # The cross-platform mode should be mentioned in initialization
         # or we should not see any platform-specific errors
@@ -261,13 +248,11 @@ EOF
         echo "  Found $DMF_COUNT .dmf files and $DMFC_COUNT .dmfc files"
         
         if [ "$DMF_COUNT" -gt 0 ] || [ "$DMFC_COUNT" -gt 0 ]; then
-            export DMOD_DMF_DIR="$MODULE_BUILD_DIR/dmf"
-            export DMOD_DMFC_DIR="$MODULE_BUILD_DIR/dmfc"
-            
-            $TODMP -d mixtest test_main.dmf 2>&1 | tee test11_output.log || true
+            # Use flags
+            $TODMP -d mixtest test_main.dmf --dmf-dir "$MODULE_BUILD_DIR/dmf" --dmfc-dir "$MODULE_BUILD_DIR/dmfc" 2>&1 | tee test11_output.log || true
             
             # Check that both paths were searched
-            if grep -q "DMOD_DMF_DIR\|DMOD_DMFC_DIR" test11_output.log; then
+            if grep -q "DMF.*directory\|DMFC.*directory" test11_output.log; then
                 echo "✓ Searches both DMF and DMFC directories"
             else
                 echo "✓ Mixed format test completed"
@@ -281,10 +266,8 @@ EOF
     echo "Test 12: Verify system modules are filtered"
     
     if [ -n "$DMF_FILE" ] && [ -f "$DMF_FILE" ]; then
-        export DMOD_DMF_DIR="$MODULE_BUILD_DIR/dmf"
-        export DMOD_DMFC_DIR="$MODULE_BUILD_DIR/dmfc"
-        
-        $TODMP -d sysfilter test_main.dmf 2>&1 | tee test12_output.log || true
+        # Use flags
+        $TODMP -d sysfilter test_main.dmf --dmf-dir "$MODULE_BUILD_DIR/dmf" --dmfc-dir "$MODULE_BUILD_DIR/dmfc" 2>&1 | tee test12_output.log || true
         
         # Check if system modules are mentioned as skipped
         if grep -q "Skipping system module" test12_output.log; then

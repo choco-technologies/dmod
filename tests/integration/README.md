@@ -29,9 +29,11 @@ Tests the `todmp` dependency resolution functionality:
 - Tests `-d` flag for creating packages with dependencies
 - Tests dependency resolution from DMD and DMF files
 - Tests architecture verification
-- Tests search paths (DMOD_DMF_DIR, DMOD_DMFC_DIR, current directory)
+- Tests `--dmf-dir` and `--dmfc-dir` flags for specifying search paths
+- Tests fallback to environment variables (DMOD_DMF_DIR, DMOD_DMFC_DIR)
 - Tests system module filtering
 - Tests with both .dmf and .dmfc files
+- Tests new flag-based command-line interface
 
 ## Requirements
 
