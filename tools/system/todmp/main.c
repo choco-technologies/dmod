@@ -1,4 +1,5 @@
 #include "dmod.h"
+#include "dmod_dependencies.h"
 #include <string.h>
 #include <time.h>
 
@@ -212,88 +213,53 @@ int CreatePackageWithDependencies( const char* packageName, const char* mainDmfP
     Dmod_RequiredModule_t requiredModules[DMOD_MAX_REQUIRED_MODULES];
     memset( requiredModules, 0, sizeof(requiredModules) );
     
-    // If DMD file is provided, read from it
+    // If DMD file is provided, read from it using dmod_dependencies library
     if( dmdPath != NULL )
     {
-        void* dmdFile = Dmod_FileOpen( dmdPath, "r" );
-        if( dmdFile == NULL )
+        // Initialize dependencies context
+        Dmod_DependenciesContext_t* depCtx = Dmod_Dependencies_Init( NULL, NULL, NULL );
+        if( depCtx == NULL )
         {
-            DMOD_LOG_ERROR("Cannot open DMD file '%s'\n", dmdPath);
+            DMOD_LOG_ERROR("Cannot initialize dependencies parser\n");
             Dmod_Deinitialize();
             return -1;
         }
         
-        // Read DMD file line by line
-        char line[256];
-        int moduleIndex = 0;
-        while( moduleIndex < DMOD_MAX_REQUIRED_MODULES )
+        // Parse DMD file
+        if( !Dmod_Dependencies_ParseFile( depCtx, dmdPath ) )
         {
-            // Read line using Dmod_FileRead character by character
-            int lineLen = 0;
-            char ch;
-            bool lineComplete = false;
-            
-            while( lineLen < (int)sizeof(line) - 1 )
+            const char* error = Dmod_Dependencies_GetError( depCtx );
+            DMOD_LOG_ERROR("Cannot parse DMD file '%s': %s\n", dmdPath, error ? error : "unknown error");
+            Dmod_Dependencies_Free( depCtx );
+            Dmod_Deinitialize();
+            return -1;
+        }
+        
+        // Get entries from dependencies
+        size_t entryCount = Dmod_Dependencies_GetEntryCount( depCtx );
+        int moduleIndex = 0;
+        
+        for( size_t i = 0; i < entryCount && moduleIndex < DMOD_MAX_REQUIRED_MODULES; i++ )
+        {
+            Dmod_DependencyEntry_t entry;
+            if( Dmod_Dependencies_GetEntry( depCtx, i, &entry ) )
             {
-                if( Dmod_FileRead( &ch, 1, 1, dmdFile ) != 1 )
+                strncpy( requiredModules[moduleIndex].Name, entry.name, DMOD_MAX_MODULE_NAME_LENGTH - 1 );
+                requiredModules[moduleIndex].Name[DMOD_MAX_MODULE_NAME_LENGTH - 1] = '\0';
+                
+                if( entry.version[0] != '\0' )
                 {
-                    lineComplete = true;
-                    break;
+                    strncpy( requiredModules[moduleIndex].Version, entry.version, DMOD_MAX_VERSION_LENGTH - 1 );
+                    requiredModules[moduleIndex].Version[DMOD_MAX_VERSION_LENGTH - 1] = '\0';
                 }
                 
-                if( ch == '\n' || ch == '\r' )
-                {
-                    lineComplete = true;
-                    break;
-                }
-                
-                line[lineLen++] = ch;
-            }
-            
-            if( lineLen == 0 && lineComplete )
-            {
-                break;
-            }
-            
-            line[lineLen] = '\0';
-            
-            // Skip empty lines and comments
-            if( lineLen == 0 || line[0] == '#' )
-            {
-                if( !lineComplete )
-                {
-                    break;
-                }
-                continue;
-            }
-            
-            // Parse module name and version (format: module_name or module_name@version)
-            char* atSign = strchr( line, '@' );
-            if( atSign != NULL )
-            {
-                *atSign = '\0';
-                strncpy( requiredModules[moduleIndex].Name, line, DMOD_MAX_MODULE_NAME_LENGTH - 1 );
-                requiredModules[moduleIndex].Name[DMOD_MAX_MODULE_NAME_LENGTH - 1] = '\0';
-                strncpy( requiredModules[moduleIndex].Version, atSign + 1, DMOD_MAX_VERSION_LENGTH - 1 );
-                requiredModules[moduleIndex].Version[DMOD_MAX_VERSION_LENGTH - 1] = '\0';
-            }
-            else
-            {
-                strncpy( requiredModules[moduleIndex].Name, line, DMOD_MAX_MODULE_NAME_LENGTH - 1 );
-                requiredModules[moduleIndex].Name[DMOD_MAX_MODULE_NAME_LENGTH - 1] = '\0';
-            }
-            
-            requiredModules[moduleIndex].SystemModule = false;
-            moduleIndex++;
-            
-            if( !lineComplete )
-            {
-                break;
+                requiredModules[moduleIndex].SystemModule = false;
+                moduleIndex++;
             }
         }
         
-        Dmod_FileClose( dmdFile );
         Dmod_Printf("  Read %d dependencies from DMD file\n", moduleIndex);
+        Dmod_Dependencies_Free( depCtx );
     }
     else
     {

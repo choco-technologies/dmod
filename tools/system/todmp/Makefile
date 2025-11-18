@@ -13,10 +13,10 @@ TOOL_SRC_DIR=$(THIS_DIR)
 # 	Project's definitions
 # -----------------------------------------------------------------------------
 PROJECT_NAME    = todmp
-DMOD_SOURCES	= main.c
-DMOD_INC_DIRS 	= 
+DMOD_SOURCES	= main.c $(DMOD_DIR)/tools/lib/dmod_dependencies/dmod_dependencies.c
+DMOD_INC_DIRS 	= $(DMOD_DIR)/tools/lib/dmod_dependencies
 DMOD_LIBS 	  	= 
-DEFINITIONS 	= 
+DEFINITIONS 	=
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths
