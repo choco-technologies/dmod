@@ -171,7 +171,7 @@ static bool FileExistsInDir( const char* dir, const char* moduleName, char* outP
 //      Create DMP package with dependencies
 //
 // -----------------------------------------
-int CreatePackageWithDependencies( const char* packageName, const char* mainDmfPath, const char* dmdPath, const char* outputFile )
+int CreatePackageWithDependencies( const char* packageName, const char* mainDmfPath, const char* dmdPath, const char* outputFile, const char* dmfDir, const char* dmfcDir )
 {
     if( packageName == NULL || mainDmfPath == NULL || outputFile == NULL )
     {
@@ -304,9 +304,27 @@ int CreatePackageWithDependencies( const char* packageName, const char* mainDmfP
         }
     }
     
-    // Get search paths from environment variables
-    const char* dmfDir = Dmod_GetEnv( "DMOD_DMF_DIR" );
-    const char* dmfcDir = Dmod_GetEnv( "DMOD_DMFC_DIR" );
+    // Get search paths - prefer provided arguments, fall back to environment variables
+    const char* searchDmfDir = dmfDir;
+    const char* searchDmfcDir = dmfcDir;
+    
+    if( searchDmfDir == NULL )
+    {
+        searchDmfDir = Dmod_GetEnv( "DMOD_DMF_DIR" );
+    }
+    if( searchDmfcDir == NULL )
+    {
+        searchDmfcDir = Dmod_GetEnv( "DMOD_DMFC_DIR" );
+    }
+    
+    if( searchDmfDir != NULL )
+    {
+        Dmod_Printf("  DMF search directory: %s\n", searchDmfDir);
+    }
+    if( searchDmfcDir != NULL )
+    {
+        Dmod_Printf("  DMFC search directory: %s\n", searchDmfcDir);
+    }
     
     // Collect all module files to include
     char modulePaths[DMOD_MAX_REQUIRED_MODULES + 1][DMOD_MAX_PATH_LENGTH];
@@ -335,22 +353,22 @@ int CreatePackageWithDependencies( const char* packageName, const char* mainDmfP
         char modulePath[DMOD_MAX_PATH_LENGTH];
         
         // Try DMF_DIR
-        if( !found && dmfDir != NULL )
+        if( !found && searchDmfDir != NULL )
         {
-            if( FileExistsInDir( dmfDir, requiredModules[i].Name, modulePath, sizeof(modulePath), targetArch ) )
+            if( FileExistsInDir( searchDmfDir, requiredModules[i].Name, modulePath, sizeof(modulePath), targetArch ) )
             {
                 found = true;
-                Dmod_Printf("  Found dependency '%s' in DMOD_DMF_DIR\n", requiredModules[i].Name);
+                Dmod_Printf("  Found dependency '%s' in DMF directory\n", requiredModules[i].Name);
             }
         }
         
         // Try DMFC_DIR
-        if( !found && dmfcDir != NULL )
+        if( !found && searchDmfcDir != NULL )
         {
-            if( FileExistsInDir( dmfcDir, requiredModules[i].Name, modulePath, sizeof(modulePath), targetArch ) )
+            if( FileExistsInDir( searchDmfcDir, requiredModules[i].Name, modulePath, sizeof(modulePath), targetArch ) )
             {
                 found = true;
-                Dmod_Printf("  Found dependency '%s' in DMOD_DMFC_DIR\n", requiredModules[i].Name);
+                Dmod_Printf("  Found dependency '%s' in DMFC directory\n", requiredModules[i].Name);
             }
         }
         
@@ -486,19 +504,24 @@ int CreatePackageWithDependencies( const char* packageName, const char* mainDmfP
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    Dmod_Printf("Usage: %s <package_name> <input_dir> [output_file] [module_name]\n", AppName);
-    Dmod_Printf("       %s -d <package_name> <main_dmf> [dmd_file] [output_file]\n", AppName);
-    Dmod_Printf("       %s -l <package_file>\n", AppName);
+    Dmod_Printf("Usage:\n");
+    Dmod_Printf("  %s <package_name> <input_dir> [-o output_file] [-m module_name]\n", AppName);
+    Dmod_Printf("  %s -d <package_name> <main_dmf> [OPTIONS]\n", AppName);
+    Dmod_Printf("  %s -l <package_file>\n", AppName);
     Dmod_Printf("\n");
-    Dmod_Printf("Arguments:\n");
-    Dmod_Printf("  <package_name>   - Name of the package (for the header)\n");
-    Dmod_Printf("  <input_dir>      - Folder with modules to pack (.dmf or .dmfc files)\n");
-    Dmod_Printf("  [output_file]    - (optional) Path to output .dmp file (default: ./package_name.dmp)\n");
-    Dmod_Printf("  [module_name]    - (optional) Name of the main module in the package\n");
-    Dmod_Printf("  -d               - Create package with dependencies\n");
-    Dmod_Printf("  <main_dmf>       - Path to main DMF file (when using -d)\n");
-    Dmod_Printf("  [dmd_file]       - (optional) Path to DMD dependencies file (when using -d)\n");
-    Dmod_Printf("  -l <package_file> - List contents of a DMP package\n");
+    Dmod_Printf("Modes:\n");
+    Dmod_Printf("  (default)         Create package from all files in directory\n");
+    Dmod_Printf("  -d, --deps        Create package with dependency resolution\n");
+    Dmod_Printf("  -l, --list        List contents of a DMP package\n");
+    Dmod_Printf("\n");
+    Dmod_Printf("Options:\n");
+    Dmod_Printf("  -o <file>         Output file path (default: ./<package_name>.dmp)\n");
+    Dmod_Printf("  -m <name>         Main module name (for directory mode)\n");
+    Dmod_Printf("  --dmd <file>      DMD dependencies file (for -d mode)\n");
+    Dmod_Printf("  --dmf-dir <dir>   Directory to search for .dmf files\n");
+    Dmod_Printf("  --dmfc-dir <dir>  Directory to search for .dmfc files\n");
+    Dmod_Printf("  -h, --help        Show this help message\n");
+    Dmod_Printf("  -v, --version     Show version information\n");
 }
 
 // -----------------------------------------
@@ -513,19 +536,20 @@ void PrintHelp( const char* AppName )
     Dmod_Printf("DMP packages can contain multiple DMF or DMFC modules and be loaded together.\n\n");
     PrintUsage( AppName );
     Dmod_Printf("\n");
-    Dmod_Printf("Options:\n");
-    Dmod_Printf("  -h, --help            Print this help message\n");
-    Dmod_Printf("  -v, --version         Print version information\n");
-    Dmod_Printf("  -d, --dependencies    Create package with dependencies\n");
-    Dmod_Printf("  -l, --list <file>     List contents of a DMP package\n");
-    Dmod_Printf("\n");
     Dmod_Printf("Examples:\n");
-    Dmod_Printf("  %s kernel ./dmfc main-app ./out/kernel.dmp\n", AppName);
-    Dmod_Printf("  %s mypackage ./modules\n", AppName);
-    Dmod_Printf("  %s mypackage ./modules ./output/mypackage.dmp\n", AppName);
-    Dmod_Printf("  %s -d myapp main.dmf deps.dmd myapp.dmp\n", AppName);
-    Dmod_Printf("  %s -d myapp main.dmf myapp.dmp\n", AppName);
-    Dmod_Printf("  %s -l ./mypackage.dmp\n", AppName);
+    Dmod_Printf("\n");
+    Dmod_Printf("  Directory mode (pack all files from directory):\n");
+    Dmod_Printf("    %s mypackage ./modules\n", AppName);
+    Dmod_Printf("    %s mypackage ./modules -o ./out/mypackage.dmp\n", AppName);
+    Dmod_Printf("    %s kernel ./dmfc -m main-app -o ./out/kernel.dmp\n", AppName);
+    Dmod_Printf("\n");
+    Dmod_Printf("  Dependency mode (resolve and include dependencies):\n");
+    Dmod_Printf("    %s -d myapp main.dmf --dmf-dir ./modules\n", AppName);
+    Dmod_Printf("    %s -d myapp main.dmf --dmd deps.dmd --dmf-dir ./build/dmf -o myapp.dmp\n", AppName);
+    Dmod_Printf("    %s -d myapp main.dmf --dmf-dir ./dmf --dmfc-dir ./dmfc\n", AppName);
+    Dmod_Printf("\n");
+    Dmod_Printf("  List mode:\n");
+    Dmod_Printf("    %s -l ./mypackage.dmp\n", AppName);
 }
 
 // -----------------------------------------
@@ -541,16 +565,19 @@ int main( int argc, char *argv[] )
         return 0;
     }
 
-    if( strcmp( argv[1], "-h" ) == 0 || strcmp( argv[1], "--help" ) == 0 )
+    // Check for help and version first
+    for( int i = 1; i < argc; i++ )
     {
-        PrintHelp( argv[0] );
-        return 0;
-    }
-
-    if( strcmp( argv[1], "-v" ) == 0 || strcmp( argv[1], "--version" ) == 0 )
-    {
-        Dmod_Printf("Dynamic Module Loader ver. " DMOD_VERSION_STRING "\n");
-        return 0;
+        if( strcmp( argv[i], "-h" ) == 0 || strcmp( argv[i], "--help" ) == 0 )
+        {
+            PrintHelp( argv[0] );
+            return 0;
+        }
+        if( strcmp( argv[i], "-v" ) == 0 || strcmp( argv[i], "--version" ) == 0 )
+        {
+            Dmod_Printf("Dynamic Module Loader ver. " DMOD_VERSION_STRING "\n");
+            return 0;
+        }
     }
 
     // Handle list option
@@ -566,12 +593,12 @@ int main( int argc, char *argv[] )
     }
 
     // Handle dependencies option
-    if( strcmp( argv[1], "-d" ) == 0 || strcmp( argv[1], "--dependencies" ) == 0 )
+    if( strcmp( argv[1], "-d" ) == 0 || strcmp( argv[1], "--deps" ) == 0 )
     {
         if( argc < 4 )
         {
             DMOD_LOG_ERROR("Missing required arguments for dependencies mode\n");
-            Dmod_Printf("Usage: %s -d <package_name> <main_dmf> [dmd_file] [output_file]\n", argv[0]);
+            Dmod_Printf("Usage: %s -d <package_name> <main_dmf> [OPTIONS]\n", argv[0]);
             return -1;
         }
 
@@ -579,25 +606,33 @@ int main( int argc, char *argv[] )
         const char* mainDmfPath = argv[3];
         const char* dmdPath = NULL;
         const char* outputFile = NULL;
+        const char* dmfDir = NULL;
+        const char* dmfcDir = NULL;
 
-        // Check if we have DMD file and/or output file
-        if( argc >= 5 )
+        // Parse optional arguments
+        for( int i = 4; i < argc; i++ )
         {
-            // Check if arg 4 is a .dmd file or output path
-            size_t len = strlen(argv[4]);
-            if( len > 4 && strcmp( argv[4] + len - 4, ".dmd" ) == 0 )
+            if( strcmp( argv[i], "--dmd" ) == 0 && i + 1 < argc )
             {
-                dmdPath = argv[4];
-                // Check if output file is also provided
-                if( argc >= 6 )
-                {
-                    outputFile = argv[5];
-                }
+                dmdPath = argv[++i];
+            }
+            else if( strcmp( argv[i], "-o" ) == 0 && i + 1 < argc )
+            {
+                outputFile = argv[++i];
+            }
+            else if( strcmp( argv[i], "--dmf-dir" ) == 0 && i + 1 < argc )
+            {
+                dmfDir = argv[++i];
+            }
+            else if( strcmp( argv[i], "--dmfc-dir" ) == 0 && i + 1 < argc )
+            {
+                dmfcDir = argv[++i];
             }
             else
             {
-                // It's the output file
-                outputFile = argv[4];
+                DMOD_LOG_ERROR("Unknown option or missing argument: %s\n", argv[i]);
+                PrintUsage( argv[0] );
+                return -1;
             }
         }
 
@@ -609,19 +644,13 @@ int main( int argc, char *argv[] )
             outputFile = defaultOutputFile;
         }
 
-        return CreatePackageWithDependencies( packageName, mainDmfPath, dmdPath, outputFile );
+        return CreatePackageWithDependencies( packageName, mainDmfPath, dmdPath, outputFile, dmfDir, dmfcDir );
     }
 
+    // Default mode: create package from directory
     if( argc < 3 )
     {
         DMOD_LOG_ERROR("Missing required arguments\n");
-        PrintUsage( argv[0] );
-        return -1;
-    }
-
-    if( argc > 5 )
-    {
-        DMOD_LOG_ERROR("Too many arguments\n");
         PrintUsage( argv[0] );
         return -1;
     }
@@ -631,22 +660,31 @@ int main( int argc, char *argv[] )
     const char* outputFile = NULL;
     const char* mainModuleName = NULL;
 
+    // Parse optional arguments
+    for( int i = 3; i < argc; i++ )
+    {
+        if( strcmp( argv[i], "-o" ) == 0 && i + 1 < argc )
+        {
+            outputFile = argv[++i];
+        }
+        else if( strcmp( argv[i], "-m" ) == 0 && i + 1 < argc )
+        {
+            mainModuleName = argv[++i];
+        }
+        else
+        {
+            DMOD_LOG_ERROR("Unknown option or missing argument: %s\n", argv[i]);
+            PrintUsage( argv[0] );
+            return -1;
+        }
+    }
+
     // Default output file: ./package_name.dmp
     char defaultOutputFile[256];
-    if( argc >= 4 )
-    {
-        outputFile = argv[3];
-    }
-    else
+    if( outputFile == NULL )
     {
         Dmod_SnPrintf( defaultOutputFile, sizeof(defaultOutputFile), "./%s.dmp", packageName );
         outputFile = defaultOutputFile;
-    }
-
-    // Optional main module name
-    if( argc >= 5 )
-    {
-        mainModuleName = argv[4];
     }
 
     Dmod_Printf("Creating DMP package...\n");
