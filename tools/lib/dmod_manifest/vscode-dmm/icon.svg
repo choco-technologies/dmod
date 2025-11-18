@@ -1,0 +1,20 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background rectangle with rounded corners -->
+  <rect x="16" y="8" width="96" height="112" rx="8" ry="8" fill="#4A90E2" stroke="#2E5C8A" stroke-width="2"/>
+  
+  <!-- Folded corner -->
+  <path d="M 96 8 L 96 24 L 112 24 L 96 8" fill="#2E5C8A"/>
+  <path d="M 96 8 L 96 24 L 112 24" fill="none" stroke="#2E5C8A" stroke-width="2" stroke-linejoin="miter"/>
+  
+  <!-- Document lines representing manifest entries -->
+  <line x1="28" y1="36" x2="84" y2="36" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="28" y1="48" x2="96" y2="48" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="28" y1="60" x2="72" y2="60" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Module symbol (box with @ symbol) -->
+  <circle cx="64" cy="88" r="24" fill="#FFA500" stroke="#CC8400" stroke-width="2"/>
+  <text x="64" y="98" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="white" text-anchor="middle">@</text>
+  
+  <!-- Small "dmm" text at bottom -->
+  <text x="64" y="118" font-family="monospace" font-size="10" font-weight="bold" fill="white" text-anchor="middle">.dmm</text>
+</svg>
