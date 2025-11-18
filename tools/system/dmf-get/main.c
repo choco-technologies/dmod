@@ -151,9 +151,9 @@ static int DownloadModule(const char* module_name, const char* module_version,
  */
 static void GetCurrentDmodVersion(Dmod_SemanticVersion_t* version) {
     // DMOD_VERSION format: 0xMMmmpppp (Major, minor, patch)
-    version->major = (DMOD_VERSION >> 16) & 0xFF;
-    version->minor = (DMOD_VERSION >> 8) & 0xFF;
-    version->patch = DMOD_VERSION & 0xFF;
+    version->major = dmod_VERSION_MAJOR;
+    version->minor = dmod_VERSION_MINOR;
+    version->patch = 0; // Patch not defined in dmod_VERSION
 }
 
 /**
