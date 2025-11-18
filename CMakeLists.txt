@@ -209,7 +209,7 @@ if(DMOD_MODULE AND DEFINED DMOD_PACKAGE_NAME AND NOT "${DMOD_PACKAGE_NAME}" STRE
         # Set main module name if provided
         set(MAIN_MODULE_ARG "")
         if(DEFINED DMOD_MAIN_MODULE_NAME AND NOT "${DMOD_MAIN_MODULE_NAME}" STREQUAL "")
-            set(MAIN_MODULE_ARG ${DMOD_MAIN_MODULE_NAME})
+            set(MAIN_MODULE_ARG "-m" "${DMOD_MAIN_MODULE_NAME}")
             message(STATUS "  Main module will be: ${DMOD_MAIN_MODULE_NAME}")
         endif()
         
@@ -220,7 +220,7 @@ if(DMOD_MODULE AND DEFINED DMOD_PACKAGE_NAME AND NOT "${DMOD_PACKAGE_NAME}" STRE
         file(MAKE_DIRECTORY ${DMOD_BUILD_DIR}/dmp)
         
         add_custom_target(dmp_package ALL
-            COMMAND ${TODMP} ${DMOD_PACKAGE_NAME} ${DMOD_DMF_DIR} ${DMP_DMF_OUTPUT} ${MAIN_MODULE_ARG}
+            COMMAND ${TODMP} ${DMOD_PACKAGE_NAME} ${DMOD_DMF_DIR} -o ${DMP_DMF_OUTPUT} ${MAIN_MODULE_ARG}
             COMMENT "Creating DMP package from DMF modules: ${DMP_DMF_OUTPUT}"
             VERBATIM
         )
@@ -232,7 +232,7 @@ if(DMOD_MODULE AND DEFINED DMOD_PACKAGE_NAME AND NOT "${DMOD_PACKAGE_NAME}" STRE
                 )
         if(TODMFC)
             add_custom_target(dmp_package_dmfc ALL
-                COMMAND ${TODMP} ${DMOD_PACKAGE_NAME} ${DMOD_DMFC_DIR} ${DMP_DMFC_OUTPUT} ${MAIN_MODULE_ARG}
+                COMMAND ${TODMP} ${DMOD_PACKAGE_NAME} ${DMOD_DMFC_DIR} -o ${DMP_DMFC_OUTPUT} ${MAIN_MODULE_ARG}
                 COMMENT "Creating DMP package from DMFC modules: ${DMP_DMFC_OUTPUT}"
                 VERBATIM
             )

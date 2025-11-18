@@ -99,7 +99,7 @@ jobs:
           cmake .. -DDMOD_MODE=DMOD_MODULE -DDMOD_TOOLS_NAME=arch/x86_64
           cmake --build .
           # Create DMP package with vfs as main module
-          ./bin/tools/todmp test_package ./dmf ./test_package.dmp vfs
+          ./bin/tools/todmp test_package ./dmf -o ./test_package.dmp -m vfs
           echo "DMP package created successfully"
       
       - name: List DMP package contents
@@ -117,7 +117,7 @@ jobs:
       - name: Create DMP package without main module
         working-directory: build
         run: |
-          ./bin/tools/todmp libs_package ./dmf ./libs_package.dmp
+          ./bin/tools/todmp libs_package ./dmf -o ./libs_package.dmp
           echo "DMP package without main module created successfully"
       
       - name: Test todmp help and version
@@ -170,7 +170,7 @@ jobs:
           rm -rf build/examples/module build/examples/dif build/templates/module/output
           make DMOD_MODE=DMOD_MODULE
           # Create DMP package with vfs as main module
-          ./build/bin/tools/todmp test_package ./build/dmf ./build/test_package.dmp vfs
+          ./build/bin/tools/todmp test_package ./build/dmf -o ./build/test_package.dmp -m vfs
           echo "DMP package created successfully"
       
       - name: List DMP package contents
@@ -185,7 +185,7 @@ jobs:
       
       - name: Create DMP package without main module
         run: |
-          ./build/bin/tools/todmp libs_package ./build/dmf ./build/libs_package.dmp
+          ./build/bin/tools/todmp libs_package ./build/dmf -o ./build/libs_package.dmp
           echo "DMP package without main module created successfully"
       
       - name: Test todmp help and version
