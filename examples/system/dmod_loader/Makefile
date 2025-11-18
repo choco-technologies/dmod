@@ -1,52 +1,43 @@
-# ##############################################################################
-#  Makefile for the dmod_loader executable
 #
-#     This Makefile is used to build the dmod_loader executable
+# This is a makefile for the dmod loader example.
+# It is used to build the dmod loader example.
 #
-#   DON'T EDIT THIS FILE - it is automatically generated. 
-#   Edit the scripts/Makefile-exe.in file instead.
-#       
-# ##############################################################################
-ifeq ($(DMOD_DIR),)
-    DMOD_DIR = ../../../
-endif
 
-#
-#  Name of the executable
-#
-PROJECT_NAME=dmod_loader
-DMOD_SOURCES=main.c
-DMOD_INC_DIRS = $(DMOD_DIR)/inc\
-		$(DMOD_BUILD_DIR)\
-		$(DMOD_DIR)/examples/system/dmod_loader
-DMOD_LIBS = dmod_common\
-		dmod_fastlz\
-		dmod_system\
-		pthread
-DEFINITIONS = 
+# -----------------------------------------------------------------------------
+# 	Paths configuration
+# -----------------------------------------------------------------------------
+DMOD_DIR=../..
+MAIN_LD=main.ld
+THIS_DIR=$(shell pwd)
+DMOD_CFG=$(THIS_DIR)/dmod-cfg.mk
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths
 # -----------------------------------------------------------------------------
 include $(DMOD_DIR)/paths.mk
+include $(DMOD_TOOLS)
 
 # -----------------------------------------------------------------------------
 # 	Project's definitions
 # -----------------------------------------------------------------------------
-OUTPUT_DIR		= $(DMOD_BUILD_DIR)/examples/system/dmod_loader
-MAIN_LD			= $(DMOD_SCRIPTS_DIR)/main.ld
-DMOD_EXE_SRC_PATH = $(DMOD_DIR)/examples/system/dmod_loader
-OBJ_OUTPUT_DIR	= $(DMOD_OBJS_DIR)/$(PROJECT_NAME)
+PROJECT_NAME    = dmod_loader
+OUTPUT_DIR		= $(DMOD_BUILD_DIR)/examples/system
+DMOD_SOURCES	= main.c
+DMOD_INC_DIRS 	= $(DMOD_INC_DIR) \
+				  $(DMOD_BUILD_DIR) 
+DMOD_LIBS 	  	= dmod_system\
+				  dmod_common\
+				  pthread
+DEFINITIONS 	= 
 
-# -----------------------------------------------------------------------------
-# 	Initialization of tools configuration
-# -----------------------------------------------------------------------------
-include $(DMOD_TOOLS)
+ifeq ($(DMOD_USE_FASTLZ),ON)
+	DMOD_LIBS += dmod_fastlz
+endif
 
 # -----------------------------------------------------------------------------
 # 	List of objects
 # -----------------------------------------------------------------------------
-DMOD_OBJECTS = $(addprefix $(OBJ_OUTPUT_DIR)/, $(DMOD_SOURCES:.c=.o))
+DMOD_OBJECTS = $(addprefix $(OUTPUT_DIR)/, $(DMOD_SOURCES:.c=.o))
 
 # -----------------------------------------------------------------------------
 # 	Preparation of C flags
@@ -66,19 +57,17 @@ dmod:
 	@echo "Skipping dmod build"
 else
 dmod:
-	$(MAKE) -C $(DMOD_DIR)
+	$(MAKE) -C $(DMOD_DIR) DMOD_CFG="$(DMOD_CFG)"
 endif
-
 $(PROJECT_NAME): $(DMOD_OBJECTS)
-	@$(MKDIR) -p $(OUTPUT_DIR)
 	$(CC) $(CFLAGS) -L $(DMOD_SCRIPTS_DIR) -T $(MAIN_LD) -o $(OUTPUT_DIR)/$(PROJECT_NAME) $(DMOD_OBJECTS) $(CFLAGS_LIB) $(CFLAGS_DEF)
 
-$(OBJ_OUTPUT_DIR)/%.o: $(DMOD_EXE_SRC_PATH)/%.c
-	@$(MKDIR) -p $(dir $@)
+$(OUTPUT_DIR)/%.o: %.c
+	@$(MKDIR) -p $(OUTPUT_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
+	@$(RM) -rf $(OUTPUT_DIR)
 	@$(RM) -rf $(OUTPUT_DIR)/$(PROJECT_NAME)
-	@$(RM) -rf $(OBJ_OUTPUT_DIR)
 
-.PHONY: all clean dmod
+.PHONY: all clean

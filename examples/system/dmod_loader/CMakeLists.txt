@@ -18,5 +18,3 @@ target_link_libraries(${PROJECT_NAME} dmod)
 
 target_link_options(${PROJECT_NAME} PRIVATE -L ${DMOD_DIR}/scripts)
 target_link_options(${PROJECT_NAME} PRIVATE -T ${CMAKE_CURRENT_SOURCE_DIR}/main.ld)
-
-create_executable_makefile(${PROJECT_NAME})

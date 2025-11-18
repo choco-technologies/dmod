@@ -452,4 +452,10 @@ function(dmod_add_tool toolName)
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${toolName}> ${DMOD_TOOLS_BIN_DIR}/${toolName}
         COMMENT "Copying the binary to the tools directory"
     )
+    
+    # Generate Makefile for the tool (only for tools in the tools/ directory)
+    string(FIND "${CMAKE_CURRENT_SOURCE_DIR}" "/tools/" TOOLS_DIR_POS)
+    if(TOOLS_DIR_POS GREATER -1)
+        create_executable_makefile(${toolName})
+    endif()
 endfunction()
