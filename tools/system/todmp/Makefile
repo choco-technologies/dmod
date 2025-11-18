@@ -9,17 +9,17 @@ DMOD_DIR=../../..
 THIS_DIR=$(shell pwd)
 TOOL_SRC_DIR=$(THIS_DIR)
 
+include $(DMOD_DIR)/paths.mk
 # -----------------------------------------------------------------------------
 # 	Project's definitions
 # -----------------------------------------------------------------------------
 PROJECT_NAME    = todmp
 DMOD_SOURCES	= main.c
-DMOD_INC_DIRS 	= 
+DMOD_INC_DIRS 	= $(DMOD_TOOLS_LIB_MANIFEST_DIR)
 DMOD_LIBS 	  	= 
 DEFINITIONS 	= 
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths
 # -----------------------------------------------------------------------------
-include $(DMOD_DIR)/paths.mk
 include $(DMOD_SYSTEM_TOOL_MK_FILE_PATH)
