@@ -15,8 +15,8 @@ include $(DMOD_DIR)/paths.mk
 # -----------------------------------------------------------------------------
 PROJECT_NAME    = todmp
 DMOD_SOURCES	= main.c
-DMOD_INC_DIRS 	= $(DMOD_TOOLS_LIB_MANIFEST_DIR)
-DMOD_LIBS 	  	= 
+DMOD_INC_DIRS 	= $(DMOD_TOOLS_LIB_MANIFEST_DIR) $(DMOD_TOOLS_LIB_DEPENDENCIES_DIR)
+DMOD_LIBS 	  	= dmod_dependencies
 DEFINITIONS 	= 
 
 # -----------------------------------------------------------------------------

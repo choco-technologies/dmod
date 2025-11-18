@@ -6,7 +6,7 @@ DMOD_DIR=../..
 # -----------------------------------------------------------------------------
 #   Subdirectories
 # -----------------------------------------------------------------------------
-SUBDIRS = dmod_manifest 
+SUBDIRS = dmod_manifest dmod_dependencies
 SYSTEM_SUBDIRS = 
 MODULE_SUBDIRS = 
 
