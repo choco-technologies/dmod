@@ -125,19 +125,8 @@ function( create_executable_makefile targetName )
         set(DMOD_MODULE OFF)
     endif()
     file(RELATIVE_PATH DMOD_PROJECT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" "${DMOD_DIR}")
-    string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" DMOD_PROJECT_DIR "${DMOD_PROJECT_DIR}")
     
     set(DMOD_EXE_NAME ${targetName})
-    # Use DMOD_BUILD_DIR variable instead of relative path
-    set(DMOD_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
-    string(REPLACE "${DMOD_BUILD_DIR}" "$(DMOD_BUILD_DIR)" DMOD_OUTPUT_DIR "${DMOD_OUTPUT_DIR}")
-    string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" DMOD_OUTPUT_DIR "${DMOD_OUTPUT_DIR}")
-    
-    set(DMOD_EXE_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR})
-    string(REPLACE "${DMOD_DIR}" "$(DMOD_DIR)" DMOD_EXE_SRC_PATH "${DMOD_EXE_SRC_PATH}")
-    
-    set(DMOD_LIBS_DIR ${CMAKE_BINARY_DIR}/libs)
-    string(REPLACE "${DMOD_BUILD_DIR}" "$(DMOD_BUILD_DIR)" DMOD_LIBS_DIR "${DMOD_LIBS_DIR}")
     
     get_target_property(DMOD_SOURCES ${targetName} SOURCES)
     get_target_property(DMOD_INC_DIRS ${targetName} INCLUDE_DIRECTORIES)
