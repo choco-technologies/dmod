@@ -4,10 +4,19 @@
   "description": "Syntax highlighting for DMOD Manifest (.dmm) files",
   "version": "1.1.0",
   "publisher": "ChocoTechnologiesDMOD",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/choco-technologies/dmod"
   },
+  "keywords": [
+    "dmod",
+    "dmm",
+    "manifest",
+    "syntax",
+    "highlighting",
+    "dynamic modules"
+  ],
   "engines": {
     "vscode": "^1.60.0"
   },
