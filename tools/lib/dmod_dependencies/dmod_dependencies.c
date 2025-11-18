@@ -78,9 +78,11 @@ static bool AddEntry(Dmod_DependenciesContext_t* ctx, const char* name,
         node->entry.version[DMOD_DEPENDENCIES_MAX_VERSION_LEN - 1] = '\0';
     }
     
-    // Copy manifest
-    strncpy(node->entry.manifest, manifest, DMOD_DEPENDENCIES_MAX_URL_LEN - 1);
-    node->entry.manifest[DMOD_DEPENDENCIES_MAX_URL_LEN - 1] = '\0';
+    // Copy manifest if provided
+    if (manifest) {
+        strncpy(node->entry.manifest, manifest, DMOD_DEPENDENCIES_MAX_URL_LEN - 1);
+        node->entry.manifest[DMOD_DEPENDENCIES_MAX_URL_LEN - 1] = '\0';
+    }
     
     // Add to list
     if (ctx->tail) {
