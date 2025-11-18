@@ -13,7 +13,10 @@ driver@2.3.1 https://registry.chocotechnologies.com/modules/<tools_name>/driver.
 # Module using arch_name placeholder
 app@1.5 https://registry.com/<arch_name>/app.dmfc
 
-# Module using version placeholder (version specified at download time)
+# Declare available versions for a module
+$version-available dmffs 1.0.0 1.1.0 1.2.0
+
+# Module using version placeholder - will be expanded for each available version
 dmffs https://github.com/choco-technologies/dmffs/releases/download/v<version>/dmffs-v<version>-<arch_name>.zip
 
 # Multiple placeholders in one URL

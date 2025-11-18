@@ -10,6 +10,9 @@
       "include": "#dmod-version-directive"
     },
     {
+      "include": "#version-available-directive"
+    },
+    {
       "include": "#include-directive"
     },
     {
@@ -36,6 +39,31 @@
             },
             "2": {
               "name": "constant.numeric.version.dmm"
+            }
+          }
+        }
+      ]
+    },
+    "version-available-directive": {
+      "patterns": [
+        {
+          "name": "meta.version-available.dmm",
+          "match": "^\\s*(\\$version-available)\\s+([a-zA-Z0-9_.-]+)\\s+(.+)$",
+          "captures": {
+            "1": {
+              "name": "keyword.control.version-available.dmm"
+            },
+            "2": {
+              "name": "entity.name.function.module.dmm"
+            },
+            "3": {
+              "name": "meta.version-list.dmm",
+              "patterns": [
+                {
+                  "name": "constant.numeric.version.dmm",
+                  "match": "[0-9a-zA-Z._-]+"
+                }
+              ]
             }
           }
         }

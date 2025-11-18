@@ -311,6 +311,157 @@ TEST_F(DmodManifestTest, FindEntryVersionNotExactMatch) {
 }
 
 // ===============================================================
+//                  Version Available Tests
+// ===============================================================
+
+TEST_F(DmodManifestTest, ParseVersionAvailableDirective) {
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* manifest = 
+        "$version-available mymodule 1.0 1.1 1.2\n"
+        "mymodule https://example.com/mymodule-<version>.dmf\n";
+    
+    ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
+    
+    // Should have 3 entries (one for each version)
+    EXPECT_EQ(Dmod_Manifest_GetEntryCount(ctx), 3);
+    
+    // Verify all three versions are present
+    bool found_1_0 = false, found_1_1 = false, found_1_2 = false;
+    
+    for (size_t i = 0; i < Dmod_Manifest_GetEntryCount(ctx); i++) {
+        Dmod_ManifestEntry_t entry;
+        ASSERT_TRUE(Dmod_Manifest_GetEntry(ctx, i, &entry));
+        EXPECT_STREQ(entry.name, "mymodule");
+        
+        if (strcmp(entry.version, "1.2") == 0) {
+            found_1_2 = true;
+            EXPECT_STREQ(entry.url, "https://example.com/mymodule-1.2.dmf");
+        } else if (strcmp(entry.version, "1.1") == 0) {
+            found_1_1 = true;
+            EXPECT_STREQ(entry.url, "https://example.com/mymodule-1.1.dmf");
+        } else if (strcmp(entry.version, "1.0") == 0) {
+            found_1_0 = true;
+            EXPECT_STREQ(entry.url, "https://example.com/mymodule-1.0.dmf");
+        }
+    }
+    
+    EXPECT_TRUE(found_1_0);
+    EXPECT_TRUE(found_1_1);
+    EXPECT_TRUE(found_1_2);
+    
+    Dmod_Manifest_Free(ctx);
+}
+
+TEST_F(DmodManifestTest, VersionAvailableWithExplicitVersion) {
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* manifest = 
+        "$version-available mymodule 1.0 1.1\n"
+        "mymodule@2.0 https://example.com/mymodule-<version>.dmf\n";
+    
+    ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
+    
+    // Should have only 1 entry (explicit version is not expanded)
+    EXPECT_EQ(Dmod_Manifest_GetEntryCount(ctx), 1);
+    
+    Dmod_ManifestEntry_t entry;
+    ASSERT_TRUE(Dmod_Manifest_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.name, "mymodule");
+    EXPECT_STREQ(entry.version, "2.0");
+    EXPECT_STREQ(entry.url, "https://example.com/mymodule-2.0.dmf");
+    
+    Dmod_Manifest_Free(ctx);
+}
+
+TEST_F(DmodManifestTest, VersionAvailableWithoutVersionPlaceholder) {
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* manifest = 
+        "$version-available mymodule 1.0 1.1\n"
+        "mymodule https://example.com/mymodule.dmf\n";
+    
+    ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
+    
+    // Should have only 1 entry (URL has no <version> placeholder)
+    EXPECT_EQ(Dmod_Manifest_GetEntryCount(ctx), 1);
+    
+    Dmod_ManifestEntry_t entry;
+    ASSERT_TRUE(Dmod_Manifest_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.name, "mymodule");
+    EXPECT_STREQ(entry.version, "");
+    EXPECT_STREQ(entry.url, "https://example.com/mymodule.dmf");
+    
+    Dmod_Manifest_Free(ctx);
+}
+
+TEST_F(DmodManifestTest, VersionAvailableMultipleModules) {
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* manifest = 
+        "$version-available module1 1.0 1.1\n"
+        "$version-available module2 2.0 2.1 2.2\n"
+        "module1 https://example.com/module1-<version>.dmf\n"
+        "module2 https://example.com/module2-<version>.dmf\n";
+    
+    ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
+    
+    // Should have 5 entries (2 for module1, 3 for module2)
+    EXPECT_EQ(Dmod_Manifest_GetEntryCount(ctx), 5);
+    
+    Dmod_Manifest_Free(ctx);
+}
+
+TEST_F(DmodManifestTest, VersionAvailableNoVersions) {
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* manifest = "$version-available mymodule\n";
+    
+    ASSERT_FALSE(Dmod_Manifest_Parse(ctx, manifest));
+    EXPECT_NE(Dmod_Manifest_GetError(ctx), nullptr);
+    
+    Dmod_Manifest_Free(ctx);
+}
+
+TEST_F(DmodManifestTest, VersionAvailableNoModuleName) {
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* manifest = "$version-available\n";
+    
+    ASSERT_FALSE(Dmod_Manifest_Parse(ctx, manifest));
+    EXPECT_NE(Dmod_Manifest_GetError(ctx), nullptr);
+    
+    Dmod_Manifest_Free(ctx);
+}
+
+TEST_F(DmodManifestTest, FindEntryWithVersionAvailable) {
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* manifest = 
+        "$version-available mymodule 1.0 1.1 2.0\n"
+        "mymodule https://example.com/mymodule-<version>.dmf\n";
+    
+    ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
+    
+    // Find specific version
+    Dmod_ManifestEntry_t entry;
+    Dmod_ManifestNode_t* node = Dmod_Manifest_FindEntry(ctx, "mymodule", "1.1", nullptr, &entry);
+    ASSERT_NE(node, nullptr);
+    EXPECT_STREQ(entry.name, "mymodule");
+    EXPECT_STREQ(entry.version, "1.1");
+    EXPECT_STREQ(entry.url, "https://example.com/mymodule-1.1.dmf");
+    
+    Dmod_Manifest_Free(ctx);
+}
+
+// ===============================================================
 //                  Error Handling Tests
 // ===============================================================
 

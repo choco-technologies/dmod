@@ -8,6 +8,7 @@ This extension provides syntax highlighting for DMOD manifest files, including:
 
 - **Comments**: Lines starting with `#`
 - **DMOD version directive**: `$dmod-version` for specifying required DMOD version
+- **Version available directive**: `$version-available` for declaring available module versions
 - **Module entries**: `module@version url` syntax
 - **Include directives**: `$include url` for manifest inclusion
 - **Variable placeholders**: `<tools_name>`, `<arch_name>`, `<version>`
@@ -26,7 +27,10 @@ $dmod-version 1.0
 # Module with version
 mymodule@1.0 https://registry.example.com/modules/mymodule.dmf
 
-# Module without version (version provided at download time)
+# Declare available versions for automatic expansion
+$version-available dmffs 1.0.0 1.1.0 1.2.0
+
+# Module without version (will be expanded using available versions)
 dmffs https://github.com/example/releases/download/v<version>/dmffs-<arch_name>.zip
 
 # Include another manifest
@@ -48,6 +52,22 @@ $dmod-version 1.0
 ```
 
 Entries after this directive require DMOD version 1.x (major version compatibility). Entries with incompatible major versions are automatically filtered during package installation.
+
+### Version Available Directive
+
+The `$version-available` directive declares which versions are available for a module. When a module entry without an explicit version uses the `<version>` placeholder, it is automatically expanded into multiple entries:
+
+```dmm
+$version-available dmffs 1.0.0 1.1.0 1.2.0
+dmffs https://github.com/example/releases/download/v<version>/dmffs-<version>.zip
+```
+
+This automatically expands to:
+- `dmffs@1.0.0` with URL `https://github.com/example/releases/download/v1.0.0/dmffs-1.0.0.zip`
+- `dmffs@1.1.0` with URL `https://github.com/example/releases/download/v1.1.0/dmffs-1.1.0.zip`
+- `dmffs@1.2.0` with URL `https://github.com/example/releases/download/v1.2.0/dmffs-1.2.0.zip`
+
+Each module can have its own list of available versions. Module entries with explicit versions (e.g., `mymodule@2.0`) are not expanded.
 
 ### Variable Placeholders
 
