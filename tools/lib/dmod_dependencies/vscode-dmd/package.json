@@ -2,7 +2,7 @@
   "name": "dmod-dependencies",
   "displayName": "DMOD Dependencies Language Support",
   "description": "Syntax highlighting for DMOD Dependencies (.dmd) files",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "ChocoTechnologiesDMOD",
   "repository": {
     "type": "git",

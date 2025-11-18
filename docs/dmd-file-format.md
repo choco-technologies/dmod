@@ -25,7 +25,7 @@ Lines starting with `#` are treated as comments and ignored:
 
 ### Module Entries
 
-Modules are specified by name, optionally followed by a version:
+Modules are specified by name, optionally followed by a version or version constraint:
 
 ```dmd
 # Module without version (downloads latest available)
@@ -34,7 +34,32 @@ dmffs
 # Module with specific version
 driver@1.0
 spi@2.5.1
+
+# Module with version range - all versions >= 1.0
+dmffs@>=1.0
+
+# Module with version range - versions <= 2.0
+uart@<=2.0
+
+# Module with version range - versions between 1.0 and 2.0 (inclusive)
+spi@>=1.0<=2.0
+
+# Version constraints with other operators
+i2c@>1.0      # Greater than 1.0 (exclusive)
+can@<2.0      # Less than 2.0 (exclusive)
 ```
+
+#### Version Constraint Syntax
+
+Version constraints support the following operators:
+- `@1.0` - Exact version match
+- `@>=1.0` - Greater than or equal to version 1.0
+- `@<=2.0` - Less than or equal to version 2.0
+- `@>1.0` - Greater than version 1.0 (exclusive)
+- `@<2.0` - Less than version 2.0 (exclusive)
+- `@>=1.0<=2.0` - Combined constraint: version between 1.0 and 2.0 (inclusive)
+
+Versions follow semantic versioning (major.minor.patch) where omitted parts default to 0.
 
 ### From Directive
 
@@ -104,17 +129,17 @@ $include https://registry.example.com/common-modules.dmd
 # Change to hardware-specific registry
 $from https://hw-vendor.com/manifest.dmm
 
-# Hardware drivers
-spi@1.0
-i2c@2.0
-uart@1.5
+# Hardware drivers with version ranges
+spi@>=1.0<=2.0       # SPI driver, any version between 1.0 and 2.0
+i2c@>=2.0            # I2C driver, version 2.0 or newer
+uart@1.5             # UART driver, exact version 1.5
 
 # Change to third-party registry
 $from https://third-party.org/dmod/manifest.dmm
 
-# Third-party libraries
-json_parser@3.2
-crypto_lib@1.8
+# Third-party libraries with version constraints
+json_parser@>=3.0    # JSON parser, version 3.0 or newer
+crypto_lib@<=2.0     # Crypto library, version 2.0 or older
 ```
 
 ## Usage with dmf-get
@@ -294,7 +319,7 @@ See `tools/lib/dmod_dependencies/vscode-dmd/` for installation instructions.
 ## Related Documentation
 
 - [dmf-get Tool](dmf-get-tool.md) - Package manager using .dmd files
-- [DMM File Format](manifest-format.md) - Manifest file format
+- [DMM File Format](dmm-file-format.md) - Manifest file format with version directives
 - [DMOD Architecture](../README.md) - Overview of DMOD system
 
 ## Compatibility

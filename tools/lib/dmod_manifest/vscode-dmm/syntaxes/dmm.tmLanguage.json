@@ -7,6 +7,9 @@
       "include": "#comments"
     },
     {
+      "include": "#dmod-version-directive"
+    },
+    {
       "include": "#include-directive"
     },
     {
@@ -19,6 +22,22 @@
         {
           "name": "comment.line.number-sign.dmm",
           "match": "#.*$"
+        }
+      ]
+    },
+    "dmod-version-directive": {
+      "patterns": [
+        {
+          "name": "meta.dmod-version.dmm",
+          "match": "^\\s*(\\$dmod-version)\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?)\\s*$",
+          "captures": {
+            "1": {
+              "name": "keyword.control.dmod-version.dmm"
+            },
+            "2": {
+              "name": "constant.numeric.version.dmm"
+            }
+          }
         }
       ]
     },

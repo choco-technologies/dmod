@@ -11,6 +11,11 @@ spi@1.0
 i2c@2.5
 uart@1.2.3
 
+# Module entries with version ranges
+dmffs_extended@>=1.0        # Version 1.0 or newer
+old_driver@<=2.0            # Version 2.0 or older
+can_driver@>=1.0<=2.0       # Version between 1.0 and 2.0
+
 # Include another dependencies file
 $include https://raw.githubusercontent.com/example/deps.dmd
 

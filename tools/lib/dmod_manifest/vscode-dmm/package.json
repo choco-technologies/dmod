@@ -2,7 +2,7 @@
   "name": "dmod-manifest",
   "displayName": "DMOD Manifest Language Support",
   "description": "Syntax highlighting for DMOD Manifest (.dmm) files",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "ChocoTechnologiesDMOD",
   "repository": {
     "type": "git",

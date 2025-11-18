@@ -7,6 +7,7 @@ Syntax highlighting for DMOD Manifest (`.dmm`) files in Visual Studio Code.
 This extension provides syntax highlighting for DMOD manifest files, including:
 
 - **Comments**: Lines starting with `#`
+- **DMOD version directive**: `$dmod-version` for specifying required DMOD version
 - **Module entries**: `module@version url` syntax
 - **Include directives**: `$include url` for manifest inclusion
 - **Variable placeholders**: `<tools_name>`, `<arch_name>`, `<version>`
@@ -19,6 +20,9 @@ DMOD manifest files (`.dmm`) define package modules with the following syntax:
 ```dmm
 # This is a comment
 
+# Set DMOD version requirement
+$dmod-version 1.0
+
 # Module with version
 mymodule@1.0 https://registry.example.com/modules/mymodule.dmf
 
@@ -28,9 +32,22 @@ dmffs https://github.com/example/releases/download/v<version>/dmffs-<arch_name>.
 # Include another manifest
 $include https://registry.example.com/additional-manifest.dmm
 
+# Change DMOD version requirement
+$dmod-version 2.0
+
 # Local file reference
 localmodule@2.0 /data/modules/localmodule.dmfc
 ```
+
+### DMOD Version Directive
+
+The `$dmod-version` directive specifies the required DMOD version for subsequent manifest entries:
+
+```dmm
+$dmod-version 1.0
+```
+
+Entries after this directive require DMOD version 1.x (major version compatibility). Entries with incompatible major versions are automatically filtered during package installation.
 
 ### Variable Placeholders
 

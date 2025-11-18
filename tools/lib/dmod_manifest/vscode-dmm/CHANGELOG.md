@@ -2,6 +2,14 @@
 
 All notable changes to the "DMOD Manifest Language Support" extension will be documented in this file.
 
+## [1.1.0] - 2024-11-17
+
+### Added
+- Support for `$dmod-version` directive to specify required DMOD version
+- Syntax highlighting for DMOD version specifications
+- Updated documentation with `$dmod-version` examples and usage
+- Documentation of major version compatibility checking
+
 ## [1.0.0] - 2025-11-16
 
 ### Added
