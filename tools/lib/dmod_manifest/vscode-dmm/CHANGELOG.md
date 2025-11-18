@@ -2,6 +2,15 @@
 
 All notable changes to the "DMOD Manifest Language Support" extension will be documented in this file.
 
+## [1.2.0] - 2024-11-18
+
+### Added
+- Support for `$version-available` directive for declaring available module versions
+- Syntax highlighting for version-available directive with module name and version list
+- Extension icon (blue circular badge with document and "dmm" text)
+- Updated example file demonstrating `$version-available` usage
+- Documentation of automatic version expansion feature
+
 ## [1.1.0] - 2024-11-17
 
 ### Added
