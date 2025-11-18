@@ -14,6 +14,8 @@ jobs:
   publish:
     name: Publish DMOD Manifest Extension
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
