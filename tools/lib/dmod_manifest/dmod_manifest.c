@@ -18,6 +18,23 @@ typedef struct Dmod_ManifestNode {
 } Dmod_ManifestNode_t;
 
 /**
+ * @brief Available version list node
+ */
+typedef struct Dmod_AvailableVersionNode {
+    char version[DMOD_MANIFEST_MAX_VERSION_LEN];
+    struct Dmod_AvailableVersionNode* next;
+} Dmod_AvailableVersionNode_t;
+
+/**
+ * @brief Available versions for a specific module
+ */
+typedef struct Dmod_ModuleVersionsNode {
+    char module_name[DMOD_MANIFEST_MAX_NAME_LEN];
+    Dmod_AvailableVersionNode_t* versions;
+    struct Dmod_ModuleVersionsNode* next;
+} Dmod_ModuleVersionsNode_t;
+
+/**
  * @brief Manifest context structure
  */
 struct Dmod_ManifestContext {
@@ -30,6 +47,7 @@ struct Dmod_ManifestContext {
     char error[256];                     /**< Last error message */
     Dmod_SemanticVersion_t current_dmod_version; /**< Current DMOD version for entries */
     bool has_dmod_version;               /**< Whether current_dmod_version is set */
+    Dmod_ModuleVersionsNode_t* module_versions; /**< List of available versions per module */
 };
 
 /**
@@ -151,6 +169,47 @@ static char* TrimWhitespace(char* str) {
 }
 
 /**
+ * @brief Get or create available versions list for a module
+ */
+static Dmod_ModuleVersionsNode_t* GetOrCreateModuleVersions(Dmod_ManifestContext_t* ctx, const char* module_name) {
+    if (!ctx || !module_name) return NULL;
+    
+    // Check if versions already exist for this module
+    for (Dmod_ModuleVersionsNode_t* node = ctx->module_versions; node; node = node->next) {
+        if (strcmp(node->module_name, module_name) == 0) {
+            return node;
+        }
+    }
+    
+    // Create new module versions node
+    Dmod_ModuleVersionsNode_t* new_node = Dmod_Malloc(sizeof(Dmod_ModuleVersionsNode_t));
+    if (!new_node) return NULL;
+    
+    strncpy(new_node->module_name, module_name, sizeof(new_node->module_name) - 1);
+    new_node->module_name[sizeof(new_node->module_name) - 1] = '\0';
+    new_node->versions = NULL;
+    new_node->next = ctx->module_versions;
+    ctx->module_versions = new_node;
+    
+    return new_node;
+}
+
+/**
+ * @brief Get available versions for a module
+ */
+static Dmod_AvailableVersionNode_t* GetAvailableVersions(Dmod_ManifestContext_t* ctx, const char* module_name) {
+    if (!ctx || !module_name) return NULL;
+    
+    for (Dmod_ModuleVersionsNode_t* node = ctx->module_versions; node; node = node->next) {
+        if (strcmp(node->module_name, module_name) == 0) {
+            return node->versions;
+        }
+    }
+    
+    return NULL;
+}
+
+/**
  * @brief Parse a single manifest line
  * 
  * @param ctx Manifest context
@@ -211,6 +270,80 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
         return true;
     }
     
+    // Check for $version-available directive
+    if (strncmp(line, "$version-available", 18) == 0) {
+        char* rest = line + 18;
+        rest = TrimWhitespace(rest);
+        
+        if (rest[0] == '\0') {
+            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "$version-available directive requires module name and versions");
+            return false;
+        }
+        
+        // Extract module name
+        char module_name[DMOD_MANIFEST_MAX_NAME_LEN];
+        char* space = strchr(rest, ' ');
+        if (!space) {
+            space = strchr(rest, '\t');
+        }
+        
+        if (!space) {
+            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "$version-available directive requires versions after module name");
+            return false;
+        }
+        
+        size_t name_len = space - rest;
+        if (name_len >= DMOD_MANIFEST_MAX_NAME_LEN) {
+            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Module name too long in $version-available");
+            return false;
+        }
+        
+        strncpy(module_name, rest, name_len);
+        module_name[name_len] = '\0';
+        
+        // Get or create module versions node
+        Dmod_ModuleVersionsNode_t* mod_versions = GetOrCreateModuleVersions(ctx, module_name);
+        if (!mod_versions) {
+            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
+            return false;
+        }
+        
+        // Clear existing versions for this module
+        Dmod_AvailableVersionNode_t* ver_node = mod_versions->versions;
+        while (ver_node) {
+            Dmod_AvailableVersionNode_t* next = ver_node->next;
+            Dmod_Free(ver_node);
+            ver_node = next;
+        }
+        mod_versions->versions = NULL;
+        
+        // Parse versions (space-separated list)
+        char* versions_str = TrimWhitespace(space + 1);
+        char* token = strtok(versions_str, " \t");
+        
+        while (token) {
+            token = TrimWhitespace(token);
+            if (token[0] != '\0') {
+                // Create new version node
+                Dmod_AvailableVersionNode_t* new_ver = Dmod_Malloc(sizeof(Dmod_AvailableVersionNode_t));
+                if (!new_ver) {
+                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
+                    return false;
+                }
+                
+                strncpy(new_ver->version, token, sizeof(new_ver->version) - 1);
+                new_ver->version[sizeof(new_ver->version) - 1] = '\0';
+                new_ver->next = mod_versions->versions;
+                mod_versions->versions = new_ver;
+                
+                DMOD_LOG_VERBOSE("Added available version %s for module %s\n", token, module_name);
+            }
+            token = strtok(NULL, " \t");
+        }
+        
+        return true;
+    }
+    
     // Parse module entry: name[@version] url
     char name[DMOD_MANIFEST_MAX_NAME_LEN];
     char version[DMOD_MANIFEST_MAX_VERSION_LEN] = {0};
@@ -256,7 +389,56 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
     strncpy(url_raw, url_start, sizeof(url_raw) - 1);
     url_raw[sizeof(url_raw) - 1] = '\0';
     
-    // Create new entry
+    // Check if we need to expand this entry using available versions
+    bool has_explicit_version = (version[0] != '\0');
+    bool url_has_version_placeholder = (strstr(url_raw, "<version>") != NULL);
+    
+    if (!has_explicit_version && url_has_version_placeholder) {
+        // Try to get available versions for this module
+        Dmod_AvailableVersionNode_t* available = GetAvailableVersions(ctx, name);
+        
+        if (available) {
+            // Expand entry for each available version
+            for (Dmod_AvailableVersionNode_t* ver = available; ver; ver = ver->next) {
+                Dmod_ManifestNode_t* node = Dmod_Malloc(sizeof(Dmod_ManifestNode_t));
+                if (!node) {
+                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
+                    return false;
+                }
+                
+                // Fill entry data with version
+                strncpy(node->entry.name, name, sizeof(node->entry.name) - 1);
+                node->entry.name[sizeof(node->entry.name) - 1] = '\0';
+                
+                strncpy(node->entry.version, ver->version, sizeof(node->entry.version) - 1);
+                node->entry.version[sizeof(node->entry.version) - 1] = '\0';
+                
+                if (!SubstituteVariables(ctx, url_raw, node->entry.url, sizeof(node->entry.url), ver->version)) {
+                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "URL too long after substitution: %s", url_raw);
+                    Dmod_Free(node);
+                    return false;
+                }
+                
+                // Store DMOD version requirement if set
+                if (ctx->has_dmod_version) {
+                    node->entry.dmod_version = ctx->current_dmod_version;
+                    node->entry.has_dmod_version = true;
+                } else {
+                    node->entry.has_dmod_version = false;
+                }
+                
+                // Add to linked list
+                node->next = ctx->entries;
+                ctx->entries = node;
+                ctx->entry_count++;
+                
+                DMOD_LOG_VERBOSE("Expanded entry: %s@%s -> %s\n", name, ver->version, node->entry.url);
+            }
+            return true;
+        }
+    }
+    
+    // Create single entry (normal case or no available versions defined)
     Dmod_ManifestNode_t* node = Dmod_Malloc(sizeof(Dmod_ManifestNode_t));
     if (!node) {
         Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
@@ -345,6 +527,23 @@ void Dmod_Manifest_Free(Dmod_ManifestContext_t* ctx) {
         Dmod_ManifestNode_t* next = node->next;
         Dmod_Free(node);
         node = next;
+    }
+    
+    // Free module versions
+    Dmod_ModuleVersionsNode_t* mod_node = ctx->module_versions;
+    while (mod_node) {
+        Dmod_ModuleVersionsNode_t* mod_next = mod_node->next;
+        
+        // Free version list for this module
+        Dmod_AvailableVersionNode_t* ver_node = mod_node->versions;
+        while (ver_node) {
+            Dmod_AvailableVersionNode_t* ver_next = ver_node->next;
+            Dmod_Free(ver_node);
+            ver_node = ver_next;
+        }
+        
+        Dmod_Free(mod_node);
+        mod_node = mod_next;
     }
     
     // Free strings

@@ -100,6 +100,52 @@ You can combine multiple variables in a single URL:
 mymodule https://cdn.example.com/<tools_name>/<version>/mymodule-<arch_name>.dmf
 ```
 
+### Version Available Directive
+
+The `$version-available` directive specifies which versions are available for a module. When a module entry uses the `<version>` placeholder without an explicit version, it will be automatically expanded into multiple entries using the available versions:
+
+```dmm
+# Declare available versions for a module
+$version-available dmffs 1.0.0 1.1.0 1.2.0 2.0.0
+
+# This entry will be expanded into 4 entries (one for each version)
+dmffs https://github.com/example/dmffs/releases/download/v<version>/dmffs-v<version>-<arch_name>.zip
+```
+
+The above is equivalent to manually writing:
+
+```dmm
+dmffs@1.0.0 https://github.com/example/dmffs/releases/download/v1.0.0/dmffs-v1.0.0-<arch_name>.zip
+dmffs@1.1.0 https://github.com/example/dmffs/releases/download/v1.1.0/dmffs-v1.1.0-<arch_name>.zip
+dmffs@1.2.0 https://github.com/example/dmffs/releases/download/v1.2.0/dmffs-v1.2.0-<arch_name>.zip
+dmffs@2.0.0 https://github.com/example/dmffs/releases/download/v2.0.0/dmffs-v2.0.0-<arch_name>.zip
+```
+
+#### Version Available Rules
+
+- Each `$version-available` directive must specify a module name followed by one or more version strings
+- The directive only affects module entries **without an explicit version** (e.g., `mymodule` not `mymodule@1.0`)
+- The module entry URL must contain the `<version>` placeholder to be expanded
+- Multiple modules can have different available versions by using separate `$version-available` directives
+- If a new `$version-available` directive is declared for the same module, it replaces the previous list
+
+#### Example with Multiple Modules
+
+```dmm
+# Define available versions for different modules
+$version-available kernel 1.0 1.1 1.2
+$version-available driver 2.0 2.1
+
+# These entries will be expanded
+kernel https://registry.com/kernel-<version>-<arch_name>.dmf
+driver https://registry.com/driver-<version>-<arch_name>.dmf
+
+# This entry has explicit version, so it won't be expanded
+driver@3.0 https://registry.com/driver-3.0-special-<arch_name>.dmf
+```
+
+This creates 3 kernel entries (1.0, 1.1, 1.2), 2 driver entries (2.0, 2.1), plus 1 explicit driver@3.0 entry.
+
 ### Include Directive
 
 The `$include` directive allows you to include another `.dmm` file:
@@ -123,11 +169,15 @@ Included files are processed recursively and can contain any valid `.dmm` syntax
 # Set DMOD version requirement
 $dmod-version 1.0
 
-# Core system modules
+# Core system modules with specific versions
 kernel@1.0 https://registry.example.com/modules/kernel.dmf
 driver@2.3.1 https://registry.example.com/modules/<tools_name>/driver.dmf
 
-# Modules with version placeholders
+# Define available versions for modules
+$version-available dmffs 1.0.0 1.1.0 1.2.0
+$version-available mymodule 2.0 2.1 2.2
+
+# Modules with version placeholders - will be expanded using $version-available
 dmffs https://github.com/example/dmffs/releases/download/v<version>/dmffs-v<version>-<arch_name>.zip
 mymodule https://cdn.example.com/<tools_name>/<version>/mymodule-<arch_name>.dmf
 
@@ -137,7 +187,7 @@ localmodule@0.1 /data/modules/dmf/localmodule.dmfc
 # Include another manifest
 $include https://registry-dmf.com/<arch_name>/manifest.dmm
 
-# Module without version
+# Module without version (no expansion since no <version> in URL)
 testmodule https://example.com/test.dmf
 
 # Change DMOD version requirement for newer modules
@@ -191,10 +241,13 @@ tcp_stack@3.0 https://comms.com/tcp.dmf
 mqtt_client@2.1 https://comms.com/mqtt.dmf
 ```
 
-### 3. Use Version Placeholders for Dynamic URLs
+### 3. Use Version Placeholders with Version Available
 
 ```dmm
-# Supports any version via <version> placeholder
+# Define available versions
+$version-available dmffs 1.0.0 1.1.0 1.2.0
+
+# Entry is automatically expanded for all available versions
 dmffs https://github.com/example/dmffs/releases/download/v<version>/dmffs-<version>-<arch_name>.zip
 ```
 
