@@ -123,6 +123,14 @@ DMOD_BUILTIN_API(Dmod, 1.0, int         , _Access,      ( const char* Path, int 
 #   define DMOD_X_OK   1  /* Test for execute permission */
 #   define DMOD_F_OK   0  /* Test for existence */
 #endif
+
+#ifndef DMOD_EOF
+#   define DMOD_EOF    (-1)
+#endif
+#ifndef EOF
+#   define EOF        DMOD_EOF
+#endif
+
 //! @}
 
 /**
