@@ -10,11 +10,6 @@
  * This test loads modules implementing DIF and tries to call their functions
  * directly without going through the VFS abstraction.
  */
-
-// Declare the auto-generated signature from difs module
-// The _sig version is the one exported and accessible
-extern const char* const dmod_difs_fopen_sig;
-
 int main( int argc, char *argv[] )
 {
     // Initialize Dmod system
