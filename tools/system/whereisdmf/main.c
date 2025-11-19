@@ -87,8 +87,8 @@ int main( int argc, char *argv[] )
         archName = argv[2];
     }
 
-    Dmod_SetLogLevel( Dmod_LogLevel_None );
-    
+    Dmod_SetLogLevel( Dmod_LogLevel_Error );
+
     // Initialize Dmod system
     if (!Dmod_Initialize())
     {
