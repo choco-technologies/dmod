@@ -30,7 +30,10 @@
  * @version 0.1
  */
 
+#define DMOD_PRIVATE
 #include "dmod_sal.h"
+#include "private/dmod_vars.h"
+
 #if DMOD_USE_STDIO
 #   include <stdarg.h>
 #   include <stdio.h>
@@ -39,7 +42,6 @@
 #   include <assert.h>
 #endif
 #if DMOD_IMPLEMENT_PRINTF
-#   define DMOD_PRIVATE
 #   include "private/dmod_prf.h"
 #   include <stdarg.h>
 #endif
@@ -47,6 +49,18 @@
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
 //==============================================================================
+
+/**
+ * @brief Check if the log level is enabled
+ * 
+ * @param LogLevel Log level to check
+ * 
+ * @return True if the log level is enabled, false otherwise
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _CheckLogLevel, ( Dmod_LogLevel_t LogLevel ))
+{
+    return Dmod_LogLevel >= LogLevel;
+}
 
 /**
  * @brief Printf function

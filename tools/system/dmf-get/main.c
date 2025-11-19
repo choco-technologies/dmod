@@ -935,6 +935,8 @@ int main(int argc, char* argv[]) {
     bool skip_arch_check = false;
     bool skip_dmod_ver_check = false;
     
+    Dmod_SetLogLevel(Dmod_LogLevel_Info);
+    
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             PrintUsage(argv[0]);
@@ -1001,6 +1003,9 @@ int main(int argc, char* argv[]) {
         }
         else if (strcmp(argv[i], "--skip-dmod-ver-check") == 0) {
             skip_dmod_ver_check = true;
+        }
+        else if (strcmp(argv[i], "--verbose") == 0) {
+            Dmod_SetLogLevel(Dmod_LogLevel_Verbose);
         }
         else if (argv[i][0] == '-') {
             DMOD_LOG_ERROR("Error: Unknown option: %s\n", argv[i]);

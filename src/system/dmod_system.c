@@ -1064,6 +1064,22 @@ const char* Dmod_GetName( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Set log level
+ * 
+ * @param Level Log level to set
+ */
+void Dmod_SetLogLevel( Dmod_LogLevel_t Level )
+{
+    if( Level >= Dmod_LogLevel_Count )
+    {
+        DMOD_LOG_ERROR("Cannot set log level - invalid level: %d\n", Level);
+        return;
+    }
+    Dmod_LogLevel = Level;
+    DMOD_LOG_INFO("Setting log level to: %d\n", Level);
+}
+
+/**
  * @brief Read module header
  * 
  * @param FilePath Path to the module file

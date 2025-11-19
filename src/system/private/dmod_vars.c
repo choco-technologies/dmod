@@ -15,3 +15,9 @@ Dmod_Api_t Dmod_BuiltinOutputApi = {
 Dmod_Context_t* Dmod_Contexts[DMOD_MAX_MODULES] = {0};
 Dmod_PackageSlot_t Dmod_Packages[DMOD_MAX_NUMBER_OF_PACKAGES] = {0};
 bool Dmod_SystemCrossplatformMode = false;
+Dmod_LogLevel_t Dmod_LogLevel =
+#ifdef _DEBUG
+    Dmod_LogLevel_Info;
+#else
+    Dmod_LogLevel_Warn;
+#endif

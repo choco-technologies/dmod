@@ -31,6 +31,7 @@
         "typeinfo": "c",
         "stdlib.h": "c",
         "dmod_arch_defs.h": "c",
-        "algorithm": "c"
+        "algorithm": "c",
+        "stdarg.h": "c"
     }
 }
