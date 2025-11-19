@@ -95,58 +95,11 @@ Dmod_Context_t* LoadModuleByName( const char* ModuleName )
         return NULL;
     }
     
-    printf("Searching for module '%s' in known directories...\n", ModuleName);
+    printf("Searching for module '%s'...\n", ModuleName);
     
     Dmod_Context_t* context = NULL;
     
-    // 1. Try DMOD_DMF_DIR environment variable
-    const char* dmfDir = getenv("DMOD_DMF_DIR");
-    if( dmfDir != NULL && dmfDir[0] != '\0' )
-    {
-        printf("  Checking DMOD_DMF_DIR: %s\n", dmfDir);
-        context = TryLoadModuleFromDir( dmfDir, ModuleName );
-        if( context != NULL )
-        {
-            return context;
-        }
-    }
-    
-    // 2. Try DMOD_DMFC_DIR environment variable
-    const char* dmfcDir = getenv("DMOD_DMFC_DIR");
-    if( dmfcDir != NULL && dmfcDir[0] != '\0' )
-    {
-        printf("  Checking DMOD_DMFC_DIR: %s\n", dmfcDir);
-        context = TryLoadModuleFromDir( dmfcDir, ModuleName );
-        if( context != NULL )
-        {
-            return context;
-        }
-    }
-    
-    // 3. Try DMOD_REPO_PATHS environment variable (multiple directories)
-    const char* repoPaths = getenv("DMOD_REPO_PATHS");
-    if( repoPaths != NULL && repoPaths[0] != '\0' )
-    {
-        char* repoPathsCopy = strdup( repoPaths );
-        if( repoPathsCopy != NULL )
-        {
-            char* repoDir = strtok( repoPathsCopy, ":" );
-            while( repoDir != NULL )
-            {
-                printf("  Checking DMOD_REPO_PATHS directory: %s\n", repoDir);
-                context = TryLoadModuleFromDir( repoDir, ModuleName );
-                if( context != NULL )
-                {
-                    free( repoPathsCopy );
-                    return context;
-                }
-                repoDir = strtok( NULL, ":" );
-            }
-            free( repoPathsCopy );
-        }
-    }
-    
-    // 4. Try current directory
+    // 1. First try current directory
     printf("  Checking current directory\n");
     context = TryLoadModuleFromDir( ".", ModuleName );
     if( context != NULL )
@@ -154,17 +107,19 @@ Dmod_Context_t* LoadModuleByName( const char* ModuleName )
         return context;
     }
     
-    // 5. Try using Dmod_LoadModuleByName (searches in packages and default repo)
+    // 2. Use Dmod_LoadModuleByName which searches:
+    //    - DMOD_REPO_PATHS (includes DMOD_DMF_DIR and DMOD_DMFC_DIR)
+    //    - Default repository directory
+    //    - Precompiled packages
     if( Dmod_LoadModuleByName( ModuleName ) )
     {
         printf("Module '%s' loaded successfully via Dmod_LoadModuleByName\n", ModuleName);
-        // Get the context - it's been loaded but we need to return it
-        // Since we can't easily get the context, we'll just return a non-NULL marker
+        // Module was loaded but we don't have context directly
         // The caller will handle running/enabling the module by name
         return (Dmod_Context_t*)1; // Marker that module was loaded
     }
     
-    printf("Error: Module '%s' not found in any known directory\n", ModuleName);
+    printf("Error: Module '%s' not found\n", ModuleName);
     return NULL;
 }
 
@@ -198,12 +153,12 @@ void PrintHelp( const char* AppName )
     printf("Module Types:\n");
     printf("  Application    Runs the module's main function\n");
     printf("  Library        Enables the module, then disables it\n\n");
-    printf("Module Search Paths (in order):\n");
-    printf("  1. DMOD_DMF_DIR environment variable\n");
-    printf("  2. DMOD_DMFC_DIR environment variable\n");
-    printf("  3. DMOD_REPO_PATHS environment variable (colon-separated)\n");
-    printf("  4. Current directory\n");
-    printf("  5. Precompiled packages\n\n");
+    printf("Module Search Paths (when loading by name):\n");
+    printf("  1. Current directory\n");
+    printf("  2. DMOD_REPO_PATHS environment variable (multiple paths)\n");
+    printf("  3. Default repository directory\n");
+    printf("  4. Precompiled packages\n\n");
+    printf("Note: DMOD_REPO_PATHS typically includes DMOD_DMF_DIR and DMOD_DMFC_DIR\n\n");
     printf("Examples:\n");
     printf("  %s my-app.dmf                                 # Load by file path\n", AppName);
     printf("  %s my_module                                  # Load by name (searches paths)\n", AppName);
