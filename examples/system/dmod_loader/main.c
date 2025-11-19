@@ -15,32 +15,25 @@ bool IsFilePath( const char* str )
         return false;
     }
     
-    // If it contains path separators, treat it as a file path
-    if( strchr( str, '/' ) != NULL || strchr( str, '\\' ) != NULL )
+    // First, check if file exists - if yes, it's a file path
+    if( Dmod_FileAvailable( str ) )
     {
         return true;
     }
     
-    // If it has a file extension (.dmf, .dmp, .dmfc), treat it as a file path
-    size_t len = strlen( str );
-    if( len > 4 )
+    // If file doesn't exist, check if the name contains only valid module name characters
+    // Module names can only contain: a-z, A-Z, 0-9, and underscore
+    for( const char* p = str; *p != '\0'; p++ )
     {
-        const char* ext = &str[len - 4];
-        if( strcmp( ext, ".dmf" ) == 0 || strcmp( ext, ".dmp" ) == 0 )
+        char c = *p;
+        if( !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') )
         {
-            return true;
-        }
-    }
-    if( len > 5 )
-    {
-        const char* ext = &str[len - 5];
-        if( strcmp( ext, ".dmfc" ) == 0 )
-        {
+            // Contains invalid character for module name, treat as file path
             return true;
         }
     }
     
-    // Otherwise, treat it as a module name
+    // Valid module name - not a file path
     return false;
 }
 
@@ -74,8 +67,8 @@ void PrintHelp( const char* AppName )
     printf("  Application    Runs the module's main function\n");
     printf("  Library        Enables the module, then disables it\n\n");
     printf("Loading Modes:\n");
-    printf("  File Path      If argument contains '/' or has .dmf/.dmp/.dmfc extension\n");
-    printf("  Module Name    Otherwise, searches for module in configured repositories\n\n");
+    printf("  File Path      If file exists or contains invalid module name characters\n");
+    printf("  Module Name    Valid name (a-Z, 0-9, _) that doesn't exist as file\n\n");
     printf("Examples:\n");
     printf("  %s my-app.dmf                                  # Load from file\n", AppName);
     printf("  %s difs                                        # Load module by name\n", AppName);

@@ -47,6 +47,24 @@ jobs:
         working-directory: build
         run: ./examples/system/dmod_loader/dmod_loader ./dmf/MyApplication.dmf
       
+      - name: Test loader with module name (example_app)
+        working-directory: build
+        run: ./examples/system/dmod_loader/dmod_loader example_app
+      
+      - name: Test loader with module name (MyApplication)
+        working-directory: build
+        run: ./examples/system/dmod_loader/dmod_loader MyApplication
+      
+      - name: Test loader with non-existent module name
+        working-directory: build
+        run: |
+          if ./examples/system/dmod_loader/dmod_loader nonexistent_module 2>&1 | grep -q "Cannot load module by name"; then
+            echo "Correctly failed to load non-existent module"
+          else
+            echo "Expected error message not found"
+            exit 1
+          fi
+      
       - name: Test DIF functionality
         working-directory: build
         run: |
@@ -143,6 +161,18 @@ jobs:
       
       - name: Test loader with example_app.dmf
         run: chmod +x ./build/examples/system/dmod_loader && ./build/examples/system/dmod_loader build/dmf/example_app.dmf
+
+      - name: Test loader with module name (example_app)
+        run: ./build/examples/system/dmod_loader example_app
+
+      - name: Test loader with non-existent module name
+        run: |
+          if ./build/examples/system/dmod_loader nonexistent_module 2>&1 | grep -q "Cannot load module by name"; then
+            echo "Correctly failed to load non-existent module"
+          else
+            echo "Expected error message not found"
+            exit 1
+          fi
 
       - name: Build compressed modules with Make
         run: make DMOD_MODE=DMOD_MODULE
