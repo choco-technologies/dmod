@@ -1801,7 +1801,7 @@ size_t Dmod_ReadModules( Dmod_ModuleInfo_t* outModules, size_t Max )
     // 3. Add available modules from packages
     for( size_t i = 0; i < DMOD_MAX_NUMBER_OF_PACKAGES && count < Max; i++ )
     {
-        if( Dmod_Pck_IsValidSlot( &Dmod_Packages[i] ) )
+        if( Dmod_Pck_IsSlotUsed( &Dmod_Packages[i] ) && Dmod_Pck_IsValidSlot( &Dmod_Packages[i] ) )
         {
             Dmod_PackageSlot_t* slot = &Dmod_Packages[i];
             

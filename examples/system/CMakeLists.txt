@@ -1,2 +1,3 @@
 add_subdirectory(dif_test)
 add_subdirectory(dmod_loader)
+add_subdirectory(list_modules)
