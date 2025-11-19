@@ -17,7 +17,6 @@
 //                              LOCAL FUNCTION PROTOTYPES
 //==============================================================================
 
-static Dmod_SearchNode_t* PrepareModulesSearchNodes( void );
 static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* File, long FilePos );
 static bool IsAllApiConnected( Dmod_Context_t* Context );
 static bool PrepareModulePath( const char* RepoDir, const char* ModuleName, bool Compressed, char* Path, size_t MaxLength );
@@ -443,7 +442,7 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
         return true;
     }
 
-    Dmod_SearchNode_t* searchNode = PrepareModulesSearchNodes();
+    Dmod_SearchNode_t* searchNode = Dmod_Hlp_PrepareModulesSearchNodes();
     Dmod_SearchNode_t* currentNode = searchNode;
     while( currentNode != NULL )
     {
@@ -1006,24 +1005,7 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
 /**
  * @brief Check if module is running
  * 
- * @param Context Context to check
- * 
- * @return true if module is running, false otherwise
- */
-bool Dmod_IsRunning( Dmod_Context_t* Context )
-{
-    return Dmod_Context_IsValid(Context) && Context->Running;
-}
-
-/**
- * @brief Returns license of the module
- * 
- * @param Context Context to get license from
- * 
- * @return Pointer to the license
- */
-Dmod_License_t* Dmod_GetLicense( Dmod_Context_t* Context )
-{
+static Dmod_SearchNode_t* PrepareModulesSearchNodes( void );
     if( !Dmod_Context_IsValid( Context ) )
     {
         DMOD_LOG_ERROR("Cannot get license - invalid context\n");
@@ -1487,20 +1469,6 @@ bool Dmod_IsFunctionConnected( void* FunctionPointer )
 //==============================================================================
 //                              LOCAL FUNCTIONS IMPLEMENTATIONS
 //==============================================================================
-
-/**
- * @brief Prepare search nodes for modules searching paths
- * 
- * @return Pointer to the search nodes
- */
-static Dmod_SearchNode_t* PrepareModulesSearchNodes( void )
-{
-    Dmod_SearchNode_t *searchNode = NULL;
-
-    const char* repoEnv = Dmod_GetEnv( DMOD_REPO_PATHS );
-
-    return searchNode;
-}
 
 /**
  * @brief Read file
