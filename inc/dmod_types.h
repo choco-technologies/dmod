@@ -27,6 +27,20 @@ typedef enum
     Dmod_ModuleType_Count,
 } Dmod_ModuleType_t;
 
+/**
+ * @brief Log levels
+ */
+typedef enum 
+{
+    Dmod_LogLevel_None = 0,     //!< No logging
+    Dmod_LogLevel_Error,        //!< Error log level
+    Dmod_LogLevel_Warn,         //!< Warning log level
+    Dmod_LogLevel_Info,         //!< Info log level
+    Dmod_LogLevel_Verbose,      //!< Verbose log level
+
+    Dmod_LogLevel_Count         //!< Number of log levels
+} Dmod_LogLevel_t;
+
 typedef struct 
 {
     uint32_t       Size;

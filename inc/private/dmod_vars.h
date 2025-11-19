@@ -20,6 +20,7 @@ extern Dmod_Api_t Dmod_BuiltinOutputApi;
 extern Dmod_Context_t* Dmod_Contexts[DMOD_MAX_MODULES];
 extern Dmod_PackageSlot_t Dmod_Packages[DMOD_MAX_NUMBER_OF_PACKAGES];
 extern bool Dmod_SystemCrossplatformMode;
+extern Dmod_LogLevel_t Dmod_LogLevel;
 
 #ifdef __cplusplus
 }
