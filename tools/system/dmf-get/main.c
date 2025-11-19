@@ -31,6 +31,9 @@
 #define ENV_DMFC_DIR "DMOD_DMFC_DIR"
 #define ENV_MANIFEST "DMOD_MANIFEST"
 
+// Maximum number of packages to track
+#define MAX_INSTALLED_PACKAGES 256
+
 /**
  * @brief Structure to hold download data for curl
  */
@@ -38,6 +41,22 @@ typedef struct {
     char* data;
     size_t size;
 } DownloadBuffer_t;
+
+/**
+ * @brief Structure to track an installed package
+ */
+typedef struct {
+    char name[DMOD_MANIFEST_MAX_NAME_LEN];
+    char version[DMOD_MANIFEST_MAX_VERSION_LEN];
+} InstalledPackage_t;
+
+/**
+ * @brief Structure to track all installed packages
+ */
+typedef struct {
+    InstalledPackage_t packages[MAX_INSTALLED_PACKAGES];
+    size_t count;
+} InstalledPackages_t;
 
 /**
  * @brief Curl write callback
@@ -138,13 +157,72 @@ static bool DownloadFile(const char* url, const char* output_path) {
     return true;
 }
 
+/**
+ * @brief Add a package to the installed packages list
+ */
+static void AddInstalledPackage(InstalledPackages_t* installed, const char* name, const char* version) {
+    if (installed->count >= MAX_INSTALLED_PACKAGES) {
+        DMOD_LOG_WARN("Maximum number of tracked packages reached\n");
+        return;
+    }
+    
+    // Check if package is already in the list (avoid duplicates)
+    for (size_t i = 0; i < installed->count; i++) {
+        if (strcmp(installed->packages[i].name, name) == 0 &&
+            strcmp(installed->packages[i].version, version ? version : "") == 0) {
+            return; // Already tracked
+        }
+    }
+    
+    strncpy(installed->packages[installed->count].name, name, DMOD_MANIFEST_MAX_NAME_LEN - 1);
+    installed->packages[installed->count].name[DMOD_MANIFEST_MAX_NAME_LEN - 1] = '\0';
+    
+    if (version && version[0]) {
+        strncpy(installed->packages[installed->count].version, version, DMOD_MANIFEST_MAX_VERSION_LEN - 1);
+        installed->packages[installed->count].version[DMOD_MANIFEST_MAX_VERSION_LEN - 1] = '\0';
+    } else {
+        installed->packages[installed->count].version[0] = '\0';
+    }
+    
+    installed->count++;
+}
+
+/**
+ * @brief Print installation summary using Dmod_Printf (white text)
+ */
+static void PrintInstallationSummary(const InstalledPackages_t* installed, int failed_count) {
+    Dmod_Printf("\n");
+    Dmod_Printf("=== Installation Summary ===\n");
+    
+    if (installed->count > 0) {
+        Dmod_Printf("Successfully installed %zu package%s:\n", 
+                   installed->count, installed->count == 1 ? "" : "s");
+        for (size_t i = 0; i < installed->count; i++) {
+            Dmod_Printf("  - %s", installed->packages[i].name);
+            if (installed->packages[i].version[0]) {
+                Dmod_Printf("@%s", installed->packages[i].version);
+            }
+            Dmod_Printf("\n");
+        }
+    } else {
+        Dmod_Printf("No packages were installed.\n");
+    }
+    
+    if (failed_count > 0) {
+        Dmod_Printf("Failed: %d package%s\n", failed_count, failed_count == 1 ? "" : "s");
+    }
+    
+    Dmod_Printf("\n");
+}
+
 // Forward declarations
 static int DownloadModule(const char* module_name, const char* module_version,
                           Dmod_ManifestContext_t* manifest_ctx, 
                           const char* output_dir, const char* tools_name,
                           const char* arch_name, const char* preferred_type,
                           bool download_dependencies, const char* default_manifest,
-                          bool ignore_missing, bool skip_dmod_ver_check);
+                          bool ignore_missing, bool skip_dmod_ver_check,
+                          InstalledPackages_t* installed);
 
 /**
  * @brief Convert DMOD_VERSION hex to semantic version
@@ -379,13 +457,14 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
  * @param preferred_type Preferred file type
  * @param default_manifest Default manifest URL
  * @param ignore_missing Whether to ignore missing dependencies
+ * @param installed Pointer to installed packages tracker
  * @return 0 on success, non-zero on failure
  */
 static int ProcessModuleDependencies(const char* module_file_path, const char* dmd_file_path,
                                       const char* output_dir, const char* tools_name,
                                       const char* arch_name, const char* preferred_type,
                                       const char* default_manifest, bool ignore_missing,
-                                      bool skip_dmod_ver_check) {
+                                      bool skip_dmod_ver_check, InstalledPackages_t* installed) {
     int failed_count = 0;
     
     // First, try to load dependencies from .dmd file if provided
@@ -462,7 +541,8 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                 true,  // download dependencies recursively
                 default_manifest,
                 ignore_missing,
-                skip_dmod_ver_check
+                skip_dmod_ver_check,
+                installed
             );
             
             Dmod_Manifest_Free(man_ctx);
@@ -562,7 +642,8 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                         true,  // download dependencies recursively
                         default_manifest,
                         ignore_missing,
-                        skip_dmod_ver_check
+                        skip_dmod_ver_check,
+                        installed
                     );
                     
                     Dmod_Manifest_Free(man_ctx);
@@ -698,6 +779,7 @@ static void PrintVersion() {
  * @param download_dependencies Whether to download dependencies
  * @param default_manifest Default manifest URL
  * @param ignore_missing Whether to ignore missing modules (continue on arch mismatch)
+ * @param installed Pointer to installed packages tracker
  * @return 0 on success, non-zero on failure
  */
 static int DownloadModule(const char* module_name, const char* module_version,
@@ -705,7 +787,8 @@ static int DownloadModule(const char* module_name, const char* module_version,
                           const char* output_dir, const char* tools_name,
                           const char* arch_name, const char* preferred_type,
                           bool download_dependencies, const char* default_manifest,
-                          bool ignore_missing, bool skip_dmod_ver_check) {
+                          bool ignore_missing, bool skip_dmod_ver_check,
+                          InstalledPackages_t* installed) {
     // Try to find entries for this module, checking architecture for each
     Dmod_ManifestNode_t* last_node = NULL;
     Dmod_ManifestEntry_t entry;
@@ -881,12 +964,18 @@ static int DownloadModule(const char* module_name, const char* module_version,
                 preferred_type,
                 default_manifest,
                 ignore_missing,
-                skip_dmod_ver_check
+                skip_dmod_ver_check,
+                installed
             );
             
             if (dep_result > 0) {
                 DMOD_LOG_WARN("%d dependencies failed to download\n", dep_result);
             }
+        }
+        
+        // Add to installed packages list (only if not already existed)
+        if (!already_exists && installed) {
+            AddInstalledPackage(installed, entry.name, version_to_use);
         }
         
         return 0;  // Success - found and installed compatible module
@@ -1048,6 +1137,9 @@ int main(int argc, char* argv[]) {
     
     int result = 0;
     
+    // Initialize installed packages tracker
+    InstalledPackages_t installed = {0};
+    
     // Handle dependencies file if provided
     if (dependencies_path) {
         DMOD_LOG_INFO("Loading dependencies from: %s\n", dependencies_path);
@@ -1082,7 +1174,6 @@ int main(int argc, char* argv[]) {
         
         // Download each module
         int failed_count = 0;
-        int success_count = 0;
         
         for (size_t i = 0; i < dep_count; i++) {
             Dmod_DependencyEntry_t dep_entry;
@@ -1136,22 +1227,19 @@ int main(int argc, char* argv[]) {
                 true,  // download dependencies
                 manifest_path,
                 ignore_missing,
-                skip_dmod_ver_check
+                skip_dmod_ver_check,
+                &installed
             );
             
             Dmod_Manifest_Free(man_ctx);
             
             if (download_result != 0) {
                 failed_count++;
-            } else {
-                success_count++;
             }
         }
         
-        DMOD_LOG_INFO("\n=== Download Summary ===\n");
-        DMOD_LOG_INFO("Total modules: %zu\n", dep_count);
-        DMOD_LOG_INFO("Successfully downloaded: %d\n", success_count);
-        DMOD_LOG_INFO("Failed: %d\n", failed_count);
+        // Print installation summary
+        PrintInstallationSummary(&installed, failed_count);
         
         Dmod_Dependencies_Free(dep_ctx);
         
@@ -1220,8 +1308,12 @@ int main(int argc, char* argv[]) {
             !no_dependencies,  // download dependencies unless --no-dependencies is set
             manifest_path,
             ignore_missing,
-            skip_dmod_ver_check
+            skip_dmod_ver_check,
+            &installed
         );
+        
+        // Print installation summary
+        PrintInstallationSummary(&installed, result != 0 ? 1 : 0);
         
         // Cleanup
         Dmod_Manifest_Free(ctx);
