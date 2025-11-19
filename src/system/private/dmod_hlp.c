@@ -1,4 +1,5 @@
 #define DMOD_PRIVATE
+#include <string.h>
 #include "dmod.h"
 #include "private/dmod_hlp.h"
 
@@ -45,6 +46,11 @@ bool Dmod_Hlp_InitPointer( Dmod_Context_t* Context, void** PointerRef, const cha
  */
 Dmod_SearchNode_t* Dmod_Hlp_AddSearchNode( Dmod_SearchNode_t* Tail, const char* Path )
 {
+    if( Path == NULL )
+    {
+        return Tail;
+    }
+    
     Dmod_SearchNode_t* newNode = (Dmod_SearchNode_t*)Dmod_Malloc( sizeof(Dmod_SearchNode_t) );
     if( newNode == NULL )
     {

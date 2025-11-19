@@ -3,5 +3,6 @@ set(TEST_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_dmfc_api.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_getname.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_arch.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_read_modules.cpp
         PARENT_SCOPE
         )
