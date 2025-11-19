@@ -1,6 +1,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+// For strdup on some systems
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "dmod.h"
 
 // -----------------------------------------
