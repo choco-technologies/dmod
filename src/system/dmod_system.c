@@ -1005,7 +1005,25 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
 /**
  * @brief Check if module is running
  * 
-static Dmod_SearchNode_t* PrepareModulesSearchNodes( void );
+ * @param Context Context to check
+ * 
+ * @return true if module is running, false otherwise
+ */
+bool Dmod_IsRunning( Dmod_Context_t* Context )
+{
+    return Dmod_Context_IsValid(Context) && Context->Running;
+}
+
+
+/**
+ * @brief Returns license of the module
+ * 
+ * @param Context Context to get license from
+ * 
+ * @return Pointer to the license
+ */
+Dmod_License_t* Dmod_GetLicense( Dmod_Context_t* Context )
+{
     if( !Dmod_Context_IsValid( Context ) )
     {
         DMOD_LOG_ERROR("Cannot get license - invalid context\n");
