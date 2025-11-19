@@ -126,7 +126,9 @@ DMOD_BUILTIN_API( Dmod, 1.0, size_t     , _GetNumberOfPackages, ( void ) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _GetPackageInfo, ( uint32_t PackageIndex, char* outName, size_t NameMaxLength, size_t* outSize ) );
 DMOD_BUILTIN_API( Dmod, 1.0, uint32_t   , _GetMainIndexFromPackage, ( const char* PackageName ) );
 
-DMOD_BUILTIN_API( Dmod, 1.0, size_t     , _ReadModules, ( Dmod_ModuleInfo_t* outModules, size_t Max ) );
+DMOD_BUILTIN_API( Dmod, 1.0, Dmod_ModulesIterator_t, _OpenModules, ( void ) );
+DMOD_BUILTIN_API( Dmod, 1.0, const Dmod_ModuleInfo_t*, _ReadModule, ( Dmod_ModulesIterator_t Iterator ) );
+DMOD_BUILTIN_API( Dmod, 1.0, void      , _CloseModules, ( Dmod_ModulesIterator_t Iterator ) );
 
 //! @}
 

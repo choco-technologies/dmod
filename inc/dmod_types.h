@@ -27,6 +27,11 @@ typedef enum
     Dmod_ModuleType_Count,
 } Dmod_ModuleType_t;
 
+/**
+ * @brief Module state enumeration
+ * 
+ * Describes the current state of a module in the system.
+ */
 typedef enum 
 {
     Dmod_ModuleState_Available,     //!< Module is available but not loaded
@@ -37,12 +42,24 @@ typedef enum
     Dmod_ModuleState_Count,
 } Dmod_ModuleState_t;
 
+/**
+ * @brief Module information structure
+ * 
+ * Contains information about a module including its name, version, and current state.
+ */
 typedef struct 
 {
-    char                   ModuleName[DMOD_MAX_MODULE_NAME_LENGTH];
-    char                   Version[DMOD_MAX_VERSION_LENGTH];
-    Dmod_ModuleState_t     State;
+    char                   ModuleName[DMOD_MAX_MODULE_NAME_LENGTH];  //!< Name of the module
+    char                   Version[DMOD_MAX_VERSION_LENGTH];         //!< Version string of the module
+    Dmod_ModuleState_t     State;                                    //!< Current state of the module
 } Dmod_ModuleInfo_t;
+
+/**
+ * @brief Modules iterator handle
+ * 
+ * @note Opaque handle for iterating through modules. Use Dmod_OpenModules, Dmod_ReadModule, and Dmod_CloseModules.
+ */
+typedef void* Dmod_ModulesIterator_t;
 
 typedef struct 
 {

@@ -37,30 +37,41 @@ protected:
 // ===============================================================
 
 /**
- * @brief Test Dmod_ReadModules with NULL output buffer
+ * @brief Test Dmod_OpenModules with NULL iterator
  */
-TEST_F(DmodReadModulesTest, ReadModulesNullOutput) {
-    size_t count = Dmod_ReadModules(NULL, 10);
-    EXPECT_EQ(count, 0);
+TEST_F(DmodReadModulesTest, OpenModulesSuccess) {
+    Dmod_ModulesIterator_t iterator = Dmod_OpenModules();
+    EXPECT_NE(iterator, nullptr);
+    Dmod_CloseModules(iterator);
 }
 
 /**
- * @brief Test Dmod_ReadModules with zero max size
+ * @brief Test Dmod_ReadModule with NULL iterator
  */
-TEST_F(DmodReadModulesTest, ReadModulesZeroMax) {
-    Dmod_ModuleInfo_t modules[10];
-    size_t count = Dmod_ReadModules(modules, 0);
-    EXPECT_EQ(count, 0);
+TEST_F(DmodReadModulesTest, ReadModuleNullIterator) {
+    const Dmod_ModuleInfo_t* module = Dmod_ReadModule(NULL);
+    EXPECT_EQ(module, nullptr);
 }
 
 /**
- * @brief Test Dmod_ReadModules with no modules loaded
+ * @brief Test Dmod_ReadModule with no modules loaded
  */
 TEST_F(DmodReadModulesTest, ReadModulesNoModulesLoaded) {
-    Dmod_ModuleInfo_t modules[10];
-    size_t count = Dmod_ReadModules(modules, 10);
+    Dmod_ModulesIterator_t iterator = Dmod_OpenModules();
+    ASSERT_NE(iterator, nullptr);
+    
+    // Count how many modules are available
+    size_t count = 0;
+    const Dmod_ModuleInfo_t* module;
+    while( (module = Dmod_ReadModule(iterator)) != NULL )
+    {
+        count++;
+    }
+    
     // Should return 0 or more (depending on available modules in search paths)
     EXPECT_GE(count, 0);
+    
+    Dmod_CloseModules(iterator);
 }
 
 /**
@@ -95,22 +106,62 @@ TEST_F(DmodReadModulesTest, ModuleStateEnum) {
 }
 
 /**
- * @brief Test Dmod_ReadModules respects max limit
+ * @brief Test Dmod_CloseModules with NULL iterator
  */
-TEST_F(DmodReadModulesTest, ReadModulesRespectsMaxLimit) {
-    Dmod_ModuleInfo_t modules[5];
-    size_t count = Dmod_ReadModules(modules, 5);
-    // Should never return more than max
-    EXPECT_LE(count, 5);
+TEST_F(DmodReadModulesTest, CloseModulesNull) {
+    // Should not crash
+    Dmod_CloseModules(NULL);
 }
 
 /**
- * @brief Test Dmod_ReadModules with large array
+ * @brief Test iterating through modules multiple times
  */
-TEST_F(DmodReadModulesTest, ReadModulesLargeArray) {
-    Dmod_ModuleInfo_t modules[100];
-    size_t count = Dmod_ReadModules(modules, 100);
-    // Should return a reasonable number
-    EXPECT_LE(count, 100);
-    EXPECT_GE(count, 0);
+TEST_F(DmodReadModulesTest, IterateMultipleTimes) {
+    // First iteration
+    Dmod_ModulesIterator_t iterator1 = Dmod_OpenModules();
+    ASSERT_NE(iterator1, nullptr);
+    
+    size_t count1 = 0;
+    const Dmod_ModuleInfo_t* module;
+    while( (module = Dmod_ReadModule(iterator1)) != NULL )
+    {
+        count1++;
+    }
+    
+    Dmod_CloseModules(iterator1);
+    
+    // Second iteration should give same count
+    Dmod_ModulesIterator_t iterator2 = Dmod_OpenModules();
+    ASSERT_NE(iterator2, nullptr);
+    
+    size_t count2 = 0;
+    while( (module = Dmod_ReadModule(iterator2)) != NULL )
+    {
+        count2++;
+    }
+    
+    Dmod_CloseModules(iterator2);
+    
+    EXPECT_EQ(count1, count2);
+}
+
+/**
+ * @brief Test that iterator returns consistent module info
+ */
+TEST_F(DmodReadModulesTest, ModuleInfoConsistent) {
+    Dmod_ModulesIterator_t iterator = Dmod_OpenModules();
+    ASSERT_NE(iterator, nullptr);
+    
+    const Dmod_ModuleInfo_t* module = Dmod_ReadModule(iterator);
+    if( module != NULL )
+    {
+        // Module name should not be empty
+        EXPECT_NE(module->ModuleName[0], '\0');
+        
+        // State should be valid
+        EXPECT_GE(module->State, Dmod_ModuleState_Available);
+        EXPECT_LT(module->State, Dmod_ModuleState_Count);
+    }
+    
+    Dmod_CloseModules(iterator);
 }

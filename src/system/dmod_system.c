@@ -1635,19 +1635,37 @@ static bool CheckModuleArchitecture( const char* FilePath, const char* ExpectedA
 }
 
 /**
- * @brief Helper function to check if module is already in the list
+ * @brief Internal structure for modules iterator
+ */
+typedef struct 
+{
+    size_t                  ContextIndex;           //!< Current index in Dmod_Contexts array
+    Dmod_SearchNode_t*      SearchNodeHead;         //!< Head of search path list
+    Dmod_SearchNode_t*      CurrentSearchNode;      //!< Current search node being processed
+    void*                   CurrentDir;             //!< Current directory handle
+    size_t                  PackageIndex;           //!< Current package index
+    size_t                  PackageModuleIndex;     //!< Current module index within package
+    bool                    LoadedPhaseComplete;    //!< True when loaded modules phase is complete
+    bool                    SearchPathsPhaseComplete; //!< True when search paths phase is complete
+    bool                    PackagesPhaseComplete;  //!< True when packages phase is complete
+    Dmod_ModuleInfo_t       CurrentModule;          //!< Buffer for current module info
+    char                    SeenModules[DMOD_MAX_MODULES][DMOD_MAX_MODULE_NAME_LENGTH]; //!< Track seen modules
+    size_t                  SeenModulesCount;       //!< Number of seen modules
+} Dmod_ModulesIteratorInternal_t;
+
+/**
+ * @brief Helper function to check if module was already seen
  * 
- * @param outModules Array of module info structures
- * @param Count Current count of modules in the array
+ * @param Iterator Iterator state
  * @param ModuleName Name of the module to check
  * 
- * @return True if module is already in the list, false otherwise
+ * @return True if module was already seen, false otherwise
  */
-static bool IsModuleInList( const Dmod_ModuleInfo_t* outModules, size_t Count, const char* ModuleName )
+static bool IsModuleSeen( Dmod_ModulesIteratorInternal_t* Iterator, const char* ModuleName )
 {
-    for( size_t i = 0; i < Count; i++ )
+    for( size_t i = 0; i < Iterator->SeenModulesCount; i++ )
     {
-        if( strcmp( outModules[i].ModuleName, ModuleName ) == 0 )
+        if( strcmp( Iterator->SeenModules[i], ModuleName ) == 0 )
         {
             return true;
         }
@@ -1656,172 +1674,252 @@ static bool IsModuleInList( const Dmod_ModuleInfo_t* outModules, size_t Count, c
 }
 
 /**
- * @brief Helper function to add module info to the list
+ * @brief Helper function to mark module as seen
  * 
- * @param outModules Array of module info structures
- * @param Count Current count of modules in the array
- * @param Max Maximum number of modules that can be stored
- * @param ModuleName Name of the module
- * @param Version Version of the module
- * @param State State of the module
- * 
- * @return True if module was added successfully, false if array is full or module already exists
+ * @param Iterator Iterator state
+ * @param ModuleName Name of the module to mark as seen
  */
-static bool AddModuleToList( Dmod_ModuleInfo_t* outModules, size_t* Count, size_t Max, 
-                              const char* ModuleName, const char* Version, Dmod_ModuleState_t State )
+static void MarkModuleSeen( Dmod_ModulesIteratorInternal_t* Iterator, const char* ModuleName )
 {
-    if( *Count >= Max )
+    if( Iterator->SeenModulesCount < DMOD_MAX_MODULES )
     {
-        return false;
+        strncpy( Iterator->SeenModules[Iterator->SeenModulesCount], ModuleName, DMOD_MAX_MODULE_NAME_LENGTH - 1 );
+        Iterator->SeenModules[Iterator->SeenModulesCount][DMOD_MAX_MODULE_NAME_LENGTH - 1] = '\0';
+        Iterator->SeenModulesCount++;
     }
-
-    if( IsModuleInList( outModules, *Count, ModuleName ) )
-    {
-        return true; // Module already in list, skip
-    }
-
-    strncpy( outModules[*Count].ModuleName, ModuleName, DMOD_MAX_MODULE_NAME_LENGTH - 1 );
-    outModules[*Count].ModuleName[DMOD_MAX_MODULE_NAME_LENGTH - 1] = '\0';
-    
-    strncpy( outModules[*Count].Version, Version, DMOD_MAX_VERSION_LENGTH - 1 );
-    outModules[*Count].Version[DMOD_MAX_VERSION_LENGTH - 1] = '\0';
-    
-    outModules[*Count].State = State;
-    (*Count)++;
-    
-    return true;
 }
 
 /**
- * @brief Read modules (loaded and available)
+ * @brief Open modules iterator
  * 
- * This function lists all loaded modules and available modules in known search paths and packages.
+ * Creates an iterator for listing all loaded and available modules.
+ * Use Dmod_ReadModule to get the next module and Dmod_CloseModules to free resources.
  * 
- * @param outModules Array of module info structures to fill
- * @param Max Maximum number of modules that can be stored in the array
- * 
- * @return Number of modules found (both loaded and available)
+ * @return Modules iterator handle, or NULL on error
  */
-size_t Dmod_ReadModules( Dmod_ModuleInfo_t* outModules, size_t Max )
+Dmod_ModulesIterator_t Dmod_OpenModules( void )
 {
-    if( outModules == NULL || Max == 0 )
+    Dmod_ModulesIteratorInternal_t* iterator = (Dmod_ModulesIteratorInternal_t*)Dmod_Malloc( sizeof(Dmod_ModulesIteratorInternal_t) );
+    if( iterator == NULL )
     {
-        DMOD_LOG_ERROR("Cannot read modules - invalid parameters\n");
-        return 0;
+        DMOD_LOG_ERROR("Cannot open modules iterator - out of memory\n");
+        return NULL;
     }
 
-    size_t count = 0;
+    // Initialize iterator state
+    memset( iterator, 0, sizeof(Dmod_ModulesIteratorInternal_t) );
+    iterator->ContextIndex = 0;
+    iterator->SearchNodeHead = Dmod_Hlp_PrepareModulesSearchNodes();
+    iterator->CurrentSearchNode = iterator->SearchNodeHead;
+    iterator->CurrentDir = NULL;
+    iterator->PackageIndex = 0;
+    iterator->PackageModuleIndex = 0;
+    iterator->LoadedPhaseComplete = false;
+    iterator->SearchPathsPhaseComplete = false;
+    iterator->PackagesPhaseComplete = false;
+    iterator->SeenModulesCount = 0;
 
-    // 1. Add loaded modules from Dmod_Contexts array
-    for( size_t i = 0; i < DMOD_MAX_MODULES; i++ )
+    return (Dmod_ModulesIterator_t)iterator;
+}
+
+/**
+ * @brief Read next module from iterator
+ * 
+ * Returns the next module in the iteration. Returns NULL when no more modules are available.
+ * The returned pointer is valid until the next call to Dmod_ReadModule or Dmod_CloseModules.
+ * 
+ * @param Iterator Modules iterator handle
+ * 
+ * @return Pointer to module info, or NULL if no more modules
+ */
+const Dmod_ModuleInfo_t* Dmod_ReadModule( Dmod_ModulesIterator_t Iterator )
+{
+    if( Iterator == NULL )
     {
-        if( Dmod_Contexts[i] != NULL && Dmod_Contexts[i]->Header != NULL )
-        {
-            Dmod_ModuleState_t state = Dmod_ModuleState_Loaded;
-            
-            if( Dmod_Contexts[i]->Running )
-            {
-                state = Dmod_ModuleState_Running;
-            }
-            else if( Dmod_Contexts[i]->Enabled )
-            {
-                state = Dmod_ModuleState_Enabled;
-            }
-
-            if( !AddModuleToList( outModules, &count, Max, 
-                                  Dmod_Contexts[i]->Header->Name,
-                                  Dmod_Contexts[i]->Header->Version,
-                                  state ) )
-            {
-                return count; // Array is full
-            }
-        }
+        DMOD_LOG_ERROR("Cannot read module - invalid iterator\n");
+        return NULL;
     }
 
-    // 2. Scan available modules in search paths
-    Dmod_SearchNode_t* searchNode = Dmod_Hlp_PrepareModulesSearchNodes();
-    Dmod_SearchNode_t* currentNode = searchNode;
-    
-    while( currentNode != NULL && count < Max )
+    Dmod_ModulesIteratorInternal_t* iter = (Dmod_ModulesIteratorInternal_t*)Iterator;
+
+    // Phase 1: Iterate through loaded modules
+    if( !iter->LoadedPhaseComplete )
     {
-        const char* repoDir = currentNode->Path;
-        void* dir = Dmod_OpenDir( repoDir );
-        
-        if( dir != NULL )
+        while( iter->ContextIndex < DMOD_MAX_MODULES )
         {
-            const char* fileName;
-            while( (fileName = Dmod_ReadDir( dir )) != NULL && count < Max )
+            if( Dmod_Contexts[iter->ContextIndex] != NULL && Dmod_Contexts[iter->ContextIndex]->Header != NULL )
             {
-                // Check if it's a .dmf or .dmfc file
-                size_t len = strlen( fileName );
-                bool isDmf = (len > 4 && strcmp( &fileName[len - 4], ".dmf" ) == 0);
-                bool isDmfc = (len > 5 && strcmp( &fileName[len - 5], ".dmfc" ) == 0);
+                const char* moduleName = Dmod_Contexts[iter->ContextIndex]->Header->Name;
                 
-                if( isDmf || isDmfc )
+                if( !IsModuleSeen( iter, moduleName ) )
                 {
-                    // Extract module name (remove extension)
-                    char moduleName[DMOD_MAX_MODULE_NAME_LENGTH];
-                    size_t nameLen = isDmf ? len - 4 : len - 5;
-                    if( nameLen >= DMOD_MAX_MODULE_NAME_LENGTH )
+                    // Prepare module info
+                    Dmod_ModuleState_t state = Dmod_ModuleState_Loaded;
+                    if( Dmod_Contexts[iter->ContextIndex]->Running )
                     {
-                        nameLen = DMOD_MAX_MODULE_NAME_LENGTH - 1;
+                        state = Dmod_ModuleState_Running;
                     }
-                    strncpy( moduleName, fileName, nameLen );
-                    moduleName[nameLen] = '\0';
-
-                    // Check if module is already loaded or in list
-                    if( !IsModuleInList( outModules, count, moduleName ) )
+                    else if( Dmod_Contexts[iter->ContextIndex]->Enabled )
                     {
-                        // Read module header to get version
-                        char filePath[DMOD_MAX_FILE_PATH_LENGTH];
-                        Dmod_SnPrintf( filePath, sizeof(filePath), "%s/%s", repoDir, fileName );
-                        
-                        Dmod_ModuleHeader_t header;
-                        if( Dmod_ReadModuleHeader( filePath, &header ) )
+                        state = Dmod_ModuleState_Enabled;
+                    }
+
+                    strncpy( iter->CurrentModule.ModuleName, moduleName, DMOD_MAX_MODULE_NAME_LENGTH - 1 );
+                    iter->CurrentModule.ModuleName[DMOD_MAX_MODULE_NAME_LENGTH - 1] = '\0';
+                    
+                    strncpy( iter->CurrentModule.Version, Dmod_Contexts[iter->ContextIndex]->Header->Version, DMOD_MAX_VERSION_LENGTH - 1 );
+                    iter->CurrentModule.Version[DMOD_MAX_VERSION_LENGTH - 1] = '\0';
+                    
+                    iter->CurrentModule.State = state;
+
+                    MarkModuleSeen( iter, moduleName );
+                    iter->ContextIndex++;
+                    return &iter->CurrentModule;
+                }
+            }
+            iter->ContextIndex++;
+        }
+        iter->LoadedPhaseComplete = true;
+    }
+
+    // Phase 2: Scan available modules in search paths
+    if( !iter->SearchPathsPhaseComplete )
+    {
+        while( iter->CurrentSearchNode != NULL )
+        {
+            if( iter->CurrentDir == NULL )
+            {
+                iter->CurrentDir = Dmod_OpenDir( iter->CurrentSearchNode->Path );
+            }
+
+            if( iter->CurrentDir != NULL )
+            {
+                const char* fileName;
+                while( (fileName = Dmod_ReadDir( iter->CurrentDir )) != NULL )
+                {
+                    // Check if it's a .dmf or .dmfc file
+                    size_t len = strlen( fileName );
+                    bool isDmf = (len > 4 && strcmp( &fileName[len - 4], ".dmf" ) == 0);
+                    bool isDmfc = (len > 5 && strcmp( &fileName[len - 5], ".dmfc" ) == 0);
+                    
+                    if( isDmf || isDmfc )
+                    {
+                        // Extract module name (remove extension)
+                        char moduleName[DMOD_MAX_MODULE_NAME_LENGTH];
+                        size_t nameLen = isDmf ? len - 4 : len - 5;
+                        if( nameLen >= DMOD_MAX_MODULE_NAME_LENGTH )
                         {
-                            // Check architecture match
-                            if( strcmp( header.Arch, DMOD_ARCH ) == 0 )
+                            nameLen = DMOD_MAX_MODULE_NAME_LENGTH - 1;
+                        }
+                        strncpy( moduleName, fileName, nameLen );
+                        moduleName[nameLen] = '\0';
+
+                        if( !IsModuleSeen( iter, moduleName ) )
+                        {
+                            // Read module header to get version
+                            char filePath[DMOD_MAX_FILE_PATH_LENGTH];
+                            Dmod_SnPrintf( filePath, sizeof(filePath), "%s/%s", iter->CurrentSearchNode->Path, fileName );
+                            
+                            Dmod_ModuleHeader_t header;
+                            if( Dmod_ReadModuleHeader( filePath, &header ) )
                             {
-                                AddModuleToList( outModules, &count, Max,
-                                               header.Name, header.Version,
-                                               Dmod_ModuleState_Available );
+                                // Check architecture match
+                                if( strcmp( header.Arch, DMOD_ARCH ) == 0 )
+                                {
+                                    strncpy( iter->CurrentModule.ModuleName, header.Name, DMOD_MAX_MODULE_NAME_LENGTH - 1 );
+                                    iter->CurrentModule.ModuleName[DMOD_MAX_MODULE_NAME_LENGTH - 1] = '\0';
+                                    
+                                    strncpy( iter->CurrentModule.Version, header.Version, DMOD_MAX_VERSION_LENGTH - 1 );
+                                    iter->CurrentModule.Version[DMOD_MAX_VERSION_LENGTH - 1] = '\0';
+                                    
+                                    iter->CurrentModule.State = Dmod_ModuleState_Available;
+
+                                    MarkModuleSeen( iter, header.Name );
+                                    return &iter->CurrentModule;
+                                }
                             }
                         }
                     }
                 }
             }
-            Dmod_CloseDir( dir );
-        }
-        
-        currentNode = currentNode->Prev;
-    }
-    
-    Dmod_Hlp_FreeSearchPathList( searchNode );
 
-    // 3. Add available modules from packages
-    for( size_t i = 0; i < DMOD_MAX_NUMBER_OF_PACKAGES && count < Max; i++ )
-    {
-        if( Dmod_Pck_IsSlotUsed( &Dmod_Packages[i] ) && Dmod_Pck_IsValidSlot( &Dmod_Packages[i] ) )
-        {
-            Dmod_PackageSlot_t* slot = &Dmod_Packages[i];
-            
-            for( size_t j = 0; j < slot->DmpHeader->ModuleCount && count < Max; j++ )
+            // Close current directory and move to next search node
+            if( iter->CurrentDir != NULL )
             {
-                const char* moduleName = slot->ModuleEntries[j].ModuleName;
-                
-                if( !IsModuleInList( outModules, count, moduleName ) )
-                {
-                    // For package modules, we need to read the header to get version
-                    // This requires reading from the package, which is complex
-                    // For now, we'll add them with empty version
-                    AddModuleToList( outModules, &count, Max,
-                                   moduleName, "",
-                                   Dmod_ModuleState_Available );
-                }
+                Dmod_CloseDir( iter->CurrentDir );
+                iter->CurrentDir = NULL;
             }
+            iter->CurrentSearchNode = iter->CurrentSearchNode->Prev;
         }
+        iter->SearchPathsPhaseComplete = true;
     }
 
-    return count;
+    // Phase 3: Add available modules from packages
+    if( !iter->PackagesPhaseComplete )
+    {
+        while( iter->PackageIndex < DMOD_MAX_NUMBER_OF_PACKAGES )
+        {
+            if( Dmod_Pck_IsSlotUsed( &Dmod_Packages[iter->PackageIndex] ) && 
+                Dmod_Pck_IsValidSlot( &Dmod_Packages[iter->PackageIndex] ) )
+            {
+                Dmod_PackageSlot_t* slot = &Dmod_Packages[iter->PackageIndex];
+                
+                while( iter->PackageModuleIndex < slot->DmpHeader->ModuleCount )
+                {
+                    const char* moduleName = slot->ModuleEntries[iter->PackageModuleIndex].ModuleName;
+                    
+                    if( !IsModuleSeen( iter, moduleName ) )
+                    {
+                        strncpy( iter->CurrentModule.ModuleName, moduleName, DMOD_MAX_MODULE_NAME_LENGTH - 1 );
+                        iter->CurrentModule.ModuleName[DMOD_MAX_MODULE_NAME_LENGTH - 1] = '\0';
+                        
+                        iter->CurrentModule.Version[0] = '\0'; // No version info available for package modules
+                        iter->CurrentModule.State = Dmod_ModuleState_Available;
+
+                        MarkModuleSeen( iter, moduleName );
+                        iter->PackageModuleIndex++;
+                        return &iter->CurrentModule;
+                    }
+                    iter->PackageModuleIndex++;
+                }
+                iter->PackageModuleIndex = 0;
+            }
+            iter->PackageIndex++;
+        }
+        iter->PackagesPhaseComplete = true;
+    }
+
+    // No more modules
+    return NULL;
+}
+
+/**
+ * @brief Close modules iterator and free resources
+ * 
+ * @param Iterator Modules iterator handle
+ */
+void Dmod_CloseModules( Dmod_ModulesIterator_t Iterator )
+{
+    if( Iterator == NULL )
+    {
+        return;
+    }
+
+    Dmod_ModulesIteratorInternal_t* iter = (Dmod_ModulesIteratorInternal_t*)Iterator;
+
+    // Close any open directory
+    if( iter->CurrentDir != NULL )
+    {
+        Dmod_CloseDir( iter->CurrentDir );
+    }
+
+    // Free search path list
+    if( iter->SearchNodeHead != NULL )
+    {
+        Dmod_Hlp_FreeSearchPathList( iter->SearchNodeHead );
+    }
+
+    // Free iterator
+    Dmod_Free( iter );
 }
 
