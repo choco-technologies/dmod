@@ -65,3 +65,4 @@ build_module*/
 build-*/
 _codeql_*
 build_cmake/
+cmake-build/
