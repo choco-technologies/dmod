@@ -1,6 +1,166 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "dmod.h"
+
+// -----------------------------------------
+//
+//      Check if string looks like a file path
+//
+// -----------------------------------------
+int IsFilePath( const char* Input )
+{
+    if( Input == NULL )
+    {
+        return 0;
+    }
+    
+    // Check if contains path separators
+    if( strchr( Input, '/' ) != NULL || strchr( Input, '\\' ) != NULL )
+    {
+        return 1;
+    }
+    
+    // Check if ends with .dmf or .dmfc or .dmp extension
+    size_t len = strlen( Input );
+    if( len > 4 )
+    {
+        if( strcmp( Input + len - 4, ".dmf" ) == 0 || strcmp( Input + len - 4, ".dmp" ) == 0 )
+        {
+            return 1;
+        }
+    }
+    if( len > 5 )
+    {
+        if( strcmp( Input + len - 5, ".dmfc" ) == 0 )
+        {
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+
+// -----------------------------------------
+//
+//      Try to load module from directory
+//
+// -----------------------------------------
+Dmod_Context_t* TryLoadModuleFromDir( const char* DirPath, const char* ModuleName )
+{
+    if( DirPath == NULL || ModuleName == NULL )
+    {
+        return NULL;
+    }
+    
+    char path[512];
+    Dmod_Context_t* context = NULL;
+    
+    // Try uncompressed version (.dmf)
+    snprintf( path, sizeof(path), "%s/%s.dmf", DirPath, ModuleName );
+    context = Dmod_LoadFile( path );
+    if( context != NULL )
+    {
+        printf("Loaded module '%s' from '%s'\n", ModuleName, path);
+        return context;
+    }
+    
+    // Try compressed version (.dmfc)
+    snprintf( path, sizeof(path), "%s/%s.dmfc", DirPath, ModuleName );
+    context = Dmod_LoadFile( path );
+    if( context != NULL )
+    {
+        printf("Loaded module '%s' from '%s'\n", ModuleName, path);
+        return context;
+    }
+    
+    return NULL;
+}
+
+// -----------------------------------------
+//
+//      Load module by name - searches in known paths
+//
+// -----------------------------------------
+Dmod_Context_t* LoadModuleByName( const char* ModuleName )
+{
+    if( ModuleName == NULL )
+    {
+        return NULL;
+    }
+    
+    printf("Searching for module '%s' in known directories...\n", ModuleName);
+    
+    Dmod_Context_t* context = NULL;
+    
+    // 1. Try DMOD_DMF_DIR environment variable
+    const char* dmfDir = getenv("DMOD_DMF_DIR");
+    if( dmfDir != NULL && dmfDir[0] != '\0' )
+    {
+        printf("  Checking DMOD_DMF_DIR: %s\n", dmfDir);
+        context = TryLoadModuleFromDir( dmfDir, ModuleName );
+        if( context != NULL )
+        {
+            return context;
+        }
+    }
+    
+    // 2. Try DMOD_DMFC_DIR environment variable
+    const char* dmfcDir = getenv("DMOD_DMFC_DIR");
+    if( dmfcDir != NULL && dmfcDir[0] != '\0' )
+    {
+        printf("  Checking DMOD_DMFC_DIR: %s\n", dmfcDir);
+        context = TryLoadModuleFromDir( dmfcDir, ModuleName );
+        if( context != NULL )
+        {
+            return context;
+        }
+    }
+    
+    // 3. Try DMOD_REPO_PATHS environment variable (multiple directories)
+    const char* repoPaths = getenv("DMOD_REPO_PATHS");
+    if( repoPaths != NULL && repoPaths[0] != '\0' )
+    {
+        char* repoPathsCopy = strdup( repoPaths );
+        if( repoPathsCopy != NULL )
+        {
+            char* repoDir = strtok( repoPathsCopy, ":" );
+            while( repoDir != NULL )
+            {
+                printf("  Checking DMOD_REPO_PATHS directory: %s\n", repoDir);
+                context = TryLoadModuleFromDir( repoDir, ModuleName );
+                if( context != NULL )
+                {
+                    free( repoPathsCopy );
+                    return context;
+                }
+                repoDir = strtok( NULL, ":" );
+            }
+            free( repoPathsCopy );
+        }
+    }
+    
+    // 4. Try current directory
+    printf("  Checking current directory\n");
+    context = TryLoadModuleFromDir( ".", ModuleName );
+    if( context != NULL )
+    {
+        return context;
+    }
+    
+    // 5. Try using Dmod_LoadModuleByName (searches in packages and default repo)
+    if( Dmod_LoadModuleByName( ModuleName ) )
+    {
+        printf("Module '%s' loaded successfully via Dmod_LoadModuleByName\n", ModuleName);
+        // Get the context - it's been loaded but we need to return it
+        // Since we can't easily get the context, we'll just return a non-NULL marker
+        // The caller will handle running/enabling the module by name
+        return (Dmod_Context_t*)1; // Marker that module was loaded
+    }
+    
+    printf("Error: Module '%s' not found in any known directory\n", ModuleName);
+    return NULL;
+}
 
 // -----------------------------------------
 //
@@ -9,7 +169,8 @@
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s path/to/file.dmf [--module <module_name>] [--args <arguments>]\n", AppName);
+    printf("Usage: %s <module_name | path/to/file.dmf> [--module <module_name>] [--args <arguments>]\n", AppName);
+    printf("       You can specify either a module name or a full path to a .dmf/.dmfc/.dmp file\n");
 }
 
 // -----------------------------------------
@@ -22,7 +183,7 @@ void PrintHelp( const char* AppName )
     printf("-- Dynamic Module Loader ver. " DMOD_VERSION_STRING " --\n\n");
     printf("The DMOD is a dynamic module loader that allows to load and unload modules\n");
     printf("This is an example application that uses the DMOD system\n\n");
-    printf("Usage: %s path/to/file.dmf [--module <module_name>] [--args <arguments>]\n", AppName);
+    printf("Usage: %s <module_name | path/to/file.dmf> [--module <module_name>] [--args <arguments>]\n", AppName);
     printf("Options:\n");
     printf("  -h, --help                Print this help message\n");
     printf("  -v, --version             Print version information\n");
@@ -31,11 +192,18 @@ void PrintHelp( const char* AppName )
     printf("Module Types:\n");
     printf("  Application    Runs the module's main function\n");
     printf("  Library        Enables the module, then disables it\n\n");
+    printf("Module Search Paths (in order):\n");
+    printf("  1. DMOD_DMF_DIR environment variable\n");
+    printf("  2. DMOD_DMFC_DIR environment variable\n");
+    printf("  3. DMOD_REPO_PATHS environment variable (colon-separated)\n");
+    printf("  4. Current directory\n");
+    printf("  5. Precompiled packages\n\n");
     printf("Examples:\n");
-    printf("  %s my-app.dmf\n", AppName);
-    printf("  %s my-package.dmp --module my_module\n", AppName);
-    printf("  %s my-app.dmf --args \"arg1 arg2\"\n", AppName);
-    printf("  %s my-package.dmp --module my_module --args \"--verbose\"\n", AppName);
+    printf("  %s my-app.dmf                                 # Load by file path\n", AppName);
+    printf("  %s my_module                                  # Load by name (searches paths)\n", AppName);
+    printf("  %s my-package.dmp --module my_module          # Load from package\n", AppName);
+    printf("  %s my-app.dmf --args \"arg1 arg2\"              # Load with arguments\n", AppName);
+    printf("  %s my_module --args \"--verbose\"               # Load by name with arguments\n", AppName);
 }
 
 // -----------------------------------------
@@ -121,57 +289,130 @@ int main( int argc, char *argv[] )
 
     // Load the module or package
     Dmod_Context_t* context = NULL;
+    const char* loadedModuleName = NULL;
     
-    // Check if the file is a DMP package
-    if( Dmod_IsDMPFile( dmfPath ) )
+    // Determine if input is a file path or module name
+    if( IsFilePath( dmfPath ) )
     {
-        // If it's a package and no module name specified, load the main module
-        if( moduleName == NULL )
+        // Input is a file path
+        printf("Loading from file path: %s\n", dmfPath);
+        
+        // Check if the file is a DMP package
+        if( Dmod_IsDMPFile( dmfPath ) )
         {
-            printf("Loading DMP package: %s (main module)\n", dmfPath);
-            context = Dmod_LoadFile( dmfPath );
+            // If it's a package and no module name specified, load the main module
+            if( moduleName == NULL )
+            {
+                printf("Loading DMP package: %s (main module)\n", dmfPath);
+                context = Dmod_LoadFile( dmfPath );
+            }
+            else
+            {
+                // Load the specified module from the package
+                printf("Loading module '%s' from DMP package: %s\n", moduleName, dmfPath);
+                
+                // First, add the package to the system
+                uint32_t packageIndex = UINT32_MAX;
+                if( !Dmod_AddPackageFile( dmfPath, &packageIndex ) )
+                {
+                    printf("Cannot add DMP package: %s\n", dmfPath);
+                    return -1;
+                }
+                
+                // Get package name from the added package
+                char packageName[DMOD_MAX_PACKAGE_NAME_LENGTH] = {0};
+                size_t packageSize = 0;
+                if( !Dmod_GetPackageInfo( packageIndex, packageName, sizeof(packageName), &packageSize ) )
+                {
+                    printf("Cannot get package info\n");
+                    return -1;
+                }
+                
+                // Load the specific module from the package
+                context = Dmod_LoadFromPackage( packageName, moduleName );
+                loadedModuleName = moduleName;
+            }
         }
         else
         {
-            // Load the specified module from the package
-            printf("Loading module '%s' from DMP package: %s\n", moduleName, dmfPath);
-            
-            // First, add the package to the system
-            uint32_t packageIndex = UINT32_MAX;
-            if( !Dmod_AddPackageFile( dmfPath, &packageIndex ) )
+            // For regular DMF files, ignore --module parameter
+            if( moduleName != NULL )
             {
-                printf("Cannot add DMP package: %s\n", dmfPath);
-                return -1;
+                printf("Warning: --module parameter is only valid for DMP packages, ignoring\n");
             }
-            
-            // Get package name from the added package
-            char packageName[DMOD_MAX_PACKAGE_NAME_LENGTH] = {0};
-            size_t packageSize = 0;
-            if( !Dmod_GetPackageInfo( packageIndex, packageName, sizeof(packageName), &packageSize ) )
-            {
-                printf("Cannot get package info\n");
-                return -1;
-            }
-            
-            // Load the specific module from the package
-            context = Dmod_LoadFromPackage( packageName, moduleName );
+            context = Dmod_LoadFile( dmfPath );
         }
     }
     else
     {
-        // For regular DMF files, ignore --module parameter
+        // Input looks like a module name - search in known paths
+        printf("Input looks like a module name: %s\n", dmfPath);
+        
         if( moduleName != NULL )
         {
-            printf("Warning: --module parameter is only valid for DMP packages, ignoring\n");
+            printf("Warning: --module parameter is ignored when loading by module name\n");
         }
-        context = Dmod_LoadFile( dmfPath );
+        
+        context = LoadModuleByName( dmfPath );
+        loadedModuleName = dmfPath;
+        
+        // Special case: if LoadModuleByName returned a marker (not a real context)
+        // it means Dmod_LoadModuleByName succeeded, so we need to get the context
+        if( context == (Dmod_Context_t*)1 )
+        {
+            // Module was loaded via Dmod_LoadModuleByName, but we don't have context
+            // We'll work with the module by name instead
+            loadedModuleName = dmfPath;
+            context = NULL; // Will use module name operations below
+        }
     }
     
-    if( context == NULL )
+    // If we have neither context nor module name, fail
+    if( context == NULL && loadedModuleName == NULL )
     {
         printf("Cannot load module: %s\n", dmfPath);
         return -1;
     }
+    
+    // Handle case where we loaded by name and need to use module name for operations
+    if( context == NULL && loadedModuleName != NULL )
+    {
+        printf("Module '%s' loaded successfully\n", loadedModuleName);
+        
+        // Check if it's a library or application using module name
+        if( Dmod_IsModuleLoaded( loadedModuleName ) )
+        {
+            // Try to enable and disable (library pattern)
+            printf("Attempting to enable module '%s'...\n", loadedModuleName);
+            if( Dmod_EnableModule( loadedModuleName, false, NULL ) )
+            {
+                printf("Module enabled successfully\n");
+                printf("Disabling module...\n");
+                if( !Dmod_DisableModule( loadedModuleName, false ) )
+                {
+                    printf("Warning: Cannot disable module: %s\n", loadedModuleName);
+                }
+                printf("Module disabled successfully\n");
+                Dmod_UnloadModule( loadedModuleName, false );
+                return 0;
+            }
+            else
+            {
+                // Try to run as application
+                printf("Attempting to run module '%s' as application...\n", loadedModuleName);
+                int result = Dmod_RunModule( loadedModuleName, appArgc, appArgv );
+                Dmod_UnloadModule( loadedModuleName, false );
+                return result;
+            }
+        }
+        else
+        {
+            printf("Error: Module '%s' was not loaded properly\n", loadedModuleName);
+            return -1;
+        }
+    }
+    
+    // We have a context, use it directly
     const Dmod_RequiredModule_t* reqModule = Dmod_GetNextRequiredModule( context, NULL );
     while( reqModule != NULL)
     {
