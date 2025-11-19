@@ -30,6 +30,7 @@
         "difs_defs.h": "c",
         "typeinfo": "c",
         "stdlib.h": "c",
-        "dmod_arch_defs.h": "c"
+        "dmod_arch_defs.h": "c",
+        "algorithm": "c"
     }
 }

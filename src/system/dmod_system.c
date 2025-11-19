@@ -17,9 +17,11 @@
 //                              LOCAL FUNCTION PROTOTYPES
 //==============================================================================
 
+static Dmod_SearchNode_t* PrepareModulesSearchNodes( void );
 static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* File, long FilePos );
 static bool IsAllApiConnected( Dmod_Context_t* Context );
 static bool PrepareModulePath( const char* RepoDir, const char* ModuleName, bool Compressed, char* Path, size_t MaxLength );
+static bool CheckModuleArchitecture( const char* FilePath, const char* ExpectedArch );
 
 //==============================================================================
 //                              FUNCTION IMPLEMENTATIONS
@@ -364,6 +366,63 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
 }
 
 /**
+ * @brief Find module file in repositories
+ * 
+ * @param ModuleName Name of the module
+ * @param ArchName Name of the architecture
+ * @param outFilePath Output file path
+ * @param MaxLength Maximum length of the output file path
+ * 
+ * @return True if module file was found
+ */
+bool Dmod_FindModuleFile(const char* ModuleName, const char* ArchName, char* outFilePath, size_t MaxLength)
+{
+    if( ModuleName == NULL || outFilePath == NULL || MaxLength == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot find module file - invalid parameters\n");
+        return false;
+    }
+    if(ArchName == NULL)
+    {
+        ArchName = DMOD_ARCH;
+    }
+
+    Dmod_SearchNode_t* searchNode = PrepareModulesSearchNodes();
+    Dmod_SearchNode_t* currentNode = searchNode;
+    while( currentNode != NULL )
+    {
+        const char* repoDir = currentNode->Path;
+        DMOD_LOG_VERBOSE("Searching for module '%s' in '%s'\n", ModuleName, repoDir);
+
+        if( 
+            (
+                PrepareModulePath(repoDir, ModuleName, false, outFilePath, MaxLength)
+             && Dmod_FileAvailable(outFilePath)
+             && CheckModuleArchitecture(outFilePath, ArchName)
+                ) ||
+            (
+                PrepareModulePath(repoDir, ModuleName, true, outFilePath, MaxLength)
+             && Dmod_FileAvailable(outFilePath)
+             && CheckModuleArchitecture(outFilePath, ArchName
+                )
+            )
+            )
+        {   
+            DMOD_LOG_INFO("Found module '%s' in '%s'\n", ModuleName, outFilePath);
+            Dmod_Hlp_FreeSearchPathList( searchNode );
+            return true;
+        }
+        else 
+        {
+            DMOD_LOG_VERBOSE("Module '%s' not found in '%s'\n", ModuleName, repoDir);
+        }
+        currentNode = currentNode->Prev;
+    }
+    Dmod_Hlp_FreeSearchPathList( searchNode );
+    return false;
+}
+
+/**
  * @brief Load module by name
  * 
  * @param ModuleName Name of the module
@@ -384,68 +443,37 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
         return true;
     }
 
-    char path[DMOD_MAX_PATH_LENGTH + 1] = {0};
-    const char* repoPaths = Dmod_GetEnv("DMOD_REPO_PATHS");
-    char* repoEnv = NULL;
-    size_t repoEnvSize = 0;
-    if(repoPaths != NULL)
+    Dmod_SearchNode_t* searchNode = PrepareModulesSearchNodes();
+    Dmod_SearchNode_t* currentNode = searchNode;
+    while( currentNode != NULL )
     {
-        repoEnvSize = strlen(repoPaths);
-        if(repoEnvSize > 0)
-        {
-            repoEnv = Dmod_Malloc(repoEnvSize + 1);
-            strcpy(repoEnv, repoPaths);
-        }
-    }
-    const char* repoDir = repoEnv != NULL ? strtok(repoEnv, DMOD_ARRAY_SEP) : NULL;
-    if( repoDir == NULL )
-    {
-        DMOD_LOG_VERBOSE("DMOD_REPO_PATH variable is not available. Searching for module '%s' in default repository\n", ModuleName);
-        repoDir = Dmod_GetRepoDir();
-        repoPaths = NULL;
-    }
-    bool lastTry = false;
-    do 
-    {
-        if( repoDir != NULL )
-        {
-            DMOD_LOG_VERBOSE("Searching for module '%s' in '%s'\n", ModuleName, repoDir);
-            if( 
-                (
-                    PrepareModulePath(repoDir, ModuleName, false, path, sizeof(path))
-                 && Dmod_FileAvailable(path)
-                 && Dmod_LoadFile(path) != NULL 
-                    ) ||
-                (
-                    PrepareModulePath(repoDir, ModuleName, true, path, sizeof(path))
-                 && Dmod_FileAvailable(path)
-                 && Dmod_LoadFile(path) != NULL
-                    )
+        const char* repoDir = currentNode->Path;
+        char filePath[DMOD_MAX_FILE_PATH_LENGTH];
+        DMOD_LOG_VERBOSE("Searching for module '%s' in '%s'\n", ModuleName, repoDir);
+
+        if( 
+            (
+                PrepareModulePath(repoDir, ModuleName, false, filePath, sizeof(filePath))
+             && Dmod_FileAvailable(filePath)
+             && Dmod_LoadFile( filePath ) != NULL
+                ) ||
+            (
+                PrepareModulePath(repoDir, ModuleName, true, filePath, sizeof(filePath))
+             && Dmod_FileAvailable(filePath)
+             && Dmod_LoadFile( filePath ) != NULL
                 )
-            {   
-                DMOD_LOG_INFO("Using module '%s' from '%s'\n", ModuleName, path);
-                if( repoEnv != NULL )
-                {
-                    Dmod_Free( repoEnv );
-                }
-                return true;
-            }
-            else 
-            {
-                DMOD_LOG_VERBOSE("Module '%s' not found in '%s'\n", ModuleName, repoDir);
-            }
+            )
+        {   
+            DMOD_LOG_INFO("Loaded module '%s' from file '%s'\n", ModuleName, filePath);
+            Dmod_Hlp_FreeSearchPathList( searchNode );
+            return true;
         }
-        if( repoPaths != NULL )
+        else 
         {
-            repoDir = strtok(NULL, DMOD_ARRAY_SEP);
-            if( repoDir == NULL )
-            {
-                repoDir = Dmod_GetRepoDir();
-                lastTry = true;
-            }
+            DMOD_LOG_VERBOSE("Module '%s' not found in '%s'\n", ModuleName, repoDir);
         }
-    } while( repoDir != NULL && !lastTry );
-    Dmod_Free( repoEnv );
+        currentNode = currentNode->Prev;
+    }
     Dmod_PackageSlot_t* slot = NULL;
     Dmod_DmpModuleEntry_t* moduleEntry = Dmod_Pck_FindModuleEntryInPackages( ModuleName, &slot );
     if( moduleEntry != NULL && slot != NULL )
@@ -1461,6 +1489,20 @@ bool Dmod_IsFunctionConnected( void* FunctionPointer )
 //==============================================================================
 
 /**
+ * @brief Prepare search nodes for modules searching paths
+ * 
+ * @return Pointer to the search nodes
+ */
+static Dmod_SearchNode_t* PrepareModulesSearchNodes( void )
+{
+    Dmod_SearchNode_t *searchNode = NULL;
+
+    const char* repoEnv = Dmod_GetEnv( DMOD_REPO_PATHS );
+
+    return searchNode;
+}
+
+/**
  * @brief Read file
  * 
  * @param ModuleName Name of the module (just for event logging)
@@ -1570,6 +1612,37 @@ static bool PrepareModulePath( const char* RepoDir, const char* ModuleName, bool
     else 
     {
         strncat(Path, ".dmf", MaxLength - strlen(Path));
+    }
+
+    return true;
+}
+
+/**
+ * @brief Check module architecture
+ * 
+ * @param FilePath Path to the module file
+ * @param ExpectedArch Expected architecture
+ * 
+ * @return True if module architecture matches expected architecture, false otherwise
+ */
+static bool CheckModuleArchitecture( const char* FilePath, const char* ExpectedArch )
+{
+    char fileArch[DMOD_MAX_ARCH_NAME_LENGTH];
+    Dmod_EnterCritical();
+    bool crossplatform = Dmod_IsCrossplatformMode();
+    Dmod_SetCrossplatformMode( strcmp( ExpectedArch, DMOD_ARCH ) == 0 );
+    bool archRead = Dmod_GetFileArchitecture( FilePath, fileArch, sizeof(fileArch) );
+    Dmod_SetCrossplatformMode( crossplatform );
+    Dmod_ExitCritical();
+    if( !archRead )
+    {
+        DMOD_LOG_ERROR("Cannot check module architecture - cannot get file architecture: %s\n", FilePath);
+        return false;
+    }
+    if( strcmp( fileArch, ExpectedArch ) != 0 )
+    {
+        DMOD_LOG_ERROR("Module architecture mismatch - expected: %s, got: %s\n", ExpectedArch, fileArch);
+        return false;
     }
 
     return true;

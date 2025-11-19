@@ -211,6 +211,15 @@ typedef void* Dmod_List_t;
  */
 typedef void* Dmod_ListElement_t;
 
+/**
+ * @brief Search path node
+ */
+typedef struct Dmod_SearchNode
+{
+    char*                   Path;   //!< Path to the repository directory
+    struct Dmod_SearchNode* Prev;   //!< Pointer to the prev node
+} Dmod_SearchNode_t;
+
 #ifdef __cplusplus
 }
 #endif

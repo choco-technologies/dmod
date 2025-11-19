@@ -14,6 +14,7 @@ extern "C" {
 #define DMOD_CONTEXT_SIGNATURE          0x646D6F64
 #define DMOD_MAX_ARCH_NAME_LENGTH       32
 #define DMOD_MAX_MODULE_NAME_LENGTH	32
+#define DMOD_MAX_FILE_PATH_LENGTH       256
 
 #define DMOD_DO_PRAGMA(x)                       _Pragma (#x)  
 #define DMOD_WEAK_DEFAULT(alias, symbol)        DMOD_DO_PRAGMA( weak alias = symbol )
