@@ -174,7 +174,12 @@ DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message
 #ifdef DMOD_NO_LOGGING
 #   define DMOD_LOG(...)                                   ((void)0)    
 #else
-#   define DMOD_LOG(LogLevel,...)                          (Dmod_CheckLogLevel(LogLevel) ? Dmod_Printf( __VA_ARGS__ ) : 0)
+#   define DMOD_LOG(LogLevel,...)                          \
+                                if(Dmod_CheckLogLevel(LogLevel)) {\
+                                    Dmod_Printf( __VA_ARGS__ );\
+                                    Dmod_Printf( "\033[0m" );\
+                                }
+
 #endif 
 
 #ifdef DMOD_LOG_LEVEL
@@ -195,19 +200,19 @@ DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message
 #define DMOD_ASSERT( Condition )        DMOD_ASSERT_MSG( Condition, #Condition )
 
 #ifndef DMOD_LOG_VERBOSE
-#   define DMOD_LOG_VERBOSE(...)    DMOD_LOG( Dmod_LogLevel_Verbose, "\033[35;1m[VERBOSE] " __VA_ARGS__ ); Dmod_Printf( "\033[0m" )
+#   define DMOD_LOG_VERBOSE(...)    DMOD_LOG( Dmod_LogLevel_Verbose, "\033[35;1m[VERBOSE] " __VA_ARGS__ ); 
 #endif
 
 #ifndef DMOD_LOG_INFO
-#   define DMOD_LOG_INFO(...)      DMOD_LOG( Dmod_LogLevel_Info, "\033[34;1m[INFO] " __VA_ARGS__ ); Dmod_Printf( "\033[0m" )
+#   define DMOD_LOG_INFO(...)      DMOD_LOG( Dmod_LogLevel_Info, "\033[34;1m[INFO] " __VA_ARGS__ ); 
 #endif
 
 #ifndef DMOD_LOG_WARN
-#   define DMOD_LOG_WARN(...)      DMOD_LOG( Dmod_LogLevel_Warn, "\033[33;1m[WARN] " __VA_ARGS__ ); Dmod_Printf( "\033[0m" )
+#   define DMOD_LOG_WARN(...)      DMOD_LOG( Dmod_LogLevel_Warn, "\033[33;1m[WARN] " __VA_ARGS__ ); 
 #endif
 
 #ifndef DMOD_LOG_ERROR
-#   define DMOD_LOG_ERROR(...)     DMOD_LOG( Dmod_LogLevel_Error, "\033[31;1m[ERROR] " __VA_ARGS__ ); Dmod_Printf( "\033[0m" )
+#   define DMOD_LOG_ERROR(...)     DMOD_LOG( Dmod_LogLevel_Error, "\033[31;1m[ERROR] " __VA_ARGS__ ); 
 #endif
 
 //! @}
