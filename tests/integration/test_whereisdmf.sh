@@ -98,7 +98,12 @@ fi
 
 if [ -n "$MODULE_BUILD_DIR" ] && [ -d "$MODULE_BUILD_DIR/dmf" ]; then
     # Set up DMOD_REPO_DIR to point to our test DMF directory
+    # Also set DMOD_DMF_DIR and DMOD_DMFC_DIR to ensure proper search paths
+    # Use DMOD_REPO_PATHS to override any built-in paths with highest priority
+    export DMOD_REPO_PATHS="$MODULE_BUILD_DIR/dmf;$MODULE_BUILD_DIR/dmfc"
     export DMOD_REPO_DIR="$MODULE_BUILD_DIR/dmf"
+    export DMOD_DMF_DIR="$MODULE_BUILD_DIR/dmf"
+    export DMOD_DMFC_DIR="$MODULE_BUILD_DIR/dmfc"
     
     echo ""
     echo "Test 6: Find an existing module"
@@ -111,10 +116,17 @@ if [ -n "$MODULE_BUILD_DIR" ] && [ -d "$MODULE_BUILD_DIR/dmf" ]; then
         MODULE_NAME=$(basename "$DMF_FILE" .dmf)
         
         echo "  Testing with module: $MODULE_NAME"
+        echo "  Search paths:"
+        echo "    DMOD_REPO_PATHS=$DMOD_REPO_PATHS"
+        echo "    DMOD_DMF_DIR=$DMOD_DMF_DIR"
+        echo "    DMOD_DMFC_DIR=$DMOD_DMFC_DIR"
         
         # Test finding the module
-        OUTPUT=$($WHEREISDMF "$MODULE_NAME" 2>&1)
+        # Capture full output to see what whereisdmf returns
+        FULL_OUTPUT=$($WHEREISDMF "$MODULE_NAME" 2>&1)
         EXIT_CODE=$?
+        # Extract just the path (last line that looks like a path)
+        OUTPUT=$(echo "$FULL_OUTPUT" | grep -E '^/' | tail -1)
         
         if [ $EXIT_CODE -eq 0 ]; then
             echo "✓ Successfully found module"
@@ -132,6 +144,9 @@ if [ -n "$MODULE_BUILD_DIR" ] && [ -d "$MODULE_BUILD_DIR/dmf" ]; then
                 echo "✓ Returned path points to an existing file"
             else
                 echo "✗ Returned path does not exist: $OUTPUT"
+                echo "  Expected directory: $MODULE_BUILD_DIR"
+                echo "  DMF_DIR env: $DMOD_DMF_DIR"
+                echo "  DMFC_DIR env: $DMOD_DMFC_DIR"
                 exit 1
             fi
             
