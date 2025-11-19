@@ -461,6 +461,74 @@ TEST_F(DmodManifestTest, FindEntryWithVersionAvailable) {
     Dmod_Manifest_Free(ctx);
 }
 
+TEST_F(DmodManifestTest, VersionAvailableOrderNewestFirst) {
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* manifest = 
+        "$version-available dmffs 1.0 1.1\n"
+        "dmffs https://example.com/dmffs-<version>.dmf\n";
+    
+    ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
+    
+    // Should have 2 entries (one for each version)
+    EXPECT_EQ(Dmod_Manifest_GetEntryCount(ctx), 2);
+    
+    // Verify that newest version (1.1) is tried first
+    // When searching without specifying a version, FindEntry returns entries in order
+    Dmod_ManifestEntry_t entry;
+    Dmod_ManifestNode_t* node = Dmod_Manifest_FindEntry(ctx, "dmffs", nullptr, nullptr, &entry);
+    ASSERT_NE(node, nullptr);
+    EXPECT_STREQ(entry.name, "dmffs");
+    EXPECT_STREQ(entry.version, "1.1");  // Should be newest first
+    EXPECT_STREQ(entry.url, "https://example.com/dmffs-1.1.dmf");
+    
+    // Try to find next entry (should be 1.0)
+    node = Dmod_Manifest_FindEntry(ctx, "dmffs", nullptr, node, &entry);
+    ASSERT_NE(node, nullptr);
+    EXPECT_STREQ(entry.name, "dmffs");
+    EXPECT_STREQ(entry.version, "1.0");  // Should be oldest last
+    EXPECT_STREQ(entry.url, "https://example.com/dmffs-1.0.dmf");
+    
+    // No more entries
+    node = Dmod_Manifest_FindEntry(ctx, "dmffs", nullptr, node, &entry);
+    EXPECT_EQ(node, nullptr);
+    
+    Dmod_Manifest_Free(ctx);
+}
+
+TEST_F(DmodManifestTest, VersionAvailableOrderWithMultipleVersions) {
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* manifest = 
+        "$version-available testmod 1.0 1.5 2.0 2.1\n"
+        "testmod https://example.com/testmod-<version>.dmf\n";
+    
+    ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
+    
+    // Should have 4 entries
+    EXPECT_EQ(Dmod_Manifest_GetEntryCount(ctx), 4);
+    
+    // Verify versions are returned in order: 2.1, 2.0, 1.5, 1.0 (newest first)
+    Dmod_ManifestEntry_t entry;
+    Dmod_ManifestNode_t* node = nullptr;
+    const char* expected_versions[] = {"2.1", "2.0", "1.5", "1.0"};
+    
+    for (int i = 0; i < 4; i++) {
+        node = Dmod_Manifest_FindEntry(ctx, "testmod", nullptr, node, &entry);
+        ASSERT_NE(node, nullptr) << "Failed to find entry " << i;
+        EXPECT_STREQ(entry.version, expected_versions[i]) 
+            << "Expected version " << expected_versions[i] << " at position " << i;
+    }
+    
+    // No more entries
+    node = Dmod_Manifest_FindEntry(ctx, "testmod", nullptr, node, &entry);
+    EXPECT_EQ(node, nullptr);
+    
+    Dmod_Manifest_Free(ctx);
+}
+
 // ===============================================================
 //                  Error Handling Tests
 // ===============================================================
