@@ -1634,3 +1634,194 @@ static bool CheckModuleArchitecture( const char* FilePath, const char* ExpectedA
     return true;
 }
 
+/**
+ * @brief Helper function to check if module is already in the list
+ * 
+ * @param outModules Array of module info structures
+ * @param Count Current count of modules in the array
+ * @param ModuleName Name of the module to check
+ * 
+ * @return True if module is already in the list, false otherwise
+ */
+static bool IsModuleInList( const Dmod_ModuleInfo_t* outModules, size_t Count, const char* ModuleName )
+{
+    for( size_t i = 0; i < Count; i++ )
+    {
+        if( strcmp( outModules[i].ModuleName, ModuleName ) == 0 )
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * @brief Helper function to add module info to the list
+ * 
+ * @param outModules Array of module info structures
+ * @param Count Current count of modules in the array
+ * @param Max Maximum number of modules that can be stored
+ * @param ModuleName Name of the module
+ * @param Version Version of the module
+ * @param State State of the module
+ * 
+ * @return True if module was added successfully, false if array is full or module already exists
+ */
+static bool AddModuleToList( Dmod_ModuleInfo_t* outModules, size_t* Count, size_t Max, 
+                              const char* ModuleName, const char* Version, Dmod_ModuleState_t State )
+{
+    if( *Count >= Max )
+    {
+        return false;
+    }
+
+    if( IsModuleInList( outModules, *Count, ModuleName ) )
+    {
+        return true; // Module already in list, skip
+    }
+
+    strncpy( outModules[*Count].ModuleName, ModuleName, DMOD_MAX_MODULE_NAME_LENGTH - 1 );
+    outModules[*Count].ModuleName[DMOD_MAX_MODULE_NAME_LENGTH - 1] = '\0';
+    
+    strncpy( outModules[*Count].Version, Version, DMOD_MAX_VERSION_LENGTH - 1 );
+    outModules[*Count].Version[DMOD_MAX_VERSION_LENGTH - 1] = '\0';
+    
+    outModules[*Count].State = State;
+    (*Count)++;
+    
+    return true;
+}
+
+/**
+ * @brief Read modules (loaded and available)
+ * 
+ * This function lists all loaded modules and available modules in known search paths and packages.
+ * 
+ * @param outModules Array of module info structures to fill
+ * @param Max Maximum number of modules that can be stored in the array
+ * 
+ * @return Number of modules found (both loaded and available)
+ */
+size_t Dmod_ReadModules( Dmod_ModuleInfo_t* outModules, size_t Max )
+{
+    if( outModules == NULL || Max == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot read modules - invalid parameters\n");
+        return 0;
+    }
+
+    size_t count = 0;
+
+    // 1. Add loaded modules from Dmod_Contexts array
+    for( size_t i = 0; i < DMOD_MAX_MODULES; i++ )
+    {
+        if( Dmod_Contexts[i] != NULL && Dmod_Contexts[i]->Header != NULL )
+        {
+            Dmod_ModuleState_t state = Dmod_ModuleState_Loaded;
+            
+            if( Dmod_Contexts[i]->Running )
+            {
+                state = Dmod_ModuleState_Running;
+            }
+            else if( Dmod_Contexts[i]->Enabled )
+            {
+                state = Dmod_ModuleState_Enabled;
+            }
+
+            if( !AddModuleToList( outModules, &count, Max, 
+                                  Dmod_Contexts[i]->Header->Name,
+                                  Dmod_Contexts[i]->Header->Version,
+                                  state ) )
+            {
+                return count; // Array is full
+            }
+        }
+    }
+
+    // 2. Scan available modules in search paths
+    Dmod_SearchNode_t* searchNode = Dmod_Hlp_PrepareModulesSearchNodes();
+    Dmod_SearchNode_t* currentNode = searchNode;
+    
+    while( currentNode != NULL && count < Max )
+    {
+        const char* repoDir = currentNode->Path;
+        void* dir = Dmod_OpenDir( repoDir );
+        
+        if( dir != NULL )
+        {
+            const char* fileName;
+            while( (fileName = Dmod_ReadDir( dir )) != NULL && count < Max )
+            {
+                // Check if it's a .dmf or .dmfc file
+                size_t len = strlen( fileName );
+                bool isDmf = (len > 4 && strcmp( &fileName[len - 4], ".dmf" ) == 0);
+                bool isDmfc = (len > 5 && strcmp( &fileName[len - 5], ".dmfc" ) == 0);
+                
+                if( isDmf || isDmfc )
+                {
+                    // Extract module name (remove extension)
+                    char moduleName[DMOD_MAX_MODULE_NAME_LENGTH];
+                    size_t nameLen = isDmf ? len - 4 : len - 5;
+                    if( nameLen >= DMOD_MAX_MODULE_NAME_LENGTH )
+                    {
+                        nameLen = DMOD_MAX_MODULE_NAME_LENGTH - 1;
+                    }
+                    strncpy( moduleName, fileName, nameLen );
+                    moduleName[nameLen] = '\0';
+
+                    // Check if module is already loaded or in list
+                    if( !IsModuleInList( outModules, count, moduleName ) )
+                    {
+                        // Read module header to get version
+                        char filePath[DMOD_MAX_FILE_PATH_LENGTH];
+                        Dmod_SnPrintf( filePath, sizeof(filePath), "%s/%s", repoDir, fileName );
+                        
+                        Dmod_ModuleHeader_t header;
+                        if( Dmod_ReadModuleHeader( filePath, &header ) )
+                        {
+                            // Check architecture match
+                            if( strcmp( header.Arch, DMOD_ARCH ) == 0 )
+                            {
+                                AddModuleToList( outModules, &count, Max,
+                                               header.Name, header.Version,
+                                               Dmod_ModuleState_Available );
+                            }
+                        }
+                    }
+                }
+            }
+            Dmod_CloseDir( dir );
+        }
+        
+        currentNode = currentNode->Prev;
+    }
+    
+    Dmod_Hlp_FreeSearchPathList( searchNode );
+
+    // 3. Add available modules from packages
+    for( size_t i = 0; i < DMOD_MAX_NUMBER_OF_PACKAGES && count < Max; i++ )
+    {
+        if( Dmod_Pck_IsValidSlot( &Dmod_Packages[i] ) )
+        {
+            Dmod_PackageSlot_t* slot = &Dmod_Packages[i];
+            
+            for( size_t j = 0; j < slot->DmpHeader->ModuleCount && count < Max; j++ )
+            {
+                const char* moduleName = slot->ModuleEntries[j].ModuleName;
+                
+                if( !IsModuleInList( outModules, count, moduleName ) )
+                {
+                    // For package modules, we need to read the header to get version
+                    // This requires reading from the package, which is complex
+                    // For now, we'll add them with empty version
+                    AddModuleToList( outModules, &count, Max,
+                                   moduleName, "",
+                                   Dmod_ModuleState_Available );
+                }
+            }
+        }
+    }
+
+    return count;
+}
+
