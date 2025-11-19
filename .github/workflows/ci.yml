@@ -65,6 +65,10 @@ jobs:
         working-directory: tests/integration
         run: bash test_todmd.sh ../../build
       
+      - name: Run whereisdmf integration tests
+        working-directory: tests/integration
+        run: bash test_whereisdmf.sh ../../build
+      
       - name: Run coverage check
         working-directory: build
         run: cmake --build . --target coverage_check

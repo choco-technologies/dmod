@@ -90,9 +90,12 @@ int main( int argc, char *argv[] )
     // Initialize Dmod system
     if (!Dmod_Initialize())
     {
-        printf("Error: Failed to initialize Dmod system\n");
+        DMOD_LOG_ERROR("Failed to initialize Dmod system\n");
         return 1;
     }
+
+    // Enable crossplatform mode to allow loading modules without execution
+    Dmod_SetCrossplatformMode( true );
 
     // Buffer for the output file path
     char filePath[512];
@@ -105,17 +108,17 @@ int main( int argc, char *argv[] )
 
     if( found )
     {
-        printf("%s\n", filePath);
+        Dmod_Printf("%s\n", filePath);
         return 0;
     }
     else
     {
-        printf("Error: Module '%s' not found", moduleName);
+        DMOD_LOG_ERROR("Module '%s' not found", moduleName);
         if( archName != NULL )
         {
-            printf(" for architecture '%s'", archName);
+            DMOD_LOG_ERROR(" for architecture '%s'", archName);
         }
-        printf("\n");
+        DMOD_LOG_ERROR("\n");
         return 1;
     }
 }

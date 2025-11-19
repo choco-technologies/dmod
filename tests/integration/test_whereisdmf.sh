@@ -14,7 +14,7 @@ if [[ ! "$BUILD_DIR" = /* ]]; then
 fi
 
 # Try both possible locations
-WHEREISDMF="$BUILD_DIR/tools/module/whereisdmf/whereisdmf"
+WHEREISDMF="$BUILD_DIR/tools/system/whereisdmf/whereisdmf"
 if [ ! -f "$WHEREISDMF" ]; then
     WHEREISDMF="$BUILD_DIR/bin/tools/whereisdmf"
 fi
@@ -23,7 +23,7 @@ TEST_DIR="$BUILD_DIR/test_whereisdmf_integration"
 # Check if whereisdmf exists
 if [ ! -f "$WHEREISDMF" ]; then
     echo "✗ whereisdmf not found at $WHEREISDMF"
-    echo "  Tried: $BUILD_DIR/tools/module/whereisdmf/whereisdmf"
+    echo "  Tried: $BUILD_DIR/tools/system/whereisdmf/whereisdmf"
     echo "  Tried: $BUILD_DIR/bin/tools/whereisdmf"
     exit 1
 fi

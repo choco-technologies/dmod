@@ -1,5 +1,4 @@
 if(DMOD_SYSTEM)
     add_subdirectory(lib)
     add_subdirectory(system)
-    add_subdirectory(module)
 endif()
