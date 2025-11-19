@@ -1575,3 +1575,117 @@ static bool PrepareModulePath( const char* RepoDir, const char* ModuleName, bool
     return true;
 }
 
+/**
+ * @brief Resolve module name to file path
+ * 
+ * This function searches for a module file by name in the following locations:
+ * 1. DMOD_DMF_DIR environment variable
+ * 2. DMOD_DMFC_DIR environment variable
+ * 3. DMOD_REPO_PATHS environment variable (colon or semicolon separated list)
+ * 4. Compiled-in DMOD_REPO_DIR path
+ * 5. Current directory
+ * 
+ * For each location, it tries both .dmf and .dmfc extensions.
+ * 
+ * @param ModuleName Name of the module (without extension)
+ * @param outPath Buffer to store the resolved path
+ * @param MaxLength Maximum length of the output buffer
+ * 
+ * @return True if the module file was found, false otherwise
+ */
+bool Dmod_ResolveModulePath( const char* ModuleName, char* outPath, size_t MaxLength )
+{
+    if( ModuleName == NULL || outPath == NULL || MaxLength == 0 )
+    {
+        return false;
+    }
+
+    // List of directories to search, in order of priority
+    const char* searchDirs[10];
+    size_t numDirs = 0;
+
+    // 1. DMOD_DMF_DIR from environment
+    const char* dmfDir = Dmod_GetEnv("DMOD_DMF_DIR");
+    if( dmfDir != NULL )
+    {
+        searchDirs[numDirs++] = dmfDir;
+    }
+
+    // 2. DMOD_DMFC_DIR from environment
+    const char* dmfcDir = Dmod_GetEnv("DMOD_DMFC_DIR");
+    if( dmfcDir != NULL )
+    {
+        searchDirs[numDirs++] = dmfcDir;
+    }
+
+    // 3. DMOD_REPO_PATHS from environment (multiple paths separated by DMOD_ARRAY_SEP)
+    const char* repoPaths = Dmod_GetEnv("DMOD_REPO_PATHS");
+    char* repoEnv = NULL;
+    if( repoPaths != NULL )
+    {
+        size_t repoEnvSize = strlen(repoPaths);
+        if( repoEnvSize > 0 )
+        {
+            repoEnv = Dmod_Malloc(repoEnvSize + 1);
+            if( repoEnv != NULL )
+            {
+                strcpy(repoEnv, repoPaths);
+                const char* repoDir = strtok(repoEnv, DMOD_ARRAY_SEP);
+                while( repoDir != NULL && numDirs < 8 )
+                {
+                    searchDirs[numDirs++] = repoDir;
+                    repoDir = strtok(NULL, DMOD_ARRAY_SEP);
+                }
+            }
+        }
+    }
+
+    // 4. Compiled-in DMOD_REPO_DIR path
+    const char* defaultRepoDir = Dmod_GetRepoDir();
+    if( defaultRepoDir != NULL )
+    {
+        searchDirs[numDirs++] = defaultRepoDir;
+    }
+
+    // 5. Current directory
+    searchDirs[numDirs++] = ".";
+
+    // Search each directory for both .dmf and .dmfc files
+    char path[DMOD_MAX_PATH_LENGTH + 1];
+    for( size_t i = 0; i < numDirs; i++ )
+    {
+        // Try .dmf extension first
+        if( PrepareModulePath(searchDirs[i], ModuleName, false, path, sizeof(path)) &&
+            Dmod_FileAvailable(path) )
+        {
+            strncpy(outPath, path, MaxLength - 1);
+            outPath[MaxLength - 1] = '\0';
+            if( repoEnv != NULL )
+            {
+                Dmod_Free(repoEnv);
+            }
+            return true;
+        }
+
+        // Try .dmfc extension
+        if( PrepareModulePath(searchDirs[i], ModuleName, true, path, sizeof(path)) &&
+            Dmod_FileAvailable(path) )
+        {
+            strncpy(outPath, path, MaxLength - 1);
+            outPath[MaxLength - 1] = '\0';
+            if( repoEnv != NULL )
+            {
+                Dmod_Free(repoEnv);
+            }
+            return true;
+        }
+    }
+
+    if( repoEnv != NULL )
+    {
+        Dmod_Free(repoEnv);
+    }
+
+    return false;
+}
+

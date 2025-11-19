@@ -62,6 +62,7 @@ extern Dmod_Context_t*  Dmod_LoadFromPackage    ( const char* PackageName, const
 extern bool             Dmod_Unload             ( Dmod_Context_t* Context, bool Force );
 extern void             Dmod_SetCrossplatformMode ( bool Enable );
 extern bool             Dmod_IsCrossplatformMode ( void );
+extern bool             Dmod_ResolveModulePath  ( const char* ModuleName, char* outPath, size_t MaxLength );
 
 extern const Dmod_RequiredModule_t* Dmod_GetNextRequiredModule( Dmod_Context_t* Context, const Dmod_RequiredModule_t* Last );
 extern bool             Dmod_ReadRequiredModules( const char* Path, Dmod_RequiredModule_t* outRequiredModules, size_t MaxModules );

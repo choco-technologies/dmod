@@ -9,7 +9,7 @@
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s path/to/file.dmf [--module <module_name>] [--args <arguments>]\n", AppName);
+    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>]\n", AppName);
 }
 
 // -----------------------------------------
@@ -22,7 +22,7 @@ void PrintHelp( const char* AppName )
     printf("-- Dynamic Module Loader ver. " DMOD_VERSION_STRING " --\n\n");
     printf("The DMOD is a dynamic module loader that allows to load and unload modules\n");
     printf("This is an example application that uses the DMOD system\n\n");
-    printf("Usage: %s path/to/file.dmf [--module <module_name>] [--args <arguments>]\n", AppName);
+    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>]\n", AppName);
     printf("Options:\n");
     printf("  -h, --help                Print this help message\n");
     printf("  -v, --version             Print version information\n");
@@ -31,10 +31,21 @@ void PrintHelp( const char* AppName )
     printf("Module Types:\n");
     printf("  Application    Runs the module's main function\n");
     printf("  Library        Enables the module, then disables it\n\n");
+    printf("Module Resolution:\n");
+    printf("  If the input contains '/' or has a .dmf/.dmfc/.dmp extension, it is treated as a file path.\n");
+    printf("  Otherwise, it is treated as a module name and searched for in:\n");
+    printf("    1. DMOD_DMF_DIR environment variable\n");
+    printf("    2. DMOD_DMFC_DIR environment variable\n");
+    printf("    3. DMOD_REPO_PATHS environment variable (colon-separated paths)\n");
+    printf("    4. Compiled-in repository path\n");
+    printf("    5. Current directory\n");
+    printf("  Both .dmf and .dmfc extensions are tried automatically.\n\n");
     printf("Examples:\n");
     printf("  %s my-app.dmf\n", AppName);
+    printf("  %s my_app                # Searches for my_app.dmf or my_app.dmfc\n", AppName);
     printf("  %s my-package.dmp --module my_module\n", AppName);
     printf("  %s my-app.dmf --args \"arg1 arg2\"\n", AppName);
+    printf("  %s my_app --args \"arg1 arg2\"  # Using module name\n", AppName);
     printf("  %s my-package.dmp --module my_module --args \"--verbose\"\n", AppName);
 }
 
@@ -71,7 +82,7 @@ int main( int argc, char *argv[] )
     }
 
     // Parse arguments
-    const char* dmfPath = argv[1];
+    const char* dmfPathOrName = argv[1];
     const char* moduleName = NULL;
     int appArgc = 0;
     char** appArgv = NULL;
@@ -121,6 +132,39 @@ int main( int argc, char *argv[] )
 
     // Load the module or package
     Dmod_Context_t* context = NULL;
+    
+    // Determine if input is a path or module name
+    // If it contains '/' or ends with .dmf/.dmfc/.dmp, treat it as a path
+    // Otherwise, treat it as a module name and resolve it
+    char dmfPath[DMOD_MAX_PATH_LENGTH + 1];
+    bool isPath = (strchr(dmfPathOrName, '/') != NULL || 
+                   strchr(dmfPathOrName, '\\') != NULL ||
+                   strstr(dmfPathOrName, ".dmf") != NULL ||
+                   strstr(dmfPathOrName, ".dmfc") != NULL ||
+                   strstr(dmfPathOrName, ".dmp") != NULL);
+    
+    if( isPath )
+    {
+        // Use the provided path directly
+        strncpy(dmfPath, dmfPathOrName, sizeof(dmfPath) - 1);
+        dmfPath[sizeof(dmfPath) - 1] = '\0';
+    }
+    else
+    {
+        // Try to resolve module name to path
+        if( !Dmod_ResolveModulePath(dmfPathOrName, dmfPath, sizeof(dmfPath)) )
+        {
+            printf("Cannot find module: %s\n", dmfPathOrName);
+            printf("Searched in:\n");
+            printf("  - DMOD_DMF_DIR environment variable\n");
+            printf("  - DMOD_DMFC_DIR environment variable\n");
+            printf("  - DMOD_REPO_PATHS environment variable\n");
+            printf("  - Compiled repository path\n");
+            printf("  - Current directory\n");
+            return -1;
+        }
+        printf("Resolved module '%s' to: %s\n", dmfPathOrName, dmfPath);
+    }
     
     // Check if the file is a DMP package
     if( Dmod_IsDMPFile( dmfPath ) )
