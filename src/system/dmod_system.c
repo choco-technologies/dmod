@@ -1495,11 +1495,7 @@ bool Dmod_IsFunctionConnected( void* FunctionPointer )
  */
 static Dmod_SearchNode_t* PrepareModulesSearchNodes( void )
 {
-    Dmod_SearchNode_t *searchNode = NULL;
-
-    const char* repoEnv = Dmod_GetEnv( DMOD_REPO_PATHS );
-
-    return searchNode;
+    return Dmod_Hlp_PrepareModulesSearchNodes();
 }
 
 /**
