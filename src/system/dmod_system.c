@@ -386,7 +386,7 @@ bool Dmod_FindModuleFile(const char* ModuleName, const char* ArchName, char* out
         ArchName = DMOD_ARCH;
     }
 
-    Dmod_SearchNode_t* searchNode = PrepareModulesSearchNodes();
+    Dmod_SearchNode_t* searchNode = Dmod_Hlp_PrepareModulesSearchNodes();
     Dmod_SearchNode_t* currentNode = searchNode;
     while( currentNode != NULL )
     {
