@@ -87,6 +87,49 @@ function( create_library_makefile targetName )
     string(REPLACE ";" "\\\n\t\t" DMOD_LIBS "${DMOD_LINKED_LIBRARIES}")
     string(REPLACE "Threads::Threads" "pthread" DMOD_LIBS "${DMOD_LIBS}")
     configure_file(${DMOD_DIR}/scripts/Makefile-lib.in ${CMAKE_CURRENT_SOURCE_DIR}/Makefile)
+    
+    # ===========================================================================
+    # Memory Analysis for Static Libraries
+    # ===========================================================================
+    # Collect object files for memory analysis
+    get_target_property(LIB_SOURCES ${targetName} SOURCES)
+    set(LIB_OBJECT_FILES "")
+    foreach(SOURCE_FILE ${LIB_SOURCES})
+        get_filename_component(SOURCE_EXT "${SOURCE_FILE}" EXT)
+        # Handle both .c and .cpp files
+        if(SOURCE_EXT STREQUAL ".c")
+            set(OBJ_FILE "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${targetName}.dir/${SOURCE_FILE}.o")
+        elseif(SOURCE_EXT STREQUAL ".cpp")
+            set(OBJ_FILE "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${targetName}.dir/${SOURCE_FILE}.o")
+        else()
+            continue()
+        endif()
+        list(APPEND LIB_OBJECT_FILES "${OBJ_FILE}")
+    endforeach()
+    
+    # Convert list to string for passing to script
+    string(REPLACE ";" "@@" LIB_OBJECT_FILES_STR "${LIB_OBJECT_FILES}")
+    
+    # Add custom command to show memory analysis after build
+    add_custom_command(
+        TARGET ${targetName} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} 
+            -DOBJECT_FILES=${LIB_OBJECT_FILES_STR}
+            -DMODULE_NAME=${targetName}
+            -DANALYSIS_TYPE=summary
+            -P ${DMOD_SCRIPTS_DIR}/memory_analysis.cmake
+        COMMENT "Analyzing memory usage for ${targetName}"
+    )
+    
+    # Add custom target for detailed symbol analysis
+    add_custom_target(${targetName}_memory_detailed
+        COMMAND ${CMAKE_COMMAND} 
+            -DOBJECT_FILES=${LIB_OBJECT_FILES_STR}
+            -DMODULE_NAME=${targetName}
+            -DANALYSIS_TYPE=detailed
+            -P ${DMOD_SCRIPTS_DIR}/memory_analysis.cmake
+        COMMENT "Detailed memory analysis for ${targetName}"
+    )
 endfunction()
 
 

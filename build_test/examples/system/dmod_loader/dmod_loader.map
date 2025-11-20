@@ -1,0 +1,981 @@
+Archive member included to satisfy reference by file (symbol)
+
+../../../src/system/libdmod_system.a(dmod_dmfc_api.c.o)
+                              CMakeFiles/dmod_loader.dir/main.c.o (Dmod_IsDMPFile)
+../../../src/system/libdmod_system.a(dmod_dmp_api.c.o)
+                              CMakeFiles/dmod_loader.dir/main.c.o (Dmod_AddPackageFile)
+../../../src/system/libdmod_system.a(dmod_system.c.o)
+                              CMakeFiles/dmod_loader.dir/main.c.o (Dmod_LoadModuleByName)
+../../../src/system/libdmod_system.a(dmod_if_file.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_dmfc_api.c.o) (Dmod_FileOpen)
+../../../src/system/libdmod_system.a(dmod_if_mem.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_dmfc_api.c.o) (Dmod_Malloc)
+../../../src/system/libdmod_system.a(dmod_if_rawmem.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_ReadMemory)
+../../../src/system/libdmod_system.a(dmod_if_dbg.c.o)
+                              CMakeFiles/dmod_loader.dir/main.c.o (Dmod_CheckLogLevel)
+../../../src/system/libdmod_system.a(dmod_if_irq.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_EnterCritical)
+../../../src/system/libdmod_system.a(dmod_if_events.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_Event_ModuleLoaded)
+../../../src/system/libdmod_system.a(dmod_if_rtos.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_Mutex_New)
+../../../src/system/libdmod_system.a(dmod_if_comp.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_dmfc_api.c.o) (Dmod_Compression_GetMaxSize)
+../../../src/system/libdmod_system.a(dmod_if_env.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_GetEnv)
+../../../src/system/libdmod_system.a(dmod_if_str.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_StrDup)
+../../../src/system/libdmod_system.a(dmod_if_input.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_Getc)
+../../../src/system/libdmod_system.a(dmod_vars.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_BuiltinInputApi)
+../../../src/system/libdmod_system.a(dmod_ctx.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_Context_New)
+../../../src/system/libdmod_system.a(dmod_hlp.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_Hlp_FreeSearchPathList)
+../../../src/system/libdmod_system.a(dmod_ldr.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_Ldr_Load)
+../../../src/system/libdmod_system.a(dmod_mgr.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_Mgr_IsSystemModule)
+../../../src/system/libdmod_system.a(dmod_rmod.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_RMod_IsModuleRequired)
+../../../src/system/libdmod_system.a(dmod_pck.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_dmp_api.c.o) (Dmod_Pck_ReleaseSlot)
+../../../src/system/libdmod_system.a(dmod_dmf_cb.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_Preinit)
+../../../src/system/libdmod_system.a(dmod_dmf_api.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_ConnectOutputApis)
+../../../src/common/libdmod_common.a(dmod_common.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_system.c.o) (Dmod_Api_GetNumberOfEntries)
+../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+                              ../../../src/system/libdmod_system.a(dmod_if_comp.c.o) (fastlz_decompress)
+
+Merging program properties
+
+
+As-needed library included to satisfy reference by file (symbol)
+
+libc.so.6                     ../../../src/system/libdmod_system.a(dmod_if_input.c.o) (fgets@@GLIBC_2.2.5)
+
+Discarded input sections
+
+ .note.gnu.property
+                0x0000000000000000       0x20 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+ .note.gnu.property
+                0x0000000000000000       0x20 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+ .note.gnu.property
+                0x0000000000000000       0x20 CMakeFiles/dmod_loader.dir/main.c.o
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_dmfc_api.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_dmp_api.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_system.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_if_file.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_if_mem.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_if_rawmem.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_if_dbg.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_if_irq.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_if_events.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_if_rtos.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_if_comp.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_if_env.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_if_str.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_if_input.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_vars.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_ctx.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_hlp.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_ldr.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_mgr.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_rmod.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_pck.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_dmf_cb.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/system/libdmod_system.a(dmod_dmf_api.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../src/common/libdmod_common.a(dmod_common.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+ .note.gnu.property
+                0x0000000000000000       0x20 /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+ .note.gnu.property
+                0x0000000000000000       0x20 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+LOAD CMakeFiles/dmod_loader.dir/main.c.o
+LOAD ../../../src/system/libdmod_system.a
+LOAD ../../../src/common/libdmod_common.a
+LOAD ../../../lib/third-party/FastLZ/libdmod_fastlz.a
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/libstdc++.so
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/libm.so
+START GROUP
+LOAD /lib/x86_64-linux-gnu/libm.so.6
+LOAD /lib/x86_64-linux-gnu/libmvec.so.1
+END GROUP
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/libgcc_s.so
+START GROUP
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/libgcc_s.so.1
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/libgcc.a
+END GROUP
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/libgcc.a
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/libc.so
+START GROUP
+LOAD /lib/x86_64-linux-gnu/libc.so.6
+LOAD /usr/lib/x86_64-linux-gnu/libc_nonshared.a
+LOAD /lib64/ld-linux-x86-64.so.2
+END GROUP
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/libgcc_s.so
+START GROUP
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/libgcc_s.so.1
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/libgcc.a
+END GROUP
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/libgcc.a
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+                0x0000000000400000                . = 0x400000
+
+.text           0x0000000000400000     0xf36d
+ *(.text)
+ .text          0x0000000000400000       0x26 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x0000000000400000                _start
+ .text          0x0000000000400026        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+ *fill*         0x0000000000400026        0xa 
+ .text          0x0000000000400030       0xb9 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+ .text          0x00000000004000e9      0xacd CMakeFiles/dmod_loader.dir/main.c.o
+                0x00000000004000e9                IsFilePath
+                0x000000000040017a                PrintUsage
+                0x00000000004001a8                PrintHelp
+                0x000000000040033e                main
+ .text          0x0000000000400bb6      0xf81 ../../../src/system/libdmod_system.a(dmod_dmfc_api.c.o)
+                0x0000000000400bb6                Dmod_IsDMFC
+                0x0000000000400bf3                Dmod_IsDMP
+                0x0000000000400c30                Dmod_IsDMPFile
+                0x0000000000400d1b                Dmod_IsDMFCFile
+                0x0000000000400e06                Dmod_ToDMFC
+                0x00000000004011d7                Dmod_ToDMFCFile
+                0x000000000040158f                Dmod_FromDMFC
+                0x0000000000401a34                Dmod_GetDMFCOriginalSize
+ .text          0x0000000000401b37     0x1b86 ../../../src/system/libdmod_system.a(dmod_dmp_api.c.o)
+                0x0000000000401b37                Dmod_AddPackageBuffer
+                0x0000000000401cfa                Dmod_AddPackageFile
+                0x000000000040218c                Dmod_RemovePackage
+                0x00000000004022cc                Dmod_RemovePackageBuffer
+                0x0000000000402417                Dmod_RemovePackageFile
+                0x0000000000402562                Dmod_IsPackageAvailable
+                0x00000000004025d5                Dmod_GetNumberOfPackages
+                0x00000000004025e4                Dmod_GetPackageInfo
+                0x0000000000402722                Dmod_GetMainIndexFromPackage
+                0x00000000004027e3                Dmod_ToDMPFile
+ .text          0x00000000004036bd     0x3e63 ../../../src/system/libdmod_system.a(dmod_system.c.o)
+                0x00000000004036bd                Dmod_Initialize
+                0x00000000004037a2                Dmod_Deinitialize
+                0x00000000004037b1                Dmod_LoadFile
+                0x0000000000403d15                Dmod_Load
+                0x00000000004040d6                Dmod_LoadFromPackage
+                0x000000000040463b                Dmod_FindModuleFile
+                0x000000000040487b                Dmod_LoadModuleByName
+                0x0000000000404c67                Dmod_LoadModuleFromPackage
+                0x0000000000404dce                Dmod_Unload
+                0x0000000000404f9d                Dmod_SetCrossplatformMode
+                0x0000000000405046                Dmod_IsCrossplatformMode
+                0x0000000000405057                Dmod_GetNextRequiredModule
+                0x000000000040516f                Dmod_ReadRequiredModules
+                0x00000000004052ce                Dmod_GetStackSize
+                0x000000000040533f                Dmod_GetModuleType
+                0x00000000004053fd                Dmod_Enable
+                0x0000000000405918                Dmod_Disable
+                0x0000000000405cd8                Dmod_IsEnabled
+                0x0000000000405d18                Dmod_Run
+                0x000000000040620e                Dmod_IsRunning
+                0x000000000040624e                Dmod_GetLicense
+                0x0000000000406309                Dmod_GetName
+                0x00000000004063c5                Dmod_SetLogLevel
+                0x0000000000406460                Dmod_ReadModuleHeader
+                0x0000000000406569                Dmod_GetFileArchitecture
+                0x0000000000406634                Dmod_BeginUsage
+                0x000000000040672a                Dmod_EndUsage
+                0x000000000040686a                Dmod_IsModuleUsed
+                0x0000000000406965                Dmod_IsModuleLoaded
+                0x0000000000406983                Dmod_IsApplicationModuleFile
+                0x0000000000406a24                Dmod_IsModuleFileLoaded
+                0x0000000000406acf                Dmod_IsModuleEnabled
+                0x0000000000406aed                Dmod_IsModuleRequired
+                0x0000000000406b49                Dmod_GetModuleVersion
+                0x0000000000406ba0                Dmod_LoadModule
+                0x0000000000406c56                Dmod_UnloadModule
+                0x0000000000406d1e                Dmod_EnableModule
+                0x0000000000406dee                Dmod_DisableModule
+                0x0000000000406eb6                Dmod_RunModule
+                0x0000000000406f83                Dmod_IsFunctionConnected
+ .text          0x0000000000407520      0x27e ../../../src/system/libdmod_system.a(dmod_if_file.c.o)
+                0x0000000000407520                Dmod_FileOpen
+                0x0000000000407549                Dmod_FileRead
+                0x000000000040757f                Dmod_FileWrite
+                0x00000000004075b5                Dmod_FileSeek
+                0x00000000004075e4                Dmod_FileTell
+                0x0000000000407602                Dmod_FileSize
+                0x0000000000407662                Dmod_FileClose
+                0x0000000000407681                Dmod_GetRepoDir
+                0x0000000000407692                Dmod_FileAvailable
+                0x00000000004076dd                Dmod_OpenDir
+                0x00000000004076fb                Dmod_ReadDir
+                0x0000000000407733                Dmod_CloseDir
+                0x0000000000407752                Dmod_MakeDir
+                0x0000000000407778                Dmod_Access
+ .text          0x000000000040779e      0x2a8 ../../../src/system/libdmod_system.a(dmod_if_mem.c.o)
+                0x000000000040779e                Dmod_Malloc
+                0x00000000004077c1                Dmod_MallocEx
+                0x0000000000407837                Dmod_Realloc
+                0x0000000000407865                Dmod_ReallocEx
+                0x0000000000407892                Dmod_AlignedMalloc
+                0x00000000004078c0                Dmod_AlignedMallocEx
+                0x00000000004079b5                Dmod_Free
+                0x00000000004079d9                Dmod_FreeEx
+                0x00000000004079fd                Dmod_FreeModule
+ .text          0x0000000000407a46       0x94 ../../../src/system/libdmod_system.a(dmod_if_rawmem.c.o)
+                0x0000000000407a46                Dmod_ReadMemory
+                0x0000000000407a90                Dmod_WriteMemory
+ .text          0x0000000000407ada      0x3b8 ../../../src/system/libdmod_system.a(dmod_if_dbg.c.o)
+                0x0000000000407ada                Dmod_CheckLogLevel
+                0x0000000000407af3                Dmod_Printf
+                0x0000000000407bd7                Dmod_FPrintf
+                0x0000000000407cc2                Dmod_VSnPrintf
+                0x0000000000407d65                Dmod_SnPrintf
+                0x0000000000407e54                Dmod_Assert
+ .text          0x0000000000407e92       0x16 ../../../src/system/libdmod_system.a(dmod_if_irq.c.o)
+                0x0000000000407e92                Dmod_EnterCritical
+                0x0000000000407e9d                Dmod_ExitCritical
+ .text          0x0000000000407ea8       0x6f ../../../src/system/libdmod_system.a(dmod_if_events.c.o)
+                0x0000000000407ea8                Dmod_Event_ModuleLoaded
+                0x0000000000407eb7                Dmod_Event_ModuleUnloaded
+                0x0000000000407ec6                Dmod_Event_ModuleLoadingInProgress
+                0x0000000000407edb                Dmod_Event_ModuleEnabled
+                0x0000000000407eea                Dmod_Event_ModuleDisabled
+                0x0000000000407ef9                Dmod_Event_ModuleRunning
+                0x0000000000407f08                Dmod_Event_ModuleStopped
+ .text          0x0000000000407f17      0x319 ../../../src/system/libdmod_system.a(dmod_if_rtos.c.o)
+                0x0000000000407f17                Dmod_Mutex_New
+                0x00000000004080c6                Dmod_Mutex_Lock
+                0x0000000000408128                Dmod_Mutex_Unlock
+                0x000000000040818a                Dmod_Mutex_Delete
+ .text          0x0000000000408230      0x3c9 ../../../src/system/libdmod_system.a(dmod_if_comp.c.o)
+                0x0000000000408230                Dmod_Compression_GetMaxSize
+                0x000000000040830c                Dmod_Compression_Pack
+                0x0000000000408400                Dmod_Compression_Unpack
+                0x00000000004084ed                Dmod_Compression_IsSupported
+                0x0000000000408551                Dmod_Compression_GetNextSupported
+ .text          0x00000000004085f9       0xb0 ../../../src/system/libdmod_system.a(dmod_if_env.c.o)
+                0x00000000004085f9                Dmod_GetEnv
+                0x000000000040867a                Dmod_SetEnv
+ .text          0x00000000004086a9       0x9b ../../../src/system/libdmod_system.a(dmod_if_str.c.o)
+                0x00000000004086a9                Dmod_StrDup
+ .text          0x0000000000408744      0x28e ../../../src/system/libdmod_system.a(dmod_if_input.c.o)
+                0x0000000000408744                Dmod_Getc
+                0x0000000000408753                Dmod_Gets
+                0x0000000000408794                Dmod_Vsscanf
+                0x00000000004087da                Dmod_Sscanf
+                0x00000000004088c5                Dmod_Vscanf
+                0x00000000004088ee                Dmod_Scanf
+ .text          0x00000000004089d2        0x0 ../../../src/system/libdmod_system.a(dmod_vars.c.o)
+ .text          0x00000000004089d2      0x5ec ../../../src/system/libdmod_system.a(dmod_ctx.c.o)
+                0x00000000004089d2                Dmod_Context_New
+                0x0000000000408bbe                Dmod_Context_IsValid
+                0x0000000000408bf3                Dmod_Context_Delete
+                0x0000000000408cbe                Dmod_Context_GetModuleName
+                0x0000000000408d15                Dmod_Context_GetModuleType
+                0x0000000000408d6e                Dmod_Context_Add
+                0x0000000000408e2f                Dmod_Context_Remove
+                0x0000000000408ef1                Dmod_Context_Get
+ .text          0x0000000000408fbe      0x520 ../../../src/system/libdmod_system.a(dmod_hlp.c.o)
+                0x0000000000408fbe                Dmod_Hlp_InitPointerCP
+                0x00000000004090c2                Dmod_Hlp_InitPointer
+                0x00000000004091cd                Dmod_Hlp_AddSearchNode
+                0x00000000004092d2                Dmod_Hlp_FreeSearchPathList
+                0x0000000000409326                Dmod_Hlp_PrepareSearchNodes
+                0x0000000000409420                Dmod_Hlp_PrepareModulesSearchNodes
+ .text          0x00000000004094de     0x1a9f ../../../src/system/libdmod_system.a(dmod_ldr.c.o)
+                0x00000000004094de                Dmod_Ldr_LoadHeader
+                0x0000000000409c34                Dmod_Ldr_LoadFooter
+                0x0000000000409f4e                Dmod_Ldr_LoadOutput
+                0x000000000040a538                Dmod_Ldr_LoadInput
+                0x000000000040aaf9                Dmod_Ldr_LoadGot
+                0x000000000040ad5c                Dmod_Ldr_LoadBss
+                0x000000000040aede                Dmod_Ldr_Load
+ .text          0x000000000040af7d      0x17a ../../../src/system/libdmod_system.a(dmod_mgr.c.o)
+                0x000000000040af7d                Dmod_Mgr_IsSystemModule
+                0x000000000040b05d                Dmod_Mgr_IsLoaded
+                0x000000000040b098                Dmod_Mgr_IsEnabled
+ .text          0x000000000040b0f7      0xdbb ../../../src/system/libdmod_system.a(dmod_rmod.c.o)
+                0x000000000040b0f7                Dmod_RMod_FindRequiredModule
+                0x000000000040b1c9                Dmod_RMod_FindEmptyRequiredModule
+                0x000000000040b24b                Dmod_RMod_IsModuleRequired
+                0x000000000040b27a                Dmod_RMod_AddRequiredModule
+                0x000000000040b68d                Dmod_RMod_ReadRequiredModules
+                0x000000000040b855                Dmod_RMod_AreRequiredModulesEnabled
+                0x000000000040b990                Dmod_RMod_FindDependentModule
+                0x000000000040ba98                Dmod_RMod_LoadRequiredModules
+                0x000000000040bd6d                Dmod_RMod_EnableRequiredModules
+ .text          0x000000000040beb2      0x85d ../../../src/system/libdmod_system.a(dmod_pck.c.o)
+                0x000000000040beb2                Dmod_Pck_IsSlotUsed
+                0x000000000040bee8                Dmod_Pck_ReleaseSlot
+                0x000000000040bfa8                Dmod_Pck_GetPackageName
+                0x000000000040bfdd                Dmod_Pck_IsValidSlot
+                0x000000000040c12f                Dmod_Pck_GetFreeSlot
+                0x000000000040c1ee                Dmod_Pck_GetSlotByIndex
+                0x000000000040c262                Dmod_Pck_FindSlotByName
+                0x000000000040c303                Dmod_Pck_FindSlotByBuffer
+                0x000000000040c370                Dmod_Pck_FindSlotByFilePath
+                0x000000000040c417                Dmod_Pck_GetNumberOfPackages
+                0x000000000040c474                Dmod_Pck_FindModuleEntry
+                0x000000000040c59a                Dmod_Pck_FindModuleEntryInPackages
+                0x000000000040c631                Dmod_Pck_GetMainModuleName
+ .text          0x000000000040c70f      0x3c9 ../../../src/system/libdmod_system.a(dmod_dmf_cb.c.o)
+                0x000000000040c70f                Dmod_Preinit
+                0x000000000040c7ce                Dmod_Init
+                0x000000000040c867                Dmod_Main
+                0x000000000040c908                Dmod_Deinit
+                0x000000000040c996                Dmod_Signal
+                0x000000000040ca2c                Dmod_Irq
+ .text          0x000000000040cad8     0x1651 ../../../src/system/libdmod_system.a(dmod_dmf_api.c.o)
+                0x000000000040cad8                Dmod_ConnectApi
+                0x000000000040cc8c                Dmod_DisconnectApi
+                0x000000000040ce1d                Dmod_ConnectOutputApis
+                0x000000000040d0ae                Dmod_ConnectInputApis
+                0x000000000040d31e                Dmod_ConnectAllApis
+                0x000000000040d3c1                Dmod_DisconnectOutputApis
+                0x000000000040d58a                Dmod_DisconnectInputApis
+                0x000000000040d753                Dmod_DisconnectAllApis
+                0x000000000040d842                Dmod_PrintOutputApis
+                0x000000000040d990                Dmod_PrintInputApis
+                0x000000000040daed                Dmod_PrintAllApis
+                0x000000000040db65                Dmod_GetFunction
+                0x000000000040dce2                Dmod_GetNextDifModule
+                0x000000000040df3e                Dmod_GetDifFunction
+ .text          0x000000000040e129      0xa2f ../../../src/common/libdmod_common.a(dmod_common.c.o)
+                0x000000000040e129                Dmod_Api_GetNumberOfEntries
+                0x000000000040e20c                Dmod_ApiSignature_IsValid
+                0x000000000040e2b7                Dmod_ApiSignature_IsModuleNameGiven
+                0x000000000040e31c                Dmod_ApiSignature_IsModule
+                0x000000000040e426                Dmod_ApiSignature_GetName
+                0x000000000040e45e                Dmod_ApiSignature_GetVersion
+                0x000000000040e496                Dmod_ApiSignature_GetModuleVersion
+                0x000000000040e4ce                Dmod_ApiSignature_GetModule
+                0x000000000040e506                Dmod_ApiSignature_ReadModuleName
+                0x000000000040e5bc                Dmod_ApiSignature_ReadVersion
+                0x000000000040e6ad                Dmod_ApiSignature_ReadModuleVersion
+                0x000000000040e789                Dmod_ApiSignature_AreEqual
+                0x000000000040e820                Dmod_ApiSignature_IsMal
+ .text          0x000000000040eb58        0x0 ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+ .text          0x000000000040eb58        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+ .text          0x000000000040eb58        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+ *(.text.*)
+ .text.fastlz_memcpy
+                0x000000000040eb58        0x5 ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+ .text.flz_literals
+                0x000000000040eb5d       0xc6 ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+ .text.fastlz1_compress
+                0x000000000040ec23      0x208 ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+ .text.fastlz_memmove
+                0x000000000040ee2b       0x59 ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+ .text.fastlz2_compress
+                0x000000000040ee84      0x28f ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+ .text.fastlz_compress
+                0x000000000040f113       0x16 ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+                0x000000000040f113                fastlz_compress
+ .text.fastlz_decompress
+                0x000000000040f129      0x1f3 ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+                0x000000000040f129                fastlz_decompress
+ .text.fastlz_compress_level
+                0x000000000040f31c       0x25 ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+                0x000000000040f31c                fastlz_compress_level
+ *(.init)
+ *fill*         0x000000000040f341        0x3 
+ .init          0x000000000040f344       0x16 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+                0x000000000040f344                _init
+ .init          0x000000000040f35a        0x5 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+ *(.fini)
+ *fill*         0x000000000040f35f        0x1 
+ .fini          0x000000000040f360        0x8 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+                0x000000000040f360                _fini
+ .fini          0x000000000040f368        0x5 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+
+.plt            0x000000000040f370      0x300
+ .plt           0x000000000040f370      0x300 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.plt.got        0x000000000040f670       0x10
+ .plt.got       0x000000000040f670       0x10 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x000000000040f670                __cxa_finalize@@GLIBC_2.2.5
+
+.plt.sec        0x000000000040f680      0x2f0
+ .plt.sec       0x000000000040f680      0x2f0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x000000000040f680                getenv@@GLIBC_2.2.5
+                0x000000000040f690                free@@GLIBC_2.2.5
+                0x000000000040f6a0                strncpy@@GLIBC_2.2.5
+                0x000000000040f6b0                strncmp@@GLIBC_2.2.5
+                0x000000000040f6c0                strcpy@@GLIBC_2.2.5
+                0x000000000040f6d0                mkdir@@GLIBC_2.2.5
+                0x000000000040f6e0                puts@@GLIBC_2.2.5
+                0x000000000040f6f0                fread@@GLIBC_2.2.5
+                0x000000000040f700                vsnprintf@@GLIBC_2.2.5
+                0x000000000040f710                setenv@@GLIBC_2.2.5
+                0x000000000040f720                fclose@@GLIBC_2.2.5
+                0x000000000040f730                opendir@@GLIBC_2.2.5
+                0x000000000040f740                strlen@@GLIBC_2.2.5
+                0x000000000040f750                __stack_chk_fail@@GLIBC_2.4
+                0x000000000040f760                strchr@@GLIBC_2.2.5
+                0x000000000040f770                printf@@GLIBC_2.2.5
+                0x000000000040f780                pthread_mutex_destroy@@GLIBC_2.2.5
+                0x000000000040f790                pthread_mutexattr_settype@@GLIBC_2.34
+                0x000000000040f7a0                __assert_fail@@GLIBC_2.2.5
+                0x000000000040f7b0                memset@@GLIBC_2.2.5
+                0x000000000040f7c0                strncat@@GLIBC_2.2.5
+                0x000000000040f7d0                closedir@@GLIBC_2.2.5
+                0x000000000040f7e0                fgets@@GLIBC_2.2.5
+                0x000000000040f7f0                strcmp@@GLIBC_2.2.5
+                0x000000000040f800                getchar@@GLIBC_2.2.5
+                0x000000000040f810                ftell@@GLIBC_2.2.5
+                0x000000000040f820                __isoc99_vscanf@@GLIBC_2.7
+                0x000000000040f830                memcpy@@GLIBC_2.14
+                0x000000000040f840                readdir@@GLIBC_2.2.5
+                0x000000000040f850                pthread_mutex_unlock@@GLIBC_2.2.5
+                0x000000000040f860                __isoc99_vsscanf@@GLIBC_2.7
+                0x000000000040f870                malloc@@GLIBC_2.2.5
+                0x000000000040f880                vprintf@@GLIBC_2.2.5
+                0x000000000040f890                fseek@@GLIBC_2.2.5
+                0x000000000040f8a0                realloc@@GLIBC_2.2.5
+                0x000000000040f8b0                memmove@@GLIBC_2.2.5
+                0x000000000040f8c0                mprotect@@GLIBC_2.2.5
+                0x000000000040f8d0                access@@GLIBC_2.2.5
+                0x000000000040f8e0                fopen@@GLIBC_2.2.5
+                0x000000000040f8f0                strtok@@GLIBC_2.2.5
+                0x000000000040f900                sysconf@@GLIBC_2.2.5
+                0x000000000040f910                vfprintf@@GLIBC_2.2.5
+                0x000000000040f920                fwrite@@GLIBC_2.2.5
+                0x000000000040f930                aligned_alloc@@GLIBC_2.16
+                0x000000000040f940                pthread_mutexattr_init@@GLIBC_2.34
+                0x000000000040f950                pthread_mutex_init@@GLIBC_2.2.5
+                0x000000000040f960                pthread_mutex_lock@@GLIBC_2.2.5
+
+.rodata         0x000000000040f970     0x6408
+ *(.rodata)
+ .rodata        0x000000000040f970      0x7e3 CMakeFiles/dmod_loader.dir/main.c.o
+ *fill*         0x0000000000410153        0x5 
+ .rodata        0x0000000000410158      0x92a ../../../src/system/libdmod_system.a(dmod_dmfc_api.c.o)
+ *fill*         0x0000000000410a82        0x6 
+ .rodata        0x0000000000410a88      0xba5 ../../../src/system/libdmod_system.a(dmod_dmp_api.c.o)
+ *fill*         0x000000000041162d        0x3 
+ .rodata        0x0000000000411630     0x244d ../../../src/system/libdmod_system.a(dmod_system.c.o)
+ *fill*         0x0000000000413a7d        0x3 
+ .rodata        0x0000000000413a80       0x2e ../../../src/system/libdmod_system.a(dmod_if_file.c.o)
+ *fill*         0x0000000000413aae        0x2 
+ .rodata        0x0000000000413ab0       0xc9 ../../../src/system/libdmod_system.a(dmod_if_mem.c.o)
+ *fill*         0x0000000000413b79        0x7 
+ .rodata        0x0000000000413b80      0x20b ../../../src/system/libdmod_system.a(dmod_if_rtos.c.o)
+ *fill*         0x0000000000413d8b        0x5 
+ .rodata        0x0000000000413d90       0xbb ../../../src/system/libdmod_system.a(dmod_if_comp.c.o)
+ *fill*         0x0000000000413e4b        0x5 
+ .rodata        0x0000000000413e50       0xa7 ../../../src/system/libdmod_system.a(dmod_if_env.c.o)
+ *fill*         0x0000000000413ef7        0x1 
+ .rodata        0x0000000000413ef8      0x19e ../../../src/system/libdmod_system.a(dmod_ctx.c.o)
+ *fill*         0x0000000000414096        0x2 
+ .rodata        0x0000000000414098      0x1ca ../../../src/system/libdmod_system.a(dmod_hlp.c.o)
+ *fill*         0x0000000000414262        0x6 
+ .rodata        0x0000000000414268      0xc0c ../../../src/system/libdmod_system.a(dmod_ldr.c.o)
+ *fill*         0x0000000000414e74        0x4 
+ .rodata        0x0000000000414e78       0x63 ../../../src/system/libdmod_system.a(dmod_mgr.c.o)
+ *fill*         0x0000000000414edb        0x5 
+ .rodata        0x0000000000414ee0      0x42b ../../../src/system/libdmod_system.a(dmod_rmod.c.o)
+ *fill*         0x000000000041530b        0x5 
+ .rodata        0x0000000000415310      0x27e ../../../src/system/libdmod_system.a(dmod_pck.c.o)
+ *fill*         0x000000000041558e        0x2 
+ .rodata        0x0000000000415590      0x130 ../../../src/system/libdmod_system.a(dmod_dmf_cb.c.o)
+ .rodata        0x00000000004156c0      0x61e ../../../src/system/libdmod_system.a(dmod_dmf_api.c.o)
+ *fill*         0x0000000000415cde        0x2 
+ .rodata        0x0000000000415ce0       0x93 ../../../src/common/libdmod_common.a(dmod_common.c.o)
+ *(.rodata.*)
+ *fill*         0x0000000000415d73        0x1 
+ .rodata.cst4   0x0000000000415d74        0x4 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x0000000000415d74                _IO_stdin_used
+
+.note.gnu.property
+                0x0000000000415d78       0x30
+ .note.gnu.property
+                0x0000000000415d78       0x30 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.note.ABI-tag   0x0000000000415da8       0x20
+ .note.ABI-tag  0x0000000000415da8       0x20 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.note.gnu.build-id
+                0x0000000000415dc8       0x24
+ .note.gnu.build-id
+                0x0000000000415dc8       0x24 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.eh_frame       0x0000000000415df0     0x1c74
+ .eh_frame      0x0000000000415df0       0x30 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                                         0x2c (size before relaxing)
+ *fill*         0x0000000000415e20        0x0 
+ .eh_frame      0x0000000000415e20       0x88 CMakeFiles/dmod_loader.dir/main.c.o
+                                         0xa0 (size before relaxing)
+ .eh_frame      0x0000000000415ea8      0x100 ../../../src/system/libdmod_system.a(dmod_dmfc_api.c.o)
+                                        0x118 (size before relaxing)
+ .eh_frame      0x0000000000415fa8      0x140 ../../../src/system/libdmod_system.a(dmod_dmp_api.c.o)
+                                        0x158 (size before relaxing)
+ .eh_frame      0x00000000004160e8      0x588 ../../../src/system/libdmod_system.a(dmod_system.c.o)
+                                        0x5a0 (size before relaxing)
+ .eh_frame      0x0000000000416670      0x1c0 ../../../src/system/libdmod_system.a(dmod_if_file.c.o)
+                                        0x1d8 (size before relaxing)
+ .eh_frame      0x0000000000416830      0x120 ../../../src/system/libdmod_system.a(dmod_if_mem.c.o)
+                                        0x138 (size before relaxing)
+ .eh_frame      0x0000000000416950       0x40 ../../../src/system/libdmod_system.a(dmod_if_rawmem.c.o)
+                                         0x58 (size before relaxing)
+ .eh_frame      0x0000000000416990       0xc0 ../../../src/system/libdmod_system.a(dmod_if_dbg.c.o)
+                                         0xd8 (size before relaxing)
+ .eh_frame      0x0000000000416a50       0x40 ../../../src/system/libdmod_system.a(dmod_if_irq.c.o)
+                                         0x58 (size before relaxing)
+ .eh_frame      0x0000000000416a90       0xe0 ../../../src/system/libdmod_system.a(dmod_if_events.c.o)
+                                         0xf8 (size before relaxing)
+ .eh_frame      0x0000000000416b70       0x80 ../../../src/system/libdmod_system.a(dmod_if_rtos.c.o)
+                                         0x98 (size before relaxing)
+ .eh_frame      0x0000000000416bf0       0xa0 ../../../src/system/libdmod_system.a(dmod_if_comp.c.o)
+                                         0xb8 (size before relaxing)
+ .eh_frame      0x0000000000416c90       0x40 ../../../src/system/libdmod_system.a(dmod_if_env.c.o)
+                                         0x58 (size before relaxing)
+ .eh_frame      0x0000000000416cd0       0x20 ../../../src/system/libdmod_system.a(dmod_if_str.c.o)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x0000000000416cf0       0xc0 ../../../src/system/libdmod_system.a(dmod_if_input.c.o)
+                                         0xd8 (size before relaxing)
+ .eh_frame      0x0000000000416db0      0x100 ../../../src/system/libdmod_system.a(dmod_ctx.c.o)
+                                        0x118 (size before relaxing)
+ .eh_frame      0x0000000000416eb0       0xc0 ../../../src/system/libdmod_system.a(dmod_hlp.c.o)
+                                         0xd8 (size before relaxing)
+ .eh_frame      0x0000000000416f70      0x140 ../../../src/system/libdmod_system.a(dmod_ldr.c.o)
+                                        0x158 (size before relaxing)
+ .eh_frame      0x00000000004170b0       0x60 ../../../src/system/libdmod_system.a(dmod_mgr.c.o)
+                                         0x78 (size before relaxing)
+ .eh_frame      0x0000000000417110      0x148 ../../../src/system/libdmod_system.a(dmod_rmod.c.o)
+                                        0x160 (size before relaxing)
+ .eh_frame      0x0000000000417258      0x1a0 ../../../src/system/libdmod_system.a(dmod_pck.c.o)
+                                        0x1b8 (size before relaxing)
+ .eh_frame      0x00000000004173f8       0xc0 ../../../src/system/libdmod_system.a(dmod_dmf_cb.c.o)
+                                         0xd8 (size before relaxing)
+ .eh_frame      0x00000000004174b8      0x1d0 ../../../src/system/libdmod_system.a(dmod_dmf_api.c.o)
+                                        0x1e8 (size before relaxing)
+ .eh_frame      0x0000000000417688      0x280 ../../../src/common/libdmod_common.a(dmod_common.c.o)
+                                        0x298 (size before relaxing)
+ .eh_frame      0x0000000000417908      0x158 ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+                                        0x170 (size before relaxing)
+ .eh_frame      0x0000000000417a60        0x4 /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+
+.interp         0x0000000000417a64       0x1c
+ .interp        0x0000000000417a64       0x1c /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.gnu.version_d  0x0000000000417a80        0x0
+ .gnu.version_d
+                0x0000000000417a80        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.gnu.version    0x0000000000417a80       0x6c
+ .gnu.version   0x0000000000417a80       0x6c /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.gnu.version_r  0x0000000000417af0       0x70
+ .gnu.version_r
+                0x0000000000417af0       0x70 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.dynsym         0x0000000000417b60      0x510
+ .dynsym        0x0000000000417b60      0x510 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.dynstr         0x0000000000418070      0x286
+ .dynstr        0x0000000000418070      0x286 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.gnu.hash       0x00000000004182f8       0x28
+ .gnu.hash      0x00000000004182f8       0x28 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.eh_frame       0x0000000000418320       0xa0
+ .eh_frame      0x0000000000418320       0x40 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .eh_frame      0x0000000000418360       0x30 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .eh_frame      0x0000000000418390       0x30 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.sframe         0x00000000004183c0        0x0
+ .sframe        0x00000000004183c0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .sframe        0x00000000004183c0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.eh_frame_hdr   0x00000000004183c0      0x704
+ .eh_frame_hdr  0x00000000004183c0      0x704 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x00000000004183c0                __GNU_EH_FRAME_HDR
+
+.rela.dyn       0x0000000000418ac8     0x1668
+ .rela.plt      0x0000000000419cc8      0x468 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.got      0x0000000000418ac8       0x78 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.bss      0x0000000000418b40       0x18 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.data.rel.ro
+                0x0000000000418fc0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.ifunc    0x0000000000418fc0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.data.rel.local
+                0x0000000000418b58       0x30 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.fini_array
+                0x0000000000418b88       0x18 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.init_array
+                0x0000000000418ba0       0x18 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.text     0x0000000000419020        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.dmod.inputs
+                0x0000000000418bb8     0x10b0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.data.rel
+                0x0000000000419c68       0x60 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x000000000041a130                . = ALIGN (0x10)
+
+.inputs         0x000000000041a130      0x590
+                0x000000000041a130                __inputs_start = .
+                0x000000000041a130                PROVIDE (__dmod_inputs_start = .)
+ *(.dmod.inputs)
+ .dmod.inputs   0x000000000041a130      0x590 ../../../src/system/libdmod_system.a(dmod_system.c.o)
+                0x000000000041a130                Dmod_Malloc_registration
+                0x000000000041a140                Dmod_Realloc_registration
+                0x000000000041a150                Dmod_Free_registration
+                0x000000000041a160                Dmod_AlignedMalloc_registration
+                0x000000000041a170                Dmod_MallocEx_registration
+                0x000000000041a180                Dmod_ReallocEx_registration
+                0x000000000041a190                Dmod_FreeEx_registration
+                0x000000000041a1a0                Dmod_AlignedMallocEx_registration
+                0x000000000041a1b0                Dmod_FreeModule_registration
+                0x000000000041a1c0                Dmod_ReadMemory_registration
+                0x000000000041a1d0                Dmod_WriteMemory_registration
+                0x000000000041a1e0                Dmod_FileOpen_registration
+                0x000000000041a1f0                Dmod_FileRead_registration
+                0x000000000041a200                Dmod_FileWrite_registration
+                0x000000000041a210                Dmod_FileSeek_registration
+                0x000000000041a220                Dmod_FileTell_registration
+                0x000000000041a230                Dmod_FileSize_registration
+                0x000000000041a240                Dmod_FileClose_registration
+                0x000000000041a250                Dmod_GetRepoDir_registration
+                0x000000000041a260                Dmod_FileAvailable_registration
+                0x000000000041a270                Dmod_OpenDir_registration
+                0x000000000041a280                Dmod_ReadDir_registration
+                0x000000000041a290                Dmod_CloseDir_registration
+                0x000000000041a2a0                Dmod_MakeDir_registration
+                0x000000000041a2b0                Dmod_Access_registration
+                0x000000000041a2c0                Dmod_GetEnv_registration
+                0x000000000041a2d0                Dmod_SetEnv_registration
+                0x000000000041a2e0                Dmod_CheckLogLevel_registration
+                0x000000000041a2f0                Dmod_Printf_registration
+                0x000000000041a300                Dmod_FPrintf_registration
+                0x000000000041a310                Dmod_VSnPrintf_registration
+                0x000000000041a320                Dmod_SnPrintf_registration
+                0x000000000041a330                Dmod_Assert_registration
+                0x000000000041a340                Dmod_EnterCritical_registration
+                0x000000000041a350                Dmod_ExitCritical_registration
+                0x000000000041a360                Dmod_Event_ModuleLoaded_registration
+                0x000000000041a370                Dmod_Event_ModuleUnloaded_registration
+                0x000000000041a380                Dmod_Event_ModuleLoadingInProgress_registration
+                0x000000000041a390                Dmod_Event_ModuleEnabled_registration
+                0x000000000041a3a0                Dmod_Event_ModuleDisabled_registration
+                0x000000000041a3b0                Dmod_Event_ModuleRunning_registration
+                0x000000000041a3c0                Dmod_Event_ModuleStopped_registration
+                0x000000000041a3d0                Dmod_Mutex_New_registration
+                0x000000000041a3e0                Dmod_Mutex_Lock_registration
+                0x000000000041a3f0                Dmod_Mutex_Unlock_registration
+                0x000000000041a400                Dmod_Mutex_Delete_registration
+                0x000000000041a410                Dmod_Compression_GetMaxSize_registration
+                0x000000000041a420                Dmod_Compression_Pack_registration
+                0x000000000041a430                Dmod_Compression_Unpack_registration
+                0x000000000041a440                Dmod_Compression_IsSupported_registration
+                0x000000000041a450                Dmod_Compression_GetNextSupported_registration
+                0x000000000041a460                Dmod_StrDup_registration
+                0x000000000041a470                Dmod_Getc_registration
+                0x000000000041a480                Dmod_Gets_registration
+                0x000000000041a490                Dmod_Vsscanf_registration
+                0x000000000041a4a0                Dmod_Sscanf_registration
+                0x000000000041a4b0                Dmod_Vscanf_registration
+                0x000000000041a4c0                Dmod_Scanf_registration
+                0x000000000041a4d0                Dmod_SetLogLevel_registration
+                0x000000000041a4e0                Dmod_ReadModuleHeader_registration
+                0x000000000041a4f0                Dmod_BeginUsage_registration
+                0x000000000041a500                Dmod_EndUsage_registration
+                0x000000000041a510                Dmod_IsApplicationModuleFile_registration
+                0x000000000041a520                Dmod_IsModuleUsed_registration
+                0x000000000041a530                Dmod_IsModuleLoaded_registration
+                0x000000000041a540                Dmod_IsModuleFileLoaded_registration
+                0x000000000041a550                Dmod_IsModuleEnabled_registration
+                0x000000000041a560                Dmod_IsModuleRequired_registration
+                0x000000000041a570                Dmod_GetModuleVersion_registration
+                0x000000000041a580                Dmod_LoadModule_registration
+                0x000000000041a590                Dmod_FindModuleFile_registration
+                0x000000000041a5a0                Dmod_LoadModuleByName_registration
+                0x000000000041a5b0                Dmod_LoadModuleFromPackage_registration
+                0x000000000041a5c0                Dmod_UnloadModule_registration
+                0x000000000041a5d0                Dmod_EnableModule_registration
+                0x000000000041a5e0                Dmod_DisableModule_registration
+                0x000000000041a5f0                Dmod_RunModule_registration
+                0x000000000041a600                Dmod_IsFunctionConnected_registration
+                0x000000000041a610                Dmod_GetNextDifModule_registration
+                0x000000000041a620                Dmod_GetDifFunction_registration
+                0x000000000041a630                Dmod_AddPackageBuffer_registration
+                0x000000000041a640                Dmod_AddPackageFile_registration
+                0x000000000041a650                Dmod_RemovePackage_registration
+                0x000000000041a660                Dmod_RemovePackageBuffer_registration
+                0x000000000041a670                Dmod_RemovePackageFile_registration
+                0x000000000041a680                Dmod_IsPackageAvailable_registration
+                0x000000000041a690                Dmod_GetNumberOfPackages_registration
+                0x000000000041a6a0                Dmod_GetPackageInfo_registration
+                0x000000000041a6b0                Dmod_GetMainIndexFromPackage_registration
+                0x000000000041a6c0                __inputs_end = .
+                0x000000000041a6c0                PROVIDE (__dmod_inputs_end = .)
+                0x000000000041a6c0                __inputs_size = (__inputs_end - __inputs_start)
+                0x000000000041a6c0                PROVIDE (__dmod_inputs_size = (__inputs_end - __inputs_start))
+                0x000000000041a6c0                . = ALIGN (0x10)
+
+.outputs        0x000000000041a6c0        0x0
+                0x000000000041a6c0                __outputs_start = .
+                0x000000000041a6c0                PROVIDE (__dmod_outputs_start = .)
+ *(.dmod.outputs)
+                0x000000000041a6c0                __outputs_end = .
+                0x000000000041a6c0                PROVIDE (__dmod_outputs_end = .)
+                0x000000000041a6c0                __outputs_size = (__outputs_end - __outputs_start)
+                0x000000000041a6c0                PROVIDE (__dmod_outputs_size = (__outputs_end - __outputs_start))
+
+.data           0x000000000041a6c0       0x58
+ *(.data)
+ .data          0x000000000041a6c0        0x4 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x000000000041a6c0                data_start
+                0x000000000041a6c0                __data_start
+ .data          0x000000000041a6c4        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+ .data          0x000000000041a6c4        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+ .data          0x000000000041a6c4        0x0 CMakeFiles/dmod_loader.dir/main.c.o
+ .data          0x000000000041a6c4        0x0 ../../../src/system/libdmod_system.a(dmod_dmfc_api.c.o)
+ .data          0x000000000041a6c4        0x0 ../../../src/system/libdmod_system.a(dmod_dmp_api.c.o)
+ .data          0x000000000041a6c4        0x0 ../../../src/system/libdmod_system.a(dmod_system.c.o)
+ .data          0x000000000041a6c4        0x0 ../../../src/system/libdmod_system.a(dmod_if_file.c.o)
+ .data          0x000000000041a6c4        0x0 ../../../src/system/libdmod_system.a(dmod_if_mem.c.o)
+ .data          0x000000000041a6c4        0x0 ../../../src/system/libdmod_system.a(dmod_if_rawmem.c.o)
+ .data          0x000000000041a6c4        0x0 ../../../src/system/libdmod_system.a(dmod_if_dbg.c.o)
+ .data          0x000000000041a6c4        0x0 ../../../src/system/libdmod_system.a(dmod_if_irq.c.o)
+ .data          0x000000000041a6c4        0x0 ../../../src/system/libdmod_system.a(dmod_if_events.c.o)
+ .data          0x000000000041a6c4        0x0 ../../../src/system/libdmod_system.a(dmod_if_rtos.c.o)
+ .data          0x000000000041a6c4        0x0 ../../../src/system/libdmod_system.a(dmod_if_comp.c.o)
+ .data          0x000000000041a6c4        0x0 ../../../src/system/libdmod_system.a(dmod_if_env.c.o)
+ .data          0x000000000041a6c4        0x0 ../../../src/system/libdmod_system.a(dmod_if_str.c.o)
+ .data          0x000000000041a6c4        0x0 ../../../src/system/libdmod_system.a(dmod_if_input.c.o)
+ .data          0x000000000041a6c4        0x4 ../../../src/system/libdmod_system.a(dmod_vars.c.o)
+                0x000000000041a6c4                Dmod_LogLevel
+ .data          0x000000000041a6c8        0x0 ../../../src/system/libdmod_system.a(dmod_ctx.c.o)
+ .data          0x000000000041a6c8        0x0 ../../../src/system/libdmod_system.a(dmod_hlp.c.o)
+ .data          0x000000000041a6c8        0x0 ../../../src/system/libdmod_system.a(dmod_ldr.c.o)
+ .data          0x000000000041a6c8        0x0 ../../../src/system/libdmod_system.a(dmod_mgr.c.o)
+ .data          0x000000000041a6c8        0x0 ../../../src/system/libdmod_system.a(dmod_rmod.c.o)
+ .data          0x000000000041a6c8        0x0 ../../../src/system/libdmod_system.a(dmod_pck.c.o)
+ .data          0x000000000041a6c8        0x0 ../../../src/system/libdmod_system.a(dmod_dmf_cb.c.o)
+ .data          0x000000000041a6c8        0x0 ../../../src/system/libdmod_system.a(dmod_dmf_api.c.o)
+ .data          0x000000000041a6c8        0x0 ../../../src/common/libdmod_common.a(dmod_common.c.o)
+ .data          0x000000000041a6c8        0x0 ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+ .data          0x000000000041a6c8        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+ .data          0x000000000041a6c8        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+ *(.data.*)
+ .data.rel.ro   0x000000000041a6c8        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .data.rel.local
+                0x000000000041a6c8        0x8 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+                0x000000000041a6c8                __dso_handle
+ .data.rel.local
+                0x000000000041a6d0        0x8 ../../../src/system/libdmod_system.a(dmod_if_comp.c.o)
+ *fill*         0x000000000041a6d8        0x8 
+ .data.rel      0x000000000041a6e0       0x38 ../../../src/system/libdmod_system.a(dmod_vars.c.o)
+                0x000000000041a6e0                Dmod_BuiltinInputApi
+                0x000000000041a700                Dmod_BuiltinOutputApi
+
+.dynamic        0x000000000041a718      0x1f0
+ .dynamic       0x000000000041a718      0x1f0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x000000000041a718                _DYNAMIC
+
+.got            0x000000000041a908       0x28
+ .got           0x000000000041a908       0x28 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.got.plt        0x000000000041a930      0x190
+ .got.plt       0x000000000041a930      0x190 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x000000000041a930                _GLOBAL_OFFSET_TABLE_
+
+.tm_clone_table
+                0x000000000041aac0        0x0
+ .tm_clone_table
+                0x000000000041aac0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+ .tm_clone_table
+                0x000000000041aac0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+
+.bss            0x000000000041aac0      0x441
+ *(.bss)
+ .bss           0x000000000041aac0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .bss           0x000000000041aac0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+ .bss           0x000000000041aac0        0x1 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+ .bss           0x000000000041aac1        0x0 CMakeFiles/dmod_loader.dir/main.c.o
+ .bss           0x000000000041aac1        0x0 ../../../src/system/libdmod_system.a(dmod_dmfc_api.c.o)
+ .bss           0x000000000041aac1        0x0 ../../../src/system/libdmod_system.a(dmod_dmp_api.c.o)
+ .bss           0x000000000041aac1        0x0 ../../../src/system/libdmod_system.a(dmod_system.c.o)
+ .bss           0x000000000041aac1        0x0 ../../../src/system/libdmod_system.a(dmod_if_file.c.o)
+ .bss           0x000000000041aac1        0x0 ../../../src/system/libdmod_system.a(dmod_if_mem.c.o)
+ .bss           0x000000000041aac1        0x0 ../../../src/system/libdmod_system.a(dmod_if_rawmem.c.o)
+ .bss           0x000000000041aac1        0x0 ../../../src/system/libdmod_system.a(dmod_if_dbg.c.o)
+ .bss           0x000000000041aac1        0x0 ../../../src/system/libdmod_system.a(dmod_if_irq.c.o)
+ .bss           0x000000000041aac1        0x0 ../../../src/system/libdmod_system.a(dmod_if_events.c.o)
+ .bss           0x000000000041aac1        0x0 ../../../src/system/libdmod_system.a(dmod_if_rtos.c.o)
+ .bss           0x000000000041aac1        0x0 ../../../src/system/libdmod_system.a(dmod_if_comp.c.o)
+ .bss           0x000000000041aac1        0x0 ../../../src/system/libdmod_system.a(dmod_if_env.c.o)
+ .bss           0x000000000041aac1        0x0 ../../../src/system/libdmod_system.a(dmod_if_str.c.o)
+ .bss           0x000000000041aac1        0x0 ../../../src/system/libdmod_system.a(dmod_if_input.c.o)
+ *fill*         0x000000000041aac1       0x1f 
+ .bss           0x000000000041aae0      0x421 ../../../src/system/libdmod_system.a(dmod_vars.c.o)
+                0x000000000041aae0                Dmod_Contexts
+                0x000000000041abe0                Dmod_Packages
+                0x000000000041af00                Dmod_SystemCrossplatformMode
+ .bss           0x000000000041af01        0x0 ../../../src/system/libdmod_system.a(dmod_ctx.c.o)
+ .bss           0x000000000041af01        0x0 ../../../src/system/libdmod_system.a(dmod_hlp.c.o)
+ .bss           0x000000000041af01        0x0 ../../../src/system/libdmod_system.a(dmod_ldr.c.o)
+ .bss           0x000000000041af01        0x0 ../../../src/system/libdmod_system.a(dmod_mgr.c.o)
+ .bss           0x000000000041af01        0x0 ../../../src/system/libdmod_system.a(dmod_rmod.c.o)
+ .bss           0x000000000041af01        0x0 ../../../src/system/libdmod_system.a(dmod_pck.c.o)
+ .bss           0x000000000041af01        0x0 ../../../src/system/libdmod_system.a(dmod_dmf_cb.c.o)
+ .bss           0x000000000041af01        0x0 ../../../src/system/libdmod_system.a(dmod_dmf_api.c.o)
+ .bss           0x000000000041af01        0x0 ../../../src/common/libdmod_common.a(dmod_common.c.o)
+ .bss           0x000000000041af01        0x0 ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+ .bss           0x000000000041af01        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+ .bss           0x000000000041af01        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+ *(.bss.*)
+ *(COMMON)
+
+.dynbss         0x000000000041af10        0x8
+ *fill*         0x000000000041af10        0x0 
+ .dynbss        0x000000000041af10        0x8 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x000000000041af10                stdin@@GLIBC_2.2.5
+
+.init_array     0x000000000041af18        0x8
+                [!provide]                        PROVIDE (__init_array_start = .)
+ *(.init_array)
+ .init_array    0x000000000041af18        0x8 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+                [!provide]                        PROVIDE (__init_array_end = .)
+
+.fini_array     0x000000000041af20        0x8
+                [!provide]                        PROVIDE (__fini_array_start = .)
+ *(.fini_array)
+ .fini_array    0x000000000041af20        0x8 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+                [!provide]                        PROVIDE (__fini_array_end = .)
+OUTPUT(dmod_loader elf64-x86-64)
+
+.note.GNU-stack
+                0x0000000000000000        0x0
+ .note.GNU-stack
+                0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 CMakeFiles/dmod_loader.dir/main.c.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_dmfc_api.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_dmp_api.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_system.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_if_file.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_if_mem.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_if_rawmem.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_if_dbg.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_if_irq.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_if_events.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_if_rtos.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_if_comp.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_if_env.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_if_str.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_if_input.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_vars.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_ctx.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_hlp.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_ldr.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_mgr.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_rmod.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_pck.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_dmf_cb.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/system/libdmod_system.a(dmod_dmf_api.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../src/common/libdmod_common.a(dmod_common.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+ .note.GNU-stack
+                0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+
+.comment        0x0000000000000000       0x2b
+ .comment       0x0000000000000000       0x2b /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+                                         0x2c (size before relaxing)
+ .comment       0x000000000000002b       0x2c CMakeFiles/dmod_loader.dir/main.c.o
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_dmfc_api.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_dmp_api.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_system.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_if_file.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_if_mem.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_if_rawmem.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_if_dbg.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_if_irq.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_if_events.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_if_rtos.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_if_comp.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_if_env.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_if_str.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_if_input.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_vars.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_ctx.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_hlp.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_ldr.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_mgr.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_rmod.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_pck.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_dmf_cb.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/system/libdmod_system.a(dmod_dmf_api.c.o)
+ .comment       0x000000000000002b       0x2c ../../../src/common/libdmod_common.a(dmod_common.c.o)
+ .comment       0x000000000000002b       0x2c ../../../lib/third-party/FastLZ/libdmod_fastlz.a(fastlz.c.o)
+ .comment       0x000000000000002b       0x2c /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
