@@ -1,4 +1,5 @@
 #define DMOD_PRIVATE
+#include <string.h>
 #include "dmod.h"
 #include "private/dmod_hlp.h"
 

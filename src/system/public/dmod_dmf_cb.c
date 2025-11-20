@@ -16,7 +16,7 @@ void Dmod_Preinit( Dmod_Context_t* Context )
         return;
     }
 
-    Dmod_Preinit_t preinit = (Dmod_Preinit_t)Context->Header->Preinit;
+    Dmod_Preinit_t preinit = (Dmod_Preinit_t)Context->Header->Preinit.Ptr;
     if( preinit == NULL )
     {
         DMOD_LOG_INFO("Preinit function not set\n");
@@ -38,7 +38,7 @@ int Dmod_Init( Dmod_Context_t* Context, const Dmod_Config_t* Config )
     int result = -EINVAL;
     if( Dmod_Context_IsValid( Context ) )
     {
-        Dmod_Init_t init = (Dmod_Init_t)Context->Header->Init;
+        Dmod_Init_t init = (Dmod_Init_t)Context->Header->Init.Ptr;
         if( init == NULL )
         {
             DMOD_LOG_INFO("Init function not set\n");
@@ -66,7 +66,7 @@ int Dmod_Main( Dmod_Context_t* Context, int argc, char *argv[] )
     int result = -EINVAL;
     if( Dmod_Context_IsValid( Context ) )
     {
-        Dmod_Main_t mainFunc = (Dmod_Main_t)Context->Header->Main;
+        Dmod_Main_t mainFunc = (Dmod_Main_t)Context->Header->Main.Ptr;
         if( mainFunc == NULL )
         {
             DMOD_LOG_INFO("Main function not set\n");
@@ -92,7 +92,7 @@ int Dmod_Deinit( Dmod_Context_t* Context )
     int result = -EINVAL;
     if( Dmod_Context_IsValid( Context ) )
     {
-        Dmod_Deinit_t deinit = (Dmod_Deinit_t)Context->Header->Deinit;
+        Dmod_Deinit_t deinit = (Dmod_Deinit_t)Context->Header->Deinit.Ptr;
         if( deinit == NULL )
         {
             DMOD_LOG_INFO("Deinit function not set\n");
@@ -119,7 +119,7 @@ int Dmod_Signal( Dmod_Context_t* Context, int SignalNumber )
     int result = -EINVAL;
     if( Dmod_Context_IsValid( Context ) )
     {
-        Dmod_Signal_t signal = (Dmod_Signal_t)Context->Header->Signal;
+        Dmod_Signal_t signal = (Dmod_Signal_t)Context->Header->Signal.Ptr;
         if( signal == NULL )
         {
             DMOD_LOG_INFO("Signal function not set\n");

@@ -68,7 +68,7 @@ bool Dmod_Ldr_LoadHeader( Dmod_Context_t* Context )
     switch( header->ModuleType )
     {
         case Dmod_ModuleType_Library:
-            if( header->Init == NULL || header->Deinit == NULL )
+            if( header->Init.Ptr == NULL || header->Deinit.Ptr == NULL )
             {
                 DMOD_LOG_ERROR("Cannot load header - missing Init or Deinit function\n");
                 return false;
@@ -80,7 +80,7 @@ bool Dmod_Ldr_LoadHeader( Dmod_Context_t* Context )
             }
             break;
         case Dmod_ModuleType_Application:
-            if( header->Main == NULL )
+            if( header->Main.Ptr == NULL )
             {
                 DMOD_LOG_ERROR("Cannot load header - missing Main function\n");
                 return false;
@@ -102,8 +102,8 @@ bool Dmod_Ldr_LoadHeader( Dmod_Context_t* Context )
         DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize license pointer\n", header->Name);
         return false;
     }
-    Dmod_License_t* license = (Dmod_License_t*)header->License;
-    if(header->License != NULL && !Dmod_Hlp_InitPointer(Context, (void**)&license->Text, "License Text"))
+    Dmod_License_t* license = (Dmod_License_t*)header->License.Ptr;
+    if(license != NULL && !Dmod_Hlp_InitPointer(Context, (void**)&license->Text, "License Text"))
     {
         DMOD_LOG_ERROR("Cannot load header of module '%s' - cannot initialize license text pointer\n", header->Name);
         return false;
@@ -141,7 +141,7 @@ bool Dmod_Ldr_LoadFooter( Dmod_Context_t* Context )
         return false;
     }
 
-    Dmod_ModuleFooter_t* footer = Context->Header->Footer;
+    Dmod_ModuleFooter_t* footer = Context->Header->Footer.Ptr;
     
     if( footer->Header.SectionStart != 0 || footer->Header.SectionSize != sizeof( Dmod_ModuleHeader_t ) )
     {
@@ -255,7 +255,7 @@ bool Dmod_Ldr_LoadInput( Dmod_Context_t* Context )
     if( input->SectionStart == 0 || input->SectionSize == 0 )
     {
         DMOD_LOG_INFO("No inputs to load\n");
-        if( Context->Header->Init == NULL && Context->Header->Main == NULL && Context->Header->Deinit == NULL )
+        if( Context->Header->Init.Ptr == NULL && Context->Header->Main.Ptr == NULL && Context->Header->Deinit.Ptr == NULL )
         {
             DMOD_LOG_ERROR("No inputs to load and no functions to call\n");
             return false;

@@ -1049,7 +1049,7 @@ int main(int argc, char* argv[]) {
     char arch_buffer[DMOD_MAX_ARCH_NAME_LENGTH];
     if(tools_name && !arch_name && !skip_arch_check) {
         strcpy(arch_buffer, tools_name);
-        const char* start = arch_buffer;
+        char* start = arch_buffer;
         if (strncmp(start, "arch/", 5) == 0) {
             start += 5;
         }

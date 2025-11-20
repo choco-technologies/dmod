@@ -1036,7 +1036,7 @@ Dmod_License_t* Dmod_GetLicense( Dmod_Context_t* Context )
         return NULL;
     }
 
-    return Context->Header->License;
+    return Context->Header->License.Ptr;
 }
 
 /**
