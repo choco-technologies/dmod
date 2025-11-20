@@ -313,9 +313,13 @@ void Dmod_PrintOutputApis( Dmod_Context_t* Context )
     }
     DMOD_LOG_INFO("Output APIs for %s:\n", Dmod_Context_GetModuleName( Context ));
     size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Outputs );
+    bool crossplatform = Context->Outputs.Crossplatform;
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        DMOD_LOG_INFO("  %s\n", Context->Outputs.OutputSection->Entries[i]);
+        const char* entry = crossplatform ? 
+            (const char*)(uintptr_t)Context->Outputs.OutputSectionCross->Entries[i] : 
+            (const char*)Context->Outputs.OutputSection->Entries[i];
+        DMOD_LOG_INFO("  %s\n", entry);
     }
 }
 
@@ -333,9 +337,13 @@ void Dmod_PrintInputApis( Dmod_Context_t* Context )
     }
     DMOD_LOG_INFO("Input APIs for %s:\n", Dmod_Context_GetModuleName( Context ));
     size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
+    bool crossplatform = Context->Inputs.Crossplatform;
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        DMOD_LOG_INFO("  %s\n", Context->Inputs.InputSection->Entries[i].Signature);
+        const char* entry = crossplatform ? 
+            (const char*)(uintptr_t)Context->Inputs.InputSectionCross->Entries[i].Signature : 
+            (const char*)Context->Inputs.InputSection->Entries[i].Signature;
+        DMOD_LOG_INFO("  %s\n", entry);
     }
 }
 
