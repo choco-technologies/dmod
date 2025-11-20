@@ -1036,14 +1036,30 @@ int main(int argc, char* argv[]) {
     // Initialize curl
     curl_global_init(CURL_GLOBAL_DEFAULT);
     
+    // If arch_name not specified, default to system architecture
+    if (!arch_name && !skip_arch_check && !tools_name) {
+        arch_name = DMOD_ARCH;
+    }
+
     // Get configuration
     if (!tools_name) {
         tools_name = GetEnvOrDefault(ENV_TOOLS_NAME, "arch/x86_64");
     }
-    
-    // If arch_name not specified, default to system architecture
-    if (!arch_name && !skip_arch_check) {
-        arch_name = DMOD_ARCH;
+
+    char arch_buffer[DMOD_MAX_ARCH_NAME_LENGTH];
+    if(tools_name && !arch_name && !skip_arch_check) {
+        strcpy(arch_buffer, tools_name);
+        const char* start = arch_buffer;
+        if (strncmp(start, "arch/", 5) == 0) {
+            start += 5;
+        }
+        // replace any remaining '/' with '-'
+        for(char* p = start; *p; p++) {
+            if(*p == '/') {
+                *p = '-';
+            }
+        }
+        arch_name = start;
     }
     
     if (!output_dir) {
