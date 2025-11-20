@@ -1,2 +1,0 @@
-/usr/bin/ar qc libdmod_fastlz.a CMakeFiles/dmod_fastlz.dir/fastlz.c.o
-/usr/bin/ranlib libdmod_fastlz.a

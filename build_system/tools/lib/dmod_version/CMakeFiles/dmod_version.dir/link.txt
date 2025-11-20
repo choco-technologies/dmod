@@ -1,2 +1,0 @@
-/usr/bin/ar qc libdmod_version.a CMakeFiles/dmod_version.dir/dmod_version.c.o
-/usr/bin/ranlib libdmod_version.a
