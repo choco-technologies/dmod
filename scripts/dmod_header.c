@@ -45,6 +45,7 @@ volatile const Dmod_ModuleHeader_t ModuleHeader DMOD_SECTION(".header") DMOD_USE
     .Signature          = DMOD_HEADER_SIGNATURE,
     .HeaderSize         = sizeof( Dmod_ModuleHeader_t ),
     .DmodVersion        = DMOD_VERSION,
+    .PointerSize        = sizeof(void*),
     .Arch               = DMOD_ARCH,
     .CpuName            = DMOD_CPU_NAME,
     .Name               = DMOD_MODULE_NAME,
@@ -61,6 +62,7 @@ volatile const Dmod_ModuleHeader_t ModuleHeader DMOD_SECTION(".header") DMOD_USE
     .License.Ptr        = &License,
     .Footer             = &__footer_start,
     .ManualLoad         = DMOD_MANUAL_LOAD,
+    .PointerSize        = sizeof(void*),
 };
 
 volatile const Dmod_ModuleHeader_t* DMOD_Header DMOD_GLOBAL_POINTER = &ModuleHeader;

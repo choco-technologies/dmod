@@ -32,6 +32,12 @@
         "stdlib.h": "c",
         "dmod_arch_defs.h": "c",
         "algorithm": "c",
-        "stdarg.h": "c"
+        "stdarg.h": "c",
+        "deque": "c",
+        "forward_list": "c",
+        "list": "c",
+        "string": "c",
+        "vector": "c",
+        "iterator": "c"
     }
 }

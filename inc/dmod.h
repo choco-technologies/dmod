@@ -79,7 +79,6 @@ extern "C" {
  * @addtogroup DMOD
  * @{
  */
-
 extern size_t       Dmod_Api_GetNumberOfEntries( Dmod_Api_t* Api );
 extern bool         Dmod_ApiSignature_IsValid( const char* Signature );
 extern bool         Dmod_ApiSignature_IsModuleNameGiven( const char* Signature );

@@ -10,6 +10,14 @@ extern "C" {
 #include <stdbool.h>
 #include "dmod_defs.h"
 
+#if UINTPTR_MAX == UINT32_MAX
+typedef uint64_t Dmod_CrossPtr_t;
+#elif UINTPTR_MAX == UINT64_MAX
+typedef uint32_t Dmod_CrossPtr_t;
+#else
+#   error "Unsupported pointer size"
+#endif
+
 typedef enum 
 {
     Dmod_ApiType_Input,
@@ -74,6 +82,7 @@ typedef struct
     uint32_t            Signature;  // DMOD
     uint32_t            HeaderSize;
     uint32_t            DmodVersion;
+    uint32_t            PointerSize;   
     char                Arch[DMOD_MAX_ARCH_NAME_LENGTH];
     char                CpuName[DMOD_MAX_CPU_NAME_LENGTH];
     char                Name[DMOD_MAX_MODULE_NAME_LENGTH];
@@ -157,6 +166,12 @@ typedef struct
     const char* Signature;
 } Dmod_ApiRegistration_t;
 
+typedef struct 
+{
+    Dmod_CrossPtr_t  Function;
+    Dmod_CrossPtr_t  Signature;
+} Dmod_ApiRegistrationCross_t;
+
 /**
  * @brief Stores data in the module output section
  */
@@ -164,6 +179,14 @@ typedef struct
 {
     void*   Entries[2];
 } Dmod_OutputsSection_t;
+
+/**
+ * @brief Stores data in the module output section in crossplatform mode
+ */
+typedef struct 
+{
+    Dmod_CrossPtr_t   Entries[2];
+} Dmod_OutputsSectionCross_t;
 
 
 typedef struct 
@@ -173,18 +196,31 @@ typedef struct
 
 typedef struct 
 {
+    Dmod_ApiRegistrationCross_t Entries[2];
+} Dmod_InputsSectionCross_t;
+
+typedef struct 
+{
     void*   Entries[2];
 } Dmod_GotSection_t;
 
 typedef struct 
 {
+    Dmod_CrossPtr_t   Entries[2];
+} Dmod_GotSectionCross_t;
+
+typedef struct 
+{
     union 
     {
-        Dmod_InputsSection_t*    InputSection;
-        Dmod_OutputsSection_t*   OutputSection;
+        Dmod_InputsSection_t*       InputSection;
+        Dmod_InputsSectionCross_t*  InputSectionCross;
+        Dmod_OutputsSection_t*      OutputSection;
+        Dmod_OutputsSectionCross_t* OutputSectionCross;
     };
     size_t              SectionSize;
     Dmod_ApiType_t      ApiType;
+    bool                Crossplatform;
 } Dmod_Api_t;
 
 /**

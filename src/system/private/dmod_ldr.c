@@ -51,6 +51,12 @@ bool Dmod_Ldr_LoadHeader( Dmod_Context_t* Context )
         return false;
     }
 
+    if( header->PointerSize != sizeof(uint32_t) && header->PointerSize != sizeof(uint64_t) )
+    {
+        DMOD_LOG_ERROR("Cannot load header - invalid pointer size: %d\n", header->PointerSize );
+        return false;
+    }
+
     // Check architecture
     if( !Dmod_SystemCrossplatformMode && strcmp( header->Arch, DMOD_ARCH ) != 0 )
     {
@@ -163,6 +169,56 @@ bool Dmod_Ldr_LoadFooter( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Load output in crossplatform mode
+ * 
+ * @param Context Context to load output to
+ * 
+ * @return True if output was loaded successfully, false otherwise
+ */
+static bool LoadOutput_Crossplatform( Dmod_Context_t* Context )
+{
+    Dmod_ModuleFooter_t* footer = Context->Footer;
+    Dmod_ModuleSection_t* output = &footer->Outputs;
+
+    Dmod_OutputsSectionCross_t* outputSection = Context->Data + output->SectionStart;
+    size_t numberOfEntries = output->SectionSize / sizeof( outputSection->Entries[0] );
+    if( numberOfEntries == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot load output - Invalid output's sections size\n");
+        return false;
+    }
+
+    for(size_t i = 0; i < numberOfEntries; i++)
+    {
+        if( !Dmod_Hlp_InitPointerCP( Context, &outputSection->Entries[i], "Output Entry" ) )
+        {
+            DMOD_LOG_ERROR("Cannot load output - cannot initialize output entry at index %d\n", i);
+            return false;
+        }
+        else if( outputSection->Entries[i] == NULL )
+        {
+            DMOD_LOG_WARN("Empty output entry at index: %d\n", i);
+        }
+        else
+        {
+            const char* entrySignature = outputSection->Entries[i];
+            if(!Dmod_ApiSignature_IsValid( entrySignature ))
+            {
+                DMOD_LOG_ERROR("Cannot load output - Invalid output entry signature\n");
+                return false;
+            }
+        }
+    }
+
+    Context->Outputs.OutputSection      = outputSection;
+    Context->Outputs.SectionSize        = output->SectionSize;
+    Context->Outputs.ApiType            = Dmod_ApiType_Output;
+    Context->Outputs.Crossplatform      = true;
+
+    return true;
+}
+
+/**
  * @brief Load output
  * 
  * @param Context Context to load output to
@@ -180,6 +236,20 @@ bool Dmod_Ldr_LoadOutput( Dmod_Context_t* Context )
     {
         DMOD_LOG_ERROR("Cannot load output - missing footer\n");
         return false;
+    }
+
+    if(Context->Header->PointerSize != sizeof(void*))
+    {
+        if(Dmod_SystemCrossplatformMode)
+        {
+            DMOD_LOG_INFO("Crossplatform mode enabled for output loading\n");
+            return LoadOutput_Crossplatform( Context );
+        }
+        else 
+        {
+            DMOD_LOG_ERROR("Cannot load output - pointer size mismatch\n");
+            return false;
+        }
     }
 
     Dmod_ModuleFooter_t* footer = Context->Footer;
@@ -230,8 +300,53 @@ bool Dmod_Ldr_LoadOutput( Dmod_Context_t* Context )
     Context->Outputs.OutputSection      = outputSection;
     Context->Outputs.SectionSize        = output->SectionSize;
     Context->Outputs.ApiType            = Dmod_ApiType_Output;
+    Context->Outputs.Crossplatform      = false;
 
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(Context), 90 );
+
+    return true;
+}
+
+/**
+ * @brief Load input in crossplatform mode
+ * 
+ * @param Context Context to load input to
+ * 
+ * @return True if input was loaded successfully, false otherwise
+ */
+static bool LoadInput_Crossplatform( Dmod_Context_t* Context )
+{
+    Dmod_ModuleFooter_t* footer = Context->Footer;
+    Dmod_ModuleSection_t* input = &footer->Inputs;
+
+    Dmod_InputsSectionCross_t* inputSection = Context->Data + input->SectionStart;
+    size_t numberOfEntries = input->SectionSize / sizeof( inputSection->Entries[0] );
+    if( numberOfEntries == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot load input - Invalid input's sections size\n");
+        return false;
+    }
+
+    for(size_t i = 0; i < numberOfEntries; i++)
+    {
+        if( !Dmod_Hlp_InitPointerCP( Context, (void**)&inputSection->Entries[i].Signature, "Input Signature" ) 
+         || !Dmod_Hlp_InitPointerCP( Context, (void**)&inputSection->Entries[i].Function , "Input Function"  ) 
+            )
+        {
+            DMOD_LOG_ERROR("Cannot load input - cannot initialize input entry at index %d\n", i);
+            return false;
+        }
+        else if(!Dmod_ApiSignature_IsValid(inputSection->Entries[i].Signature))
+        {
+            DMOD_LOG_ERROR("Cannot load input - Invalid input entry signature: %s\n", inputSection->Entries[i].Signature);
+            return false;
+        }
+    }
+
+    Context->Inputs.InputSection    = inputSection;
+    Context->Inputs.SectionSize     = input->SectionSize;
+    Context->Inputs.ApiType         = Dmod_ApiType_Input;
+    Context->Inputs.Crossplatform   = true;
 
     return true;
 }
@@ -254,6 +369,20 @@ bool Dmod_Ldr_LoadInput( Dmod_Context_t* Context )
     {
         DMOD_LOG_ERROR("Cannot load input - missing footer\n");
         return false;
+    }
+
+    if(Context->Header->PointerSize != sizeof(void*))
+    {
+        if(Dmod_SystemCrossplatformMode)
+        {
+            DMOD_LOG_INFO("Crossplatform mode enabled for input loading\n");
+            return LoadInput_Crossplatform( Context );
+        }
+        else 
+        {
+            DMOD_LOG_ERROR("Cannot load input - pointer size mismatch\n");
+            return false;
+        }
     }
 
     Dmod_ModuleFooter_t* footer = Context->Footer;
@@ -314,8 +443,38 @@ bool Dmod_Ldr_LoadInput( Dmod_Context_t* Context )
     Context->Inputs.InputSection    = inputSection;
     Context->Inputs.SectionSize     = input->SectionSize;
     Context->Inputs.ApiType         = Dmod_ApiType_Input;
+    Context->Inputs.Crossplatform   = false;
 
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(Context), 90 );
+
+    return true;
+}
+
+/**
+ * @brief Load got section in crossplatform mode
+ * 
+ * @param Context Context to load got to
+ * 
+ * @return True if got was loaded successfully, false otherwise
+ */
+static bool LoadGot_Crossplatform( Dmod_Context_t* Context )
+{
+    Dmod_ModuleFooter_t* footer = Context->Footer;
+    Dmod_ModuleSection_t* got = &footer->Got;
+
+    Dmod_GotSectionCross_t* gotSection = Context->Data + got->SectionStart;
+    size_t numberOfEntries = got->SectionSize / sizeof( gotSection->Entries[0] );
+
+    for(size_t i = 0; i < numberOfEntries; i++)
+    {
+        if( !Dmod_Hlp_InitPointerCP( Context, (void**)&gotSection->Entries[i], "GOT Entry" ) )
+        {
+            DMOD_LOG_ERROR("Cannot load got - cannot initialize got entry at index %d\n", i);
+            return false;
+        }
+    }
+
+    Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(Context), 95 );
 
     return true;
 }
@@ -338,6 +497,20 @@ bool Dmod_Ldr_LoadGot( Dmod_Context_t* Context )
     {
         DMOD_LOG_ERROR("Cannot load got - missing footer\n");
         return false;
+    }
+
+    if(Context->Header->PointerSize != sizeof(void*))
+    {
+        if(Dmod_SystemCrossplatformMode)
+        {
+            DMOD_LOG_INFO("Crossplatform mode enabled for got loading\n");
+            return LoadGot_Crossplatform( Context );
+        }
+        else 
+        {
+            DMOD_LOG_ERROR("Cannot load got - pointer size mismatch\n");
+            return false;
+        }
     }
 
     Dmod_ModuleFooter_t* footer = Context->Footer;

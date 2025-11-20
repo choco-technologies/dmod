@@ -11,6 +11,7 @@ extern "C" {
 
 #include "dmod_types.h"
 
+extern bool               Dmod_Hlp_InitPointerCP( Dmod_Context_t* Context, Dmod_CrossPtr_t* PointerRef, const char* PointerName );
 extern bool               Dmod_Hlp_InitPointer( Dmod_Context_t* Context, void** PointerRef, const char* PointerName );
 extern Dmod_SearchNode_t* Dmod_Hlp_AddSearchNode( Dmod_SearchNode_t* Tail, const char* Path );
 extern void               Dmod_Hlp_FreeSearchPathList( Dmod_SearchNode_t* Tail );

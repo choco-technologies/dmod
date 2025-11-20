@@ -4,6 +4,39 @@
 #include "private/dmod_hlp.h"
 
 /**
+ * @brief Initialize pointer in crossplatform mode
+ * 
+ * @param Context       Context to initialize pointer in
+ * @param PointerRef    Pointer to initialize
+ * @param PointerName   Name of the pointer
+ * 
+ * @return Initialized pointer
+ */
+bool Dmod_Hlp_InitPointerCP( Dmod_Context_t* Context, Dmod_CrossPtr_t* PointerRef, const char* PointerName )
+{
+    if(PointerRef == NULL || Context == NULL)
+    {
+        DMOD_LOG_ERROR("Cannot initialize pointer %s - unexpected NULL\n", PointerName);
+        return false;
+    }
+    Dmod_CrossPtr_t pointer = *PointerRef;
+    if( pointer == 0 )
+    {
+        return true;
+    }
+
+    size_t offset = (size_t)pointer;
+    if( offset == 0 || offset > Context->Size )
+    {
+        DMOD_LOG_ERROR("Cannot initialize pointer %s - invalid offset: 0x%08X\n", PointerName, offset);
+        return NULL;
+    }
+
+    *PointerRef = (Dmod_CrossPtr_t)( (size_t)Context->Data + offset );
+    return true;
+}
+
+/**
  * @brief Initialize pointer
  * 
  * @param Context       Context to initialize pointer in

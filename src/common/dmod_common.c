@@ -38,11 +38,11 @@ size_t Dmod_Api_GetNumberOfEntries( Dmod_Api_t* Api )
 
     if( Api->ApiType == Dmod_ApiType_Input )
     {
-        elementSize = sizeof(Api->InputSection->Entries[0]);
+        elementSize = Api->Crossplatform ? sizeof(Api->InputSectionCross->Entries[0]) : sizeof(Api->InputSection->Entries[0]);
     }
     else if( Api->ApiType == Dmod_ApiType_Output )
     {
-        elementSize = sizeof(Api->OutputSection->Entries[0]);
+        elementSize = Api->Crossplatform ? sizeof(Api->OutputSectionCross->Entries[0]) : sizeof(Api->OutputSection->Entries[0]);
     }
     else 
     {

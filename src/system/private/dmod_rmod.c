@@ -139,6 +139,38 @@ bool Dmod_RMod_AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignat
 }
 
 /**
+ * @brief Read required modules in crossplatform mode
+ * 
+ * @param Context Context to read required modules to
+ * 
+ * @return True if required modules were read successfully, false otherwise
+ */
+static bool ReadRequiredModules_Crossplatform( Dmod_Context_t* Context )
+{
+    size_t numberOfOuptuts = Dmod_Api_GetNumberOfEntries( &Context->Outputs );
+    for(size_t outputIndex = 0; outputIndex < numberOfOuptuts; outputIndex++)
+    {
+        Dmod_CrossPtr_t entryPtr = Context->Outputs.OutputSectionCross->Entries[outputIndex];
+        const char* apiSignature = (const char*)entryPtr;
+        if(apiSignature == NULL)
+        {
+            continue;
+        }
+        if(!Dmod_ApiSignature_IsModuleNameGiven(apiSignature) || Dmod_ApiSignature_IsMal(apiSignature))
+        {
+            continue;
+        }
+        if(!Dmod_RMod_AddRequiredModule( Context, apiSignature ))
+        {
+            DMOD_LOG_ERROR("Cannot read required modules for %s - cannot add required module\n", Dmod_Context_GetModuleName( Context ));
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
  * @brief Read required modules
  * 
  * @param Context Context to read required modules to
@@ -154,6 +186,20 @@ bool Dmod_RMod_ReadRequiredModules( Dmod_Context_t* Context )
 
     // Clear required modules
     memset( Context->RequiredModules, 0, sizeof(Context->RequiredModules) );
+
+    if(Context->Header->PointerSize != sizeof(void*))
+    {
+        if(Dmod_SystemCrossplatformMode)
+        {
+            DMOD_LOG_INFO("Crossplatform mode enabled for required modules reading\n");
+            return ReadRequiredModules_Crossplatform( Context );
+        }
+        else 
+        {
+            DMOD_LOG_ERROR("Cannot read required modules - pointer size mismatch\n");
+            return false;
+        }
+    }
 
     size_t numberOfOuptuts = Dmod_Api_GetNumberOfEntries( &Context->Outputs );
     for(size_t outputIndex = 0; outputIndex < numberOfOuptuts; outputIndex++)
