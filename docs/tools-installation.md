@@ -1,49 +1,49 @@
-# Instrukcja narzędzi DMOD (DMOD Tools Installation Guide)
+# DMOD Tools Installation Guide
 
-## Przegląd (Overview)
+## Overview
 
-Framework **DMOD (Dynamic Modules)** jest instalowany razem z zestawem narzędzi wiersza poleceń, które wspierają proces budowania, zarządzania i dystrybucji modułów dynamicznych. Narzędzia te są szczególnie przydatne w procesie budowania projektów z użyciem [dmod-boot](https://github.com/choco-technologies/dmod-boot).
+The **DMOD (Dynamic Modules)** framework ships with a set of command-line tools that support building, managing, and distributing dynamic modules. These tools are particularly useful in the build process when using [dmod-boot](https://github.com/choco-technologies/dmod-boot).
 
-## Dostępne narzędzia (Available Tools)
+## Available Tools
 
-| Narzędzie | Opis | Dokumentacja |
-|-----------|------|--------------|
-| **dmf-get** | Menedżer pakietów DMOD do pobierania i zarządzania modułami z plików manifestu | [dmf-get-tool.md](dmf-get-tool.md) |
-| **todmfc** | Narzędzie do kompresji plików DMF do formatu DMFC | [Brak dedykowanej dokumentacji](#todmfc) |
-| **todmp** | Kreator pakietów DMP - tworzy pakiety zawierające wiele modułów | [Brak dedykowanej dokumentacji](#todmp) |
-| **todmd** | Generator plików zależności DMD - wyodrębnia zależności z modułów | [todmd/README.md](../tools/system/todmd/README.md) |
-| **whereisdmf** | Narzędzie do lokalizacji plików modułów w skonfigurowanych katalogach repozytorium | [whereisdmf/README.md](../tools/system/whereisdmf/README.md) |
+| Tool | Description | Documentation |
+|------|-------------|---------------|
+| **dmf-get** | DMOD package manager for downloading and managing modules from manifest files | [dmf-get-tool.md](dmf-get-tool.md) |
+| **todmfc** | Tool for compressing DMF files to DMFC format | [No dedicated documentation](#todmfc) |
+| **todmp** | DMP package creator - creates packages containing multiple modules | [No dedicated documentation](#todmp) |
+| **todmd** | DMD dependencies file generator - extracts dependencies from modules | [todmd/README.md](../tools/system/todmd/README.md) |
+| **whereisdmf** | Tool for locating module files in configured repository directories | [whereisdmf/README.md](../tools/system/whereisdmf/README.md) |
 
-## Zmienne środowiskowe (Environment Variables)
+## Environment Variables
 
-Narzędzia DMOD wykorzystują następujące zmienne środowiskowe do konfiguracji:
+DMOD tools use the following environment variables for configuration:
 
-| Zmienna | Używane przez | Opis | Domyślna wartość |
-|---------|---------------|------|------------------|
-| **DMOD_TOOLS_NAME** | dmf-get | Nazwa zestawu narzędzi do podstawienia w URL manifestu (np. `arch/x86_64`, `arch/armv7/cortex-m7`) | `arch/x86_64` |
-| **DMOD_DMF_DIR** | dmf-get | Katalog wyjściowy dla plików DMF | `./dmf` |
-| **DMOD_DMFC_DIR** | dmf-get | Katalog wyjściowy dla plików DMFC | `./dmfc` |
-| **DMOD_MANIFEST** | dmf-get | Domyślna ścieżka lub URL do pliku manifestu | - |
-| **DMOD_REPO_DIR** | Wszystkie | Katalog repozytorium modułów używany podczas instalacji | Zależny od systemu |
+| Variable | Used by | Description | Default Value |
+|----------|---------|-------------|---------------|
+| **DMOD_TOOLS_NAME** | dmf-get | Tools name for substitution in manifest URLs (e.g., `arch/x86_64`, `arch/armv7/cortex-m7`) | `arch/x86_64` |
+| **DMOD_DMF_DIR** | dmf-get | Output directory for DMF files | `./dmf` |
+| **DMOD_DMFC_DIR** | dmf-get | Output directory for DMFC files | `./dmfc` |
+| **DMOD_MANIFEST** | dmf-get | Default path or URL to manifest file | - |
+| **DMOD_REPO_DIR** | All | Module repository directory used during installation | System dependent |
 
-## Budowanie projektu z narzędziami (Building the Project with Tools)
+## Building the Project with Tools
 
-### Wymagania (Requirements)
+### Requirements
 
-Przed rozpoczęciem budowania upewnij się, że masz zainstalowane:
+Before starting the build, make sure you have installed:
 
-- **Kompilator GCC** lub kompatybilny
-- **CMake** w wersji 3.18 lub nowszej (lub Make 4.2+)
-- **libcurl** (wymagane dla dmf-get)
+- **GCC Compiler** or compatible
+- **CMake** version 3.18 or newer (or Make 4.2+)
+- **libcurl** (required for dmf-get)
 
-#### Instalacja zależności na Ubuntu/Debian:
+#### Installing Dependencies on Ubuntu/Debian:
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y build-essential cmake libcurl4-openssl-dev
 ```
 
-#### Instalacja zależności na innych systemach Linux:
+#### Installing Dependencies on Other Linux Systems:
 
 **Fedora/RHEL/CentOS:**
 ```bash
@@ -55,43 +55,43 @@ sudo dnf install gcc gcc-c++ cmake libcurl-devel
 sudo pacman -S base-devel cmake curl
 ```
 
-### Budowanie z CMake
+### Building with CMake
 
-1. **Sklonuj repozytorium:**
+1. **Clone the repository:**
 ```bash
 git clone https://github.com/choco-technologies/dmod.git
 cd dmod
 git submodule update --init --recursive
 ```
 
-2. **Skonfiguruj projekt w trybie SYSTEM z włączonymi narzędziami:**
+2. **Configure the project in SYSTEM mode with tools enabled:**
 ```bash
 cmake -DDMOD_MODE=DMOD_SYSTEM -DDMOD_BUILD_TOOLS=ON -B build -S .
 ```
 
-3. **Zbuduj projekt:**
+3. **Build the project:**
 ```bash
 cmake --build build/
 ```
 
-Po pomyślnym zbudowaniu, narzędzia znajdą się w katalogu `build/bin/tools/`.
+After successful build, the tools will be located in the `build/bin/tools/` directory.
 
-### Budowanie z Make
+### Building with Make
 
-1. **Sklonuj repozytorium:**
+1. **Clone the repository:**
 ```bash
 git clone https://github.com/choco-technologies/dmod.git
 cd dmod
 git submodule update --init --recursive
 ```
 
-2. **Przejdź do katalogu wybranego narzędzia i zbuduj:**
+2. **Navigate to the selected tool directory and build:**
 ```bash
 cd tools/system/dmf-get
 make
 ```
 
-Lub zbuduj wszystkie narzędzia z głównego katalogu:
+Or build all tools from the main directory:
 ```bash
 make -C tools/system/dmf-get
 make -C tools/system/todmfc
@@ -100,23 +100,23 @@ make -C tools/system/todmd
 make -C tools/system/whereisdmf
 ```
 
-## Instalacja narzędzi w systemie Linux (Installing Tools on Linux)
+## Installing Tools on Linux
 
-### Instalacja z CMake
+### Installing with CMake
 
-Po zbudowaniu projektu możesz zainstalować narzędzia w systemie:
+After building the project, you can install the tools on your system:
 
 ```bash
 sudo cmake --install build/ --component tools
 ```
 
-Domyślnie narzędzia zostaną zainstalowane w `/usr/local/bin`. Możesz zmienić prefix instalacji:
+By default, tools will be installed in `/usr/local/bin`. You can change the installation prefix:
 
 ```bash
 sudo cmake --install build/ --component tools --prefix /custom/path
 ```
 
-Po instalacji narzędzia będą dostępne z każdego miejsca w systemie:
+After installation, tools will be available from anywhere in the system:
 
 ```bash
 dmf-get --version
@@ -124,31 +124,31 @@ todmfc --help
 whereisdmf mymodule
 ```
 
-### Instalacja z Make
+### Installing with Make
 
-Aby zainstalować poszczególne narzędzie:
+To install an individual tool:
 
 ```bash
 cd tools/system/dmf-get
 sudo make install
 ```
 
-Instalacja do niestandardowego katalogu:
+Installation to a custom directory:
 
 ```bash
 sudo make install INSTALL_PREFIX=/custom/path
 ```
 
-### Dezinstalacja
+### Uninstalling
 
-Aby odinstalować narzędzie zainstalowane za pomocą Make:
+To uninstall a tool installed with Make:
 
 ```bash
 cd tools/system/dmf-get
 sudo make uninstall
 ```
 
-Dla narzędzi zainstalowanych przez CMake, usuń pliki ręcznie:
+For tools installed with CMake, remove files manually:
 
 ```bash
 sudo rm /usr/local/bin/dmf-get
@@ -158,199 +158,199 @@ sudo rm /usr/local/bin/todmd
 sudo rm /usr/local/bin/whereisdmf
 ```
 
-## Szczegóły narzędzi (Tool Details)
+## Tool Details
 
 ### dmf-get
 
-**dmf-get** to menedżer pakietów dla DMOD, umożliwiający pobieranie modułów z plików manifestu (.dmm) oraz zarządzanie zależnościami.
+**dmf-get** is a package manager for DMOD that enables downloading modules from manifest files (.dmm) and managing dependencies.
 
-**Podstawowe użycie:**
+**Basic usage:**
 ```bash
-# Pobierz najnowszą wersję modułu
+# Download latest version of module
 dmf-get mymodule
 
-# Pobierz konkretną wersję
+# Download specific version
 dmf-get mymodule@1.0
 
-# Pobierz wersję spełniającą warunek
+# Download version matching condition
 dmf-get mymodule@>=1.0
 
-# Pobierz wszystkie moduły z pliku zależności
+# Download all modules from dependencies file
 dmf-get -d dependencies.dmd
 
-# Użyj niestandardowego manifestu
+# Use custom manifest
 dmf-get -m http://example.com/manifest.dmm mymodule
 ```
 
-Pełna dokumentacja: [dmf-get-tool.md](dmf-get-tool.md)
+Full documentation: [dmf-get-tool.md](dmf-get-tool.md)
 
 ### todmfc
 
-**todmfc** kompresuje pliki DMF do formatu DMFC, zmniejszając ich rozmiar.
+**todmfc** compresses DMF files to DMFC format, reducing their size.
 
-**Podstawowe użycie:**
+**Basic usage:**
 ```bash
-# Kompresuj z domyślnymi ustawieniami (fastlz, poziom 2)
+# Compress with default settings (fastlz, level 2)
 todmfc input.dmf output.dmfc
 
-# Określ metodę kompresji i poziom
+# Specify compression method and level
 todmfc input.dmf output.dmfc fastlz 3
 
-# Wyświetl dostępne metody kompresji
+# Display available compression methods
 todmfc --help
 ```
 
-**Parametry:**
-- `path/to/file.dmf` - Plik wejściowy DMF
-- `path/to/output.dmfc` - Plik wyjściowy DMFC
-- `[compression_method]` - Opcjonalna metoda kompresji (domyślnie: fastlz)
-- `[level]` - Opcjonalny poziom kompresji (domyślnie: 2)
+**Parameters:**
+- `path/to/file.dmf` - Input DMF file
+- `path/to/output.dmfc` - Output DMFC file
+- `[compression_method]` - Optional compression method (default: fastlz)
+- `[level]` - Optional compression level (default: 2)
 
 ### todmp
 
-**todmp** tworzy pakiety DMP, które mogą zawierać wiele modułów DMF lub DMFC i być ładowane razem.
+**todmp** creates DMP packages that can contain multiple DMF or DMFC modules and be loaded together.
 
-**Podstawowe użycie:**
+**Basic usage:**
 ```bash
-# Utwórz pakiet z modułów w katalogu
+# Create package from modules in directory
 todmp mypackage ./modules
 
-# Określ plik wyjściowy i główny moduł
+# Specify output file and main module
 todmp kernel ./dmfc main-app ./out/kernel.dmp
 
-# Wyświetl zawartość pakietu DMP
+# Display contents of DMP package
 todmp -l ./mypackage.dmp
 ```
 
-**Parametry:**
-- `<package_name>` - Nazwa pakietu (dla nagłówka)
-- `<input_dir>` - Katalog z modułami do spakowania (.dmf lub .dmfc)
-- `[output_file]` - Opcjonalna ścieżka do pliku wyjściowego .dmp
-- `[module_name]` - Opcjonalna nazwa głównego modułu w pakiecie
+**Parameters:**
+- `<package_name>` - Package name (for the header)
+- `<input_dir>` - Directory with modules to package (.dmf or .dmfc)
+- `[output_file]` - Optional path to output .dmp file
+- `[module_name]` - Optional name of main module in package
 
 ### todmd
 
-**todmd** czyta zależności modułu i generuje plik .dmd, który może być użyty z dmf-get do pobrania wszystkich wymaganych modułów.
+**todmd** reads module dependencies and generates a .dmd file that can be used with dmf-get to download all required modules.
 
-**Podstawowe użycie:**
+**Basic usage:**
 ```bash
-# Generuj plik .dmd z domyślną nazwą
+# Generate .dmd file with default name
 todmd myapp.dmf
 
-# Określ niestandardową nazwę pliku wyjściowego
+# Specify custom output file name
 todmd myapp.dmf custom_deps.dmd
 ```
 
-**Cechy:**
-- Ładuje moduły DMF w trybie wieloplatformowym (bez wykonania)
-- Wyodrębnia wymagane zależności modułu
-- Automatycznie filtruje moduły systemowe
-- Generuje pliki .dmd kompatybilne z dmf-get
+**Features:**
+- Loads DMF modules in cross-platform mode (without execution)
+- Extracts required module dependencies
+- Automatically filters system modules
+- Generates .dmd files compatible with dmf-get
 
-Pełna dokumentacja: [todmd/README.md](../tools/system/todmd/README.md)
+Full documentation: [todmd/README.md](../tools/system/todmd/README.md)
 
 ### whereisdmf
 
-**whereisdmf** lokalizuje pliki modułów DMOD w skonfigurowanych katalogach repozytorium.
+**whereisdmf** locates DMOD module files in configured repository directories.
 
-**Podstawowe użycie:**
+**Basic usage:**
 ```bash
-# Znajdź moduł dla bieżącej architektury
+# Find module for current architecture
 whereisdmf mymodule
 
-# Znajdź moduł dla konkretnej architektury
+# Find module for specific architecture
 whereisdmf mymodule x86_64
 whereisdmf mymodule armv7-cortex-m7
 ```
 
-**Cechy:**
-- Używa DMOD API (`Dmod_FindModuleFile`) do wyszukiwania
-- Przydatne w skryptach i automatyzacji
-- Pomaga w debugowaniu problemów z lokalizacją modułów
-- Weryfikuje instalacje modułów
+**Features:**
+- Uses DMOD API (`Dmod_FindModuleFile`) for searching
+- Useful in scripts and automation
+- Helps debug module location issues
+- Verifies module installations
 
-Pełna dokumentacja: [whereisdmf/README.md](../tools/system/whereisdmf/README.md)
+Full documentation: [whereisdmf/README.md](../tools/system/whereisdmf/README.md)
 
-## Obraz Docker (Docker Image)
+## Docker Image
 
-Framework DMOD jest dostępny jako gotowy obraz Docker, który zawiera wszystkie narzędzia DMOD oraz środowisko kompilacji dla systemów embedded.
+The DMOD framework is available as a ready-to-use Docker image that contains all DMOD tools and a compilation environment for embedded systems.
 
-### Podstawowe informacje
+### Basic Information
 
-- **Nazwa obrazu:** `chocotechnologies/dmod`
-- **Aktualna wersja:** `1.0.4`
-- **Platforma bazowa:** Ubuntu 20.04
-- **Repozytorium:** [Docker Hub](https://hub.docker.com/r/chocotechnologies/dmod)
+- **Image name:** `chocotechnologies/dmod`
+- **Current version:** `1.0.4`
+- **Base platform:** Ubuntu 20.04
+- **Repository:** [Docker Hub](https://hub.docker.com/r/chocotechnologies/dmod)
 
-### Zawartość obrazu
+### Image Contents
 
-Obraz Docker zawiera:
+The Docker image contains:
 
-- **Narzędzia DMOD:** dmf-get, todmfc, todmp, todmd, whereisdmf
-- **Kompilator:** GCC arm-none-eabi (wersja 10.3-2021.10)
-- **System budowania:** CMake (wersja 3.31.3), Make
-- **Narzędzia deweloperskie:** OpenOCD, gcovr, git, jq, zip/unzip
-- **Biblioteki:** libcurl, libusb
-- **Skonfigurowane zmienne środowiskowe:**
+- **DMOD Tools:** dmf-get, todmfc, todmp, todmd, whereisdmf
+- **Compiler:** GCC arm-none-eabi (version 10.3-2021.10)
+- **Build system:** CMake (version 3.31.3), Make
+- **Development tools:** OpenOCD, gcovr, git, jq, zip/unzip
+- **Libraries:** libcurl, libusb
+- **Configured environment variables:**
   - `DMOD_DMF_DIR=/tools/dmf`
   - `DMOD_DMFC_DIR=/tools/dmfc`
-  - `PATH` zawiera `/usr/local/bin` z narzędziami DMOD
+  - `PATH` includes `/usr/local/bin` with DMOD tools
 
-### Użycie obrazu Docker
+### Using the Docker Image
 
-**Pobierz obraz:**
+**Pull the image:**
 ```bash
 docker pull chocotechnologies/dmod:1.0.4
 ```
 
-**Uruchom kontener interaktywnie:**
+**Run container interactively:**
 ```bash
 docker run -it chocotechnologies/dmod:1.0.4 bash
 ```
 
-**Użyj narzędzi DMOD z kontenera:**
+**Use DMOD tools from the container:**
 ```bash
-# Uruchom dmf-get w kontenerze
+# Run dmf-get in container
 docker run --rm chocotechnologies/dmod:1.0.4 dmf-get --version
 
-# Montuj lokalny katalog i pobierz moduły
+# Mount local directory and download modules
 docker run --rm -v $(pwd):/workspace -w /workspace \
     chocotechnologies/dmod:1.0.4 dmf-get mymodule
 ```
 
-**Zbuduj projekt w kontenerze:**
+**Build project in container:**
 ```bash
-# Montuj katalog projektu i zbuduj
+# Mount project directory and build
 docker run --rm -v $(pwd):/project -w /project \
     chocotechnologies/dmod:1.0.4 bash -c "cmake -B build && cmake --build build"
 ```
 
-### Dostosowanie obrazu
+### Customizing the Image
 
-Możesz rozszerzyć obraz Docker o dodatkowe narzędzia:
+You can extend the Docker image with additional tools:
 
 ```dockerfile
 FROM chocotechnologies/dmod:1.0.4
 
-# Dodaj własne narzędzia lub konfigurację
+# Add your own tools or configuration
 RUN apt-get update && apt-get install -y your-package
 
-# Ustaw niestandardowe zmienne środowiskowe
+# Set custom environment variables
 ENV MY_CUSTOM_VAR=value
 
 WORKDIR /workspace
 ```
 
-## Typowy workflow z narzędziami (Typical Workflow)
+## Typical Workflow with Tools
 
-### 1. Przygotowanie środowiska
+### 1. Environment Setup
 
 ```bash
-# Opcja A: Użyj Docker
+# Option A: Use Docker
 docker pull chocotechnologies/dmod:1.0.4
 docker run -it -v $(pwd):/workspace -w /workspace chocotechnologies/dmod:1.0.4 bash
 
-# Opcja B: Zainstaluj narzędzia lokalnie
+# Option B: Install tools locally
 git clone https://github.com/choco-technologies/dmod.git
 cd dmod
 cmake -DDMOD_MODE=DMOD_SYSTEM -DDMOD_BUILD_TOOLS=ON -B build -S .
@@ -358,53 +358,53 @@ cmake --build build/
 sudo cmake --install build/ --component tools
 ```
 
-### 2. Pobieranie modułów
+### 2. Downloading Modules
 
 ```bash
-# Ustaw zmienne środowiskowe
+# Set environment variables
 export DMOD_TOOLS_NAME=arch/armv7/cortex-m7
 export DMOD_DMF_DIR=./modules/dmf
 export DMOD_DMFC_DIR=./modules/dmfc
 
-# Pobierz moduły z manifestu
+# Download modules from manifest
 dmf-get mymodule@>=1.0
 dmf-get -d dependencies.dmd
 ```
 
-### 3. Kompresja modułów
+### 3. Module Compression
 
 ```bash
-# Skompresuj moduły do zmniejszenia rozmiaru
+# Compress modules to reduce size
 todmfc ./modules/dmf/mymodule.dmf ./modules/dmfc/mymodule.dmfc
 ```
 
-### 4. Tworzenie pakietów
+### 4. Package Creation
 
 ```bash
-# Utwórz pakiet DMP z wielu modułów
+# Create DMP package from multiple modules
 todmp mypackage ./modules/dmfc ./output/mypackage.dmp main_module
 ```
 
-### 5. Weryfikacja
+### 5. Verification
 
 ```bash
-# Sprawdź lokalizację modułu
+# Check module location
 whereisdmf mymodule
 
-# Wyświetl zawartość pakietu
+# Display package contents
 todmp -l ./output/mypackage.dmp
 
-# Wygeneruj plik zależności z modułu
+# Generate dependencies file from module
 todmd mymodule.dmf dependencies.dmd
 ```
 
-## Rozwiązywanie problemów (Troubleshooting)
+## Troubleshooting
 
-### Błąd: "libcurl not found"
+### Error: "libcurl not found"
 
-**Problem:** CMake nie może znaleźć biblioteki libcurl podczas budowania.
+**Problem:** CMake cannot find the libcurl library during build.
 
-**Rozwiązanie:**
+**Solution:**
 ```bash
 # Ubuntu/Debian
 sudo apt-get install libcurl4-openssl-dev
@@ -413,39 +413,39 @@ sudo apt-get install libcurl4-openssl-dev
 sudo dnf install libcurl-devel
 ```
 
-### Błąd: "Module not found" w whereisdmf
+### Error: "Module not found" in whereisdmf
 
-**Problem:** whereisdmf nie może znaleźć modułu.
+**Problem:** whereisdmf cannot find the module.
 
-**Rozwiązanie:**
-1. Sprawdź czy moduł istnieje w katalogach `DMOD_DMF_DIR` lub `DMOD_DMFC_DIR`
-2. Upewnij się, że zmienne środowiskowe są poprawnie ustawione
-3. Sprawdź czy architektura się zgadza
+**Solution:**
+1. Check if module exists in `DMOD_DMF_DIR` or `DMOD_DMFC_DIR` directories
+2. Ensure environment variables are properly set
+3. Verify the architecture matches
 
-### Błąd: Narzędzia nie są dostępne po instalacji
+### Error: Tools not available after installation
 
-**Problem:** Po instalacji nie można uruchomić narzędzi.
+**Problem:** Cannot run tools after installation.
 
-**Rozwiązanie:**
-1. Sprawdź czy katalog instalacji jest w PATH:
+**Solution:**
+1. Check if installation directory is in PATH:
 ```bash
 echo $PATH | grep -o "/usr/local/bin"
 ```
 
-2. Jeśli nie, dodaj do PATH:
+2. If not, add to PATH:
 ```bash
 export PATH=$PATH:/usr/local/bin
-# Dodaj do ~/.bashrc lub ~/.zshrc aby utrwalić
+# Add to ~/.bashrc or ~/.zshrc to persist
 ```
 
-## Dodatkowe zasoby (Additional Resources)
+## Additional Resources
 
-- **Główne repozytorium:** [github.com/choco-technologies/dmod](https://github.com/choco-technologies/dmod)
+- **Main repository:** [github.com/choco-technologies/dmod](https://github.com/choco-technologies/dmod)
 - **DMOD Boot:** [github.com/choco-technologies/dmod-boot](https://github.com/choco-technologies/dmod-boot)
-- **Dokumentacja formatu DMF:** [dmd-file-format.md](dmd-file-format.md)
-- **Dokumentacja formatu DMM:** [dmm-file-format.md](dmm-file-format.md)
+- **DMF format documentation:** [dmd-file-format.md](dmd-file-format.md)
+- **DMM format documentation:** [dmm-file-format.md](dmm-file-format.md)
 - **Docker Hub:** [hub.docker.com/r/chocotechnologies/dmod](https://hub.docker.com/r/chocotechnologies/dmod)
 
-## Licencja (License)
+## License
 
-DMOD jest dostępny na licencji MIT. Zobacz [license.md](../license.md) dla szczegółów.
+DMOD is available under the MIT license. See [license.md](../license.md) for details.
