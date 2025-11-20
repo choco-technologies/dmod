@@ -195,13 +195,13 @@ static bool LoadOutput_Crossplatform( Dmod_Context_t* Context )
             DMOD_LOG_ERROR("Cannot load output - cannot initialize output entry at index %d\n", i);
             return false;
         }
-        else if( outputSection->Entries[i] == NULL )
+        else if( outputSection->Entries[i] == 0 )
         {
             DMOD_LOG_WARN("Empty output entry at index: %d\n", i);
         }
         else
         {
-            const char* entrySignature = outputSection->Entries[i];
+            const char* entrySignature = (const char*)(uintptr_t)outputSection->Entries[i];
             if(!Dmod_ApiSignature_IsValid( entrySignature ))
             {
                 DMOD_LOG_ERROR("Cannot load output - Invalid output entry signature\n");
@@ -210,7 +210,7 @@ static bool LoadOutput_Crossplatform( Dmod_Context_t* Context )
         }
     }
 
-    Context->Outputs.OutputSection      = outputSection;
+    Context->Outputs.OutputSectionCross = outputSection;
     Context->Outputs.SectionSize        = output->SectionSize;
     Context->Outputs.ApiType            = Dmod_ApiType_Output;
     Context->Outputs.Crossplatform      = true;
@@ -329,24 +329,24 @@ static bool LoadInput_Crossplatform( Dmod_Context_t* Context )
 
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        if( !Dmod_Hlp_InitPointerCP( Context, (void**)&inputSection->Entries[i].Signature, "Input Signature" ) 
-         || !Dmod_Hlp_InitPointerCP( Context, (void**)&inputSection->Entries[i].Function , "Input Function"  ) 
+        if( !Dmod_Hlp_InitPointerCP( Context, &inputSection->Entries[i].Signature, "Input Signature" ) 
+         || !Dmod_Hlp_InitPointerCP( Context, &inputSection->Entries[i].Function , "Input Function"  ) 
             )
         {
             DMOD_LOG_ERROR("Cannot load input - cannot initialize input entry at index %d\n", i);
             return false;
         }
-        else if(!Dmod_ApiSignature_IsValid(inputSection->Entries[i].Signature))
+        else if(!Dmod_ApiSignature_IsValid((const char*)(uintptr_t)inputSection->Entries[i].Signature))
         {
             DMOD_LOG_ERROR("Cannot load input - Invalid input entry signature: %s\n", inputSection->Entries[i].Signature);
             return false;
         }
     }
 
-    Context->Inputs.InputSection    = inputSection;
-    Context->Inputs.SectionSize     = input->SectionSize;
-    Context->Inputs.ApiType         = Dmod_ApiType_Input;
-    Context->Inputs.Crossplatform   = true;
+    Context->Inputs.InputSectionCross   = inputSection;
+    Context->Inputs.SectionSize         = input->SectionSize;
+    Context->Inputs.ApiType             = Dmod_ApiType_Input;
+    Context->Inputs.Crossplatform       = true;
 
     return true;
 }
@@ -371,20 +371,6 @@ bool Dmod_Ldr_LoadInput( Dmod_Context_t* Context )
         return false;
     }
 
-    if(Context->Header->PointerSize != sizeof(void*))
-    {
-        if(Dmod_SystemCrossplatformMode)
-        {
-            DMOD_LOG_INFO("Crossplatform mode enabled for input loading\n");
-            return LoadInput_Crossplatform( Context );
-        }
-        else 
-        {
-            DMOD_LOG_ERROR("Cannot load input - pointer size mismatch\n");
-            return false;
-        }
-    }
-
     Dmod_ModuleFooter_t* footer = Context->Footer;
     Dmod_ModuleSection_t* input = &footer->Inputs;
 
@@ -399,6 +385,20 @@ bool Dmod_Ldr_LoadInput( Dmod_Context_t* Context )
         else 
         {
             return true;
+        }
+    }
+
+    if(Context->Header->PointerSize != sizeof(void*))
+    {
+        if(Dmod_SystemCrossplatformMode)
+        {
+            DMOD_LOG_INFO("Crossplatform mode enabled for input loading\n");
+            return LoadInput_Crossplatform( Context );
+        }
+        else 
+        {
+            DMOD_LOG_ERROR("Cannot load input - pointer size mismatch\n");
+            return false;
         }
     }
 
@@ -467,7 +467,7 @@ static bool LoadGot_Crossplatform( Dmod_Context_t* Context )
 
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        if( !Dmod_Hlp_InitPointerCP( Context, (void**)&gotSection->Entries[i], "GOT Entry" ) )
+        if( !Dmod_Hlp_InitPointerCP( Context, &gotSection->Entries[i], "GOT Entry" ) )
         {
             DMOD_LOG_ERROR("Cannot load got - cannot initialize got entry at index %d\n", i);
             return false;
