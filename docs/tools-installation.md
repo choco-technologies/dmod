@@ -9,8 +9,8 @@ The **DMOD (Dynamic Modules)** framework ships with a set of command-line tools 
 | Tool | Description | Documentation |
 |------|-------------|---------------|
 | **dmf-get** | DMOD package manager for downloading and managing modules from manifest files | [dmf-get-tool.md](dmf-get-tool.md) |
-| **todmfc** | Tool for compressing DMF files to DMFC format | [No dedicated documentation](#todmfc) |
-| **todmp** | DMP package creator - creates packages containing multiple modules | [No dedicated documentation](#todmp) |
+| **todmfc** | Tool for compressing DMF files to DMFC format | [todmfc/README.md](../tools/system/todmfc/README.md) |
+| **todmp** | DMP package creator - creates packages containing multiple modules | [todmp/README.md](../tools/system/todmp/README.md) |
 | **todmd** | DMD dependencies file generator - extracts dependencies from modules | [todmd/README.md](../tools/system/todmd/README.md) |
 | **whereisdmf** | Tool for locating module files in configured repository directories | [whereisdmf/README.md](../tools/system/whereisdmf/README.md) |
 
