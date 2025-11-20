@@ -936,6 +936,7 @@ int main(int argc, char* argv[]) {
     bool skip_dmod_ver_check = false;
     
     Dmod_SetLogLevel(Dmod_LogLevel_Info);
+    Dmod_SetCrossplatformMode(true);
     
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
