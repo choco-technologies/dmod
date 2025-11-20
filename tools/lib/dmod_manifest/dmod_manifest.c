@@ -398,10 +398,25 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
         Dmod_AvailableVersionNode_t* available = GetAvailableVersions(ctx, name);
         
         if (available) {
+            // Build temporary list of expanded entries in correct order
+            // Versions are stored newest-first in the available list (due to prepending during parse).
+            // We want entries newest-first in ctx->entries too.
+            // Strategy: append each entry to temp list (so same order as available list),
+            // then prepend entire temp list to ctx->entries (preserving the order).
+            Dmod_ManifestNode_t* temp_head = NULL;
+            Dmod_ManifestNode_t* temp_tail = NULL;
+            size_t temp_count = 0;
+            
             // Expand entry for each available version
             for (Dmod_AvailableVersionNode_t* ver = available; ver; ver = ver->next) {
                 Dmod_ManifestNode_t* node = Dmod_Malloc(sizeof(Dmod_ManifestNode_t));
                 if (!node) {
+                    // Clean up temporary list on error
+                    while (temp_head) {
+                        Dmod_ManifestNode_t* next = temp_head->next;
+                        Dmod_Free(temp_head);
+                        temp_head = next;
+                    }
                     Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
                     return false;
                 }
@@ -414,8 +429,14 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
                 node->entry.version[sizeof(node->entry.version) - 1] = '\0';
                 
                 if (!SubstituteVariables(ctx, url_raw, node->entry.url, sizeof(node->entry.url), ver->version)) {
-                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "URL too long after substitution: %s", url_raw);
                     Dmod_Free(node);
+                    // Clean up temporary list on error
+                    while (temp_head) {
+                        Dmod_ManifestNode_t* next = temp_head->next;
+                        Dmod_Free(temp_head);
+                        temp_head = next;
+                    }
+                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "URL too long after substitution: %s", url_raw);
                     return false;
                 }
                 
@@ -427,13 +448,28 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
                     node->entry.has_dmod_version = false;
                 }
                 
-                // Add to linked list
-                node->next = ctx->entries;
-                ctx->entries = node;
-                ctx->entry_count++;
+                // Add to temporary list (append to end, so keeps same order as available list)
+                node->next = NULL;
+                if (!temp_head) {
+                    temp_head = node;
+                    temp_tail = node;
+                } else {
+                    temp_tail->next = node;
+                    temp_tail = node;
+                }
+                temp_count++;
                 
                 DMOD_LOG_VERBOSE("Expanded entry: %s@%s -> %s\n", name, ver->version, node->entry.url);
             }
+            
+            // Now prepend the entire temporary list to ctx->entries
+            // This maintains newest-first order from the available list
+            if (temp_tail) {
+                temp_tail->next = ctx->entries;
+                ctx->entries = temp_head;
+                ctx->entry_count += temp_count;
+            }
+            
             return true;
         }
     }
