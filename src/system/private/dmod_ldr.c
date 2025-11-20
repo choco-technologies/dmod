@@ -44,6 +44,13 @@ bool Dmod_Ldr_LoadHeader( Dmod_Context_t* Context )
         return false;
     }
 
+    // check header size
+    if( header->HeaderSize != sizeof( Dmod_ModuleHeader_t ) )
+    {
+        DMOD_LOG_ERROR("Cannot load header - invalid header size: %d != %d\n", header->HeaderSize, sizeof( Dmod_ModuleHeader_t ) );
+        return false;
+    }
+
     // Check architecture
     if( !Dmod_SystemCrossplatformMode && strcmp( header->Arch, DMOD_ARCH ) != 0 )
     {

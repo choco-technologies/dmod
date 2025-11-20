@@ -40,6 +40,7 @@ extern void* __footer_start;
 volatile const Dmod_ModuleHeader_t ModuleHeader DMOD_SECTION(".header") DMOD_USED = 
 {
     .Signature          = DMOD_HEADER_SIGNATURE,
+    .HeaderSize         = sizeof( Dmod_ModuleHeader_t ),
     .DmodVersion        = DMOD_VERSION,
     .Arch               = DMOD_ARCH,
     .CpuName            = DMOD_CPU_NAME,
