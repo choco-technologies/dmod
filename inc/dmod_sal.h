@@ -83,6 +83,11 @@ DMOD_BUILTIN_API(Dmod, 1.0, void*,  _AlignedMallocEx,   ( size_t Size, size_t Al
 DMOD_BUILTIN_API(Dmod, 1.0, void,   _FreeModule,        ( const char* ModuleName )          );
 DMOD_BUILTIN_API(Dmod, 1.0, size_t, _ReadMemory,        ( uintptr_t Address, void* Buffer, size_t Size ) );
 DMOD_BUILTIN_API(Dmod, 1.0, size_t, _WriteMemory,       ( uintptr_t Address, const void* Buffer, size_t Size ) );
+DMOD_BUILTIN_API(Dmod, 1.0, bool,   _IsRam,             ( const void* Address ) );
+DMOD_BUILTIN_API(Dmod, 1.0, bool,   _IsRom,             ( const void* Address ) );
+DMOD_BUILTIN_API(Dmod, 1.0, bool,   _IsDma,             ( const void* Address ) );
+DMOD_BUILTIN_API(Dmod, 1.0, bool,   _IsExt,             ( const void* Address ) );
+DMOD_BUILTIN_API(Dmod, 1.0, bool,   _IsAddressValid,    ( const void* Address ) );
 //! @}
 
 /**
@@ -266,6 +271,8 @@ DMOD_BUILTIN_API(Dmod, 1.0, void*, _Mutex_New, ( bool Recursive ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int  , _Mutex_Lock, ( void* Mutex ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int  , _Mutex_Unlock, ( void* Mutex ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void , _Mutex_Delete, ( void* Mutex ) );
+DMOD_BUILTIN_API(Dmod, 1.0, bool , _DelayUs, ( uint64_t Microseconds ) );
+DMOD_BUILTIN_API(Dmod, 1.0, bool , _SleepMs, ( uint64_t Milliseconds ) );
 
 //! @}
 

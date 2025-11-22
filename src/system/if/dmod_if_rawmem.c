@@ -207,3 +207,129 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _WriteMemory, ( uintptr_t Add
     memcpy((void*)Address, Buffer, Size);
     return Size;
 }
+
+/**
+ * @brief Check if address is in RAM
+ * 
+ * @param Address Address to check
+ * 
+ * @return true if address is in RAM, false otherwise
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsRam, ( const void* Address ))
+{
+#if defined(__ARM_ARCH)
+    uintptr_t addr = (uintptr_t)Address;
+    // Common ARM architecture RAM regions (device-specific values should be configured)
+    #if defined(DMOD_RAM_START) && defined(DMOD_RAM_END)
+        return (addr >= DMOD_RAM_START && addr < DMOD_RAM_END);
+    #else
+        // Default: assume standard SRAM regions for common ARM Cortex-M
+        // This is a fallback and should be overridden with platform-specific values
+        return (addr >= 0x20000000 && addr < 0x30000000) || // SRAM region
+               (addr >= 0x10000000 && addr < 0x20000000);    // Code SRAM region
+    #endif
+#else
+    // For non-embedded systems (PC/Linux), we cannot reliably determine RAM regions
+    // Return false to indicate this functionality is not available
+    (void)Address;
+    return false;
+#endif
+}
+
+/**
+ * @brief Check if address is in ROM
+ * 
+ * @param Address Address to check
+ * 
+ * @return true if address is in ROM, false otherwise
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsRom, ( const void* Address ))
+{
+#if defined(__ARM_ARCH)
+    uintptr_t addr = (uintptr_t)Address;
+    // Common ARM architecture ROM/Flash regions
+    #if defined(DMOD_ROM_START) && defined(DMOD_ROM_END)
+        return (addr >= DMOD_ROM_START && addr < DMOD_ROM_END);
+    #else
+        // Default: assume standard Flash regions for common ARM Cortex-M
+        return (addr >= 0x00000000 && addr < 0x10000000) || // Flash region
+               (addr >= 0x08000000 && addr < 0x10000000);    // Alternative Flash region
+    #endif
+#else
+    // For non-embedded systems, check if address is in code/text segment
+    // This is a weak heuristic and may not work in all cases
+    (void)Address;
+    return false;
+#endif
+}
+
+/**
+ * @brief Check if address is in DMA region
+ * 
+ * @param Address Address to check
+ * 
+ * @return true if address is in DMA region, false otherwise
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsDma, ( const void* Address ))
+{
+#if defined(__ARM_ARCH)
+    uintptr_t addr = (uintptr_t)Address;
+    // DMA accessible regions are device-specific
+    #if defined(DMOD_DMA_START) && defined(DMOD_DMA_END)
+        return (addr >= DMOD_DMA_START && addr < DMOD_DMA_END);
+    #else
+        // Default: assume DMA can access SRAM and peripheral regions
+        // This is device-specific and should be configured per platform
+        return (addr >= 0x20000000 && addr < 0x30000000) || // SRAM
+               (addr >= 0x40000000 && addr < 0x60000000);    // Peripherals
+    #endif
+#else
+    (void)Address;
+    return false;
+#endif
+}
+
+/**
+ * @brief Check if address is in External memory
+ * 
+ * @param Address Address to check
+ * 
+ * @return true if address is in External memory, false otherwise
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsExt, ( const void* Address ))
+{
+#if defined(__ARM_ARCH)
+    uintptr_t addr = (uintptr_t)Address;
+    // External memory regions are device-specific
+    #if defined(DMOD_EXT_START) && defined(DMOD_EXT_END)
+        return (addr >= DMOD_EXT_START && addr < DMOD_EXT_END);
+    #else
+        // Default: assume standard external memory regions for ARM Cortex-M
+        return (addr >= 0x60000000 && addr < 0xA0000000) || // External RAM/Device
+               (addr >= 0xC0000000 && addr < 0xE0000000);    // External Device
+    #endif
+#else
+    (void)Address;
+    return false;
+#endif
+}
+
+/**
+ * @brief Check if address is valid (in any known memory region)
+ * 
+ * @param Address Address to check
+ * 
+ * @return true if address is valid (RAM || ROM || DMA || EXT), false otherwise
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsAddressValid, ( const void* Address ))
+{
+    if (Address == NULL)
+    {
+        return false;
+    }
+    
+    return Dmod_IsRam(Address) || 
+           Dmod_IsRom(Address) || 
+           Dmod_IsDma(Address) || 
+           Dmod_IsExt(Address);
+}

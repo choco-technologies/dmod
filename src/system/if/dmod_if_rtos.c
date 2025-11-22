@@ -32,6 +32,14 @@
 #   define __USE_UNIX98
 #   include <pthread.h>
 #endif
+#if defined(__unix__) || defined(__APPLE__)
+#   include <unistd.h>
+#   include <time.h>
+#endif
+
+#ifndef DMOD_CPU_FREQ_MHZ
+#   define DMOD_CPU_FREQ_MHZ 100
+#endif
 
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
@@ -171,5 +179,136 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Mutex_Delete, ( void* Mutex ))
     {
         DMOD_LOG_WARN("Dmod_Mutex_Delete interface not implemented\n");
     }
+    #endif
+}
+
+/**
+ * @brief Delay execution for a specified number of microseconds
+ * 
+ * @param Microseconds Number of microseconds to delay
+ * 
+ * @return true if delay was successful, false otherwise
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _DelayUs, ( uint64_t Microseconds ))
+{
+    #if defined(__unix__) || defined(__APPLE__)
+    if (Microseconds == 0)
+    {
+        return true;
+    }
+    
+    // For delays less than 1 second, use usleep (deprecated but widely available)
+    // For longer delays, use nanosleep for better precision
+    if (Microseconds < 1000000)
+    {
+        #ifdef _POSIX_C_SOURCE
+        // Use nanosleep for better precision
+        struct timespec ts;
+        ts.tv_sec = 0;
+        ts.tv_nsec = Microseconds * 1000;
+        
+        while (nanosleep(&ts, &ts) == -1)
+        {
+            // Continue if interrupted by signal
+            if (errno != EINTR)
+            {
+                return false;
+            }
+        }
+        #else
+        // Fallback to usleep
+        if (usleep(Microseconds) != 0)
+        {
+            return false;
+        }
+        #endif
+    }
+    else
+    {
+        // Split into seconds and remaining microseconds
+        struct timespec ts;
+        ts.tv_sec = Microseconds / 1000000;
+        ts.tv_nsec = (Microseconds % 1000000) * 1000;
+        
+        while (nanosleep(&ts, &ts) == -1)
+        {
+            if (errno != EINTR)
+            {
+                return false;
+            }
+        }
+    }
+    
+    return true;
+    #elif defined(__ARM_ARCH) || defined(STM32)
+    // For embedded systems without RTOS
+    // This is a busy-wait delay - should be overridden with timer-based implementation
+    volatile uint64_t count = Microseconds * (DMOD_CPU_FREQ_MHZ / 4);
+    while (count--)
+    {
+        __asm__ volatile ("nop");
+    }
+    return true;
+    #else
+    // Platform not supported
+    (void)Microseconds;
+    DMOD_LOG_WARN("Dmod_DelayUs interface not implemented for this platform\n");
+    return false;
+    #endif
+}
+
+/**
+ * @brief Sleep for a specified number of milliseconds
+ * 
+ * @param Milliseconds Number of milliseconds to sleep
+ * 
+ * @return true if sleep was successful, false otherwise
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _SleepMs, ( uint64_t Milliseconds ))
+{
+    #if DMOD_USE_PTHREAD
+    if (Milliseconds == 0)
+    {
+        return true;
+    }
+    
+    // Use nanosleep for better precision
+    struct timespec ts;
+    ts.tv_sec = Milliseconds / 1000;
+    ts.tv_nsec = (Milliseconds % 1000) * 1000000;
+    
+    while (nanosleep(&ts, &ts) == -1)
+    {
+        // Continue if interrupted by signal
+        if (errno != EINTR)
+        {
+            return false;
+        }
+    }
+    
+    return true;
+    #elif defined(__unix__) || defined(__APPLE__)
+    #include <unistd.h>
+    
+    if (Milliseconds == 0)
+    {
+        return true;
+    }
+    
+    // Convert milliseconds to microseconds
+    if (usleep(Milliseconds * 1000) != 0)
+    {
+        return false;
+    }
+    
+    return true;
+    #elif defined(__ARM_ARCH) || defined(STM32)
+    // For embedded systems, use DelayUs
+    return Dmod_DelayUs(Milliseconds * 1000);
+    #else
+    // Platform not supported
+    (void)Milliseconds;
+    DMOD_LOG_WARN("Dmod_SleepMs interface not implemented for this platform\n");
+    return false;
     #endif
 }
