@@ -151,7 +151,11 @@ TEST_F(DmodDelayTest, DelayVsSleepConsistency)
         Dmod_SleepMs(delayMs);
     });
     
-    // Both should be reasonably close (within 2x of each other)
+    // Both should be reasonably close (within 3x of each other)
+    // Ensure neither value is zero to avoid division by zero
+    ASSERT_GT(delayElapsed, 0u);
+    ASSERT_GT(sleepElapsed, 0u);
+    
     uint64_t ratio = (delayElapsed > sleepElapsed) ? 
                      (delayElapsed / sleepElapsed) : 
                      (sleepElapsed / delayElapsed);
