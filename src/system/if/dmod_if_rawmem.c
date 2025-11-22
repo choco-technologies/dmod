@@ -252,8 +252,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsRom, ( const void* Address )
         return (addr >= DMOD_ROM_START && addr < DMOD_ROM_END);
     #else
         // Default: assume standard Flash regions for common ARM Cortex-M
-        return (addr >= 0x00000000 && addr < 0x10000000) || // Flash region
-               (addr >= 0x08000000 && addr < 0x10000000);    // Alternative Flash region
+        return (addr >= 0x00000000 && addr < 0x10000000);    // Flash region (0x00000000-0x0FFFFFFF)
     #endif
 #else
     // For non-embedded systems, check if address is in code/text segment
