@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include <assert.h>
 #include "dmod-config.h"
 #include "dmod_arch_defs.h"
 
@@ -26,6 +27,7 @@ extern "C" {
 #define DMOD_UNUSED_SECTION( NAME )      __attribute__((unused, section(NAME)))
 #define DMOD_GLOBAL_POINTER             DMOD_SECTION(".got")
 #define DMOD_PACKED                      __attribute__((__packed__))
+#define DMOD_STATIC_ASSERT( cond, msg )    _Static_assert( cond, msg )
 
 #define DMOD_FUNCTION_REDEFINITION( NEW_FUNCTION, OLD_FUNCTION )  \
         DMOD_WEAK_DEFAULT(NEW_FUNCTION, OLD_FUNCTION)
