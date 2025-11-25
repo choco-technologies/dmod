@@ -41,6 +41,11 @@ endif()
 
 add_library(${MODULE_NAME} STATIC ${SYSTEM_SOURCES})
 
+# Add DMOD_EXTERNAL_REGISTRATION definition when enabled
+if(DMOD_EXTERNAL_REGISTRATION)
+    target_compile_definitions(${MODULE_NAME} PRIVATE DMOD_EXTERNAL_REGISTRATION)
+endif()
+
 target_include_directories(${MODULE_NAME} 
     PUBLIC 
         ${CMAKE_CURRENT_SOURCE_DIR}
