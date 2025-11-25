@@ -49,7 +49,7 @@ DMOD_LIBS = dmod_inc\
 		dmod_fastlz\
 		pthread
 DMOD_GEN_HEADERS_IN = 
-DMOD_DEFINITIONS = DMOD_EXTERNAL_REGISTRATION
+DMOD_DEFINITIONS = 
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths
