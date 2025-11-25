@@ -31,6 +31,20 @@ bool Dmod_Mgr_IsSystemModule( const char* ModuleName )
 }
 
 /**
+ * @brief Prints all system modules to the log
+ */
+void Dmod_Mgr_PrintSystemModules( void )
+{
+    Dmod_BuiltinInputApi.SectionSize = (size_t)((void*)&__dmod_inputs_end - (void*)&__dmod_inputs_start);
+    size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Dmod_BuiltinInputApi );
+    for(size_t i = 0; i < numberOfEntries; i++)
+    {
+        const char* signature = Dmod_BuiltinInputApi.InputSection->Entries[i].Signature;
+        DMOD_LOG_INFO("System module: %s\n", signature);
+    }
+}
+
+/**
  * @brief Checks if the given module is loaded
  * 
  * @param ModuleName Name of the module to check

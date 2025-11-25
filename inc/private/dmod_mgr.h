@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 extern bool Dmod_Mgr_IsSystemModule( const char* ModuleName );
+extern void Dmod_Mgr_PrintSystemModules( void );
 extern bool Dmod_Mgr_IsLoaded( const char* ModuleName );
 extern bool Dmod_Mgr_IsEnabled( const char* ModuleName );
 

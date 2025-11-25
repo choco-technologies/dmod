@@ -485,6 +485,7 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
         }
     }
     DMOD_LOG_ERROR("Cannot load module by name - module not found: %s\n", ModuleName);
+    Dmod_Mgr_PrintSystemModules();
     return false;
 }
 
