@@ -112,6 +112,11 @@ bool Dmod_ApiSignature_IsModuleNameGiven( const char* Signature )
  */
 bool Dmod_ApiSignature_IsModule( const char* Signature, const char* ModuleName  )
 {
+    if( ModuleName == NULL )
+    {
+        return false;
+    }
+
     if( Dmod_ApiSignature_IsValid( Signature ) == false )
     {
         return false;
@@ -138,6 +143,13 @@ bool Dmod_ApiSignature_IsModule( const char* Signature, const char* ModuleName  
         {
             return false;
         }
+    }
+
+    // Verify that the module name in the signature ends at this position
+    // (next character should be ':' for version separator or '\0' for end of string)
+    if( module[length] != ':' && module[length] != '\0' )
+    {
+        return false;
     }
 
     return true;

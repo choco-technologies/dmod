@@ -47,6 +47,20 @@ TEST_F(DmodMgrTest, IsNotSystemModule)
 /**
  * @brief Test for Dmod_Mgr_IsSystemModule
  * 
+ * The test checks if the function returns false for a partial module name match.
+ * For example, "Dm" should not match "Dmod".
+ */
+TEST_F(DmodMgrTest, IsNotPartialModuleNameMatch)
+{
+    // "Dm" is a prefix of "Dmod" but should not match
+    ASSERT_FALSE(Dmod_Mgr_IsSystemModule("Dm"));
+    // "D" is a prefix of "Dmod" but should not match
+    ASSERT_FALSE(Dmod_Mgr_IsSystemModule("D"));
+}
+
+/**
+ * @brief Test for Dmod_Mgr_IsSystemModule
+ * 
  * The test checks if the function returns false for an empty module name.
  */
 TEST_F(DmodMgrTest, IsEmptyModule)
