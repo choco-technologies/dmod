@@ -71,7 +71,21 @@ When `DMOD_ENABLE_REGISTRATION` is **not** defined:
 
 ## The `DMOD_EXTERNAL_REGISTRATION` Macro
 
-The `DMOD_EXTERNAL_REGISTRATION` macro is used when you want to handle API registration in a source file other than `dmod_system.c`. By default, `dmod_system.c` defines `DMOD_ENABLE_REGISTRATION` internally. If you define `DMOD_EXTERNAL_REGISTRATION`, it prevents this automatic registration.
+The `DMOD_EXTERNAL_REGISTRATION` macro controls whether `dmod_system.c` automatically enables API registration internally.
+
+### How It Works
+
+By default, when you compile the DMOD system, `dmod_system.c` contains this logic at the top:
+
+```c
+#ifndef DMOD_EXTERNAL_REGISTRATION
+#   define DMOD_ENABLE_REGISTRATION
+#endif
+```
+
+This means:
+- If `DMOD_EXTERNAL_REGISTRATION` is **not defined**: `dmod_system.c` will define `DMOD_ENABLE_REGISTRATION` and register all the standard DMOD builtin APIs (like `Dmod_LoadModule`, `Dmod_EnableModule`, etc.)
+- If `DMOD_EXTERNAL_REGISTRATION` **is defined**: `dmod_system.c` will **not** define `DMOD_ENABLE_REGISTRATION`, meaning the standard APIs won't be registered in `dmod_system.c`. You must then handle registration in your own source files.
 
 ### When to Use
 
@@ -105,6 +119,10 @@ DMOD_BUILTIN_API( MyApi, 1.0, int, _GetStatus, (void) );
 
 Create a source file that implements your API functions. **Important**: Define `DMOD_ENABLE_REGISTRATION` before any includes!
 
+**Note on macros:**
+- `DMOD_BUILTIN_API` is used in **header files** to declare API functions
+- `DMOD_INPUT_API_DECLARATION` is used in **source files** to implement those API functions
+
 ```c
 // my_builtin_api.c
 
@@ -116,6 +134,7 @@ Create a source file that implements your API functions. **Important**: Define `
 #include "my_builtin_api.h"
 
 // Implement your API functions using DMOD_INPUT_API_DECLARATION
+// This macro creates the function definition with the proper naming
 DMOD_INPUT_API_DECLARATION( MyApi, 1.0, bool, _Initialize, (void) )
 {
     // Your initialization code here
@@ -191,20 +210,41 @@ The order of macro definitions is critical:
 
 ### Single Registration Point
 
-Each API function should be registered in exactly **one** source file. If you define `DMOD_ENABLE_REGISTRATION` in multiple files that include the same API header, you'll get linker errors due to duplicate registration entries.
+Each API function should be registered in exactly **one** source file. If you define `DMOD_ENABLE_REGISTRATION` in multiple source files that include the same API declaration header (e.g., both `file_a.c` and `file_b.c` include `my_builtin_api.h` with `DMOD_ENABLE_REGISTRATION` defined), you'll get linker errors due to duplicate symbols in the `.dmod.inputs` section.
+
+**Solution**: Only define `DMOD_ENABLE_REGISTRATION` in the source file that provides the actual function implementations.
 
 ### Using DMOD_EXTERNAL_REGISTRATION
 
-If you're adding builtin APIs to an existing system and want to handle registration externally, define `DMOD_EXTERNAL_REGISTRATION` in your system configuration:
+If you're adding builtin APIs to an existing system and want to handle all registration externally (outside of `dmod_system.c`), you have several options:
+
+**Option 1: Define as a compiler flag in your build system**
+
+```cmake
+# CMake
+target_compile_definitions(dmod PRIVATE DMOD_EXTERNAL_REGISTRATION)
+```
+
+```makefile
+# Makefile
+CFLAGS += -DDMOD_EXTERNAL_REGISTRATION
+```
+
+**Option 2: Define in a common configuration header that's included before `dmod_system.c` is compiled**
+
+Create a project-wide configuration header (e.g., `project_config.h`) and ensure it's included:
 
 ```c
-// In your system configuration or before building dmod_system.c
+// project_config.h
 #define DMOD_EXTERNAL_REGISTRATION
+```
 
-// Then in your source file:
+**Then in your source file that implements the APIs:**
+
+```c
 #define DMOD_ENABLE_REGISTRATION    ON
 #include "dmod.h"
-// ... your implementations
+// ... your API implementations
 ```
 
 ## Example: Complete Builtin Module
