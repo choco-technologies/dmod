@@ -22,7 +22,7 @@ protected:
  */
 TEST_F(DmodCommonTest, IsModule_ExactMatch)
 {
-    const char* signature = "\021DMOD\022_create@dmlist:1.0";
+    const char* signature = DMOD_MAKE_SIGNATURE(dmlist, 1.0, _create);
     ASSERT_TRUE(Dmod_ApiSignature_IsModule(signature, "dmlist"));
 }
 
@@ -31,7 +31,7 @@ TEST_F(DmodCommonTest, IsModule_ExactMatch)
  */
 TEST_F(DmodCommonTest, IsModule_DifferentModule)
 {
-    const char* signature = "\021DMOD\022_create@dmlist:1.0";
+    const char* signature = DMOD_MAKE_SIGNATURE(dmlist, 1.0, _create);
     ASSERT_FALSE(Dmod_ApiSignature_IsModule(signature, "other"));
 }
 
@@ -42,7 +42,7 @@ TEST_F(DmodCommonTest, IsModule_DifferentModule)
  */
 TEST_F(DmodCommonTest, IsModule_PartialPrefixNoMatch)
 {
-    const char* signature = "\021DMOD\022_create@dmlist:1.0";
+    const char* signature = DMOD_MAKE_SIGNATURE(dmlist, 1.0, _create);
     // "dm" is a prefix of "dmlist" but should NOT match
     ASSERT_FALSE(Dmod_ApiSignature_IsModule(signature, "dm"));
     // "d" should also NOT match
@@ -56,9 +56,24 @@ TEST_F(DmodCommonTest, IsModule_PartialPrefixNoMatch)
  */
 TEST_F(DmodCommonTest, IsModule_LongerNameNoMatch)
 {
-    const char* signature = "\021DMOD\022_create@dmlist:1.0";
+    const char* signature = DMOD_MAKE_SIGNATURE(dmlist, 1.0, _create);
     // "dmlistExtra" is longer than "dmlist" and should NOT match
     ASSERT_FALSE(Dmod_ApiSignature_IsModule(signature, "dmlistExtra"));
+}
+
+/**
+ * @brief Test that searching for a name longer than module in signature doesn't match
+ * 
+ * This tests the boundary check: if module in signature is "dm" and we search for "dmlist",
+ * it should return false (not read past the module boundary in signature).
+ */
+TEST_F(DmodCommonTest, IsModule_SearchLongerThanSignatureModule)
+{
+    // Signature has module "dm" but we search for "dmlist"
+    const char* signature = DMOD_MAKE_SIGNATURE(dm, 1.0, _create);
+    ASSERT_FALSE(Dmod_ApiSignature_IsModule(signature, "dmlist"));
+    // But "dm" should match
+    ASSERT_TRUE(Dmod_ApiSignature_IsModule(signature, "dm"));
 }
 
 /**
@@ -66,7 +81,7 @@ TEST_F(DmodCommonTest, IsModule_LongerNameNoMatch)
  */
 TEST_F(DmodCommonTest, IsModule_MalSignature)
 {
-    const char* signature = "\021DMAL\022_create@dmlist:1.0";
+    const char* signature = DMOD_MAKE_MAL_SIGNATURE(dmlist, 1.0, _create);
     ASSERT_TRUE(Dmod_ApiSignature_IsModule(signature, "dmlist"));
     ASSERT_FALSE(Dmod_ApiSignature_IsModule(signature, "dm"));
 }
@@ -76,7 +91,7 @@ TEST_F(DmodCommonTest, IsModule_MalSignature)
  */
 TEST_F(DmodCommonTest, IsModule_DifSignature)
 {
-    const char* signature = "\021DDIF\022_create@dmlist:1.0";
+    const char* signature = DMOD_MAKE_DIF_SIGNATURE(dmlist, 1.0, _create);
     ASSERT_TRUE(Dmod_ApiSignature_IsModule(signature, "dmlist"));
     ASSERT_FALSE(Dmod_ApiSignature_IsModule(signature, "dm"));
 }
@@ -103,7 +118,7 @@ TEST_F(DmodCommonTest, IsModule_NullSignature)
  */
 TEST_F(DmodCommonTest, IsModule_NullModuleName)
 {
-    const char* signature = "\021DMOD\022_create@dmlist:1.0";
+    const char* signature = DMOD_MAKE_SIGNATURE(dmlist, 1.0, _create);
     ASSERT_FALSE(Dmod_ApiSignature_IsModule(signature, NULL));
 }
 
@@ -112,7 +127,7 @@ TEST_F(DmodCommonTest, IsModule_NullModuleName)
  */
 TEST_F(DmodCommonTest, IsModule_EmptyModuleName)
 {
-    const char* signature = "\021DMOD\022_create@dmlist:1.0";
+    const char* signature = DMOD_MAKE_SIGNATURE(dmlist, 1.0, _create);
     ASSERT_FALSE(Dmod_ApiSignature_IsModule(signature, ""));
 }
 
@@ -121,7 +136,7 @@ TEST_F(DmodCommonTest, IsModule_EmptyModuleName)
  */
 TEST_F(DmodCommonTest, IsModule_DmodModule)
 {
-    const char* signature = "\021DMOD\022_SetLogLevel@Dmod:1.0";
+    const char* signature = DMOD_MAKE_SIGNATURE(Dmod, 1.0, _SetLogLevel);
     ASSERT_TRUE(Dmod_ApiSignature_IsModule(signature, "Dmod"));
     // Partial matches should not work
     ASSERT_FALSE(Dmod_ApiSignature_IsModule(signature, "Dm"));

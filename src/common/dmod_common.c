@@ -139,6 +139,11 @@ bool Dmod_ApiSignature_IsModule( const char* Signature, const char* ModuleName  
     size_t length = strlen( ModuleName ); 
     for( size_t i = 0; i < length; i++ )
     {
+        // If we reach module boundary (end or version separator) before finishing comparison, it's not a match
+        if( module[i] == '\0' || module[i] == ':' )
+        {
+            return false;
+        }
         if( module[i] != ModuleName[i] )
         {
             return false;
