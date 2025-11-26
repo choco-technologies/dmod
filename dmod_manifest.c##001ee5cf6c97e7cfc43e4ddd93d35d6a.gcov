@@ -1,0 +1,1571 @@
+        -:    0:Source:/home/runner/work/dmod/dmod/tools/lib/dmod_manifest/dmod_manifest.c
+        -:    0:Graph:build/tools/lib/dmod_manifest/CMakeFiles/dmod_manifest.dir/dmod_manifest.c.gcno
+        -:    0:Data:build/tools/lib/dmod_manifest/CMakeFiles/dmod_manifest.dir/dmod_manifest.c.gcda
+        -:    0:Runs:0
+        -:    1:/**
+        -:    2: * @file dmod_manifest.c
+        -:    3: * @brief DMOD Manifest Parser Library Implementation
+        -:    4: */
+        -:    5:
+        -:    6:#include "dmod_manifest.h"
+        -:    7:#include "dmod.h"
+        -:    8:#include "dmod_version.h"
+        -:    9:#include <string.h>
+        -:   10:#include <ctype.h>
+        -:   11:
+        -:   12:/**
+        -:   13: * @brief Internal manifest entry node for linked list
+        -:   14: */
+        -:   15:typedef struct Dmod_ManifestNode {
+        -:   16:    Dmod_ManifestEntry_t entry;
+        -:   17:    struct Dmod_ManifestNode* next;
+        -:   18:} Dmod_ManifestNode_t;
+        -:   19:
+        -:   20:/**
+        -:   21: * @brief Available version list node
+        -:   22: */
+        -:   23:typedef struct Dmod_AvailableVersionNode {
+        -:   24:    char version[DMOD_MANIFEST_MAX_VERSION_LEN];
+        -:   25:    struct Dmod_AvailableVersionNode* next;
+        -:   26:} Dmod_AvailableVersionNode_t;
+        -:   27:
+        -:   28:/**
+        -:   29: * @brief Available versions for a specific module
+        -:   30: */
+        -:   31:typedef struct Dmod_ModuleVersionsNode {
+        -:   32:    char module_name[DMOD_MANIFEST_MAX_NAME_LEN];
+        -:   33:    Dmod_AvailableVersionNode_t* versions;
+        -:   34:    struct Dmod_ModuleVersionsNode* next;
+        -:   35:} Dmod_ModuleVersionsNode_t;
+        -:   36:
+        -:   37:/**
+        -:   38: * @brief Manifest context structure
+        -:   39: */
+        -:   40:struct Dmod_ManifestContext {
+        -:   41:    char* tools_name;                    /**< Tools name for substitution */
+        -:   42:    char* arch_name;                     /**< Architecture name for substitution */
+        -:   43:    char* cpu_name;                      /**< CPU name for substitution (e.g., stm32f746ngh6) */
+        -:   44:    char* cpu_family;                    /**< CPU family for substitution (e.g., stm32f7) */
+        -:   45:    Dmod_DownloadFunc_t download_func;   /**< Download function */
+        -:   46:    void* user_data;                     /**< User data for download function */
+        -:   47:    Dmod_ManifestNode_t* entries;        /**< Linked list of entries */
+        -:   48:    size_t entry_count;                  /**< Number of entries */
+        -:   49:    char error[256];                     /**< Last error message */
+        -:   50:    Dmod_SemanticVersion_t current_dmod_version; /**< Current DMOD version for entries */
+        -:   51:    bool has_dmod_version;               /**< Whether current_dmod_version is set */
+        -:   52:    Dmod_ModuleVersionsNode_t* module_versions; /**< List of available versions per module */
+        -:   53:};
+        -:   54:
+        -:   55:/**
+        -:   56: * @brief Convert tools_name to arch_name format
+        -:   57: * 
+        -:   58: * Converts "arch/armv7/cortex-m7" to "armv7-cortex-m7"
+        -:   59: * 
+        -:   60: * @param tools_name Input tools name
+        -:   61: * @return Allocated arch_name string (caller must free), or NULL on failure
+        -:   62: */
+function ConvertToArchName called 0 returned 0% blocks executed 0%
+    #####:   63:static char* ConvertToArchName(const char* tools_name) {
+    #####:   64:    if (!tools_name) return NULL;
+    %%%%%:   64-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:   64-block  1
+        -:   65:    
+        -:   66:    // Skip "arch/" prefix if present
+    #####:   67:    const char* start = tools_name;
+    #####:   68:    if (strncmp(start, "arch/", 5) == 0) {
+    %%%%%:   68-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:   69:        start += 5;
+    %%%%%:   69-block  0
+        -:   70:    }
+        -:   71:    
+        -:   72:    // Allocate buffer
+    #####:   73:    char* arch_name = Dmod_Malloc(strlen(start) + 1);
+    %%%%%:   73-block  0
+call    0 never executed
+    #####:   74:    if (!arch_name) return NULL;
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:   74-block  0
+        -:   75:    
+        -:   76:    // Copy and replace '/' with '-'
+    #####:   77:    char* dst = arch_name;
+    #####:   78:    for (const char* src = start; *src; src++, dst++) {
+    %%%%%:   78-block  0
+    %%%%%:   78-block  1
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:   79:        *dst = (*src == '/') ? '-' : *src;
+    %%%%%:   79-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:   79-block  1
+    %%%%%:   79-block  2
+    %%%%%:   79-block  3
+        -:   80:    }
+    #####:   81:    *dst = '\0';
+        -:   82:    
+    #####:   83:    return arch_name;
+    %%%%%:   83-block  0
+        -:   84:}
+        -:   85:
+        -:   86:/**
+        -:   87: * @brief Substitute variables in a string
+        -:   88: * 
+        -:   89: * Replaces <tools_name>, <arch_name>, <cpu_name>, <cpu_family>, and <version> with actual values
+        -:   90: * 
+        -:   91: * @param ctx Manifest context
+        -:   92: * @param input Input string
+        -:   93: * @param output Output buffer
+        -:   94: * @param output_size Size of output buffer
+        -:   95: * @param version Optional version string (can be NULL)
+        -:   96: * @return true if substitution succeeded, false otherwise
+        -:   97: */
+function SubstituteVariables called 0 returned 0% blocks executed 0%
+    #####:   98:static bool SubstituteVariables(Dmod_ManifestContext_t* ctx, const char* input, char* output, size_t output_size, const char* version) {
+    #####:   99:    const char* src = input;
+    #####:  100:    char* dst = output;
+    #####:  101:    char* dst_end = output + output_size - 1;
+        -:  102:    
+    #####:  103:    while (*src && dst < dst_end) {
+    %%%%%:  103-block  0
+    %%%%%:  103-block  1
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  103-block  2
+branch  2 never executed
+branch  3 never executed (fallthrough)
+    #####:  104:        if (*src == '<') {
+    %%%%%:  104-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+        -:  105:            // Check for <tools_name>
+    #####:  106:            if (strncmp(src, "<tools_name>", 12) == 0) {
+    %%%%%:  106-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  107:                if (ctx->tools_name) {
+    %%%%%:  107-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  108:                    size_t len = strlen(ctx->tools_name);
+    #####:  109:                    if (dst + len >= dst_end) return false;
+    %%%%%:  109-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  109-block  1
+    #####:  110:                    strcpy(dst, ctx->tools_name);
+    #####:  111:                    dst += len;
+    %%%%%:  111-block  0
+        -:  112:                }
+    #####:  113:                src += 12;
+    %%%%%:  113-block  0
+        -:  114:            }
+        -:  115:            // Check for <arch_name>
+    #####:  116:            else if (strncmp(src, "<arch_name>", 11) == 0) {
+    %%%%%:  116-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  117:                if (ctx->arch_name) {
+    %%%%%:  117-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  118:                    size_t len = strlen(ctx->arch_name);
+    #####:  119:                    if (dst + len >= dst_end) return false;
+    %%%%%:  119-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  119-block  1
+    #####:  120:                    strcpy(dst, ctx->arch_name);
+    #####:  121:                    dst += len;
+    %%%%%:  121-block  0
+        -:  122:                }
+    #####:  123:                src += 11;
+    %%%%%:  123-block  0
+        -:  124:            }
+        -:  125:            // Check for <cpu_name>
+    #####:  126:            else if (strncmp(src, "<cpu_name>", 10) == 0) {
+    %%%%%:  126-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  127:                if (ctx->cpu_name) {
+    %%%%%:  127-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  128:                    size_t len = strlen(ctx->cpu_name);
+    #####:  129:                    if (dst + len >= dst_end) return false;
+    %%%%%:  129-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  129-block  1
+    #####:  130:                    strcpy(dst, ctx->cpu_name);
+    #####:  131:                    dst += len;
+    %%%%%:  131-block  0
+        -:  132:                }
+    #####:  133:                src += 10;
+    %%%%%:  133-block  0
+        -:  134:            }
+        -:  135:            // Check for <cpu_family>
+    #####:  136:            else if (strncmp(src, "<cpu_family>", 12) == 0) {
+    %%%%%:  136-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  137:                if (ctx->cpu_family) {
+    %%%%%:  137-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  138:                    size_t len = strlen(ctx->cpu_family);
+    #####:  139:                    if (dst + len >= dst_end) return false;
+    %%%%%:  139-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  139-block  1
+    #####:  140:                    strcpy(dst, ctx->cpu_family);
+    #####:  141:                    dst += len;
+    %%%%%:  141-block  0
+        -:  142:                }
+    #####:  143:                src += 12;
+    %%%%%:  143-block  0
+        -:  144:            }
+        -:  145:            // Check for <version>
+    #####:  146:            else if (strncmp(src, "<version>", 9) == 0) {
+    %%%%%:  146-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  147:                if (version && version[0] != '\0') {
+    %%%%%:  147-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  147-block  1
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    #####:  148:                    size_t len = strlen(version);
+    #####:  149:                    if (dst + len >= dst_end) return false;
+    %%%%%:  149-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  149-block  1
+    #####:  150:                    strcpy(dst, version);
+    #####:  151:                    dst += len;
+    #####:  152:                    src += 9;
+    %%%%%:  152-block  0
+        -:  153:                } else {
+        -:  154:                    // Keep the placeholder if no version available
+    #####:  155:                    if (dst + 9 >= dst_end) return false;
+    %%%%%:  155-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  155-block  1
+    #####:  156:                    strcpy(dst, "<version>");
+    #####:  157:                    dst += 9;
+    #####:  158:                    src += 9;
+    %%%%%:  158-block  0
+        -:  159:                }
+        -:  160:            }
+        -:  161:            else {
+    #####:  162:                *dst++ = *src++;
+    %%%%%:  162-block  0
+        -:  163:            }
+        -:  164:        }
+        -:  165:        else {
+    #####:  166:            *dst++ = *src++;
+    %%%%%:  166-block  0
+        -:  167:        }
+        -:  168:    }
+        -:  169:    
+    #####:  170:    *dst = '\0';
+    #####:  171:    return *src == '\0'; // True if we processed all input
+    %%%%%:  171-block  0
+        -:  172:}
+        -:  173:
+        -:  174:/**
+        -:  175: * @brief Trim whitespace from both ends of a string in-place
+        -:  176: */
+function TrimWhitespace called 0 returned 0% blocks executed 0%
+    #####:  177:static char* TrimWhitespace(char* str) {
+    #####:  178:    if (!str) return NULL;
+    %%%%%:  178-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  178-block  1
+        -:  179:    
+        -:  180:    // Trim leading whitespace
+    #####:  181:    while (isspace((unsigned char)*str)) str++;
+    %%%%%:  181-block  0
+    %%%%%:  181-block  1
+    %%%%%:  181-block  2
+branch  0 never executed
+branch  1 never executed (fallthrough)
+        -:  182:    
+    #####:  183:    if (*str == '\0') return str;
+    %%%%%:  183-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  183-block  1
+        -:  184:    
+        -:  185:    // Trim trailing whitespace
+    #####:  186:    char* end = str + strlen(str) - 1;
+    #####:  187:    while (end > str && isspace((unsigned char)*end)) end--;
+    %%%%%:  187-block  0
+    %%%%%:  187-block  1
+    %%%%%:  187-block  2
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  187-block  3
+branch  2 never executed
+branch  3 never executed (fallthrough)
+    #####:  188:    *(end + 1) = '\0';
+        -:  189:    
+    #####:  190:    return str;
+    %%%%%:  190-block  0
+        -:  191:}
+        -:  192:
+        -:  193:/**
+        -:  194: * @brief Get or create available versions list for a module
+        -:  195: */
+function GetOrCreateModuleVersions called 0 returned 0% blocks executed 0%
+    #####:  196:static Dmod_ModuleVersionsNode_t* GetOrCreateModuleVersions(Dmod_ManifestContext_t* ctx, const char* module_name) {
+    #####:  197:    if (!ctx || !module_name) return NULL;
+    %%%%%:  197-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  197-block  1
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    %%%%%:  197-block  2
+        -:  198:    
+        -:  199:    // Check if versions already exist for this module
+    #####:  200:    for (Dmod_ModuleVersionsNode_t* node = ctx->module_versions; node; node = node->next) {
+    %%%%%:  200-block  0
+    %%%%%:  200-block  1
+    %%%%%:  200-block  2
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  201:        if (strcmp(node->module_name, module_name) == 0) {
+    %%%%%:  201-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  202:            return node;
+    %%%%%:  202-block  0
+        -:  203:        }
+        -:  204:    }
+        -:  205:    
+        -:  206:    // Create new module versions node
+    #####:  207:    Dmod_ModuleVersionsNode_t* new_node = Dmod_Malloc(sizeof(Dmod_ModuleVersionsNode_t));
+    %%%%%:  207-block  0
+call    0 never executed
+    #####:  208:    if (!new_node) return NULL;
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  208-block  0
+        -:  209:    
+    #####:  210:    strncpy(new_node->module_name, module_name, sizeof(new_node->module_name) - 1);
+    #####:  211:    new_node->module_name[sizeof(new_node->module_name) - 1] = '\0';
+    #####:  212:    new_node->versions = NULL;
+    #####:  213:    new_node->next = ctx->module_versions;
+    #####:  214:    ctx->module_versions = new_node;
+        -:  215:    
+    #####:  216:    return new_node;
+    %%%%%:  216-block  0
+        -:  217:}
+        -:  218:
+        -:  219:/**
+        -:  220: * @brief Get available versions for a module
+        -:  221: */
+function GetAvailableVersions called 0 returned 0% blocks executed 0%
+    #####:  222:static Dmod_AvailableVersionNode_t* GetAvailableVersions(Dmod_ManifestContext_t* ctx, const char* module_name) {
+    #####:  223:    if (!ctx || !module_name) return NULL;
+    %%%%%:  223-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  223-block  1
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    %%%%%:  223-block  2
+        -:  224:    
+    #####:  225:    for (Dmod_ModuleVersionsNode_t* node = ctx->module_versions; node; node = node->next) {
+    %%%%%:  225-block  0
+    %%%%%:  225-block  1
+    %%%%%:  225-block  2
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  226:        if (strcmp(node->module_name, module_name) == 0) {
+    %%%%%:  226-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  227:            return node->versions;
+    %%%%%:  227-block  0
+        -:  228:        }
+        -:  229:    }
+        -:  230:    
+    #####:  231:    return NULL;
+    %%%%%:  231-block  0
+        -:  232:}
+        -:  233:
+        -:  234:/**
+        -:  235: * @brief Parse a single manifest line
+        -:  236: * 
+        -:  237: * @param ctx Manifest context
+        -:  238: * @param line Line to parse
+        -:  239: * @return true if line was processed successfully (or was a comment/empty), false on error
+        -:  240: */
+function ParseLine called 0 returned 0% blocks executed 0%
+    #####:  241:static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
+        -:  242:    // Trim whitespace
+    #####:  243:    line = TrimWhitespace(line);
+    %%%%%:  243-block  0
+call    0 never executed
+        -:  244:    
+        -:  245:    // Skip empty lines and comments
+    #####:  246:    if (line[0] == '\0' || line[0] == '#') {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  246-block  0
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    #####:  247:        return true;
+    %%%%%:  247-block  0
+        -:  248:    }
+        -:  249:    
+        -:  250:    // Check for $dmod-version directive
+    #####:  251:    if (strncmp(line, "$dmod-version", 13) == 0) {
+    %%%%%:  251-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  252:        char* version_start = line + 13;
+    #####:  253:        version_start = TrimWhitespace(version_start);
+    %%%%%:  253-block  0
+call    0 never executed
+        -:  254:        
+    #####:  255:        if (version_start[0] == '\0') {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  256:            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "$dmod-version directive requires a version");
+    %%%%%:  256-block  0
+call    0 never executed
+    #####:  257:            return false;
+        -:  258:        }
+        -:  259:        
+        -:  260:        Dmod_SemanticVersion_t version;
+    #####:  261:        if (!Dmod_Version_Parse(version_start, &version)) {
+    %%%%%:  261-block  0
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    #####:  262:            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Invalid version in $dmod-version: %s", version_start);
+    %%%%%:  262-block  0
+call    0 never executed
+    #####:  263:            return false;
+        -:  264:        }
+        -:  265:        
+    #####:  266:        ctx->current_dmod_version = version;
+    #####:  267:        ctx->has_dmod_version = true;
+        -:  268:        
+    #####:  269:        DMOD_LOG_VERBOSE("Set DMOD version requirement to %d.%d.%d\n", 
+    %%%%%:  269-block  0
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    %%%%%:  269-block  1
+call    3 never executed
+call    4 never executed
+        -:  270:                        version.major, version.minor, version.patch);
+        -:  271:        
+    #####:  272:        return true;
+    %%%%%:  272-block  0
+        -:  273:    }
+        -:  274:    
+        -:  275:    // Check for $include directive
+    #####:  276:    if (strncmp(line, "$include", 8) == 0) {
+    %%%%%:  276-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  277:        char* url_start = line + 8;
+    #####:  278:        url_start = TrimWhitespace(url_start);
+    %%%%%:  278-block  0
+call    0 never executed
+        -:  279:        
+        -:  280:        char url[DMOD_MANIFEST_MAX_URL_LEN];
+    #####:  281:        if (!SubstituteVariables(ctx, url_start, url, sizeof(url), NULL)) {
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    #####:  282:            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "URL too long in $include: %s", url_start);
+    %%%%%:  282-block  0
+call    0 never executed
+    #####:  283:            return false;
+        -:  284:        }
+        -:  285:
+    #####:  286:        DMOD_LOG_VERBOSE("Including manifest from URL: %s\n", url);
+    %%%%%:  286-block  0
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    %%%%%:  286-block  1
+call    3 never executed
+call    4 never executed
+        -:  287:        
+        -:  288:        // Parse the included manifest
+    #####:  289:        if (!Dmod_Manifest_ParseUrl(ctx, url)) {
+    %%%%%:  289-block  0
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    #####:  290:            return false;
+    %%%%%:  290-block  0
+        -:  291:        }
+    #####:  292:        return true;
+    %%%%%:  292-block  0
+        -:  293:    }
+        -:  294:    
+        -:  295:    // Check for $version-available directive
+    #####:  296:    if (strncmp(line, "$version-available", 18) == 0) {
+    %%%%%:  296-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  297:        char* rest = line + 18;
+    #####:  298:        rest = TrimWhitespace(rest);
+    %%%%%:  298-block  0
+call    0 never executed
+        -:  299:        
+    #####:  300:        if (rest[0] == '\0') {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  301:            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "$version-available directive requires module name and versions");
+    %%%%%:  301-block  0
+call    0 never executed
+    #####:  302:            return false;
+        -:  303:        }
+        -:  304:        
+        -:  305:        // Extract module name
+        -:  306:        char module_name[DMOD_MANIFEST_MAX_NAME_LEN];
+    #####:  307:        char* space = strchr(rest, ' ');
+    #####:  308:        if (!space) {
+    %%%%%:  308-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  309:            space = strchr(rest, '\t');
+    %%%%%:  309-block  0
+        -:  310:        }
+        -:  311:        
+    #####:  312:        if (!space) {
+    %%%%%:  312-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  313:            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "$version-available directive requires versions after module name");
+    %%%%%:  313-block  0
+call    0 never executed
+    #####:  314:            return false;
+        -:  315:        }
+        -:  316:        
+    #####:  317:        size_t name_len = space - rest;
+    #####:  318:        if (name_len >= DMOD_MANIFEST_MAX_NAME_LEN) {
+    %%%%%:  318-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  319:            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Module name too long in $version-available");
+    %%%%%:  319-block  0
+call    0 never executed
+    #####:  320:            return false;
+        -:  321:        }
+        -:  322:        
+    #####:  323:        strncpy(module_name, rest, name_len);
+    #####:  324:        module_name[name_len] = '\0';
+        -:  325:        
+        -:  326:        // Get or create module versions node
+    #####:  327:        Dmod_ModuleVersionsNode_t* mod_versions = GetOrCreateModuleVersions(ctx, module_name);
+    %%%%%:  327-block  0
+call    0 never executed
+    #####:  328:        if (!mod_versions) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  329:            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
+    %%%%%:  329-block  0
+call    0 never executed
+    #####:  330:            return false;
+        -:  331:        }
+        -:  332:        
+        -:  333:        // Clear existing versions for this module
+    #####:  334:        Dmod_AvailableVersionNode_t* ver_node = mod_versions->versions;
+    #####:  335:        while (ver_node) {
+    %%%%%:  335-block  0
+    %%%%%:  335-block  1
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  336:            Dmod_AvailableVersionNode_t* next = ver_node->next;
+    #####:  337:            Dmod_Free(ver_node);
+    %%%%%:  337-block  0
+call    0 never executed
+    #####:  338:            ver_node = next;
+        -:  339:        }
+    #####:  340:        mod_versions->versions = NULL;
+        -:  341:        
+        -:  342:        // Parse versions (space-separated list)
+    #####:  343:        char* versions_str = TrimWhitespace(space + 1);
+    %%%%%:  343-block  0
+call    0 never executed
+    #####:  344:        char* token = strtok(versions_str, " \t");
+call    0 never executed
+        -:  345:        
+    #####:  346:        while (token) {
+    %%%%%:  346-block  0
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  347:            token = TrimWhitespace(token);
+    %%%%%:  347-block  0
+call    0 never executed
+    #####:  348:            if (token[0] != '\0') {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+        -:  349:                // Create new version node
+    #####:  350:                Dmod_AvailableVersionNode_t* new_ver = Dmod_Malloc(sizeof(Dmod_AvailableVersionNode_t));
+    %%%%%:  350-block  0
+call    0 never executed
+    #####:  351:                if (!new_ver) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  352:                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
+    %%%%%:  352-block  0
+call    0 never executed
+    #####:  353:                    return false;
+        -:  354:                }
+        -:  355:                
+    #####:  356:                strncpy(new_ver->version, token, sizeof(new_ver->version) - 1);
+    #####:  357:                new_ver->version[sizeof(new_ver->version) - 1] = '\0';
+    #####:  358:                new_ver->next = mod_versions->versions;
+    #####:  359:                mod_versions->versions = new_ver;
+        -:  360:                
+    #####:  361:                DMOD_LOG_VERBOSE("Added available version %s for module %s\n", token, module_name);
+    %%%%%:  361-block  0
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    %%%%%:  361-block  1
+call    3 never executed
+call    4 never executed
+        -:  362:            }
+    #####:  363:            token = strtok(NULL, " \t");
+    %%%%%:  363-block  0
+call    0 never executed
+        -:  364:        }
+        -:  365:        
+    #####:  366:        return true;
+    %%%%%:  366-block  0
+        -:  367:    }
+        -:  368:    
+        -:  369:    // Parse module entry: name[@version] url
+        -:  370:    char name[DMOD_MANIFEST_MAX_NAME_LEN];
+    #####:  371:    char version[DMOD_MANIFEST_MAX_VERSION_LEN] = {0};
+        -:  372:    char url_raw[DMOD_MANIFEST_MAX_URL_LEN];
+        -:  373:    
+        -:  374:    // Find first space - separates module identifier from URL
+    #####:  375:    char* space = strchr(line, ' ');
+    #####:  376:    if (!space) {
+    %%%%%:  376-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  377:        space = strchr(line, '\t');
+    %%%%%:  377-block  0
+        -:  378:    }
+        -:  379:    
+    #####:  380:    if (!space) {
+    %%%%%:  380-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  381:        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Invalid manifest entry: %s", line);
+    %%%%%:  381-block  0
+call    0 never executed
+    #####:  382:        return false;
+        -:  383:    }
+        -:  384:    
+        -:  385:    // Extract module identifier (name[@version])
+    #####:  386:    size_t id_len = space - line;
+    #####:  387:    if (id_len >= DMOD_MANIFEST_MAX_NAME_LEN) {
+    %%%%%:  387-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  388:        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Module identifier too long: %s", line);
+    %%%%%:  388-block  0
+call    0 never executed
+    #####:  389:        return false;
+        -:  390:    }
+        -:  391:    
+        -:  392:    char module_id[DMOD_MANIFEST_MAX_NAME_LEN];
+    #####:  393:    strncpy(module_id, line, id_len);
+    #####:  394:    module_id[id_len] = '\0';
+        -:  395:    
+        -:  396:    // Split name and version
+    #####:  397:    char* at_sign = strchr(module_id, '@');
+    #####:  398:    if (at_sign) {
+    %%%%%:  398-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  399:        *at_sign = '\0';
+    #####:  400:        strncpy(name, module_id, sizeof(name) - 1);
+    #####:  401:        name[sizeof(name) - 1] = '\0';
+    #####:  402:        strncpy(version, at_sign + 1, sizeof(version) - 1);
+    #####:  403:        version[sizeof(version) - 1] = '\0';
+    %%%%%:  403-block  0
+        -:  404:    } else {
+    #####:  405:        strncpy(name, module_id, sizeof(name) - 1);
+    #####:  406:        name[sizeof(name) - 1] = '\0';
+    %%%%%:  406-block  0
+        -:  407:    }
+        -:  408:    
+        -:  409:    // Extract and process URL
+    #####:  410:    char* url_start = TrimWhitespace(space + 1);
+    %%%%%:  410-block  0
+call    0 never executed
+    #####:  411:    strncpy(url_raw, url_start, sizeof(url_raw) - 1);
+    #####:  412:    url_raw[sizeof(url_raw) - 1] = '\0';
+        -:  413:    
+        -:  414:    // Check if we need to expand this entry using available versions
+    #####:  415:    bool has_explicit_version = (version[0] != '\0');
+    #####:  416:    bool url_has_version_placeholder = (strstr(url_raw, "<version>") != NULL);
+        -:  417:    
+    #####:  418:    if (!has_explicit_version && url_has_version_placeholder) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  418-block  0
+branch  2 never executed (fallthrough)
+branch  3 never executed
+        -:  419:        // Try to get available versions for this module
+    #####:  420:        Dmod_AvailableVersionNode_t* available = GetAvailableVersions(ctx, name);
+    %%%%%:  420-block  0
+call    0 never executed
+        -:  421:        
+    #####:  422:        if (available) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+        -:  423:            // Build temporary list of expanded entries in correct order
+        -:  424:            // Versions are stored newest-first in the available list (due to prepending during parse).
+        -:  425:            // We want entries newest-first in ctx->entries too.
+        -:  426:            // Strategy: append each entry to temp list (so same order as available list),
+        -:  427:            // then prepend entire temp list to ctx->entries (preserving the order).
+    #####:  428:            Dmod_ManifestNode_t* temp_head = NULL;
+    #####:  429:            Dmod_ManifestNode_t* temp_tail = NULL;
+    #####:  430:            size_t temp_count = 0;
+        -:  431:            
+        -:  432:            // Expand entry for each available version
+    #####:  433:            for (Dmod_AvailableVersionNode_t* ver = available; ver; ver = ver->next) {
+    %%%%%:  433-block  0
+    %%%%%:  433-block  1
+    %%%%%:  433-block  2
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  434:                Dmod_ManifestNode_t* node = Dmod_Malloc(sizeof(Dmod_ManifestNode_t));
+    %%%%%:  434-block  0
+call    0 never executed
+    #####:  435:                if (!node) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+        -:  436:                    // Clean up temporary list on error
+    #####:  437:                    while (temp_head) {
+    %%%%%:  437-block  0
+    %%%%%:  437-block  1
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  438:                        Dmod_ManifestNode_t* next = temp_head->next;
+    #####:  439:                        Dmod_Free(temp_head);
+    %%%%%:  439-block  0
+call    0 never executed
+    #####:  440:                        temp_head = next;
+        -:  441:                    }
+    #####:  442:                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
+    %%%%%:  442-block  0
+call    0 never executed
+    #####:  443:                    return false;
+        -:  444:                }
+        -:  445:                
+        -:  446:                // Fill entry data with version
+    #####:  447:                strncpy(node->entry.name, name, sizeof(node->entry.name) - 1);
+    #####:  448:                node->entry.name[sizeof(node->entry.name) - 1] = '\0';
+        -:  449:                
+    #####:  450:                strncpy(node->entry.version, ver->version, sizeof(node->entry.version) - 1);
+    #####:  451:                node->entry.version[sizeof(node->entry.version) - 1] = '\0';
+        -:  452:                
+    #####:  453:                if (!SubstituteVariables(ctx, url_raw, node->entry.url, sizeof(node->entry.url), ver->version)) {
+    %%%%%:  453-block  0
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    #####:  454:                    Dmod_Free(node);
+    %%%%%:  454-block  0
+call    0 never executed
+        -:  455:                    // Clean up temporary list on error
+    #####:  456:                    while (temp_head) {
+    %%%%%:  456-block  0
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  457:                        Dmod_ManifestNode_t* next = temp_head->next;
+    #####:  458:                        Dmod_Free(temp_head);
+    %%%%%:  458-block  0
+call    0 never executed
+    #####:  459:                        temp_head = next;
+        -:  460:                    }
+    #####:  461:                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "URL too long after substitution: %s", url_raw);
+    %%%%%:  461-block  0
+call    0 never executed
+    #####:  462:                    return false;
+        -:  463:                }
+        -:  464:                
+        -:  465:                // Store DMOD version requirement if set
+    #####:  466:                if (ctx->has_dmod_version) {
+    %%%%%:  466-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  467:                    node->entry.dmod_version = ctx->current_dmod_version;
+    #####:  468:                    node->entry.has_dmod_version = true;
+    %%%%%:  468-block  0
+        -:  469:                } else {
+    #####:  470:                    node->entry.has_dmod_version = false;
+    %%%%%:  470-block  0
+        -:  471:                }
+        -:  472:                
+        -:  473:                // Add to temporary list (append to end, so keeps same order as available list)
+    #####:  474:                node->next = NULL;
+    #####:  475:                if (!temp_head) {
+    %%%%%:  475-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  476:                    temp_head = node;
+    #####:  477:                    temp_tail = node;
+    %%%%%:  477-block  0
+        -:  478:                } else {
+    #####:  479:                    temp_tail->next = node;
+    #####:  480:                    temp_tail = node;
+    %%%%%:  480-block  0
+        -:  481:                }
+    #####:  482:                temp_count++;
+        -:  483:                
+    #####:  484:                DMOD_LOG_VERBOSE("Expanded entry: %s@%s -> %s\n", name, ver->version, node->entry.url);
+    %%%%%:  484-block  0
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    %%%%%:  484-block  1
+call    3 never executed
+call    4 never executed
+        -:  485:            }
+        -:  486:            
+        -:  487:            // Now prepend the entire temporary list to ctx->entries
+        -:  488:            // This maintains newest-first order from the available list
+    #####:  489:            if (temp_tail) {
+    %%%%%:  489-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  490:                temp_tail->next = ctx->entries;
+    #####:  491:                ctx->entries = temp_head;
+    #####:  492:                ctx->entry_count += temp_count;
+    %%%%%:  492-block  0
+        -:  493:            }
+        -:  494:            
+    #####:  495:            return true;
+    %%%%%:  495-block  0
+        -:  496:        }
+        -:  497:    }
+        -:  498:    
+        -:  499:    // Create single entry (normal case or no available versions defined)
+    #####:  500:    Dmod_ManifestNode_t* node = Dmod_Malloc(sizeof(Dmod_ManifestNode_t));
+    %%%%%:  500-block  0
+call    0 never executed
+    #####:  501:    if (!node) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  502:        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
+    %%%%%:  502-block  0
+call    0 never executed
+    #####:  503:        return false;
+        -:  504:    }
+        -:  505:    
+        -:  506:    // Fill entry data
+    #####:  507:    strncpy(node->entry.name, name, sizeof(node->entry.name) - 1);
+    #####:  508:    node->entry.name[sizeof(node->entry.name) - 1] = '\0';
+        -:  509:    
+    #####:  510:    strncpy(node->entry.version, version, sizeof(node->entry.version) - 1);
+    #####:  511:    node->entry.version[sizeof(node->entry.version) - 1] = '\0';
+        -:  512:    
+    #####:  513:    if (!SubstituteVariables(ctx, url_raw, node->entry.url, sizeof(node->entry.url), version)) {
+    %%%%%:  513-block  0
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    #####:  514:        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "URL too long after substitution: %s", url_raw);
+    %%%%%:  514-block  0
+call    0 never executed
+    #####:  515:        Dmod_Free(node);
+call    0 never executed
+    #####:  516:        return false;
+        -:  517:    }
+        -:  518:    
+        -:  519:    // Store DMOD version requirement if set
+    #####:  520:    if (ctx->has_dmod_version) {
+    %%%%%:  520-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  521:        node->entry.dmod_version = ctx->current_dmod_version;
+    #####:  522:        node->entry.has_dmod_version = true;
+    %%%%%:  522-block  0
+        -:  523:    } else {
+    #####:  524:        node->entry.has_dmod_version = false;
+    %%%%%:  524-block  0
+        -:  525:    }
+        -:  526:    
+        -:  527:    // Add to linked list
+    #####:  528:    node->next = ctx->entries;
+    #####:  529:    ctx->entries = node;
+    #####:  530:    ctx->entry_count++;
+        -:  531:    
+    #####:  532:    return true;
+    %%%%%:  532-block  0
+        -:  533:}
+        -:  534:
+function Dmod_Manifest_Init called 0 returned 0% blocks executed 0%
+    #####:  535:Dmod_ManifestContext_t* Dmod_Manifest_Init(
+        -:  536:    const char* tools_name,
+        -:  537:    const char* arch_name,
+        -:  538:    const char* cpu_name,
+        -:  539:    const char* cpu_family,
+        -:  540:    Dmod_DownloadFunc_t download_func,
+        -:  541:    void* user_data
+        -:  542:) {
+    #####:  543:    Dmod_ManifestContext_t* ctx = Dmod_Malloc(sizeof(Dmod_ManifestContext_t));
+    %%%%%:  543-block  0
+call    0 never executed
+    #####:  544:    if (!ctx) return NULL;
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  544-block  0
+        -:  545:    
+    #####:  546:    memset(ctx, 0, sizeof(Dmod_ManifestContext_t));
+        -:  547:    
+    #####:  548:    if (tools_name) {
+    %%%%%:  548-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  549:        size_t len = strlen(tools_name);
+    #####:  550:        ctx->tools_name = Dmod_Malloc(len + 1);
+    %%%%%:  550-block  0
+call    0 never executed
+    #####:  551:        if (!ctx->tools_name) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  552:            Dmod_Manifest_Free(ctx);
+    %%%%%:  552-block  0
+call    0 never executed
+    #####:  553:            return NULL;
+        -:  554:        }
+    #####:  555:        strcpy(ctx->tools_name, tools_name);
+    %%%%%:  555-block  0
+        -:  556:    }
+        -:  557:    
+        -:  558:    // Use provided arch_name or convert from tools_name
+    #####:  559:    if (arch_name) {
+    %%%%%:  559-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  560:        size_t len = strlen(arch_name);
+    #####:  561:        ctx->arch_name = Dmod_Malloc(len + 1);
+    %%%%%:  561-block  0
+call    0 never executed
+    #####:  562:        if (!ctx->arch_name) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  563:            Dmod_Manifest_Free(ctx);
+    %%%%%:  563-block  0
+call    0 never executed
+    #####:  564:            return NULL;
+        -:  565:        }
+    #####:  566:        strcpy(ctx->arch_name, arch_name);
+    %%%%%:  566-block  0
+    #####:  567:    } else if (tools_name) {
+    %%%%%:  567-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  568:        ctx->arch_name = ConvertToArchName(tools_name);
+    %%%%%:  568-block  0
+call    0 never executed
+    #####:  569:        if (!ctx->arch_name) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  570:            Dmod_Manifest_Free(ctx);
+    %%%%%:  570-block  0
+call    0 never executed
+    #####:  571:            return NULL;
+        -:  572:        }
+        -:  573:    }
+        -:  574:    
+        -:  575:    // Store cpu_name if provided
+    #####:  576:    if (cpu_name) {
+    %%%%%:  576-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  577:        size_t len = strlen(cpu_name);
+    #####:  578:        ctx->cpu_name = Dmod_Malloc(len + 1);
+    %%%%%:  578-block  0
+call    0 never executed
+    #####:  579:        if (!ctx->cpu_name) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  580:            Dmod_Manifest_Free(ctx);
+    %%%%%:  580-block  0
+call    0 never executed
+    #####:  581:            return NULL;
+        -:  582:        }
+    #####:  583:        strcpy(ctx->cpu_name, cpu_name);
+    %%%%%:  583-block  0
+        -:  584:    }
+        -:  585:    
+        -:  586:    // Store cpu_family if provided
+    #####:  587:    if (cpu_family) {
+    %%%%%:  587-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  588:        size_t len = strlen(cpu_family);
+    #####:  589:        ctx->cpu_family = Dmod_Malloc(len + 1);
+    %%%%%:  589-block  0
+call    0 never executed
+    #####:  590:        if (!ctx->cpu_family) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  591:            Dmod_Manifest_Free(ctx);
+    %%%%%:  591-block  0
+call    0 never executed
+    #####:  592:            return NULL;
+        -:  593:        }
+    #####:  594:        strcpy(ctx->cpu_family, cpu_family);
+    %%%%%:  594-block  0
+        -:  595:    }
+        -:  596:    
+    #####:  597:    ctx->download_func = download_func;
+    #####:  598:    ctx->user_data = user_data;
+        -:  599:    
+    #####:  600:    return ctx;
+    %%%%%:  600-block  0
+        -:  601:}
+        -:  602:
+function Dmod_Manifest_Free called 0 returned 0% blocks executed 0%
+    #####:  603:void Dmod_Manifest_Free(Dmod_ManifestContext_t* ctx) {
+    #####:  604:    if (!ctx) return;
+    %%%%%:  604-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  604-block  1
+        -:  605:    
+        -:  606:    // Free entries
+    #####:  607:    Dmod_ManifestNode_t* node = ctx->entries;
+    #####:  608:    while (node) {
+    %%%%%:  608-block  0
+    %%%%%:  608-block  1
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  609:        Dmod_ManifestNode_t* next = node->next;
+    #####:  610:        Dmod_Free(node);
+    %%%%%:  610-block  0
+call    0 never executed
+    #####:  611:        node = next;
+        -:  612:    }
+        -:  613:    
+        -:  614:    // Free module versions
+    #####:  615:    Dmod_ModuleVersionsNode_t* mod_node = ctx->module_versions;
+    #####:  616:    while (mod_node) {
+    %%%%%:  616-block  0
+    %%%%%:  616-block  1
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  617:        Dmod_ModuleVersionsNode_t* mod_next = mod_node->next;
+        -:  618:        
+        -:  619:        // Free version list for this module
+    #####:  620:        Dmod_AvailableVersionNode_t* ver_node = mod_node->versions;
+    #####:  621:        while (ver_node) {
+    %%%%%:  621-block  0
+    %%%%%:  621-block  1
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  622:            Dmod_AvailableVersionNode_t* ver_next = ver_node->next;
+    #####:  623:            Dmod_Free(ver_node);
+    %%%%%:  623-block  0
+call    0 never executed
+    #####:  624:            ver_node = ver_next;
+        -:  625:        }
+        -:  626:        
+    #####:  627:        Dmod_Free(mod_node);
+    %%%%%:  627-block  0
+call    0 never executed
+    #####:  628:        mod_node = mod_next;
+        -:  629:    }
+        -:  630:    
+        -:  631:    // Free strings
+    #####:  632:    if (ctx->tools_name) Dmod_Free(ctx->tools_name);
+    %%%%%:  632-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  632-block  1
+call    2 never executed
+    #####:  633:    if (ctx->arch_name) Dmod_Free(ctx->arch_name);
+    %%%%%:  633-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  633-block  1
+call    2 never executed
+    #####:  634:    if (ctx->cpu_name) Dmod_Free(ctx->cpu_name);
+    %%%%%:  634-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  634-block  1
+call    2 never executed
+    #####:  635:    if (ctx->cpu_family) Dmod_Free(ctx->cpu_family);
+    %%%%%:  635-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  635-block  1
+call    2 never executed
+    #####:  636:    Dmod_Free(ctx);
+    %%%%%:  636-block  0
+call    0 never executed
+        -:  637:}
+        -:  638:
+function Dmod_Manifest_Parse called 0 returned 0% blocks executed 0%
+    #####:  639:bool Dmod_Manifest_Parse(Dmod_ManifestContext_t* ctx, const char* manifest_content) {
+    #####:  640:    if (!ctx || !manifest_content) return false;
+    %%%%%:  640-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  640-block  1
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    %%%%%:  640-block  2
+        -:  641:    
+        -:  642:    // Make a copy of the content as we'll modify it
+    #####:  643:    size_t len = strlen(manifest_content);
+    #####:  644:    char* content = Dmod_Malloc(len + 1);
+    %%%%%:  644-block  0
+call    0 never executed
+    #####:  645:    if (!content) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  646:        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
+    %%%%%:  646-block  0
+call    0 never executed
+    #####:  647:        return false;
+        -:  648:    }
+    #####:  649:    strcpy(content, manifest_content);
+        -:  650:    
+    #####:  651:    bool success = true;
+    #####:  652:    char* line = content;
+        -:  653:    char* next_line;
+        -:  654:    
+    #####:  655:    while (line && *line) {
+    %%%%%:  655-block  0
+    %%%%%:  655-block  1
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  655-block  2
+branch  2 never executed
+branch  3 never executed (fallthrough)
+        -:  656:        // Find end of line
+    #####:  657:        next_line = strchr(line, '\n');
+    #####:  658:        if (next_line) {
+    %%%%%:  658-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  659:            *next_line = '\0';
+    #####:  660:            next_line++;
+    %%%%%:  660-block  0
+        -:  661:        }
+        -:  662:        
+        -:  663:        // Parse the line
+    #####:  664:        if (!ParseLine(ctx, line)) {
+    %%%%%:  664-block  0
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    #####:  665:            success = false;
+    #####:  666:            break;
+    %%%%%:  666-block  0
+        -:  667:        }
+        -:  668:        
+    #####:  669:        line = next_line;
+    %%%%%:  669-block  0
+        -:  670:    }
+        -:  671:    
+    #####:  672:    Dmod_Free(content);
+    %%%%%:  672-block  0
+call    0 never executed
+    #####:  673:    return success;
+        -:  674:}
+        -:  675:
+function Dmod_Manifest_ParseFile called 0 returned 0% blocks executed 0%
+    #####:  676:bool Dmod_Manifest_ParseFile(Dmod_ManifestContext_t* ctx, const char* file_path) {
+    #####:  677:    if (!ctx || !file_path) return false;
+    %%%%%:  677-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  677-block  1
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    %%%%%:  677-block  2
+        -:  678:    
+    #####:  679:    void* file = Dmod_FileOpen(file_path, "r");
+    %%%%%:  679-block  0
+call    0 never executed
+    #####:  680:    if (!file) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  681:        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Cannot open file: %s", file_path);
+    %%%%%:  681-block  0
+call    0 never executed
+    #####:  682:        return false;
+        -:  683:    }
+        -:  684:    
+        -:  685:    // Get file size
+    #####:  686:    size_t size = Dmod_FileSize(file);
+    %%%%%:  686-block  0
+call    0 never executed
+        -:  687:    
+    #####:  688:    if (size > 1024 * 1024) { // Limit to 1MB
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  689:        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "File too large: %s", file_path);
+    %%%%%:  689-block  0
+call    0 never executed
+    #####:  690:        Dmod_FileClose(file);
+call    0 never executed
+    #####:  691:        return false;
+        -:  692:    }
+        -:  693:    
+        -:  694:    // Read file content
+    #####:  695:    char* content = Dmod_Malloc(size + 1);
+    %%%%%:  695-block  0
+call    0 never executed
+    #####:  696:    if (!content) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  697:        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
+    %%%%%:  697-block  0
+call    0 never executed
+    #####:  698:        Dmod_FileClose(file);
+call    0 never executed
+    #####:  699:        return false;
+        -:  700:    }
+        -:  701:    
+    #####:  702:    size_t read = Dmod_FileRead(content, 1, size, file);
+    %%%%%:  702-block  0
+call    0 never executed
+    #####:  703:    content[read] = '\0';
+    #####:  704:    Dmod_FileClose(file);
+call    0 never executed
+        -:  705:    
+        -:  706:    // Parse content
+    #####:  707:    bool result = Dmod_Manifest_Parse(ctx, content);
+call    0 never executed
+    #####:  708:    Dmod_Free(content);
+call    0 never executed
+        -:  709:    
+    #####:  710:    return result;
+        -:  711:}
+        -:  712:
+function Dmod_Manifest_ParseUrl called 0 returned 0% blocks executed 0%
+    #####:  713:bool Dmod_Manifest_ParseUrl(Dmod_ManifestContext_t* ctx, const char* url) {
+    #####:  714:    if (!ctx || !url) return false;
+    %%%%%:  714-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  714-block  1
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    %%%%%:  714-block  2
+        -:  715:    
+    #####:  716:    if (!ctx->download_func) {
+    %%%%%:  716-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  717:        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "No download function provided");
+    %%%%%:  717-block  0
+call    0 never executed
+    #####:  718:        return false;
+        -:  719:    }
+        -:  720:    
+    #####:  721:    char* content = NULL;
+    #####:  722:    size_t size = 0;
+        -:  723:    
+    #####:  724:    if (!ctx->download_func(url, &content, &size, ctx->user_data)) {
+    %%%%%:  724-block  0
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    #####:  725:        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Failed to download manifest from: %s", url);
+    %%%%%:  725-block  0
+call    0 never executed
+    #####:  726:        return false;
+        -:  727:    }
+        -:  728:    
+    #####:  729:    if (!content) {
+    %%%%%:  729-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  730:        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Download returned NULL content");
+    %%%%%:  730-block  0
+call    0 never executed
+    #####:  731:        return false;
+        -:  732:    }
+        -:  733:    
+    #####:  734:    bool result = Dmod_Manifest_Parse(ctx, content);
+    %%%%%:  734-block  0
+call    0 never executed
+    #####:  735:    Dmod_Free(content);
+call    0 never executed
+        -:  736:    
+    #####:  737:    return result;
+        -:  738:}
+        -:  739:
+function Dmod_Manifest_FindEntry called 0 returned 0% blocks executed 0%
+    #####:  740:Dmod_ManifestNode_t* Dmod_Manifest_FindEntry(
+        -:  741:    Dmod_ManifestContext_t* ctx,
+        -:  742:    const char* name,
+        -:  743:    const char* version,
+        -:  744:    Dmod_ManifestNode_t* last_node,
+        -:  745:    Dmod_ManifestEntry_t* out_entry
+        -:  746:    ) 
+        -:  747:{
+    #####:  748:    if (!ctx || !name || !out_entry) return NULL;
+    %%%%%:  748-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  748-block  1
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    %%%%%:  748-block  2
+branch  4 never executed (fallthrough)
+branch  5 never executed
+    %%%%%:  748-block  3
+        -:  749:
+    #####:  750:    bool has_version = version && version[0] != '\0';
+    %%%%%:  750-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  750-block  1
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    %%%%%:  750-block  2
+    %%%%%:  750-block  3
+    #####:  751:    Dmod_ManifestNode_t* best_match = NULL;
+        -:  752:    
+        -:  753:    // Parse version constraint if provided
+        -:  754:    Dmod_VersionConstraint_t constraint;
+    #####:  755:    bool has_constraint = false;
+    #####:  756:    if (has_version) {
+    %%%%%:  756-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  757:        has_constraint = Dmod_Version_ParseConstraint(version, &constraint);
+    %%%%%:  757-block  0
+call    0 never executed
+        -:  758:    }
+        -:  759:
+    #####:  760:    Dmod_ManifestNode_t* start_node = last_node ? last_node->next : ctx->entries;
+    %%%%%:  760-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  760-block  1
+    %%%%%:  760-block  2
+        -:  761:
+        -:  762:    // Search for matching entry
+    #####:  763:    for (Dmod_ManifestNode_t* node = start_node; node; node = node->next) {
+    %%%%%:  763-block  0
+    %%%%%:  763-block  1
+    %%%%%:  763-block  2
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  764:        if (strcmp(node->entry.name, name) != 0) continue;
+    %%%%%:  764-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  764-block  1
+        -:  765:
+        -:  766:        // If no version specified, take first match
+    #####:  767:        if (!has_version) {
+    %%%%%:  767-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  768:            best_match = node;
+    #####:  769:            break;
+    %%%%%:  769-block  0
+        -:  770:        }
+        -:  771:
+    #####:  772:        bool node_has_version = node->entry.version[0] != '\0';
+    #####:  773:        if(!node_has_version)
+    %%%%%:  773-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+        -:  774:        {
+    #####:  775:            best_match = node;
+    #####:  776:            break;
+    %%%%%:  776-block  0
+        -:  777:        }
+        -:  778:
+        -:  779:        // If we have a constraint, check if node version satisfies it
+    #####:  780:        if (has_constraint) {
+    %%%%%:  780-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+        -:  781:            Dmod_SemanticVersion_t node_version;
+    #####:  782:            if (Dmod_Version_Parse(node->entry.version, &node_version)) {
+    %%%%%:  782-block  0
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    #####:  783:                if (Dmod_Version_Satisfies(&node_version, &constraint)) {
+    %%%%%:  783-block  0
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    #####:  784:                    best_match = node;
+    #####:  785:                    break;
+    %%%%%:  785-block  0
+        -:  786:                }
+        -:  787:            }
+        -:  788:        } else {
+        -:  789:            // No constraint parsed, try exact match
+    #####:  790:            if (strcmp(node->entry.version, version) == 0) {
+    %%%%%:  790-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  791:                best_match = node;
+    #####:  792:                break;
+    %%%%%:  792-block  0
+        -:  793:            }
+        -:  794:        }
+        -:  795:    }
+        -:  796:
+    #####:  797:    if (best_match) {
+    %%%%%:  797-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  798:        memcpy( out_entry, &best_match->entry, sizeof(Dmod_ManifestEntry_t) );
+    #####:  799:        return best_match;
+    %%%%%:  799-block  0
+        -:  800:    }
+        -:  801:    
+    #####:  802:    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Module not found: %s%s%s",
+    %%%%%:  802-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  802-block  1
+    %%%%%:  802-block  2
+    %%%%%:  802-block  3
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    %%%%%:  802-block  4
+    %%%%%:  802-block  5
+    %%%%%:  802-block  6
+call    4 never executed
+        -:  803:                name, has_version ? "@" : "", has_version ? version : "");
+    #####:  804:    return NULL;
+        -:  805:}
+        -:  806:
+function Dmod_Manifest_GetEntryCount called 0 returned 0% blocks executed 0%
+    #####:  807:size_t Dmod_Manifest_GetEntryCount(Dmod_ManifestContext_t* ctx) {
+    #####:  808:    return ctx ? ctx->entry_count : 0;
+    %%%%%:  808-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  808-block  1
+    %%%%%:  808-block  2
+    %%%%%:  808-block  3
+        -:  809:}
+        -:  810:
+function Dmod_Manifest_GetEntry called 0 returned 0% blocks executed 0%
+    #####:  811:bool Dmod_Manifest_GetEntry(
+        -:  812:    Dmod_ManifestContext_t* ctx,
+        -:  813:    size_t index,
+        -:  814:    Dmod_ManifestEntry_t* out_entry
+        -:  815:) {
+    #####:  816:    if (!ctx || !out_entry) return false;
+    %%%%%:  816-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  816-block  1
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    %%%%%:  816-block  2
+        -:  817:    
+    #####:  818:    if (index >= ctx->entry_count) return false;
+    %%%%%:  818-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  818-block  1
+        -:  819:    
+    #####:  820:    Dmod_ManifestNode_t* node = ctx->entries;
+    #####:  821:    for (size_t i = 0; i < index && node; i++) {
+    %%%%%:  821-block  0
+    %%%%%:  821-block  1
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  821-block  2
+branch  2 never executed
+branch  3 never executed (fallthrough)
+    #####:  822:        node = node->next;
+    %%%%%:  822-block  0
+        -:  823:    }
+        -:  824:    
+    #####:  825:    if (node) {
+    %%%%%:  825-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  826:        *out_entry = node->entry;
+    #####:  827:        return true;
+    %%%%%:  827-block  0
+        -:  828:    }
+        -:  829:    
+    #####:  830:    return false;
+    %%%%%:  830-block  0
+        -:  831:}
+        -:  832:
+function Dmod_Manifest_GetError called 0 returned 0% blocks executed 0%
+    #####:  833:const char* Dmod_Manifest_GetError(Dmod_ManifestContext_t* ctx) {
+    #####:  834:    if (!ctx || ctx->error[0] == '\0') return NULL;
+    %%%%%:  834-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  834-block  1
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    %%%%%:  834-block  2
+    #####:  835:    return ctx->error;
+    %%%%%:  835-block  0
+        -:  836:}
+        -:  837:
+function Dmod_Manifest_IsEntryCompatible called 0 returned 0% blocks executed 0%
+    #####:  838:bool Dmod_Manifest_IsEntryCompatible(
+        -:  839:    const Dmod_ManifestEntry_t* entry,
+        -:  840:    const Dmod_SemanticVersion_t* current_dmod_version
+        -:  841:) {
+    #####:  842:    if (!entry || !current_dmod_version) {
+    %%%%%:  842-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    %%%%%:  842-block  1
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    #####:  843:        return false;
+    %%%%%:  843-block  0
+        -:  844:    }
+        -:  845:    
+        -:  846:    // If entry has no DMOD version requirement, it's compatible
+    #####:  847:    if (!entry->has_dmod_version) {
+    %%%%%:  847-block  0
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  848:        return true;
+    %%%%%:  848-block  0
+        -:  849:    }
+        -:  850:    
+        -:  851:    // Check major version compatibility
+    #####:  852:    return Dmod_Version_IsCompatible(&entry->dmod_version, current_dmod_version);
+    %%%%%:  852-block  0
+call    0 never executed
+        -:  853:}

@@ -150,7 +150,8 @@ typedef struct {
 static int DownloadModule(const char* module_name, const char* module_version,
                           Dmod_ManifestContext_t* manifest_ctx, 
                           const char* output_dir, const char* tools_name,
-                          const char* arch_name, const char* preferred_type,
+                          const char* arch_name, const char* cpu_name,
+                          const char* cpu_family, const char* preferred_type,
                           bool download_dependencies, const char* default_manifest,
                           bool ignore_missing, bool skip_dmod_ver_check,
                           InstallationCounts_t* counts);
@@ -385,6 +386,8 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
  * @param output_dir Output directory for dependencies
  * @param tools_name Tools name for substitution
  * @param arch_name Architecture name for substitution
+ * @param cpu_name CPU name for substitution (can be NULL)
+ * @param cpu_family CPU family for substitution (can be NULL)
  * @param preferred_type Preferred file type
  * @param default_manifest Default manifest URL
  * @param ignore_missing Whether to ignore missing dependencies
@@ -392,7 +395,8 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
  */
 static int ProcessModuleDependencies(const char* module_file_path, const char* dmd_file_path,
                                       const char* output_dir, const char* tools_name,
-                                      const char* arch_name, const char* preferred_type,
+                                      const char* arch_name, const char* cpu_name,
+                                      const char* cpu_family, const char* preferred_type,
                                       const char* default_manifest, bool ignore_missing,
                                       bool skip_dmod_ver_check, InstallationCounts_t* counts) {
     int failed_count = 0;
@@ -435,7 +439,7 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                    dep_entry.version[0] ? dep_entry.version : "");
             
             // Initialize manifest parser for this dependency
-            Dmod_ManifestContext_t* man_ctx = Dmod_Manifest_Init(tools_name, arch_name, DownloadWithCurl, NULL);
+            Dmod_ManifestContext_t* man_ctx = Dmod_Manifest_Init(tools_name, arch_name, cpu_name, cpu_family, DownloadWithCurl, NULL);
             if (!man_ctx) {
                 DMOD_LOG_ERROR("    Failed to initialize manifest parser\n");
                 failed_count++;
@@ -467,6 +471,8 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                 output_dir,
                 tools_name,
                 arch_name,
+                cpu_name,
+                cpu_family,
                 preferred_type,
                 true,  // download dependencies recursively
                 default_manifest,
@@ -536,7 +542,7 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                            required_modules[i].Version[0] ? required_modules[i].Version : "");
                     
                     // Initialize manifest parser
-                    Dmod_ManifestContext_t* man_ctx = Dmod_Manifest_Init(tools_name, arch_name, DownloadWithCurl, NULL);
+                    Dmod_ManifestContext_t* man_ctx = Dmod_Manifest_Init(tools_name, arch_name, cpu_name, cpu_family, DownloadWithCurl, NULL);
                     if (!man_ctx) {
                         DMOD_LOG_ERROR("    Failed to initialize manifest parser\n");
                         failed_count++;
@@ -568,6 +574,8 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                         output_dir,
                         tools_name,
                         arch_name,
+                        cpu_name,
+                        cpu_family,
                         preferred_type,
                         true,  // download dependencies recursively
                         default_manifest,
@@ -665,6 +673,8 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  -o, --output-dir <path>   Output directory for downloaded modules\n");
     Dmod_Printf("  -t, --tools-name <name>   Tools name for variable substitution\n");
     Dmod_Printf("  -a, --arch-name <name>    Architecture name for variable substitution\n");
+    Dmod_Printf("  --cpu-name <name>         CPU name for variable substitution (e.g., stm32f746ngh6)\n");
+    Dmod_Printf("  --cpu-family <name>       CPU family for variable substitution (e.g., stm32f7)\n");
     Dmod_Printf("  --type <dmf|dmfc>         Prefer dmf or dmfc file type\n");
     Dmod_Printf("  --no-dependencies         Don't download dependencies\n");
     Dmod_Printf("  --ignore-missing          Ignore missing dependencies and continue\n");
@@ -686,6 +696,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s -m http://... module  # Use custom manifest\n", app_name);
     Dmod_Printf("  %s --type dmfc module    # Prefer dmfc files\n", app_name);
     Dmod_Printf("  %s -a armv7-cortex-m7 module  # Use arch name directly\n", app_name);
+    Dmod_Printf("  %s --cpu-name stm32f746ngh6 --cpu-family stm32f7 module  # Use CPU-specific module\n", app_name);
 }
 
 /**
@@ -705,6 +716,8 @@ static void PrintVersion() {
  * @param output_dir Output directory
  * @param tools_name Tools name for substitution
  * @param arch_name Architecture name for substitution
+ * @param cpu_name CPU name for substitution (can be NULL)
+ * @param cpu_family CPU family for substitution (can be NULL)
  * @param preferred_type Preferred file type (dmf or dmfc)
  * @param download_dependencies Whether to download dependencies
  * @param default_manifest Default manifest URL
@@ -715,7 +728,8 @@ static void PrintVersion() {
 static int DownloadModule(const char* module_name, const char* module_version,
                           Dmod_ManifestContext_t* manifest_ctx, 
                           const char* output_dir, const char* tools_name,
-                          const char* arch_name, const char* preferred_type,
+                          const char* arch_name, const char* cpu_name,
+                          const char* cpu_family, const char* preferred_type,
                           bool download_dependencies, const char* default_manifest,
                           bool ignore_missing, bool skip_dmod_ver_check,
                           InstallationCounts_t* counts) {
@@ -891,6 +905,8 @@ static int DownloadModule(const char* module_name, const char* module_version,
                 output_dir,
                 tools_name,
                 arch_name,
+                cpu_name,
+                cpu_family,
                 preferred_type,
                 default_manifest,
                 ignore_missing,
@@ -929,6 +945,8 @@ int main(int argc, char* argv[]) {
     const char* output_dir = NULL;
     const char* tools_name = NULL;
     const char* arch_name = NULL;
+    const char* cpu_name = NULL;
+    const char* cpu_family = NULL;
     const char* preferred_type = NULL;
     bool no_dependencies = false;
     bool ignore_missing = false;
@@ -981,6 +999,20 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
             arch_name = argv[i];
+        }
+        else if (strcmp(argv[i], "--cpu-name") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
+                return 1;
+            }
+            cpu_name = argv[i];
+        }
+        else if (strcmp(argv[i], "--cpu-family") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
+                return 1;
+            }
+            cpu_family = argv[i];
         }
         else if (strcmp(argv[i], "--type") == 0) {
             if (++i >= argc) {
@@ -1145,7 +1177,7 @@ int main(int argc, char* argv[]) {
             DMOD_LOG_INFO("  Using manifest: %s\n", dep_entry.manifest);
             
             // Initialize manifest parser for this module
-            Dmod_ManifestContext_t* man_ctx = Dmod_Manifest_Init(tools_name, arch_name, DownloadWithCurl, NULL);
+            Dmod_ManifestContext_t* man_ctx = Dmod_Manifest_Init(tools_name, arch_name, cpu_name, cpu_family, DownloadWithCurl, NULL);
             if (!man_ctx) {
                 DMOD_LOG_ERROR("  Error: Failed to initialize manifest parser\n");
                 counts.failed_count++;
@@ -1177,6 +1209,8 @@ int main(int argc, char* argv[]) {
                 output_dir,
                 tools_name,
                 arch_name,
+                cpu_name,
+                cpu_family,
                 preferred_type,
                 true,  // download dependencies
                 manifest_path,
@@ -1230,7 +1264,7 @@ int main(int argc, char* argv[]) {
         }
         
         // Initialize manifest parser
-        Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init(tools_name, arch_name, DownloadWithCurl, NULL);
+        Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init(tools_name, arch_name, cpu_name, cpu_family, DownloadWithCurl, NULL);
         if (!ctx) {
             DMOD_LOG_ERROR("Error: Failed to initialize manifest parser\n");
             curl_global_cleanup();
@@ -1269,6 +1303,8 @@ int main(int argc, char* argv[]) {
             output_dir,
             tools_name,
             arch_name,
+            cpu_name,
+            cpu_family,
             preferred_type,
             !no_dependencies,  // download dependencies unless --no-dependencies is set
             manifest_path,

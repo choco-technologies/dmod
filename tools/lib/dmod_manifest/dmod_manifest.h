@@ -10,7 +10,7 @@
  * - Module entries: module[@version] url
  * - Include directives: $include url
  * - DMOD version directive: $dmod-version version
- * - Variable substitution: <tools_name>, <arch_name>, and <version>
+ * - Variable substitution: <tools_name>, <arch_name>, <cpu_name>, <cpu_family>, and <version>
  */
 
 #ifndef DMOD_MANIFEST_H
@@ -73,6 +73,10 @@ typedef bool (*Dmod_DownloadFunc_t)(const char* url, char** buffer, size_t* size
  *                   Can be NULL if arch_name is provided
  * @param arch_name The architecture name for variable substitution (e.g., "armv7-cortex-m7")
  *                  Can be NULL if tools_name is provided (will be derived from tools_name)
+ * @param cpu_name The CPU name for variable substitution (e.g., "stm32f746ngh6")
+ *                 Can be NULL if not needed
+ * @param cpu_family The CPU family for variable substitution (e.g., "stm32f7")
+ *                   Can be NULL if not needed
  * @param download_func Function to download content from URLs
  * @param user_data User data to pass to download function
  * @return Pointer to manifest context, or NULL on failure
@@ -80,6 +84,8 @@ typedef bool (*Dmod_DownloadFunc_t)(const char* url, char** buffer, size_t* size
 Dmod_ManifestContext_t* Dmod_Manifest_Init(
     const char* tools_name,
     const char* arch_name,
+    const char* cpu_name,
+    const char* cpu_family,
     Dmod_DownloadFunc_t download_func,
     void* user_data
 );
