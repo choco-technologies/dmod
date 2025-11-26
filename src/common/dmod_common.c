@@ -68,6 +68,7 @@ bool Dmod_ApiSignature_IsValid( const char* Signature )
 
     if( 
         strncmp( Signature, DMOD_SIGNATURE_PREFIX, sizeof( DMOD_SIGNATURE_PREFIX ) - 1 ) != 0 
+     && strncmp( Signature, DMOD_BUILTIN_SIGNATURE_PREFIX, sizeof( DMOD_BUILTIN_SIGNATURE_PREFIX ) - 1 ) != 0
      && strncmp( Signature, DMOD_IRQ_SIGNATURE_PREFIX, sizeof( DMOD_IRQ_SIGNATURE_PREFIX ) - 1 ) != 0
      && strncmp( Signature, DMOD_MAL_SIGNATURE_PREFIX, sizeof( DMOD_MAL_SIGNATURE_PREFIX ) - 1 ) != 0
      && strncmp( Signature, DMOD_DIF_SIGNATURE_PREFIX, sizeof( DMOD_DIF_SIGNATURE_PREFIX ) - 1 ) != 0
@@ -119,6 +120,7 @@ bool Dmod_ApiSignature_IsModule( const char* Signature, const char* ModuleName  
 
     if(
         strncmp( Signature, DMOD_SIGNATURE_PREFIX, sizeof( DMOD_SIGNATURE_PREFIX ) - 1 ) != 0 
+     && strncmp( Signature, DMOD_BUILTIN_SIGNATURE_PREFIX, sizeof( DMOD_BUILTIN_SIGNATURE_PREFIX ) - 1 ) != 0 
      && strncmp( Signature, DMOD_MAL_SIGNATURE_PREFIX, sizeof( DMOD_MAL_SIGNATURE_PREFIX ) - 1 ) != 0
      && strncmp( Signature, DMOD_DIF_SIGNATURE_PREFIX, sizeof( DMOD_DIF_SIGNATURE_PREFIX ) - 1 ) != 0
         )
@@ -366,6 +368,18 @@ bool Dmod_ApiSignature_AreEqual( const char* Signature1, const char* Signature2 
 bool Dmod_ApiSignature_IsMal( const char* Signature )
 {
     return strncmp( Signature, DMOD_MAL_SIGNATURE_PREFIX, sizeof(DMOD_MAL_SIGNATURE_PREFIX) - 1 ) == 0;
+}
+
+/**
+ * @brief Check if API signature is built-in
+ * 
+ * @param Signature API signature
+ * 
+ * @return true if signature is built-in, false otherwise
+ */
+bool Dmod_ApiSignature_IsBuiltin( const char* Signature )
+{
+    return strncmp( Signature, DMOD_BUILTIN_SIGNATURE_PREFIX, sizeof(DMOD_BUILTIN_SIGNATURE_PREFIX) - 1 ) == 0;
 }
 
 //==============================================================================

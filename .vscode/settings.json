@@ -38,6 +38,9 @@
         "list": "c",
         "string": "c",
         "vector": "c",
-        "iterator": "c"
+        "iterator": "c",
+        "dmod_rmod.h": "c",
+        "dmod_pck.h": "c",
+        "dmod_ldr.h": "c"
     }
 }

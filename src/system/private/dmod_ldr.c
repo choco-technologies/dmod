@@ -291,7 +291,7 @@ bool Dmod_Ldr_LoadOutput( Dmod_Context_t* Context )
             const char* entrySignature = outputSection->Entries[i];
             if(!Dmod_ApiSignature_IsValid( entrySignature ))
             {
-                DMOD_LOG_ERROR("Cannot load output - Invalid output entry signature\n");
+                DMOD_LOG_ERROR("Cannot load output - Invalid output entry signature: '%s'\n", entrySignature);
                 return false;
             }
         }
