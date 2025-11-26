@@ -84,6 +84,23 @@ The `<arch_name>` variable is replaced with the architecture name (e.g., "armv7-
 app@1.5 https://registry.com/<arch_name>/app.dmfc
 ```
 
+#### CPU Name Substitution
+
+The `<cpu_name>` variable is replaced with the specific CPU name (e.g., "stm32f746ngh6"). This allows defining modules for specific microcontrollers:
+
+```dmm
+uart@1.0 https://registry.com/<cpu_name>/uart.dmf
+```
+
+#### CPU Family Substitution
+
+The `<cpu_family>` variable is replaced with the CPU family name (e.g., "stm32f7"). This enables different module binaries depending on the processor family:
+
+```dmm
+# Different UART implementation for stm32f7 vs stm32f4
+uart@1.0 https://registry.com/<cpu_family>/uart.dmf
+```
+
 #### Version Substitution
 
 The `<version>` variable is replaced with the module version at download time:
@@ -98,6 +115,9 @@ You can combine multiple variables in a single URL:
 
 ```dmm
 mymodule https://cdn.example.com/<tools_name>/<version>/mymodule-<arch_name>.dmf
+
+# CPU-specific module with all variables
+uart https://registry.com/<cpu_family>/<cpu_name>/<version>/uart-<arch_name>.dmf
 ```
 
 ### Version Available Directive
@@ -210,6 +230,12 @@ dmf-get -m https://example.com/manifest.dmm mymodule
 
 # Skip DMOD version check
 dmf-get --skip-dmod-ver-check mymodule
+
+# Specify CPU name and family for CPU-specific modules
+dmf-get --cpu-name stm32f746ngh6 --cpu-family stm32f7 uart
+
+# Combine architecture and CPU options
+dmf-get -a armv7-cortex-m7 --cpu-name stm32f746ngh6 --cpu-family stm32f7 uart@1.0
 ```
 
 ## Best Practices
