@@ -70,3 +70,6 @@ build_cmake/
 
 # Architecture-specific config (should be copied from configs/)
 tools-cfg.cmake
+
+# Coverage files
+*.gcov
