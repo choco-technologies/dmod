@@ -117,7 +117,7 @@ bool Dmod_RMod_AddRequiredModule( Dmod_Context_t* Context, const char* ApiSignat
     }
 
     strncpy( requiredModule->Name, moduleName, sizeof(requiredModule->Name) );
-    requiredModule->SystemModule = Dmod_Mgr_IsSystemModule( moduleName );
+    requiredModule->SystemModule = Dmod_Mgr_IsSystemModule( moduleName ) || Dmod_ApiSignature_IsBuiltin( ApiSignature );
     if(requiredModule->SystemModule)
     {
         strncpy( requiredModule->Version, DMOD_VERSION_STRING, sizeof(requiredModule->Version) );
@@ -319,7 +319,7 @@ bool Dmod_RMod_LoadRequiredModules( Dmod_Context_t* Context )
             continue;
         }
 
-        if(Dmod_Mgr_IsSystemModule(Context->RequiredModules[i].Name))
+        if(Context->RequiredModules[i].SystemModule)
         {
             continue;
         }
@@ -366,7 +366,7 @@ bool Dmod_RMod_EnableRequiredModules( Dmod_Context_t* Context )
             continue;
         }
 
-        if(Dmod_Mgr_IsSystemModule(Context->RequiredModules[i].Name))
+        if(Context->RequiredModules[i].SystemModule)
         {
             continue;
         }
