@@ -67,9 +67,3 @@ build_system/
 build_test/
 _codeql_*
 build_cmake/
-
-# Architecture-specific config (should be copied from configs/)
-tools-cfg.cmake
-
-# Coverage files
-*.gcov
