@@ -262,6 +262,27 @@ static uintptr_t Dmod_GetEnvAddress(const char* EnvName)
     return addr;
 }
 
+//==============================================================================
+//                              MEMORY REGION STATIC VARIABLES
+//==============================================================================
+
+// Static variables for caching memory region addresses (read once on first use)
+static uintptr_t g_RamStart = 0;
+static uintptr_t g_RamEnd = 0;
+static bool g_RamInitialized = false;
+
+static uintptr_t g_RomStart = 0;
+static uintptr_t g_RomEnd = 0;
+static bool g_RomInitialized = false;
+
+static uintptr_t g_DmaStart = 0;
+static uintptr_t g_DmaEnd = 0;
+static bool g_DmaInitialized = false;
+
+static uintptr_t g_ExtStart = 0;
+static uintptr_t g_ExtEnd = 0;
+static bool g_ExtInitialized = false;
+
 /**
  * @brief Check if address is in RAM
  * 
@@ -276,22 +297,26 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsRam, ( const void* Address )
         return false;
     }
     
-    uintptr_t ramStart = Dmod_GetEnvAddress("DMOD_RAM_START");
-    uintptr_t ramEnd = Dmod_GetEnvAddress("DMOD_RAM_END");
+    // Read environment variables on first call (or if previous read failed)
+    if (!g_RamInitialized)
+    {
+        g_RamStart = Dmod_GetEnvAddress("DMOD_RAM_START");
+        g_RamEnd = Dmod_GetEnvAddress("DMOD_RAM_END");
+        // Mark as initialized only if we got valid values
+        if (g_RamStart != 0 && g_RamEnd != 0 && g_RamStart < g_RamEnd)
+        {
+            g_RamInitialized = true;
+        }
+    }
     
-    // If both environment variables are not set, just check if address is not NULL
-    // If only one is set, the region is considered not configured (return false)
-    if (ramStart == 0 && ramEnd == 0)
+    // If not configured, just check if address is not NULL
+    if (!g_RamInitialized)
     {
         return true; // Address is not NULL, consider it potentially valid
     }
-    if (ramStart == 0 || ramEnd == 0 || ramStart >= ramEnd)
-    {
-        return false; // Invalid or partial configuration
-    }
     
     uintptr_t addr = (uintptr_t)Address;
-    return (addr >= ramStart && addr < ramEnd);
+    return (addr >= g_RamStart && addr < g_RamEnd);
 }
 
 /**
@@ -308,22 +333,26 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsRom, ( const void* Address )
         return false;
     }
     
-    uintptr_t romStart = Dmod_GetEnvAddress("DMOD_ROM_START");
-    uintptr_t romEnd = Dmod_GetEnvAddress("DMOD_ROM_END");
+    // Read environment variables on first call (or if previous read failed)
+    if (!g_RomInitialized)
+    {
+        g_RomStart = Dmod_GetEnvAddress("DMOD_ROM_START");
+        g_RomEnd = Dmod_GetEnvAddress("DMOD_ROM_END");
+        // Mark as initialized only if we got valid values
+        if (g_RomStart != 0 && g_RomEnd != 0 && g_RomStart < g_RomEnd)
+        {
+            g_RomInitialized = true;
+        }
+    }
     
-    // If both environment variables are not set, just check if address is not NULL
-    // If only one is set, the region is considered not configured (return false)
-    if (romStart == 0 && romEnd == 0)
+    // If not configured, just check if address is not NULL
+    if (!g_RomInitialized)
     {
         return true; // Address is not NULL, consider it potentially valid
     }
-    if (romStart == 0 || romEnd == 0 || romStart >= romEnd)
-    {
-        return false; // Invalid or partial configuration
-    }
     
     uintptr_t addr = (uintptr_t)Address;
-    return (addr >= romStart && addr < romEnd);
+    return (addr >= g_RomStart && addr < g_RomEnd);
 }
 
 /**
@@ -340,22 +369,26 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsDma, ( const void* Address )
         return false;
     }
     
-    uintptr_t dmaStart = Dmod_GetEnvAddress("DMOD_DMA_START");
-    uintptr_t dmaEnd = Dmod_GetEnvAddress("DMOD_DMA_END");
+    // Read environment variables on first call (or if previous read failed)
+    if (!g_DmaInitialized)
+    {
+        g_DmaStart = Dmod_GetEnvAddress("DMOD_DMA_START");
+        g_DmaEnd = Dmod_GetEnvAddress("DMOD_DMA_END");
+        // Mark as initialized only if we got valid values
+        if (g_DmaStart != 0 && g_DmaEnd != 0 && g_DmaStart < g_DmaEnd)
+        {
+            g_DmaInitialized = true;
+        }
+    }
     
-    // If both environment variables are not set, just check if address is not NULL
-    // If only one is set, the region is considered not configured (return false)
-    if (dmaStart == 0 && dmaEnd == 0)
+    // If not configured, just check if address is not NULL
+    if (!g_DmaInitialized)
     {
         return true; // Address is not NULL, consider it potentially valid
     }
-    if (dmaStart == 0 || dmaEnd == 0 || dmaStart >= dmaEnd)
-    {
-        return false; // Invalid or partial configuration
-    }
     
     uintptr_t addr = (uintptr_t)Address;
-    return (addr >= dmaStart && addr < dmaEnd);
+    return (addr >= g_DmaStart && addr < g_DmaEnd);
 }
 
 /**
@@ -372,22 +405,26 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsExt, ( const void* Address )
         return false;
     }
     
-    uintptr_t extStart = Dmod_GetEnvAddress("DMOD_EXT_START");
-    uintptr_t extEnd = Dmod_GetEnvAddress("DMOD_EXT_END");
+    // Read environment variables on first call (or if previous read failed)
+    if (!g_ExtInitialized)
+    {
+        g_ExtStart = Dmod_GetEnvAddress("DMOD_EXT_START");
+        g_ExtEnd = Dmod_GetEnvAddress("DMOD_EXT_END");
+        // Mark as initialized only if we got valid values
+        if (g_ExtStart != 0 && g_ExtEnd != 0 && g_ExtStart < g_ExtEnd)
+        {
+            g_ExtInitialized = true;
+        }
+    }
     
-    // If both environment variables are not set, just check if address is not NULL
-    // If only one is set, the region is considered not configured (return false)
-    if (extStart == 0 && extEnd == 0)
+    // If not configured, just check if address is not NULL
+    if (!g_ExtInitialized)
     {
         return true; // Address is not NULL, consider it potentially valid
     }
-    if (extStart == 0 || extEnd == 0 || extStart >= extEnd)
-    {
-        return false; // Invalid or partial configuration
-    }
     
     uintptr_t addr = (uintptr_t)Address;
-    return (addr >= extStart && addr < extEnd);
+    return (addr >= g_ExtStart && addr < g_ExtEnd);
 }
 
 /**
