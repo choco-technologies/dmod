@@ -263,6 +263,39 @@ static uintptr_t Dmod_GetEnvAddress(const char* EnvName)
 }
 
 /**
+ * @brief Helper function to check if address is in a memory region
+ * 
+ * @param Address Address to check
+ * @param pStart Pointer to static variable for region start address
+ * @param pEnd Pointer to static variable for region end address
+ * @param envStart Name of environment variable for start address
+ * @param envEnd Name of environment variable for end address
+ * 
+ * @return true if address is in the region, false otherwise
+ */
+static bool Dmod_IsAddressInRegion(const void* Address, uintptr_t* pStart, uintptr_t* pEnd, 
+                                    const char* envStart, const char* envEnd)
+{
+    if (Address == NULL)
+    {
+        return false;
+    }
+    
+    // Read environment variables on first call (cache the values)
+    *pStart = *pStart != 0 ? *pStart : Dmod_GetEnvAddress(envStart);
+    *pEnd = *pEnd != 0 ? *pEnd : Dmod_GetEnvAddress(envEnd);
+    
+    // If not configured, just check if address is not NULL
+    if (*pEnd == 0)
+    {
+        return true; // Address is not NULL, consider it potentially valid
+    }
+    
+    uintptr_t addr = (uintptr_t)Address;
+    return (addr >= *pStart && addr < *pEnd);
+}
+
+/**
  * @brief Check if address is in RAM
  * 
  * @param Address Address to check
@@ -273,27 +306,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsRam, ( const void* Address )
 {
     static uintptr_t ramStart = 0;
     static uintptr_t ramEnd = 0;
-    
-    if (Address == NULL)
-    {
-        return false;
-    }
-    
-    // Read environment variables on first call
-    if (ramEnd == 0)
-    {
-        ramStart = Dmod_GetEnvAddress("DMOD_RAM_START");
-        ramEnd = Dmod_GetEnvAddress("DMOD_RAM_END");
-    }
-    
-    // If not configured, just check if address is not NULL
-    if (ramEnd == 0)
-    {
-        return true; // Address is not NULL, consider it potentially valid
-    }
-    
-    uintptr_t addr = (uintptr_t)Address;
-    return (addr >= ramStart && addr < ramEnd);
+    return Dmod_IsAddressInRegion(Address, &ramStart, &ramEnd, "DMOD_RAM_START", "DMOD_RAM_END");
 }
 
 /**
@@ -307,27 +320,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsRom, ( const void* Address )
 {
     static uintptr_t romStart = 0;
     static uintptr_t romEnd = 0;
-    
-    if (Address == NULL)
-    {
-        return false;
-    }
-    
-    // Read environment variables on first call
-    if (romEnd == 0)
-    {
-        romStart = Dmod_GetEnvAddress("DMOD_ROM_START");
-        romEnd = Dmod_GetEnvAddress("DMOD_ROM_END");
-    }
-    
-    // If not configured, just check if address is not NULL
-    if (romEnd == 0)
-    {
-        return true; // Address is not NULL, consider it potentially valid
-    }
-    
-    uintptr_t addr = (uintptr_t)Address;
-    return (addr >= romStart && addr < romEnd);
+    return Dmod_IsAddressInRegion(Address, &romStart, &romEnd, "DMOD_ROM_START", "DMOD_ROM_END");
 }
 
 /**
@@ -341,27 +334,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsDma, ( const void* Address )
 {
     static uintptr_t dmaStart = 0;
     static uintptr_t dmaEnd = 0;
-    
-    if (Address == NULL)
-    {
-        return false;
-    }
-    
-    // Read environment variables on first call
-    if (dmaEnd == 0)
-    {
-        dmaStart = Dmod_GetEnvAddress("DMOD_DMA_START");
-        dmaEnd = Dmod_GetEnvAddress("DMOD_DMA_END");
-    }
-    
-    // If not configured, just check if address is not NULL
-    if (dmaEnd == 0)
-    {
-        return true; // Address is not NULL, consider it potentially valid
-    }
-    
-    uintptr_t addr = (uintptr_t)Address;
-    return (addr >= dmaStart && addr < dmaEnd);
+    return Dmod_IsAddressInRegion(Address, &dmaStart, &dmaEnd, "DMOD_DMA_START", "DMOD_DMA_END");
 }
 
 /**
@@ -375,27 +348,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsExt, ( const void* Address )
 {
     static uintptr_t extStart = 0;
     static uintptr_t extEnd = 0;
-    
-    if (Address == NULL)
-    {
-        return false;
-    }
-    
-    // Read environment variables on first call
-    if (extEnd == 0)
-    {
-        extStart = Dmod_GetEnvAddress("DMOD_EXT_START");
-        extEnd = Dmod_GetEnvAddress("DMOD_EXT_END");
-    }
-    
-    // If not configured, just check if address is not NULL
-    if (extEnd == 0)
-    {
-        return true; // Address is not NULL, consider it potentially valid
-    }
-    
-    uintptr_t addr = (uintptr_t)Address;
-    return (addr >= extStart && addr < extEnd);
+    return Dmod_IsAddressInRegion(Address, &extStart, &extEnd, "DMOD_EXT_START", "DMOD_EXT_END");
 }
 
 /**
