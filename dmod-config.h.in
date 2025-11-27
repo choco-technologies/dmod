@@ -13,6 +13,7 @@
 #define DMOD_USE_DIRENT                 @DMOD_USE_DIRENT@
 #define DMOD_USE_ASSERT                 @DMOD_USE_ASSERT@
 #define DMOD_USE_PTHREAD                @DMOD_USE_PTHREAD@
+#define DMOD_USE_NANOSLEEP              @DMOD_USE_NANOSLEEP@
 #define DMOD_USE_MMAN                   @DMOD_USE_MMAN@
 #define DMOD_USE_ALIGNED_ALLOC          @DMOD_USE_ALIGNED_ALLOC@
 #define DMOD_USE_ALIGNED_MALLOC_MOCK    @DMOD_USE_ALIGNED_MALLOC_MOCK@

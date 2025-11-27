@@ -32,7 +32,7 @@
 #   define __USE_UNIX98
 #   include <pthread.h>
 #endif
-#if defined(__unix__) || defined(__APPLE__)
+#if DMOD_USE_NANOSLEEP
 #   include <unistd.h>
 #   include <time.h>
 #endif
@@ -187,51 +187,23 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Mutex_Delete, ( void* Mutex ))
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _DelayUs, ( uint64_t Microseconds ))
 {
-    #if defined(__unix__) || defined(__APPLE__)
+    #if DMOD_USE_NANOSLEEP
     if (Microseconds == 0)
     {
         return true;
     }
     
-    // For delays less than 1 second, use usleep (deprecated but widely available)
-    // For longer delays, use nanosleep for better precision
-    if (Microseconds < 1000000)
+    // Use nanosleep for precision
+    struct timespec ts;
+    ts.tv_sec = Microseconds / 1000000;
+    ts.tv_nsec = (Microseconds % 1000000) * 1000;
+    
+    while (nanosleep(&ts, &ts) == -1)
     {
-        #ifdef _POSIX_C_SOURCE
-        // Use nanosleep for better precision
-        struct timespec ts;
-        ts.tv_sec = 0;
-        ts.tv_nsec = Microseconds * 1000;
-        
-        while (nanosleep(&ts, &ts) == -1)
-        {
-            // Continue if interrupted by signal
-            if (errno != EINTR)
-            {
-                return false;
-            }
-        }
-        #else
-        // Fallback to usleep
-        if (usleep(Microseconds) != 0)
+        // Continue if interrupted by signal
+        if (errno != EINTR)
         {
             return false;
-        }
-        #endif
-    }
-    else
-    {
-        // Split into seconds and remaining microseconds
-        struct timespec ts;
-        ts.tv_sec = Microseconds / 1000000;
-        ts.tv_nsec = (Microseconds % 1000000) * 1000;
-        
-        while (nanosleep(&ts, &ts) == -1)
-        {
-            if (errno != EINTR)
-            {
-                return false;
-            }
         }
     }
     
@@ -253,7 +225,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _DelayUs, ( uint64_t Microsecon
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _SleepMs, ( uint64_t Milliseconds ))
 {
-    #if DMOD_USE_PTHREAD
+    #if DMOD_USE_NANOSLEEP
     if (Milliseconds == 0)
     {
         return true;
@@ -271,19 +243,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _SleepMs, ( uint64_t Millisecon
         {
             return false;
         }
-    }
-    
-    return true;
-    #elif defined(__unix__) || defined(__APPLE__)
-    if (Milliseconds == 0)
-    {
-        return true;
-    }
-    
-    // Convert milliseconds to microseconds
-    if (usleep(Milliseconds * 1000) != 0)
-    {
-        return false;
     }
     
     return true;
