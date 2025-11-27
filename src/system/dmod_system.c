@@ -221,7 +221,8 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
 
     void* dmfData = NULL;
     size_t dmfSize = Size;
-    if( Dmod_IsDMFC(Data, Size) )
+    bool isCompressed = Dmod_IsDMFC(Data, Size);
+    if( isCompressed )
     {
         if( !Dmod_FromDMFC(Data, Size, &dmfData, &dmfSize) )
         {
@@ -236,7 +237,12 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
         return NULL;
     }
 
-    memcpy( context->Data, Data, Size );
+    // Only copy the data if it was not decompressed (i.e., not DMFC)
+    // If it was DMFC, dmfData already contains the decompressed data
+    if( !isCompressed )
+    {
+        memcpy( context->Data, Data, Size );
+    }
 
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(context), 50 );
 
