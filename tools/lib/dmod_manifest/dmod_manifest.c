@@ -40,6 +40,8 @@ typedef struct Dmod_ModuleVersionsNode {
 struct Dmod_ManifestContext {
     char* tools_name;                    /**< Tools name for substitution */
     char* arch_name;                     /**< Architecture name for substitution */
+    char* cpu_name;                      /**< CPU name for substitution (e.g., stm32f746ngh6) */
+    char* cpu_family;                    /**< CPU family for substitution (e.g., stm32f7) */
     Dmod_DownloadFunc_t download_func;   /**< Download function */
     void* user_data;                     /**< User data for download function */
     Dmod_ManifestNode_t* entries;        /**< Linked list of entries */
@@ -84,7 +86,7 @@ static char* ConvertToArchName(const char* tools_name) {
 /**
  * @brief Substitute variables in a string
  * 
- * Replaces <tools_name>, <arch_name>, and <version> with actual values
+ * Replaces <tools_name>, <arch_name>, <cpu_name>, <cpu_family>, and <version> with actual values
  * 
  * @param ctx Manifest context
  * @param input Input string
@@ -119,6 +121,26 @@ static bool SubstituteVariables(Dmod_ManifestContext_t* ctx, const char* input, 
                     dst += len;
                 }
                 src += 11;
+            }
+            // Check for <cpu_name>
+            else if (strncmp(src, "<cpu_name>", 10) == 0) {
+                if (ctx->cpu_name) {
+                    size_t len = strlen(ctx->cpu_name);
+                    if (dst + len >= dst_end) return false;
+                    strcpy(dst, ctx->cpu_name);
+                    dst += len;
+                }
+                src += 10;
+            }
+            // Check for <cpu_family>
+            else if (strncmp(src, "<cpu_family>", 12) == 0) {
+                if (ctx->cpu_family) {
+                    size_t len = strlen(ctx->cpu_family);
+                    if (dst + len >= dst_end) return false;
+                    strcpy(dst, ctx->cpu_family);
+                    dst += len;
+                }
+                src += 12;
             }
             // Check for <version>
             else if (strncmp(src, "<version>", 9) == 0) {
@@ -513,6 +535,8 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
 Dmod_ManifestContext_t* Dmod_Manifest_Init(
     const char* tools_name,
     const char* arch_name,
+    const char* cpu_name,
+    const char* cpu_family,
     Dmod_DownloadFunc_t download_func,
     void* user_data
 ) {
@@ -546,6 +570,28 @@ Dmod_ManifestContext_t* Dmod_Manifest_Init(
             Dmod_Manifest_Free(ctx);
             return NULL;
         }
+    }
+    
+    // Store cpu_name if provided
+    if (cpu_name) {
+        size_t len = strlen(cpu_name);
+        ctx->cpu_name = Dmod_Malloc(len + 1);
+        if (!ctx->cpu_name) {
+            Dmod_Manifest_Free(ctx);
+            return NULL;
+        }
+        strcpy(ctx->cpu_name, cpu_name);
+    }
+    
+    // Store cpu_family if provided
+    if (cpu_family) {
+        size_t len = strlen(cpu_family);
+        ctx->cpu_family = Dmod_Malloc(len + 1);
+        if (!ctx->cpu_family) {
+            Dmod_Manifest_Free(ctx);
+            return NULL;
+        }
+        strcpy(ctx->cpu_family, cpu_family);
     }
     
     ctx->download_func = download_func;
@@ -585,6 +631,8 @@ void Dmod_Manifest_Free(Dmod_ManifestContext_t* ctx) {
     // Free strings
     if (ctx->tools_name) Dmod_Free(ctx->tools_name);
     if (ctx->arch_name) Dmod_Free(ctx->arch_name);
+    if (ctx->cpu_name) Dmod_Free(ctx->cpu_name);
+    if (ctx->cpu_family) Dmod_Free(ctx->cpu_family);
     Dmod_Free(ctx);
 }
 

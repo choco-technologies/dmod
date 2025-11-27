@@ -64,6 +64,7 @@ build/
 build_module*/
 build-*/
 build_system/
+build_test/
 _codeql_*
 build_cmake/
 

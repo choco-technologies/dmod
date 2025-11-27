@@ -1,5 +1,7 @@
 #define DMOD_PRIVATE
-#define DMOD_ENABLE_REGISTRATION
+#ifndef DMOD_EXTERNAL_REGISTRATION
+#   define DMOD_ENABLE_REGISTRATION
+#endif
 #include "dmod.h"
 #include "private/dmod_vars.h"
 #include "private/dmod_ctx.h"
@@ -491,6 +493,7 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
         }
     }
     DMOD_LOG_ERROR("Cannot load module by name - module not found: %s\n", ModuleName);
+    Dmod_Mgr_PrintSystemModules();
     return false;
 }
 

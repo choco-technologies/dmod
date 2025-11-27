@@ -92,6 +92,7 @@ extern bool         Dmod_ApiSignature_ReadVersion( const char* Signature, char* 
 extern bool         Dmod_ApiSignature_ReadModuleVersion( const char* Signature, char* ModuleVersion, size_t MaxLength );
 extern bool         Dmod_ApiSignature_AreEqual( const char* Signature1, const char* Signature2 );
 extern bool         Dmod_ApiSignature_IsMal( const char* Signature );
+extern bool         Dmod_ApiSignature_IsBuiltin( const char* Signature );
 
 DMOD_BUILTIN_API( Dmod, 1.0, void       , _SetLogLevel, ( Dmod_LogLevel_t LogLevel ) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _ReadModuleHeader, (const char* FilePath, Dmod_ModuleHeader_t* Header) );

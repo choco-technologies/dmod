@@ -721,6 +721,8 @@ cmake -DDMOD_MODE=DMOD_MODULE -B build -S .
 cmake --build build/
 ```
 
+Each module build automatically displays a memory usage analysis table showing RAM and ROM consumption per source file. For detailed symbol-level analysis, use the `<module_name>_memory_detailed` target. See the [Memory Analysis documentation](docs/memory-analysis.md) for more details.
+
 ### SYSTEM Mode
 In SYSTEM mode, you build the library when you want to include it in your project that will run dynamic modules. The resulting image is then loaded into the microcontroller's memory, allowing it to execute DMF files.
 

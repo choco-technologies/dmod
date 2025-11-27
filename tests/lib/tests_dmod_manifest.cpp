@@ -46,13 +46,13 @@ protected:
 // ===============================================================
 
 TEST_F(DmodManifestTest, InitWithNullToolsName) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init(nullptr, nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init(nullptr, nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     Dmod_Manifest_Free(ctx);
 }
 
 TEST_F(DmodManifestTest, InitWithToolsName) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     Dmod_Manifest_Free(ctx);
 }
@@ -66,7 +66,7 @@ TEST_F(DmodManifestTest, FreeNullContext) {
 // ===============================================================
 
 TEST_F(DmodManifestTest, ParseEmptyManifest) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = "";
@@ -77,7 +77,7 @@ TEST_F(DmodManifestTest, ParseEmptyManifest) {
 }
 
 TEST_F(DmodManifestTest, ParseCommentsOnly) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = 
@@ -93,7 +93,7 @@ TEST_F(DmodManifestTest, ParseCommentsOnly) {
 }
 
 TEST_F(DmodManifestTest, ParseSimpleEntry) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = "mymodule https://example.com/mymodule.dmf\n";
@@ -111,7 +111,7 @@ TEST_F(DmodManifestTest, ParseSimpleEntry) {
 }
 
 TEST_F(DmodManifestTest, ParseEntryWithVersion) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = "mymodule@1.0 https://example.com/mymodule-1.0.dmf\n";
@@ -129,7 +129,7 @@ TEST_F(DmodManifestTest, ParseEntryWithVersion) {
 }
 
 TEST_F(DmodManifestTest, ParseMultipleEntries) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = 
@@ -150,7 +150,7 @@ TEST_F(DmodManifestTest, ParseMultipleEntries) {
 // ===============================================================
 
 TEST_F(DmodManifestTest, SubstituteToolsName) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/armv7/cortex-m7", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/armv7/cortex-m7", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = "mymodule https://example.com/<tools_name>/module.dmf\n";
@@ -166,7 +166,7 @@ TEST_F(DmodManifestTest, SubstituteToolsName) {
 }
 
 TEST_F(DmodManifestTest, SubstituteArchName) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/armv7/cortex-m7", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/armv7/cortex-m7", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = "mymodule https://example.com/<arch_name>/module.dmf\n";
@@ -182,7 +182,7 @@ TEST_F(DmodManifestTest, SubstituteArchName) {
 }
 
 TEST_F(DmodManifestTest, SubstituteBothVariables) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = "mymodule https://reg.com/<tools_name>/<arch_name>/mod.dmf\n";
@@ -197,6 +197,88 @@ TEST_F(DmodManifestTest, SubstituteBothVariables) {
     Dmod_Manifest_Free(ctx);
 }
 
+TEST_F(DmodManifestTest, SubstituteCpuName) {
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/armv7/cortex-m7", nullptr, "stm32f746ngh6", nullptr, MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* manifest = "mymodule https://example.com/<cpu_name>/module.dmf\n";
+    
+    ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
+    EXPECT_EQ(Dmod_Manifest_GetEntryCount(ctx), 1);
+    
+    Dmod_ManifestEntry_t entry;
+    ASSERT_TRUE(Dmod_Manifest_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.url, "https://example.com/stm32f746ngh6/module.dmf");
+    
+    Dmod_Manifest_Free(ctx);
+}
+
+TEST_F(DmodManifestTest, SubstituteCpuFamily) {
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/armv7/cortex-m7", nullptr, nullptr, "stm32f7", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* manifest = "mymodule https://example.com/<cpu_family>/module.dmf\n";
+    
+    ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
+    EXPECT_EQ(Dmod_Manifest_GetEntryCount(ctx), 1);
+    
+    Dmod_ManifestEntry_t entry;
+    ASSERT_TRUE(Dmod_Manifest_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.url, "https://example.com/stm32f7/module.dmf");
+    
+    Dmod_Manifest_Free(ctx);
+}
+
+TEST_F(DmodManifestTest, SubstituteCpuNameAndFamily) {
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/armv7/cortex-m7", nullptr, "stm32f746ngh6", "stm32f7", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* manifest = "mymodule https://example.com/<cpu_family>/<cpu_name>/module.dmf\n";
+    
+    ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
+    EXPECT_EQ(Dmod_Manifest_GetEntryCount(ctx), 1);
+    
+    Dmod_ManifestEntry_t entry;
+    ASSERT_TRUE(Dmod_Manifest_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.url, "https://example.com/stm32f7/stm32f746ngh6/module.dmf");
+    
+    Dmod_Manifest_Free(ctx);
+}
+
+TEST_F(DmodManifestTest, SubstituteAllVariables) {
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/armv7/cortex-m7", nullptr, "stm32f746ngh6", "stm32f7", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* manifest = "mymodule https://example.com/<tools_name>/<arch_name>/<cpu_family>/<cpu_name>/module.dmf\n";
+    
+    ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
+    EXPECT_EQ(Dmod_Manifest_GetEntryCount(ctx), 1);
+    
+    Dmod_ManifestEntry_t entry;
+    ASSERT_TRUE(Dmod_Manifest_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.url, "https://example.com/arch/armv7/cortex-m7/armv7-cortex-m7/stm32f7/stm32f746ngh6/module.dmf");
+    
+    Dmod_Manifest_Free(ctx);
+}
+
+TEST_F(DmodManifestTest, SubstituteCpuNameNull) {
+    // Test that <cpu_name> is removed when cpu_name is NULL
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* manifest = "mymodule https://example.com/<cpu_name>/module.dmf\n";
+    
+    ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
+    EXPECT_EQ(Dmod_Manifest_GetEntryCount(ctx), 1);
+    
+    Dmod_ManifestEntry_t entry;
+    ASSERT_TRUE(Dmod_Manifest_GetEntry(ctx, 0, &entry));
+    // When cpu_name is NULL, the placeholder should be removed (empty string)
+    EXPECT_STREQ(entry.url, "https://example.com//module.dmf");
+    
+    Dmod_Manifest_Free(ctx);
+}
+
 // ===============================================================
 //                  Include Directive Tests
 // ===============================================================
@@ -204,7 +286,7 @@ TEST_F(DmodManifestTest, SubstituteBothVariables) {
 TEST_F(DmodManifestTest, ParseIncludeDirective) {
     g_mock_download_content = "included_module@1.0 https://example.com/included.dmf\n";
     
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = 
@@ -220,7 +302,7 @@ TEST_F(DmodManifestTest, ParseIncludeDirective) {
 TEST_F(DmodManifestTest, ParseIncludeDirectiveFail) {
     g_mock_download_should_fail = true;
     
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = "$include https://example.com/manifest.dmm\n";
@@ -236,7 +318,7 @@ TEST_F(DmodManifestTest, ParseIncludeDirectiveFail) {
 // ===============================================================
 
 TEST_F(DmodManifestTest, FindEntryByNameOnly) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = 
@@ -256,7 +338,7 @@ TEST_F(DmodManifestTest, FindEntryByNameOnly) {
 }
 
 TEST_F(DmodManifestTest, FindEntryByNameAndVersion) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = 
@@ -277,7 +359,7 @@ TEST_F(DmodManifestTest, FindEntryByNameAndVersion) {
 }
 
 TEST_F(DmodManifestTest, FindEntryNotFound) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = "mymodule@1.0 https://example.com/mymodule.dmf\n";
@@ -293,7 +375,7 @@ TEST_F(DmodManifestTest, FindEntryNotFound) {
 }
 
 TEST_F(DmodManifestTest, FindEntryVersionNotExactMatch) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = 
@@ -315,7 +397,7 @@ TEST_F(DmodManifestTest, FindEntryVersionNotExactMatch) {
 // ===============================================================
 
 TEST_F(DmodManifestTest, ParseVersionAvailableDirective) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = 
@@ -355,7 +437,7 @@ TEST_F(DmodManifestTest, ParseVersionAvailableDirective) {
 }
 
 TEST_F(DmodManifestTest, VersionAvailableWithExplicitVersion) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = 
@@ -377,7 +459,7 @@ TEST_F(DmodManifestTest, VersionAvailableWithExplicitVersion) {
 }
 
 TEST_F(DmodManifestTest, VersionAvailableWithoutVersionPlaceholder) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = 
@@ -399,7 +481,7 @@ TEST_F(DmodManifestTest, VersionAvailableWithoutVersionPlaceholder) {
 }
 
 TEST_F(DmodManifestTest, VersionAvailableMultipleModules) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = 
@@ -417,7 +499,7 @@ TEST_F(DmodManifestTest, VersionAvailableMultipleModules) {
 }
 
 TEST_F(DmodManifestTest, VersionAvailableNoVersions) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = "$version-available mymodule\n";
@@ -429,7 +511,7 @@ TEST_F(DmodManifestTest, VersionAvailableNoVersions) {
 }
 
 TEST_F(DmodManifestTest, VersionAvailableNoModuleName) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = "$version-available\n";
@@ -441,7 +523,7 @@ TEST_F(DmodManifestTest, VersionAvailableNoModuleName) {
 }
 
 TEST_F(DmodManifestTest, FindEntryWithVersionAvailable) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = 
@@ -462,7 +544,7 @@ TEST_F(DmodManifestTest, FindEntryWithVersionAvailable) {
 }
 
 TEST_F(DmodManifestTest, VersionAvailableOrderNewestFirst) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = 
@@ -498,7 +580,7 @@ TEST_F(DmodManifestTest, VersionAvailableOrderNewestFirst) {
 }
 
 TEST_F(DmodManifestTest, VersionAvailableOrderWithMultipleVersions) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = 
@@ -534,7 +616,7 @@ TEST_F(DmodManifestTest, VersionAvailableOrderWithMultipleVersions) {
 // ===============================================================
 
 TEST_F(DmodManifestTest, ParseNullContent) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     ASSERT_FALSE(Dmod_Manifest_Parse(ctx, nullptr));
@@ -543,7 +625,7 @@ TEST_F(DmodManifestTest, ParseNullContent) {
 }
 
 TEST_F(DmodManifestTest, GetEntryOutOfBounds) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = "mymodule https://example.com/mymodule.dmf\n";
@@ -556,7 +638,7 @@ TEST_F(DmodManifestTest, GetEntryOutOfBounds) {
 }
 
 TEST_F(DmodManifestTest, InvalidManifestLine) {
-    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, MockDownloadFunc, nullptr);
+    Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
     const char* manifest = "invalidline\n"; // No URL
