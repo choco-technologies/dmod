@@ -37,10 +37,6 @@
 #   include <time.h>
 #endif
 
-#ifndef DMOD_CPU_FREQ_MHZ
-#   define DMOD_CPU_FREQ_MHZ 100
-#endif
-
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
 //==============================================================================
@@ -240,15 +236,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _DelayUs, ( uint64_t Microsecon
     }
     
     return true;
-    #elif defined(__ARM_ARCH) || defined(STM32)
-    // For embedded systems without RTOS
-    // This is a busy-wait delay - should be overridden with timer-based implementation
-    volatile uint64_t count = Microseconds * (DMOD_CPU_FREQ_MHZ / 4);
-    while (count--)
-    {
-        __asm__ volatile ("nop");
-    }
-    return true;
     #else
     // Platform not supported
     (void)Microseconds;
@@ -288,8 +275,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _SleepMs, ( uint64_t Millisecon
     
     return true;
     #elif defined(__unix__) || defined(__APPLE__)
-    #include <unistd.h>
-    
     if (Milliseconds == 0)
     {
         return true;
@@ -302,9 +287,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _SleepMs, ( uint64_t Millisecon
     }
     
     return true;
-    #elif defined(__ARM_ARCH) || defined(STM32)
-    // For embedded systems, use DelayUs
-    return Dmod_DelayUs(Milliseconds * 1000);
     #else
     // Platform not supported
     (void)Milliseconds;

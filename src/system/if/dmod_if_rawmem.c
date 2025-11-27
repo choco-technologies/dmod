@@ -209,6 +209,60 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _WriteMemory, ( uintptr_t Add
 }
 
 /**
+ * @brief Helper function to parse address from environment variable
+ * 
+ * @param EnvName Environment variable name
+ * 
+ * @return Parsed address or 0 if not set or invalid
+ */
+static uintptr_t Dmod_GetEnvAddress(const char* EnvName)
+{
+    const char* value = Dmod_GetEnv(EnvName);
+    if (value == NULL)
+    {
+        return 0;
+    }
+    
+    // Parse hex or decimal address
+    uintptr_t addr = 0;
+    if (value[0] == '0' && (value[1] == 'x' || value[1] == 'X'))
+    {
+        // Hex format
+        for (int i = 2; value[i] != '\0'; i++)
+        {
+            char c = value[i];
+            addr <<= 4;
+            if (c >= '0' && c <= '9')
+                addr |= (c - '0');
+            else if (c >= 'a' && c <= 'f')
+                addr |= (c - 'a' + 10);
+            else if (c >= 'A' && c <= 'F')
+                addr |= (c - 'A' + 10);
+            else
+                return 0; // Invalid character
+        }
+    }
+    else
+    {
+        // Decimal format
+        for (int i = 0; value[i] != '\0'; i++)
+        {
+            char c = value[i];
+            if (c >= '0' && c <= '9')
+            {
+                addr = addr * 10 + (c - '0');
+            }
+            else
+            {
+                return 0; // Invalid character
+            }
+        }
+    }
+    
+    return addr;
+}
+
+/**
  * @brief Check if address is in RAM
  * 
  * @param Address Address to check
@@ -217,23 +271,22 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _WriteMemory, ( uintptr_t Add
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsRam, ( const void* Address ))
 {
-#if defined(__ARM_ARCH)
+    if (Address == NULL)
+    {
+        return false;
+    }
+    
+    uintptr_t ramStart = Dmod_GetEnvAddress("DMOD_RAM_START");
+    uintptr_t ramEnd = Dmod_GetEnvAddress("DMOD_RAM_END");
+    
+    // If environment variables are not set, just check if address is not NULL
+    if (ramStart == 0 && ramEnd == 0)
+    {
+        return true; // Address is not NULL, consider it potentially valid
+    }
+    
     uintptr_t addr = (uintptr_t)Address;
-    // Common ARM architecture RAM regions (device-specific values should be configured)
-    #if defined(DMOD_RAM_START) && defined(DMOD_RAM_END)
-        return (addr >= DMOD_RAM_START && addr < DMOD_RAM_END);
-    #else
-        // Default: assume standard SRAM regions for common ARM Cortex-M
-        // This is a fallback and should be overridden with platform-specific values
-        return (addr >= 0x20000000 && addr < 0x30000000) || // SRAM region
-               (addr >= 0x10000000 && addr < 0x20000000);    // Code SRAM region
-    #endif
-#else
-    // For non-embedded systems (PC/Linux), we cannot reliably determine RAM regions
-    // Return false to indicate this functionality is not available
-    (void)Address;
-    return false;
-#endif
+    return (addr >= ramStart && addr < ramEnd);
 }
 
 /**
@@ -245,21 +298,22 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsRam, ( const void* Address )
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsRom, ( const void* Address ))
 {
-#if defined(__ARM_ARCH)
+    if (Address == NULL)
+    {
+        return false;
+    }
+    
+    uintptr_t romStart = Dmod_GetEnvAddress("DMOD_ROM_START");
+    uintptr_t romEnd = Dmod_GetEnvAddress("DMOD_ROM_END");
+    
+    // If environment variables are not set, just check if address is not NULL
+    if (romStart == 0 && romEnd == 0)
+    {
+        return true; // Address is not NULL, consider it potentially valid
+    }
+    
     uintptr_t addr = (uintptr_t)Address;
-    // Common ARM architecture ROM/Flash regions
-    #if defined(DMOD_ROM_START) && defined(DMOD_ROM_END)
-        return (addr >= DMOD_ROM_START && addr < DMOD_ROM_END);
-    #else
-        // Default: assume standard Flash regions for common ARM Cortex-M
-        return (addr >= 0x00000000 && addr < 0x10000000);    // Flash region (0x00000000-0x0FFFFFFF)
-    #endif
-#else
-    // For non-embedded systems, check if address is in code/text segment
-    // This is a weak heuristic and may not work in all cases
-    (void)Address;
-    return false;
-#endif
+    return (addr >= romStart && addr < romEnd);
 }
 
 /**
@@ -271,21 +325,22 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsRom, ( const void* Address )
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsDma, ( const void* Address ))
 {
-#if defined(__ARM_ARCH)
+    if (Address == NULL)
+    {
+        return false;
+    }
+    
+    uintptr_t dmaStart = Dmod_GetEnvAddress("DMOD_DMA_START");
+    uintptr_t dmaEnd = Dmod_GetEnvAddress("DMOD_DMA_END");
+    
+    // If environment variables are not set, just check if address is not NULL
+    if (dmaStart == 0 && dmaEnd == 0)
+    {
+        return true; // Address is not NULL, consider it potentially valid
+    }
+    
     uintptr_t addr = (uintptr_t)Address;
-    // DMA accessible regions are device-specific
-    #if defined(DMOD_DMA_START) && defined(DMOD_DMA_END)
-        return (addr >= DMOD_DMA_START && addr < DMOD_DMA_END);
-    #else
-        // Default: assume DMA can access SRAM and peripheral regions
-        // This is device-specific and should be configured per platform
-        return (addr >= 0x20000000 && addr < 0x30000000) || // SRAM
-               (addr >= 0x40000000 && addr < 0x60000000);    // Peripherals
-    #endif
-#else
-    (void)Address;
-    return false;
-#endif
+    return (addr >= dmaStart && addr < dmaEnd);
 }
 
 /**
@@ -297,20 +352,22 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsDma, ( const void* Address )
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsExt, ( const void* Address ))
 {
-#if defined(__ARM_ARCH)
+    if (Address == NULL)
+    {
+        return false;
+    }
+    
+    uintptr_t extStart = Dmod_GetEnvAddress("DMOD_EXT_START");
+    uintptr_t extEnd = Dmod_GetEnvAddress("DMOD_EXT_END");
+    
+    // If environment variables are not set, just check if address is not NULL
+    if (extStart == 0 && extEnd == 0)
+    {
+        return true; // Address is not NULL, consider it potentially valid
+    }
+    
     uintptr_t addr = (uintptr_t)Address;
-    // External memory regions are device-specific
-    #if defined(DMOD_EXT_START) && defined(DMOD_EXT_END)
-        return (addr >= DMOD_EXT_START && addr < DMOD_EXT_END);
-    #else
-        // Default: assume standard external memory regions for ARM Cortex-M
-        return (addr >= 0x60000000 && addr < 0xA0000000) || // External RAM/Device
-               (addr >= 0xC0000000 && addr < 0xE0000000);    // External Device
-    #endif
-#else
-    (void)Address;
-    return false;
-#endif
+    return (addr >= extStart && addr < extEnd);
 }
 
 /**
