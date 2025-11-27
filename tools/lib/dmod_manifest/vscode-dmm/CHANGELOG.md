@@ -2,6 +2,13 @@
 
 All notable changes to the "DMOD Manifest Language Support" extension will be documented in this file.
 
+## [1.3.0] - 2024-11-27
+
+### Added
+- Support for `<cpu_name>` placeholder for CPU-specific module URLs
+- Support for `<cpu_family>` placeholder for CPU family-specific module URLs
+- Updated example file with `<cpu_name>` and `<cpu_family>` usage
+
 ## [1.2.0] - 2024-11-18
 
 ### Added

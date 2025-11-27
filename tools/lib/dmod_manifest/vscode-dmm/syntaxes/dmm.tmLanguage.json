@@ -121,7 +121,7 @@
       "patterns": [
         {
           "name": "variable.other.placeholder.dmm",
-          "match": "<(tools_name|arch_name|version)>",
+          "match": "<(tools_name|arch_name|cpu_name|cpu_family|version)>",
           "captures": {
             "1": {
               "name": "variable.parameter.dmm"
