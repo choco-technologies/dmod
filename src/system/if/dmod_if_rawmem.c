@@ -218,14 +218,14 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _WriteMemory, ( uintptr_t Add
 static uintptr_t Dmod_GetEnvAddress(const char* EnvName)
 {
     const char* value = Dmod_GetEnv(EnvName);
-    if (value == NULL)
+    if (value == NULL || value[0] == '\0')
     {
         return 0;
     }
     
     // Parse hex or decimal address
     uintptr_t addr = 0;
-    if (value[0] == '0' && (value[1] == 'x' || value[1] == 'X'))
+    if (value[0] == '0' && value[1] != '\0' && (value[1] == 'x' || value[1] == 'X'))
     {
         // Hex format
         for (int i = 2; value[i] != '\0'; i++)
@@ -279,10 +279,15 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsRam, ( const void* Address )
     uintptr_t ramStart = Dmod_GetEnvAddress("DMOD_RAM_START");
     uintptr_t ramEnd = Dmod_GetEnvAddress("DMOD_RAM_END");
     
-    // If environment variables are not set, just check if address is not NULL
+    // If both environment variables are not set, just check if address is not NULL
+    // If only one is set, the region is considered not configured (return false)
     if (ramStart == 0 && ramEnd == 0)
     {
         return true; // Address is not NULL, consider it potentially valid
+    }
+    if (ramStart == 0 || ramEnd == 0 || ramStart >= ramEnd)
+    {
+        return false; // Invalid or partial configuration
     }
     
     uintptr_t addr = (uintptr_t)Address;
@@ -306,10 +311,15 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsRom, ( const void* Address )
     uintptr_t romStart = Dmod_GetEnvAddress("DMOD_ROM_START");
     uintptr_t romEnd = Dmod_GetEnvAddress("DMOD_ROM_END");
     
-    // If environment variables are not set, just check if address is not NULL
+    // If both environment variables are not set, just check if address is not NULL
+    // If only one is set, the region is considered not configured (return false)
     if (romStart == 0 && romEnd == 0)
     {
         return true; // Address is not NULL, consider it potentially valid
+    }
+    if (romStart == 0 || romEnd == 0 || romStart >= romEnd)
+    {
+        return false; // Invalid or partial configuration
     }
     
     uintptr_t addr = (uintptr_t)Address;
@@ -333,10 +343,15 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsDma, ( const void* Address )
     uintptr_t dmaStart = Dmod_GetEnvAddress("DMOD_DMA_START");
     uintptr_t dmaEnd = Dmod_GetEnvAddress("DMOD_DMA_END");
     
-    // If environment variables are not set, just check if address is not NULL
+    // If both environment variables are not set, just check if address is not NULL
+    // If only one is set, the region is considered not configured (return false)
     if (dmaStart == 0 && dmaEnd == 0)
     {
         return true; // Address is not NULL, consider it potentially valid
+    }
+    if (dmaStart == 0 || dmaEnd == 0 || dmaStart >= dmaEnd)
+    {
+        return false; // Invalid or partial configuration
     }
     
     uintptr_t addr = (uintptr_t)Address;
@@ -360,10 +375,15 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsExt, ( const void* Address )
     uintptr_t extStart = Dmod_GetEnvAddress("DMOD_EXT_START");
     uintptr_t extEnd = Dmod_GetEnvAddress("DMOD_EXT_END");
     
-    // If environment variables are not set, just check if address is not NULL
+    // If both environment variables are not set, just check if address is not NULL
+    // If only one is set, the region is considered not configured (return false)
     if (extStart == 0 && extEnd == 0)
     {
         return true; // Address is not NULL, consider it potentially valid
+    }
+    if (extStart == 0 || extEnd == 0 || extStart >= extEnd)
+    {
+        return false; // Invalid or partial configuration
     }
     
     uintptr_t addr = (uintptr_t)Address;
