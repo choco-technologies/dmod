@@ -110,6 +110,7 @@ DMOD_BUILTIN_API(Dmod, 1.0, const char* , _ReadDir,     ( void* Dir ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void        , _CloseDir,    ( void* Dir ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int         , _MakeDir,     ( const char* Path, int Mode ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int         , _Access,      ( const char* Path, int Mode ) );
+DMOD_BUILTIN_API(Dmod, 1.0, char*       , _FileReadLine,( char* Buffer, int Size, void* File ) );
 
 #ifndef DMOD_SEEK_SET
 #   define DMOD_SEEK_SET   0

@@ -70,3 +70,4 @@ build_cmake/
 
 # Test directories
 test_packages/
+tools-cfg.cmake
