@@ -29,7 +29,8 @@ protected:
     {
         void* file = Dmod_FileOpen(testFilePath, "w");
         ASSERT_NE(file, nullptr);
-        Dmod_FileWrite(content, 1, strlen(content), file);
+        size_t written = Dmod_FileWrite(content, 1, strlen(content), file);
+        ASSERT_EQ(written, strlen(content));
         Dmod_FileClose(file);
     }
 };
