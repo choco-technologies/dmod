@@ -147,6 +147,9 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Unsetenv, ( const char* Name ))
  * environment variable name. Call with the previously returned name to get the next one.
  * Returns NULL when there are no more environment variables.
  * 
+ * @note This function uses thread-local storage for the returned name buffer.
+ * @note The search is O(n) per call because environment variables may change between calls.
+ * 
  * @param Last The last returned environment variable name, or NULL to start iteration
  * 
  * @return The next environment variable name, or NULL if there are no more
@@ -155,6 +158,12 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetNextEnvName, ( const
 {
 #if DMOD_USE_STDLIB && DMOD_USE_GETENV
     extern char **environ;
+    
+    /* Maximum length for environment variable names */
+    #define DMOD_ENV_NAME_MAX_LEN 256
+    
+    /* Thread-local storage for the name buffer to ensure thread safety */
+    static __thread char nameBuf[DMOD_ENV_NAME_MAX_LEN];
     
     if (environ == NULL)
     {
@@ -172,12 +181,10 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetNextEnvName, ( const
         const char* eq = strchr(environ[0], '=');
         if (eq != NULL)
         {
-            /* Return pointer to static buffer with just the name */
-            static char nameBuf[256];
             size_t nameLen = (size_t)(eq - environ[0]);
-            if (nameLen >= sizeof(nameBuf))
+            if (nameLen >= DMOD_ENV_NAME_MAX_LEN)
             {
-                nameLen = sizeof(nameBuf) - 1;
+                nameLen = DMOD_ENV_NAME_MAX_LEN - 1;
             }
             memcpy(nameBuf, environ[0], nameLen);
             nameBuf[nameLen] = '\0';
@@ -187,7 +194,8 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetNextEnvName, ( const
     }
     else
     {
-        /* Find the current entry and return the next one */
+        /* Find the current entry and return the next one.
+         * Linear search is required because the environment may change between calls. */
         size_t lastLen = strlen(Last);
         for (int i = 0; environ[i] != NULL; i++)
         {
@@ -202,11 +210,10 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetNextEnvName, ( const
                 const char* eq = strchr(environ[i + 1], '=');
                 if (eq != NULL)
                 {
-                    static char nameBuf[256];
                     size_t nameLen = (size_t)(eq - environ[i + 1]);
-                    if (nameLen >= sizeof(nameBuf))
+                    if (nameLen >= DMOD_ENV_NAME_MAX_LEN)
                     {
-                        nameLen = sizeof(nameBuf) - 1;
+                        nameLen = DMOD_ENV_NAME_MAX_LEN - 1;
                     }
                     memcpy(nameBuf, environ[i + 1], nameLen);
                     nameBuf[nameLen] = '\0';
@@ -218,6 +225,8 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetNextEnvName, ( const
         /* Not found, return NULL */
         return NULL;
     }
+    
+    #undef DMOD_ENV_NAME_MAX_LEN
 #else
     (void)Last;
     return NULL;
