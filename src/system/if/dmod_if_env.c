@@ -90,3 +90,33 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _SetEnv, ( const char* Name, con
 #endif
 }
 
+/**
+ * @brief Push a new environment context onto the stack
+ * 
+ * Creates a new environment context and pushes it as the current context.
+ * The previous context is preserved and can be restored with Dmod_EnvCtx_Pop.
+ * 
+ * @note This function has no POSIX equivalent. The default implementation is empty.
+ * 
+ * @return 0 on success, -1 on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _EnvCtx_Push, ( void ))
+{
+    /* No POSIX equivalent - default empty implementation */
+    return 0;
+}
+
+/**
+ * @brief Pop the current environment context from the stack
+ * 
+ * Restores the previous environment context that was saved with Dmod_EnvCtx_Push.
+ * 
+ * @note This function has no POSIX equivalent. The default implementation is empty.
+ * 
+ * @return 0 on success, -1 on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _EnvCtx_Pop, ( void ))
+{
+    /* No POSIX equivalent - default empty implementation */
+    return 0;
+}

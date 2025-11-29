@@ -111,6 +111,8 @@ DMOD_BUILTIN_API(Dmod, 1.0, void        , _CloseDir,    ( void* Dir ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int         , _MakeDir,     ( const char* Path, int Mode ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int         , _Access,      ( const char* Path, int Mode ) );
 DMOD_BUILTIN_API(Dmod, 1.0, char*       , _FileReadLine, ( char* Buffer, int Size, void* File ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int         , _ChDir,       ( const char* Path ) );
+DMOD_BUILTIN_API(Dmod, 1.0, char*       , _GetCwd,      ( char* Buffer, size_t Size ) );
 
 #ifndef DMOD_SEEK_SET
 #   define DMOD_SEEK_SET   0
@@ -146,6 +148,8 @@ DMOD_BUILTIN_API(Dmod, 1.0, char*       , _FileReadLine, ( char* Buffer, int Siz
 
 DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetEnv, ( const char* Name ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _SetEnv, ( const char* Name, const char* Value, int Overwrite ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int, _EnvCtx_Push, ( void ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int, _EnvCtx_Pop, ( void ) );
 
 //! @}
 
@@ -320,6 +324,22 @@ DMOD_BUILTIN_API(Dmod, 1.0, int  , _Vsscanf, ( const char* Buffer, const char* F
 DMOD_BUILTIN_API(Dmod, 1.0, int  , _Sscanf,  ( const char* Buffer, const char* Format, ... ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int  , _Vscanf,  ( const char* Format, va_list Args ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int  , _Scanf,   ( const char* Format, ... ) );
+
+//! @}
+
+/**
+ * @defgroup DMOD_SAL_PROC Process Interface
+ * @ingroup DMOD_SAL
+ * 
+ * This interface is used to control process execution in the system.
+ * The default implementation is provided in the DMOD system as weak symbols
+ * and uses the standard exit function.
+ * 
+ * @addtogroup DMOD_SAL_PROC
+ * @{
+ */
+
+DMOD_BUILTIN_API(Dmod, 1.0, void, _Exit, ( int Status ) );
 
 //! @}
 
