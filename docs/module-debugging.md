@@ -4,17 +4,18 @@ This guide explains how to debug dynamic modules (DMF files) loaded by the `dmod
 
 ## Overview
 
-When a module is loaded by `dmod_loader`, it is placed at a dynamically allocated memory address. To debug the module with GDB, you need to:
+When a module is loaded by `dmod_loader`, it is placed at a dynamically allocated memory address that **changes on every run**. To debug the module with GDB, you need to:
 
-1. Know the **text section address** where the module's code is loaded
-2. Load the module's debug symbols (from the ELF file) at the correct offset
-3. Attach GDB to the running process
+1. Start dmod_loader with `--debug` flag (pauses after loading)
+2. Attach GDB to the running process
+3. Load symbols at the **runtime text section address** shown
+4. Set breakpoints and continue
 
-**Important:** GDB requires the `.text` section address (where the executable code resides), not the base data address. The `--debug` flag automatically calculates and displays the correct text section address.
+**Important:** The module address changes every time the program runs due to memory allocation. You must use the address shown by `--debug` during that specific run.
 
 DMOD provides tools to simplify this process:
-- `--debug` flag in `dmod_loader` - prints the text section address and waits for debugger
-- `dmod-debug.sh` script - automates the GDB setup
+- `--debug` flag in `dmod_loader` - pauses after load, shows the text section address
+- `dmod-debug.sh` script - helper script for the debugging workflow
 
 ## Prerequisites
 
@@ -24,22 +25,13 @@ DMOD provides tools to simplify this process:
 
 ## Method 1: Using the `--debug` Flag (Recommended)
 
-The easiest way to debug a module is using the `--debug` flag:
+### Step 1: Start dmod_loader with --debug
 
 ```bash
 ./dmod_loader ./module.dmf --debug
 ```
 
-This will:
-1. Load the module
-2. Print debug information including:
-   - Module name
-   - Base address
-   - **Text section address** (use this for `add-symbol-file`)
-   - Module size
-3. Wait for you to press ENTER before continuing
-
-### Example Output
+The program will load the module and pause, showing output like:
 
 ```
 ================================================================================
@@ -48,8 +40,8 @@ This will:
 
 Module loaded successfully. Debug information:
   Module name:    example_app
-  Base address:   0x55555576a2a0
-  Text section:   0x55555576a380 (offset: 0xe0)
+  Base address:   0x443000
+  Text section:   0x443140 (offset: 0x140)
   Module size:    1336 bytes
 
 To debug this module with GDB:
@@ -58,119 +50,97 @@ To debug this module with GDB:
      gdb -p 12345
 
   2. In GDB, load symbols from the module's ELF file:
-     add-symbol-file <path/to/module_elf> 0x55555576a380
-
-  3. Set breakpoints and continue:
-     break main
-     continue
-
+     add-symbol-file <path/to/module_elf> 0x443140
+...
 ================================================================================
 Press ENTER to continue execution...
 ================================================================================
 ```
 
-### Attaching GDB
+### Step 2: Attach GDB (in another terminal)
 
-1. Open a new terminal
-2. Attach GDB to the dmod_loader process:
-   ```bash
-   gdb -p <PID>
-   ```
-3. Load symbols from the module's ELF file using the **text section address** shown:
-   ```bash
-   (gdb) add-symbol-file /path/to/build/examples/module/application/example_app 0x55555576a380
-   ```
-4. Set breakpoints:
-   ```bash
-   (gdb) break main
-   (gdb) break dmod_init
-   ```
-5. Continue execution:
-   ```bash
-   (gdb) continue
-   ```
-6. Go back to the first terminal and press ENTER to continue
+```bash
+gdb -p 12345  # Use the PID shown above
+```
+
+### Step 3: Load Symbols at the Text Section Address
+
+In GDB, use the **text section address** shown (e.g., `0x443140`):
+
+```bash
+(gdb) add-symbol-file /path/to/example_app 0x443140
+```
+
+GDB will ask for confirmation - type `y`.
+
+### Step 4: Set Breakpoints
+
+```bash
+(gdb) break main
+(gdb) break dmod_init
+```
+
+### Step 5: Continue Execution in GDB
+
+```bash
+(gdb) c
+```
+
+### Step 6: Resume dmod_loader
+
+Go back to the first terminal and press **ENTER** to continue execution.
+
+GDB will stop at your breakpoints!
 
 ## Method 2: Using the `dmod-debug.sh` Script
 
-The `dmod-debug.sh` script automates the GDB setup process.
-
-### Basic Usage
+The script automates launching dmod_loader with `--debug`:
 
 ```bash
-./scripts/dmod-debug.sh <dmod_loader> <module.dmf> <module_elf> <base_address>
+./scripts/dmod-debug.sh ./dmod_loader ./module.dmf ./module_elf
 ```
 
-### Parameters
+This will:
+1. Start dmod_loader with `--debug`
+2. Display instructions for attaching GDB
+3. Wait for you to debug
 
-| Parameter | Description |
-|-----------|-------------|
-| `dmod_loader` | Path to the dmod_loader executable |
-| `module.dmf` | Path to the DMF module file to load |
-| `module_elf` | Path to the ELF file with debug symbols |
-| `base_address` | Memory address where the module is loaded (hex format) |
-
-### Options
-
-| Option | Description |
-|--------|-------------|
-| `-g, --gdbserver` | Use gdbserver instead of direct gdb attachment |
-| `-p, --port PORT` | Port for gdbserver (default: 1234) |
-| `-v, --verbose` | Enable verbose output |
-| `-h, --help` | Show help message |
-
-### Examples
-
-```bash
-# Direct GDB debugging
-./scripts/dmod-debug.sh ./build/dmod_loader ./build/dmf/example_app.dmf \
-    ./build/examples/module/application/example_app 0x55555576a2a0
-
-# Using gdbserver on port 2345
-./scripts/dmod-debug.sh -g -p 2345 ./build/dmod_loader ./build/dmf/example_app.dmf \
-    ./build/examples/module/application/example_app 0x55555576a2a0
-```
+Then follow Steps 2-6 from Method 1 above.
 
 ## Method 3: Manual GDB Debugging
 
-If you prefer to set up GDB manually:
+For advanced users who want to debug from the start:
 
-### Step 1: Find the Base Address
-
-Run dmod_loader with the `--debug` flag to get the base address:
-
-```bash
-./dmod_loader ./module.dmf --debug
-```
-
-Note the "Base address" value from the output.
-
-### Step 2: Start GDB
+### Step 1: Start GDB with dmod_loader
 
 ```bash
 gdb ./dmod_loader
 ```
 
-### Step 3: Set Up Breakpoints and Run
+### Step 2: Set a Breakpoint on WaitForDebugger
 
-In GDB:
 ```bash
-(gdb) break Dmod_Run
-(gdb) run ./module.dmf
+(gdb) break WaitForDebugger
+(gdb) run ./module.dmf --debug
 ```
 
-### Step 4: Load Module Symbols
+### Step 3: When Breakpoint Hits, Get the Text Address
 
-When the breakpoint is hit:
 ```bash
-(gdb) add-symbol-file /path/to/module_elf <base_address>
+(gdb) print/x (uintptr_t)context->Data + context->Footer->Text.SectionStart
+```
+
+### Step 4: Load Symbols and Set Breakpoints
+
+```bash
+(gdb) add-symbol-file ./module_elf <address_from_above>
 (gdb) break main
 (gdb) continue
 ```
 
 ## Building Modules with Debug Symbols
 
-To debug a module, you need to build it with debug symbols. 
+To debug a module, you need to build it with debug symbols.
 
 ### CMake
 
@@ -199,13 +169,19 @@ For example:
 
 ## Troubleshooting
 
+### Breakpoints don't work / code doesn't stop
+
+**Most common cause:** Using wrong address. The address changes every run!
+
+Always use the **text section address** shown by `--debug` during the current run. Do not reuse addresses from previous runs.
+
 ### "No debugging symbols found"
 
 Make sure you're using the ELF file (not the DMF file) and that it was built with debug symbols (`-g` flag).
 
 ### "Cannot insert breakpoint"
 
-The base address might be incorrect. Use the `--debug` flag to get the correct address.
+The text section address might be incorrect. Verify you're using the address from the current `--debug` output.
 
 ### "Symbol not found"
 
@@ -216,6 +192,22 @@ The function might be optimized out or inlined. Try building with `-O0` to disab
 You might need to run GDB with elevated privileges or adjust ptrace settings:
 ```bash
 sudo sysctl -w kernel.yama.ptrace_scope=0
+```
+
+## Quick Reference
+
+```bash
+# Terminal 1: Start dmod_loader
+./dmod_loader ./module.dmf --debug
+# Note the PID and Text section address
+
+# Terminal 2: Attach and debug
+gdb -p <PID>
+(gdb) add-symbol-file ./module_elf <TEXT_SECTION_ADDRESS>
+(gdb) break main
+(gdb) c
+
+# Terminal 1: Press ENTER to continue
 ```
 
 ## See Also

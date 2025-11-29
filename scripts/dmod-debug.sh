@@ -4,9 +4,9 @@
 #   DMOD Module Debug Script
 #
 #   This script allows you to debug a module loaded by dmod_loader using GDB.
-#   It starts the dmod_loader in background, waits for user to provide the
-#   module's base address, and then attaches GDB with symbols loaded at the
-#   correct offset.
+#   It works with dmod_loader's --debug flag which pauses execution after
+#   loading the module, allowing you to attach GDB and load symbols at the
+#   correct runtime address.
 #
 #   Copyright (c) 2024 DMOD Contributors
 #   MIT License
@@ -25,54 +25,48 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Default values
-GDBSERVER_PORT=1234
-USE_GDBSERVER=false
-VERBOSE=false
-
 # =============================================================================
 #                           Helper Functions
 # =============================================================================
 
 print_usage() {
     cat << EOF
-Usage: $(basename "$0") [OPTIONS] <dmod_loader> <module.dmf> <module_elf> <base_address>
+Usage: $(basename "$0") [OPTIONS] <dmod_loader> <module.dmf> <module_elf>
 
 Debug a DMOD module loaded by dmod_loader.
+
+This script helps you debug modules by:
+1. Starting dmod_loader with --debug flag (pauses after module load)
+2. Guiding you to attach GDB and load symbols at the correct address
 
 ARGUMENTS:
     dmod_loader     Path to the dmod_loader executable
     module.dmf      Path to the DMF module file to load
     module_elf      Path to the ELF file with debug symbols
-    base_address    Memory address where the module is loaded (hex, e.g., 0x7f1234567890)
 
 OPTIONS:
-    -g, --gdbserver         Use gdbserver instead of direct gdb attachment
-    -p, --port PORT         Port for gdbserver (default: 1234)
-    -v, --verbose           Enable verbose output
-    -h, --help              Show this help message
-
-EXAMPLES:
-    # Direct GDB debugging with known base address
-    $(basename "$0") ./dmod_loader ./module.dmf ./module 0x7f1234567890
-
-    # Using gdbserver
-    $(basename "$0") -g -p 2345 ./dmod_loader ./module.dmf ./module 0x7f1234567890
-
-NOTES:
-    - The base_address is the memory address where the module's data is loaded
-    - You can obtain this address by adding debug output to your dmod_loader
-      that prints the Context->Data pointer value
-    - The module_elf is typically the executable built alongside the .dmf file
-      (e.g., if your DMF is 'example_app.dmf', the ELF is 'example_app')
+    -h, --help      Show this help message
 
 WORKFLOW:
-    1. Build your module with debug symbols (-g flag)
-    2. Find the base address by:
-       a. Adding printf("Module base: %p\\n", context->Data); in dmod_loader
-       b. Or running dmod_loader once to see where it loads the module
-    3. Run this script with the correct base address
-    4. GDB will attach with symbols loaded at the correct offset
+    1. Run this script with the module paths
+    2. The script starts dmod_loader which pauses after loading the module
+    3. Note the "Text section" address displayed
+    4. In another terminal, run: gdb -p <PID>
+    5. In GDB, run: add-symbol-file <module_elf> <text_section_address>
+    6. Set your breakpoints: break main (or any function)
+    7. Continue: c
+    8. Press ENTER in the dmod_loader terminal to resume
+
+EXAMPLE:
+    $(basename "$0") ./dmod_loader ./dmf/example_app.dmf ./example_app
+
+    Then in another terminal:
+    gdb -p <PID_shown>
+    (gdb) add-symbol-file ./example_app 0x443140
+    (gdb) break main
+    (gdb) c
+
+NOTE: The address changes each run, so always use the address shown by --debug.
 
 EOF
 }
@@ -93,12 +87,6 @@ print_warning() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-print_verbose() {
-    if [ "$VERBOSE" = true ]; then
-        echo -e "${BLUE}[DEBUG]${NC} $1"
-    fi
-}
-
 check_file_exists() {
     if [ ! -f "$1" ]; then
         print_error "File not found: $1"
@@ -113,13 +101,6 @@ check_executable() {
     fi
 }
 
-validate_hex_address() {
-    if ! [[ "$1" =~ ^0x[0-9a-fA-F]+$ ]]; then
-        print_error "Invalid hex address: $1 (expected format: 0x...)"
-        exit 1
-    fi
-}
-
 # =============================================================================
 #                           Main Script
 # =============================================================================
@@ -127,18 +108,6 @@ validate_hex_address() {
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -g|--gdbserver)
-            USE_GDBSERVER=true
-            shift
-            ;;
-        -p|--port)
-            GDBSERVER_PORT="$2"
-            shift 2
-            ;;
-        -v|--verbose)
-            VERBOSE=true
-            shift
-            ;;
         -h|--help)
             print_usage
             exit 0
@@ -155,7 +124,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Check remaining arguments
-if [ $# -lt 4 ]; then
+if [ $# -lt 3 ]; then
     print_error "Missing required arguments"
     print_usage
     exit 1
@@ -164,21 +133,15 @@ fi
 DMOD_LOADER="$1"
 MODULE_DMF="$2"
 MODULE_ELF="$3"
-BASE_ADDRESS="$4"
+
+# Get absolute path to ELF for display
+MODULE_ELF_ABS=$(realpath "$MODULE_ELF")
 
 # Validate arguments
 check_file_exists "$DMOD_LOADER"
 check_executable "$DMOD_LOADER"
 check_file_exists "$MODULE_DMF"
 check_file_exists "$MODULE_ELF"
-validate_hex_address "$BASE_ADDRESS"
-
-print_info "DMOD Module Debug Session"
-echo "================================"
-print_verbose "dmod_loader: $DMOD_LOADER"
-print_verbose "Module DMF:  $MODULE_DMF"
-print_verbose "Module ELF:  $MODULE_ELF"
-print_verbose "Base Address: $BASE_ADDRESS"
 
 # Check if gdb is available
 if ! command -v gdb &> /dev/null; then
@@ -186,104 +149,25 @@ if ! command -v gdb &> /dev/null; then
     exit 1
 fi
 
-if [ "$USE_GDBSERVER" = true ] && ! command -v gdbserver &> /dev/null; then
-    print_error "gdbserver is not installed. Please install gdbserver first."
-    exit 1
-fi
+print_info "DMOD Module Debug Session"
+echo "================================"
+echo ""
+print_info "Starting dmod_loader with --debug flag..."
+print_info "The program will pause after loading the module."
+echo ""
+print_warning "When you see the debug info, open another terminal and run:"
+echo ""
+echo -e "  ${GREEN}gdb -p <PID>${NC}              # Attach to the process"
+echo -e "  ${GREEN}(gdb) add-symbol-file $MODULE_ELF_ABS <TEXT_ADDR>${NC}"
+echo -e "  ${GREEN}(gdb) break main${NC}          # Set breakpoint"
+echo -e "  ${GREEN}(gdb) c${NC}                   # Continue in GDB"
+echo ""
+print_warning "Then press ENTER in this terminal to continue execution."
+echo ""
+echo "================================"
+echo ""
 
-# Create GDB commands file in a secure location
-GDB_COMMANDS=$(mktemp)
-trap "rm -f $GDB_COMMANDS" EXIT
-
-print_info "Preparing GDB session..."
-
-# Write GDB commands
-cat > "$GDB_COMMANDS" << EOF
-# DMOD Module Debug Commands
-# Generated by dmod-debug.sh
-
-# Set breakpoint on module load (optional, may not work in all setups)
-# break Dmod_LoadFile
-# break Dmod_Run
-
-# Load symbols from the module ELF at the correct offset
-add-symbol-file "$MODULE_ELF" $BASE_ADDRESS
-
-# Print information about loaded symbols
-info files
-
-# Print welcome message with instructions
-printf "\n"
-printf "================================================================================\n"
-printf "  DMOD Module Debugging Session\n"
-printf "================================================================================\n"
-printf "\n"
-printf "Symbols loaded from: $MODULE_ELF\n"
-printf "Base address: $BASE_ADDRESS\n"
-printf "\n"
-printf "You can now set breakpoints in your module code.\n"
-printf "Common commands:\n"
-printf "  break main              - Break at module's main function\n"
-printf "  break dmod_init         - Break at module's init function\n"
-printf "  break <function_name>   - Break at any function in your module\n"
-printf "  info breakpoints        - List all breakpoints\n"
-printf "  continue                - Continue execution\n"
-printf "  backtrace               - Show call stack\n"
-printf "\n"
-printf "================================================================================\n"
-printf "\n"
-
-EOF
-
-if [ "$USE_GDBSERVER" = true ]; then
-    print_info "Starting gdbserver on port $GDBSERVER_PORT..."
-    
-    # Start gdbserver in background
-    gdbserver ":$GDBSERVER_PORT" "$DMOD_LOADER" "$MODULE_DMF" &
-    GDBSERVER_PID=$!
-    
-    # Set up cleanup trap for gdbserver
-    cleanup_gdbserver() {
-        if [ -n "$GDBSERVER_PID" ]; then
-            kill "$GDBSERVER_PID" 2>/dev/null || true
-            wait "$GDBSERVER_PID" 2>/dev/null || true
-        fi
-        rm -f "$GDB_COMMANDS"
-    }
-    trap cleanup_gdbserver EXIT INT TERM
-    
-    sleep 1  # Give gdbserver time to start
-    
-    print_info "Connecting GDB to gdbserver..."
-    
-    # Add remote connection command
-    cat >> "$GDB_COMMANDS" << EOF
-target remote :$GDBSERVER_PORT
-EOF
-    
-    # Run GDB
-    gdb -x "$GDB_COMMANDS"
-else
-    # Direct GDB mode - run the program under GDB
-    print_info "Starting GDB directly..."
-    
-    # Add file and run commands
-    cat >> "$GDB_COMMANDS" << EOF
-# Load the dmod_loader
-file "$DMOD_LOADER"
-
-# Set arguments for dmod_loader
-set args "$MODULE_DMF"
-
-# Start the program
-run
-EOF
-    
-    print_warning "Note: In direct mode, you need to set breakpoints before the module is loaded."
-    print_warning "Consider adding a breakpoint in dmod_loader's code after Dmod_LoadFile returns."
-    
-    # Run GDB
-    gdb -x "$GDB_COMMANDS"
-fi
+# Run dmod_loader with --debug flag
+"$DMOD_LOADER" "$MODULE_DMF" --debug
 
 print_success "Debug session ended."
