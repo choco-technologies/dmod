@@ -236,6 +236,43 @@ else
 fi
 
 echo ""
+echo "Test 15: Test 'install' subcommand syntax"
+# Test that dmf-get install <module> works the same as dmf-get <module>
+OUTPUT1=$($DMF_GET -m manifest.dmm -o output testmod 2>&1 || true)
+OUTPUT2=$($DMF_GET -m manifest.dmm -o output install testmod 2>&1 || true)
+if echo "$OUTPUT1" | grep -q "Found: testmod" && echo "$OUTPUT2" | grep -q "Found: testmod"; then
+    echo "✓ 'install' subcommand syntax works correctly"
+else
+    echo "✗ 'install' subcommand syntax test failed"
+    exit 1
+fi
+
+echo ""
+echo "Test 16: Test 'install' as module name (edge case)"
+# Create manifest with a module named 'install'
+cat > manifest_install.dmm << 'EOF'
+install https://example.com/install.dmf
+mymod https://example.com/mymod.dmf
+EOF
+OUTPUT=$($DMF_GET -m manifest_install.dmm -o output install 2>&1 || true)
+if echo "$OUTPUT" | grep -q "Found: install"; then
+    echo "✓ Module named 'install' can be downloaded directly"
+else
+    echo "✗ Module named 'install' test failed"
+    exit 1
+fi
+
+echo ""
+echo "Test 17: Test 'install' keyword with version syntax"
+OUTPUT=$($DMF_GET -m manifest.dmm -o output install testmod@1.0 2>&1 || true)
+if echo "$OUTPUT" | grep -q "Found: testmod@1.0"; then
+    echo "✓ 'install' keyword works with version syntax"
+else
+    echo "✗ 'install' keyword with version test failed"
+    exit 1
+fi
+
+echo ""
 echo "=== All dmf-get integration tests passed! ==="
 cd ..
 rm -rf "$TEST_DIR"

@@ -37,6 +37,9 @@ The tool will be available at `build/bin/tools/dmf-get`.
 # Download latest version of a module
 dmf-get mymodule
 
+# Same as above, using 'install' subcommand (compatible with other package managers)
+dmf-get install mymodule
+
 # Download specific version
 dmf-get mymodule@1.0
 
