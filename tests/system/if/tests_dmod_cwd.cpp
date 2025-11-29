@@ -13,11 +13,13 @@ class DmodCwdTest : public ::testing::Test
 protected:
     char originalCwd[DMOD_MAX_PATH_LENGTH];
     const char* testDirPath = "/tmp/dmod_test_chdir";
+    bool cwdSaved = false;
     
     void SetUp() override
     {
         // Save original working directory
-        Dmod_GetCwd(originalCwd, sizeof(originalCwd));
+        char* result = Dmod_GetCwd(originalCwd, sizeof(originalCwd));
+        cwdSaved = (result != nullptr);
         
         // Clean up any existing test directory and recreate it
         rmdir(testDirPath);
@@ -26,8 +28,11 @@ protected:
 
     void TearDown() override
     {
-        // Restore original working directory
-        Dmod_ChDir(originalCwd);
+        // Restore original working directory if it was saved successfully
+        if (cwdSaved)
+        {
+            Dmod_ChDir(originalCwd);
+        }
         
         // Clean up test directory
         rmdir(testDirPath);
