@@ -179,13 +179,18 @@ TEST_F(DmodEnvTest, GetNextEnvNameIteration)
     const char* first = Dmod_GetNextEnvName(NULL);
     ASSERT_NE(first, nullptr);
     
+    // Save the first name since Dmod_GetNextEnvName uses a static buffer
+    char firstName[256];
+    strncpy(firstName, first, sizeof(firstName) - 1);
+    firstName[sizeof(firstName) - 1] = '\0';
+    
     // Should have at least one more environment variable
-    const char* second = Dmod_GetNextEnvName(first);
+    const char* second = Dmod_GetNextEnvName(firstName);
     // Second could be null if there's only one env var, but typically there are more
     if (second != nullptr)
     {
         // Names should be different
-        ASSERT_STRNE(first, second);
+        ASSERT_STRNE(firstName, second);
     }
 }
 

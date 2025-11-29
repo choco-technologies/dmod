@@ -4,6 +4,9 @@ endif
 ifndef DMOD_USE_GETENV
     DMOD_USE_GETENV = ON
 endif
+ifndef DMOD_USE_ENVIRON
+    DMOD_USE_ENVIRON = ON
+endif
 
 ifndef DMOD_USE_STDIO
     DMOD_USE_STDIO = ON

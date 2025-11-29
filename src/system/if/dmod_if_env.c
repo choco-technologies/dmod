@@ -156,7 +156,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Unsetenv, ( const char* Name ))
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetNextEnvName, ( const char* Last ))
 {
-#if DMOD_USE_STDLIB && DMOD_USE_GETENV
+#if DMOD_USE_ENVIRON
     extern char **environ;
     
     /* Maximum length for environment variable names */
