@@ -113,6 +113,7 @@ DMOD_BUILTIN_API(Dmod, 1.0, int         , _Access,      ( const char* Path, int 
 DMOD_BUILTIN_API(Dmod, 1.0, char*       , _FileReadLine, ( char* Buffer, int Size, void* File ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int         , _ChDir,       ( const char* Path ) );
 DMOD_BUILTIN_API(Dmod, 1.0, char*       , _GetCwd,      ( char* Buffer, size_t Size ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int         , _Rename,      ( const char* OldPath, const char* NewPath ) );
 
 #ifndef DMOD_SEEK_SET
 #   define DMOD_SEEK_SET   0

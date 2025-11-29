@@ -364,3 +364,23 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, char*, _GetCwd, ( char* Buffer, size_
     return NULL;
     #endif
 }
+
+/**
+ * @brief Rename a file or directory
+ * 
+ * @param OldPath Current path of the file or directory
+ * @param NewPath New path for the file or directory
+ * 
+ * @return 0 on success, -1 on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Rename, ( const char* OldPath, const char* NewPath ))
+{
+    #if DMOD_USE_STDIO
+    return rename(OldPath, NewPath);
+    #else
+    DMOD_LOG_ERROR("Dmod_Rename interface not implemented\n");
+    (void)OldPath;
+    (void)NewPath;
+    return -1;
+    #endif
+}
