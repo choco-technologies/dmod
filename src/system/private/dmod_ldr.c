@@ -32,11 +32,6 @@ bool Dmod_Ldr_LoadHeader( Dmod_Context_t* Context )
     }
     Dmod_Event_ModuleLoadingInProgress( header->Name, 80 );
 
-    if( Dmod_SystemCrossplatformMode )
-    {
-        DMOD_LOG_WARN("Crossplatform mode enabled - skipping version and architecture checks\n");
-    }
-
     // Check version
     if( !Dmod_SystemCrossplatformMode && !DMOD_COMPATIBLE_VERSION(header->DmodVersion) )
     {
@@ -376,6 +371,11 @@ bool Dmod_Ldr_LoadInput( Dmod_Context_t* Context )
 
     if( input->SectionStart == 0 || input->SectionSize == 0 )
     {
+        Context->Inputs.InputSection = NULL;
+        Context->Inputs.SectionSize  = 0;
+        Context->Inputs.ApiType      = Dmod_ApiType_Input;
+        Context->Inputs.Crossplatform= false;
+        
         DMOD_LOG_INFO("No inputs to load\n");
         if( Context->Header->Init.Ptr == NULL && Context->Header->Main.Ptr == NULL && Context->Header->Deinit.Ptr == NULL )
         {

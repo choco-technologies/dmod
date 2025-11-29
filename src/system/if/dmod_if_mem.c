@@ -226,5 +226,4 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _FreeEx, ( void* ptr, const boo
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _FreeModule, ( const char* ModuleName ))
 {
     (void)ModuleName;
-    DMOD_LOG_WARN("Dmod_FreeModule interface not implemented\n");
 }

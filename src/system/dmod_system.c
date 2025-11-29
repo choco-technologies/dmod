@@ -579,10 +579,6 @@ void Dmod_SetCrossplatformMode ( bool Enable )
 {
     DMOD_LOG_INFO("Setting crossplatform mode to: %s\n", Enable ? "ENABLED" : "DISABLED");
     Dmod_SystemCrossplatformMode = Enable;
-    if(Enable)
-    {
-        DMOD_LOG_WARN("Crossplatform mode ENABLED - module compatibility checks are DISABLED\n");
-    }
 }
 
 /**
