@@ -358,10 +358,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, char*, _GetCwd, ( char* Buffer, size_
     #if DMOD_USE_DIRENT
     return getcwd(Buffer, Size);
     #else
-    DMOD_LOG_ERROR("Dmod_GetCwd interface not implemented\n");
-    (void)Buffer;
-    (void)Size;
-    return NULL;
+    return Dmod_GetEnv("PWD");
     #endif
 }
 
