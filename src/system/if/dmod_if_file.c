@@ -298,3 +298,31 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Access, ( const char* Path, int
     return -1;
     #endif
 }
+
+/**
+ * @brief Read a single line from a file
+ * 
+ * Reads characters from the file into the buffer until either (Size - 1) 
+ * characters have been read, a newline character is read and transferred
+ * to Buffer, or end-of-file is reached. The string is then terminated
+ * with a null character.
+ * 
+ * @param Buffer Pointer to buffer where the line will be stored
+ * @param Size Maximum number of characters to read (including null terminator)
+ * @param File Pointer to file handle
+ * 
+ * @return Pointer to the buffer on success, NULL on error or end-of-file
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, char*, _FileReadLine, ( char* Buffer, int Size, void* File ))
+{
+    #if DMOD_USE_STDIO
+    if( Buffer == NULL || Size <= 0 || File == NULL )
+    {
+        return NULL;
+    }
+    return fgets( Buffer, Size, (FILE*)File );
+    #else
+    DMOD_LOG_ERROR("Dmod_FileReadLine interface not implemented\n");
+    return NULL;
+    #endif
+}
