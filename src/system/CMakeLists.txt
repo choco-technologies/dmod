@@ -26,6 +26,7 @@ set(SYSTEM_SOURCES
     if/dmod_if_env.c
     if/dmod_if_str.c
     if/dmod_if_input.c
+    if/dmod_if_proc.c
     Dmod.cpp
 )
 

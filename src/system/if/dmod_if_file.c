@@ -326,3 +326,41 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, char*, _FileReadLine, ( char* Buffer,
     return NULL;
     #endif
 }
+
+/**
+ * @brief Change current working directory
+ * 
+ * @param Path Path to the new working directory
+ * 
+ * @return 0 on success, -1 on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _ChDir, ( const char* Path ))
+{
+    #if DMOD_USE_DIRENT
+    return chdir(Path);
+    #else
+    DMOD_LOG_ERROR("Dmod_ChDir interface not implemented\n");
+    (void)Path;
+    return -1;
+    #endif
+}
+
+/**
+ * @brief Get current working directory
+ * 
+ * @param Buffer Buffer to store the current working directory path
+ * @param Size Size of the buffer
+ * 
+ * @return Pointer to Buffer on success, NULL on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, char*, _GetCwd, ( char* Buffer, size_t Size ))
+{
+    #if DMOD_USE_DIRENT
+    return getcwd(Buffer, Size);
+    #else
+    DMOD_LOG_ERROR("Dmod_GetCwd interface not implemented\n");
+    (void)Buffer;
+    (void)Size;
+    return NULL;
+    #endif
+}
