@@ -179,7 +179,7 @@ else
 	@echo "todmp is not found. Skipping DMP package creation..."
 endif
 endif
-	@cmake -DOBJECT_FILES="$(subst $(space),@@,$(DMOD_OBJECTS))" -DMODULE_NAME=$(DMOD_MODULE_NAME) -DANALYSIS_TYPE=summary -P $(DMOD_SCRIPTS_DIR)/memory_analysis.cmake
+	@cmake -DOBJECT_FILES="$(subst $(space),@@,$(subst ",,$(DMOD_OBJECTS)))" -DMODULE_NAME=$(DMOD_MODULE_NAME) -DANALYSIS_TYPE=summary -P $(DMOD_SCRIPTS_DIR)/memory_analysis.cmake
 
 $(call generate_cobjects_rule,$(DMOD_CSOURCES))
 $(call generate_cxxobjects_rule,$(DMOD_CXXSOURCES))
