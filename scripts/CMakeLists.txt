@@ -256,7 +256,11 @@ function(dmod_create_module moduleName version moduleType)
     
     target_link_libraries(${moduleName} dmod ${moduleName}_if)
     
-    set(OPTIMIZATION "-O2")
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(OPTIMIZATION "-Og")
+    else()
+        set(OPTIMIZATION "-O2")
+    endif()
     if(DMOD_USE_EXCEPTIONS)
         set(EXCEPTION_FLAGS "")
     else()
