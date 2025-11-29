@@ -2,12 +2,31 @@
 
 This guide explains how to debug dynamic modules (DMF files) loaded by the `dmod_loader` using GDB.
 
+## ⚠️ Important: ptrace Permission
+
+On most Linux systems, GDB cannot attach to another process due to security restrictions. **Before debugging**, you must either:
+
+1. **Run GDB as root:**
+   ```bash
+   sudo gdb -p <PID>
+   ```
+
+2. **Or disable ptrace protection (temporarily):**
+   ```bash
+   echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+   ```
+
+If you see this error, use one of the above solutions:
+```
+Could not attach to process. [...] ptrace: Operation not permitted.
+```
+
 ## Overview
 
 When a module is loaded by `dmod_loader`, it is placed at a dynamically allocated memory address that **changes on every run**. To debug the module with GDB, you need to:
 
 1. Start dmod_loader with `--debug` flag (pauses after loading)
-2. Attach GDB to the running process
+2. Attach GDB to the running process (use `sudo gdb` if needed)
 3. Load symbols at the **runtime text section address** shown
 4. Set breakpoints and continue
 
@@ -22,6 +41,7 @@ DMOD provides tools to simplify this process:
 - GDB installed on your system
 - Module built with debug symbols (`-g` flag)
 - Access to both the DMF file and the original ELF file
+- **Root access or ptrace permissions** (see above)
 
 ## Method 1: Using the `--debug` Flag (Recommended)
 
@@ -47,7 +67,7 @@ Module loaded successfully. Debug information:
 To debug this module with GDB:
 
   1. In another terminal, attach GDB to this process:
-     gdb -p 12345
+     sudo gdb -p 12345
 
   2. In GDB, load symbols from the module's ELF file:
      add-symbol-file <path/to/module_elf> 0x443140
@@ -60,8 +80,10 @@ Press ENTER to continue execution...
 ### Step 2: Attach GDB (in another terminal)
 
 ```bash
-gdb -p 12345  # Use the PID shown above
+sudo gdb -p 12345  # Use the PID shown above
 ```
+
+**Note:** You need `sudo` or ptrace permissions. See the ptrace section at the top of this document.
 
 ### Step 3: Load Symbols at the Text Section Address
 

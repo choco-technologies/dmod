@@ -30,7 +30,10 @@ void WaitForDebugger( Dmod_Context_t* context )
     printf("To debug this module with GDB:\n");
     printf("\n");
     printf("  1. In another terminal, attach GDB to this process:\n");
-    printf("     gdb -p %d\n", getpid());
+    printf("     sudo gdb -p %d\n", getpid());
+    printf("\n");
+    printf("     NOTE: If you get 'ptrace: Operation not permitted', run:\n");
+    printf("     echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope\n");
     printf("\n");
     printf("  2. In GDB, load symbols from the module's ELF file:\n");
     printf("     add-symbol-file <path/to/module_elf> %p\n", textAddress);
@@ -39,8 +42,7 @@ void WaitForDebugger( Dmod_Context_t* context )
     printf("     break main\n");
     printf("     continue\n");
     printf("\n");
-    printf("Or use the dmod-debug.sh script:\n");
-    printf("  ./scripts/dmod-debug.sh <dmod_loader> <module.dmf> <module_elf> %p\n", textAddress);
+    printf("  4. Press ENTER here to resume execution\n");
     printf("\n");
     printf("================================================================================\n");
     printf("Press ENTER to continue execution...\n");
