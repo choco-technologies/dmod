@@ -114,6 +114,8 @@ DMOD_BUILTIN_API(Dmod, 1.0, char*       , _FileReadLine, ( char* Buffer, int Siz
 DMOD_BUILTIN_API(Dmod, 1.0, int         , _ChDir,       ( const char* Path ) );
 DMOD_BUILTIN_API(Dmod, 1.0, char*       , _GetCwd,      ( char* Buffer, size_t Size ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int         , _Rename,      ( const char* OldPath, const char* NewPath ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int         , _RemoveDir,   ( const char* Path ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int         , _FileRemove,  ( const char* Path ) );
 
 #ifndef DMOD_SEEK_SET
 #   define DMOD_SEEK_SET   0
@@ -149,6 +151,8 @@ DMOD_BUILTIN_API(Dmod, 1.0, int         , _Rename,      ( const char* OldPath, c
 
 DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetEnv, ( const char* Name ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _SetEnv, ( const char* Name, const char* Value, int Overwrite ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int, _Unsetenv, ( const char* Name ) );
+DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetNextEnvName, ( const char* Last ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _EnvCtx_Push, ( void ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _EnvCtx_Pop, ( void ) );
 

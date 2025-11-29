@@ -120,3 +120,106 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _EnvCtx_Pop, ( void ))
     /* No POSIX equivalent - default empty implementation */
     return 0;
 }
+
+/**
+ * @brief Unset an environment variable
+ * 
+ * Removes the specified environment variable from the environment.
+ * 
+ * @param Name Name of the environment variable to unset
+ * 
+ * @return 0 on success, -1 on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Unsetenv, ( const char* Name ))
+{
+#if DMOD_USE_STDLIB && DMOD_USE_GETENV
+    return unsetenv(Name);
+#else
+    (void)Name;
+    return -1;
+#endif
+}
+
+/**
+ * @brief Get the next environment variable name
+ * 
+ * Iterates over environment variable names. Call with Last=NULL to get the first
+ * environment variable name. Call with the previously returned name to get the next one.
+ * Returns NULL when there are no more environment variables.
+ * 
+ * @param Last The last returned environment variable name, or NULL to start iteration
+ * 
+ * @return The next environment variable name, or NULL if there are no more
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetNextEnvName, ( const char* Last ))
+{
+#if DMOD_USE_STDLIB && DMOD_USE_GETENV
+    extern char **environ;
+    
+    if (environ == NULL)
+    {
+        return NULL;
+    }
+    
+    if (Last == NULL)
+    {
+        /* Start from the beginning */
+        if (environ[0] == NULL)
+        {
+            return NULL;
+        }
+        /* Return the name part (before '=') */
+        const char* eq = strchr(environ[0], '=');
+        if (eq != NULL)
+        {
+            /* Return pointer to static buffer with just the name */
+            static char nameBuf[256];
+            size_t nameLen = (size_t)(eq - environ[0]);
+            if (nameLen >= sizeof(nameBuf))
+            {
+                nameLen = sizeof(nameBuf) - 1;
+            }
+            memcpy(nameBuf, environ[0], nameLen);
+            nameBuf[nameLen] = '\0';
+            return nameBuf;
+        }
+        return environ[0];
+    }
+    else
+    {
+        /* Find the current entry and return the next one */
+        size_t lastLen = strlen(Last);
+        for (int i = 0; environ[i] != NULL; i++)
+        {
+            /* Check if this entry matches Last */
+            if (strncmp(environ[i], Last, lastLen) == 0 && environ[i][lastLen] == '=')
+            {
+                /* Found current, return next */
+                if (environ[i + 1] == NULL)
+                {
+                    return NULL;
+                }
+                const char* eq = strchr(environ[i + 1], '=');
+                if (eq != NULL)
+                {
+                    static char nameBuf[256];
+                    size_t nameLen = (size_t)(eq - environ[i + 1]);
+                    if (nameLen >= sizeof(nameBuf))
+                    {
+                        nameLen = sizeof(nameBuf) - 1;
+                    }
+                    memcpy(nameBuf, environ[i + 1], nameLen);
+                    nameBuf[nameLen] = '\0';
+                    return nameBuf;
+                }
+                return environ[i + 1];
+            }
+        }
+        /* Not found, return NULL */
+        return NULL;
+    }
+#else
+    (void)Last;
+    return NULL;
+#endif
+}

@@ -8,5 +8,6 @@ set(TEST_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_file_readline.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_cwd.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_rename.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_file_remove.cpp
         PARENT_SCOPE
         )
