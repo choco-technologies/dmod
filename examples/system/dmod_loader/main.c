@@ -2,6 +2,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <stdint.h>
 #include "dmod.h"
 
 // -----------------------------------------
@@ -11,6 +12,10 @@
 // -----------------------------------------
 void WaitForDebugger( Dmod_Context_t* context )
 {
+    // Calculate the text section address for GDB symbol loading
+    // GDB needs the .text section address, not the base data address
+    void* textAddress = (void*)((uintptr_t)context->Data + context->Footer->Text.SectionStart);
+    
     printf("\n");
     printf("================================================================================\n");
     printf("                         DMOD DEBUG MODE                                        \n");
@@ -19,6 +24,7 @@ void WaitForDebugger( Dmod_Context_t* context )
     printf("Module loaded successfully. Debug information:\n");
     printf("  Module name:    %s\n", Dmod_GetName( context ));
     printf("  Base address:   %p\n", context->Data);
+    printf("  Text section:   %p (offset: 0x%x)\n", textAddress, context->Footer->Text.SectionStart);
     printf("  Module size:    %zu bytes\n", context->Size);
     printf("\n");
     printf("To debug this module with GDB:\n");
@@ -27,14 +33,14 @@ void WaitForDebugger( Dmod_Context_t* context )
     printf("     gdb -p %d\n", getpid());
     printf("\n");
     printf("  2. In GDB, load symbols from the module's ELF file:\n");
-    printf("     add-symbol-file <path/to/module_elf> %p\n", context->Data);
+    printf("     add-symbol-file <path/to/module_elf> %p\n", textAddress);
     printf("\n");
     printf("  3. Set breakpoints and continue:\n");
     printf("     break main\n");
     printf("     continue\n");
     printf("\n");
     printf("Or use the dmod-debug.sh script:\n");
-    printf("  ./scripts/dmod-debug.sh <dmod_loader> <module.dmf> <module_elf> %p\n", context->Data);
+    printf("  ./scripts/dmod-debug.sh <dmod_loader> <module.dmf> <module_elf> %p\n", textAddress);
     printf("\n");
     printf("================================================================================\n");
     printf("Press ENTER to continue execution...\n");

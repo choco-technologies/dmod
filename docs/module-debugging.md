@@ -6,12 +6,14 @@ This guide explains how to debug dynamic modules (DMF files) loaded by the `dmod
 
 When a module is loaded by `dmod_loader`, it is placed at a dynamically allocated memory address. To debug the module with GDB, you need to:
 
-1. Know the base address where the module is loaded
+1. Know the **text section address** where the module's code is loaded
 2. Load the module's debug symbols (from the ELF file) at the correct offset
 3. Attach GDB to the running process
 
+**Important:** GDB requires the `.text` section address (where the executable code resides), not the base data address. The `--debug` flag automatically calculates and displays the correct text section address.
+
 DMOD provides tools to simplify this process:
-- `--debug` flag in `dmod_loader` - prints the base address and waits for debugger
+- `--debug` flag in `dmod_loader` - prints the text section address and waits for debugger
 - `dmod-debug.sh` script - automates the GDB setup
 
 ## Prerequisites
@@ -33,6 +35,7 @@ This will:
 2. Print debug information including:
    - Module name
    - Base address
+   - **Text section address** (use this for `add-symbol-file`)
    - Module size
 3. Wait for you to press ENTER before continuing
 
@@ -46,6 +49,7 @@ This will:
 Module loaded successfully. Debug information:
   Module name:    example_app
   Base address:   0x55555576a2a0
+  Text section:   0x55555576a380 (offset: 0xe0)
   Module size:    1336 bytes
 
 To debug this module with GDB:
@@ -54,7 +58,7 @@ To debug this module with GDB:
      gdb -p 12345
 
   2. In GDB, load symbols from the module's ELF file:
-     add-symbol-file <path/to/module_elf> 0x55555576a2a0
+     add-symbol-file <path/to/module_elf> 0x55555576a380
 
   3. Set breakpoints and continue:
      break main
@@ -72,9 +76,9 @@ Press ENTER to continue execution...
    ```bash
    gdb -p <PID>
    ```
-3. Load symbols from the module's ELF file:
+3. Load symbols from the module's ELF file using the **text section address** shown:
    ```bash
-   (gdb) add-symbol-file /path/to/build/examples/module/application/example_app 0x55555576a2a0
+   (gdb) add-symbol-file /path/to/build/examples/module/application/example_app 0x55555576a380
    ```
 4. Set breakpoints:
    ```bash
