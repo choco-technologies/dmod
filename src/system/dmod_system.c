@@ -1479,19 +1479,36 @@ bool Dmod_DisableModule(const char* ModuleName, bool Force)
  * 
  * @return Return value of the main function
  */
-int Dmod_RunModule(const char* ModuleName, int argc, char *argv[])
+int Dmod_RunModule(const char* Module, int argc, char *argv[])
 {
-    if( ModuleName == NULL )
+    if( Module == NULL )
     {
-        DMOD_LOG_ERROR("Cannot run module - invalid module name\n");
+        DMOD_LOG_ERROR("Cannot run module - missing module name to run\n");
         return -EINVAL;
     }
 
-    Dmod_Context_t* context = Dmod_Context_Get( ModuleName );
+    Dmod_Context_t* context = NULL;
+    if(Dmod_FileAvailable(Module))
+    {
+        context = Dmod_LoadFile( Module );
+    }
+    else 
+    {
+        char filePath[DMOD_MAX_PATH_LENGTH];
+        if(Dmod_FindModuleFile( Module, DMOD_ARCH, filePath, sizeof(filePath) ))
+        {
+            context = Dmod_LoadFile( filePath );
+        }
+        else 
+        {
+            DMOD_LOG_ERROR("Cannot run module - module file not found: %s\n", Module);
+            return -ENOENT;
+        }
+    }
     if( context == NULL )
     {
-        DMOD_LOG_ERROR("Cannot run module - module not found: %s\n", ModuleName);
-        return -EINVAL;
+        DMOD_LOG_ERROR("Cannot run module - cannot load module: %s\n", Module);
+        return -ENOENT;
     }
 
     return Dmod_Run( context, argc, argv );
