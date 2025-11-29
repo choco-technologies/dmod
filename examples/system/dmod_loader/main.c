@@ -144,19 +144,34 @@ int main( int argc, char *argv[] )
     }
 
     // Prepare arguments to pass to the module
-    // Check if --args flag was found and there are arguments after it
+    // We need to construct argv array with pathOrName as argv[0]
+    // followed by any arguments after --args
+    int extraArgc = 0;
     if( argsIndex != -1 && argc > argsIndex + 1 )
     {
-        // Arguments start after --args flag
-        appArgc = argc - argsIndex - 1;
-        appArgv = &argv[argsIndex + 1];
+        extraArgc = argc - argsIndex - 1;
     }
-    else
+    
+    // Allocate appArgv: 1 for pathOrName + extraArgc arguments + 1 for NULL terminator
+    appArgc = 1 + extraArgc;
+    appArgv = (char**)Dmod_Malloc( (appArgc + 1) * sizeof(char*) );
+    if( appArgv == NULL )
     {
-        // No --args flag or no arguments after it, pass empty arguments
-        appArgc = 0;
-        appArgv = NULL;
+        printf("Error: Failed to allocate memory for arguments\n");
+        return -1;
     }
+    
+    // Set argv[0] to the module path/name
+    appArgv[0] = (char*)pathOrName;
+    
+    // Copy remaining arguments after --args
+    for( int i = 0; i < extraArgc; i++ )
+    {
+        appArgv[1 + i] = argv[argsIndex + 1 + i];
+    }
+    
+    // NULL terminate the argv array
+    appArgv[appArgc] = NULL;
 
     // Load the module or package
     Dmod_Context_t* context = NULL;
@@ -172,6 +187,7 @@ int main( int argc, char *argv[] )
         if( !Dmod_LoadModuleByName( pathOrName ) )
         {
             printf("Cannot load module by name: %s\n", pathOrName);
+            Dmod_Free( appArgv );
             return -1;
         }
         
@@ -197,6 +213,7 @@ int main( int argc, char *argv[] )
             if( !Dmod_AddPackageFile( pathOrName, &packageIndex ) )
             {
                 printf("Cannot add DMP package: %s\n", pathOrName);
+                Dmod_Free( appArgv );
                 return -1;
             }
             
@@ -206,6 +223,7 @@ int main( int argc, char *argv[] )
             if( !Dmod_GetPackageInfo( packageIndex, packageName, sizeof(packageName), &packageSize ) )
             {
                 printf("Cannot get package info\n");
+                Dmod_Free( appArgv );
                 return -1;
             }
             
@@ -238,6 +256,7 @@ int main( int argc, char *argv[] )
             {
                 printf("Cannot enable library module: %s\n", loadedModuleName);
                 Dmod_UnloadModule( loadedModuleName, false );
+                Dmod_Free( appArgv );
                 return -1;
             }
             printf("Library module enabled successfully\n");
@@ -247,15 +266,18 @@ int main( int argc, char *argv[] )
             {
                 printf("Cannot disable library module: %s\n", loadedModuleName);
                 Dmod_UnloadModule( loadedModuleName, false );
+                Dmod_Free( appArgv );
                 return -1;
             }
             printf("Library module disabled successfully\n");
             Dmod_UnloadModule( loadedModuleName, false );
+            Dmod_Free( appArgv );
             return 0;
         }
         
         // Unload the module after running
         Dmod_UnloadModule( loadedModuleName, false );
+        Dmod_Free( appArgv );
         return result;
     }
     
@@ -263,6 +285,7 @@ int main( int argc, char *argv[] )
     if( context == NULL )
     {
         printf("Cannot load module: %s\n", pathOrName);
+        Dmod_Free( appArgv );
         return -1;
     }
     const Dmod_RequiredModule_t* reqModule = Dmod_GetNextRequiredModule( context, NULL );
@@ -283,6 +306,7 @@ int main( int argc, char *argv[] )
         {
             printf("Cannot enable library module: %s\n", pathOrName);
             Dmod_Unload( context, false );
+            Dmod_Free( appArgv );
             return -1;
         }
         printf("Library module enabled successfully\n");
@@ -292,10 +316,12 @@ int main( int argc, char *argv[] )
         {
             printf("Cannot disable library module: %s\n", pathOrName);
             Dmod_Unload( context, false );
+            Dmod_Free( appArgv );
             return -1;
         }
         printf("Library module disabled successfully\n");
         Dmod_Unload( context, false );
+        Dmod_Free( appArgv );
         return 0;
     }
     else if( moduleType == Dmod_ModuleType_Application )
@@ -303,12 +329,14 @@ int main( int argc, char *argv[] )
         // For application modules: run with parsed arguments
         int result = Dmod_Run( context, appArgc, appArgv );
         Dmod_Unload( context, false );
+        Dmod_Free( appArgv );
         return result;
     }
     else
     {
         printf("Unknown module type: %d\n", moduleType);
         Dmod_Unload( context, false );
+        Dmod_Free( appArgv );
         return -1;
     }
 }
