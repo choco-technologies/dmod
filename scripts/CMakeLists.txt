@@ -313,8 +313,8 @@ function(dmod_create_module moduleName version moduleType)
     # Collect object files for memory analysis
     set(MODULE_OBJECT_FILES "")
     foreach(SOURCE_FILE ${SOURCES})
-        get_filename_component(SOURCE_NAME "${SOURCE_FILE}" NAME_WE)
-        set(OBJ_FILE "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${moduleName}.dir/${SOURCE_NAME}.c.o")
+        # Preserve the source file's relative path structure for the object file
+        set(OBJ_FILE "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${moduleName}.dir/${SOURCE_FILE}.o")
         list(APPEND MODULE_OBJECT_FILES "${OBJ_FILE}")
     endforeach()
     # Add the generated header object file
