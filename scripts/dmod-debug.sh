@@ -191,8 +191,8 @@ if [ "$USE_GDBSERVER" = true ] && ! command -v gdbserver &> /dev/null; then
     exit 1
 fi
 
-# Create GDB commands file
-GDB_COMMANDS=$(mktemp /tmp/dmod_gdb_commands.XXXXXX)
+# Create GDB commands file in a secure location
+GDB_COMMANDS=$(mktemp)
 trap "rm -f $GDB_COMMANDS" EXIT
 
 print_info "Preparing GDB session..."
@@ -212,26 +212,26 @@ add-symbol-file "$MODULE_ELF" $BASE_ADDRESS
 # Print information about loaded symbols
 info files
 
-# Set some common breakpoints (user can add more)
-echo \n
-echo ================================================================================\n
-echo   DMOD Module Debugging Session\n
-echo ================================================================================\n
-echo \n
-echo Symbols loaded from: $MODULE_ELF\n
-echo Base address: $BASE_ADDRESS\n
-echo \n
-echo You can now set breakpoints in your module code.\n
-echo Common commands:\n
-echo   break main              - Break at module's main function\n
-echo   break dmod_init         - Break at module's init function\n
-echo   break <function_name>   - Break at any function in your module\n
-echo   info breakpoints        - List all breakpoints\n
-echo   continue                - Continue execution\n
-echo   backtrace               - Show call stack\n
-echo \n
-echo ================================================================================\n
-echo \n
+# Print welcome message with instructions
+printf "\n"
+printf "================================================================================\n"
+printf "  DMOD Module Debugging Session\n"
+printf "================================================================================\n"
+printf "\n"
+printf "Symbols loaded from: $MODULE_ELF\n"
+printf "Base address: $BASE_ADDRESS\n"
+printf "\n"
+printf "You can now set breakpoints in your module code.\n"
+printf "Common commands:\n"
+printf "  break main              - Break at module's main function\n"
+printf "  break dmod_init         - Break at module's init function\n"
+printf "  break <function_name>   - Break at any function in your module\n"
+printf "  info breakpoints        - List all breakpoints\n"
+printf "  continue                - Continue execution\n"
+printf "  backtrace               - Show call stack\n"
+printf "\n"
+printf "================================================================================\n"
+printf "\n"
 
 EOF
 
@@ -241,6 +241,16 @@ if [ "$USE_GDBSERVER" = true ]; then
     # Start gdbserver in background
     gdbserver ":$GDBSERVER_PORT" "$DMOD_LOADER" "$MODULE_DMF" &
     GDBSERVER_PID=$!
+    
+    # Set up cleanup trap for gdbserver
+    cleanup_gdbserver() {
+        if [ -n "$GDBSERVER_PID" ]; then
+            kill "$GDBSERVER_PID" 2>/dev/null || true
+            wait "$GDBSERVER_PID" 2>/dev/null || true
+        fi
+        rm -f "$GDB_COMMANDS"
+    }
+    trap cleanup_gdbserver EXIT INT TERM
     
     sleep 1  # Give gdbserver time to start
     
@@ -253,9 +263,6 @@ EOF
     
     # Run GDB
     gdb -x "$GDB_COMMANDS"
-    
-    # Kill gdbserver if still running
-    kill $GDBSERVER_PID 2>/dev/null || true
 else
     # Direct GDB mode - run the program under GDB
     print_info "Starting GDB directly..."
