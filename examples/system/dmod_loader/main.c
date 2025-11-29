@@ -1,7 +1,48 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
 #include "dmod.h"
+
+// -----------------------------------------
+//
+//      Print debug info and wait for debugger
+//
+// -----------------------------------------
+void WaitForDebugger( Dmod_Context_t* context )
+{
+    printf("\n");
+    printf("================================================================================\n");
+    printf("                         DMOD DEBUG MODE                                        \n");
+    printf("================================================================================\n");
+    printf("\n");
+    printf("Module loaded successfully. Debug information:\n");
+    printf("  Module name:    %s\n", Dmod_GetName( context ));
+    printf("  Base address:   %p\n", context->Data);
+    printf("  Module size:    %zu bytes\n", context->Size);
+    printf("\n");
+    printf("To debug this module with GDB:\n");
+    printf("\n");
+    printf("  1. In another terminal, attach GDB to this process:\n");
+    printf("     gdb -p %d\n", getpid());
+    printf("\n");
+    printf("  2. In GDB, load symbols from the module's ELF file:\n");
+    printf("     add-symbol-file <path/to/module_elf> %p\n", context->Data);
+    printf("\n");
+    printf("  3. Set breakpoints and continue:\n");
+    printf("     break main\n");
+    printf("     continue\n");
+    printf("\n");
+    printf("Or use the dmod-debug.sh script:\n");
+    printf("  ./scripts/dmod-debug.sh <dmod_loader> <module.dmf> <module_elf> %p\n", context->Data);
+    printf("\n");
+    printf("================================================================================\n");
+    printf("Press ENTER to continue execution...\n");
+    printf("================================================================================\n");
+    
+    // Wait for user input
+    getchar();
+}
 
 // -----------------------------------------
 //
@@ -44,7 +85,7 @@ bool IsFilePath( const char* str )
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>]\n", AppName);
+    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug]\n", AppName);
 }
 
 // -----------------------------------------
@@ -57,12 +98,13 @@ void PrintHelp( const char* AppName )
     printf("-- Dynamic Module Loader ver. " DMOD_VERSION_STRING " --\n\n");
     printf("The DMOD is a dynamic module loader that allows to load and unload modules\n");
     printf("This is an example application that uses the DMOD system\n\n");
-    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>]\n", AppName);
+    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug]\n", AppName);
     printf("Options:\n");
     printf("  -h, --help                Print this help message\n");
     printf("  -v, --version             Print version information\n");
     printf("  --module <module_name>    Specify which module to load from a DMP package\n");
-    printf("  --args <arguments>        Arguments to pass to the application module\n\n");
+    printf("  --args <arguments>        Arguments to pass to the application module\n");
+    printf("  --debug                   Print module base address and wait for debugger\n\n");
     printf("Module Types:\n");
     printf("  Application    Runs the module's main function\n");
     printf("  Library        Enables the module, then disables it\n\n");
@@ -75,6 +117,7 @@ void PrintHelp( const char* AppName )
     printf("  %s my-package.dmp --module my_module          # Load specific module from package\n", AppName);
     printf("  %s my-app.dmf --args \"arg1 arg2\"              # Load file with arguments\n", AppName);
     printf("  %s my_module --args \"--verbose\"               # Load module by name with arguments\n", AppName);
+    printf("  %s my-app.dmf --debug                         # Debug mode: shows base address\n", AppName);
 }
 
 // -----------------------------------------
@@ -114,8 +157,9 @@ int main( int argc, char *argv[] )
     const char* moduleName = NULL;
     int appArgc = 0;
     char** appArgv = NULL;
+    bool debugMode = false;
 
-    // Look for --module and --args flags
+    // Look for --module, --args and --debug flags
     int moduleIndex = -1;
     int argsIndex = -1;
     for( int i = 2; i < argc; i++ )
@@ -128,6 +172,10 @@ int main( int argc, char *argv[] )
         {
             argsIndex = i;
             // Don't break here to allow detecting all flags
+        }
+        else if( strcmp( argv[i], "--debug" ) == 0 )
+        {
+            debugMode = true;
         }
     }
 
@@ -288,6 +336,13 @@ int main( int argc, char *argv[] )
         Dmod_Free( appArgv );
         return -1;
     }
+
+    // If debug mode is enabled, print debug info and wait for debugger
+    if( debugMode )
+    {
+        WaitForDebugger( context );
+    }
+
     const Dmod_RequiredModule_t* reqModule = Dmod_GetNextRequiredModule( context, NULL );
     while( reqModule != NULL)
     {
