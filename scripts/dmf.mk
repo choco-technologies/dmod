@@ -39,6 +39,9 @@ DMOD_MODULE_DEFS_HEADER_FILE_PATH=$(DMOD_BUILD_DIR)/$(DMOD_MODULE_DEFS_HEADER_FI
 DMOD_MODULE_HEADER_SOURCE_FILE_NAME=$(DMOD_MODULE_NAME_SNAKE_CASE)_header.c
 DMOD_MODULE_HEADER_SOURCE_FILE_PATH=$(DMOD_BUILD_DIR)/$(DMOD_MODULE_HEADER_SOURCE_FILE_NAME)
 
+# Space variable for string substitution in memory analysis
+space := $(subst ,, )
+
 # -----------------------------------------------------------------------------
 # 	Initialization of paths
 # -----------------------------------------------------------------------------
@@ -176,6 +179,7 @@ else
 	@echo "todmp is not found. Skipping DMP package creation..."
 endif
 endif
+	@cmake -DOBJECT_FILES="$(subst $(space),@@,$(subst ",,$(DMOD_OBJECTS)))" -DMODULE_NAME=$(DMOD_MODULE_NAME) -DANALYSIS_TYPE=summary -P $(DMOD_SCRIPTS_DIR)/memory_analysis.cmake
 
 $(call generate_cobjects_rule,$(DMOD_CSOURCES))
 $(call generate_cxxobjects_rule,$(DMOD_CXXSOURCES))
