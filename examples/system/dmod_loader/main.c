@@ -325,24 +325,22 @@ int main( int argc, char *argv[] )
 
     // Load the module or package
     Dmod_Context_t* context = NULL;
-    const char* loadedModuleName = NULL;
     
     // Determine if pathOrName is a file path or module name
     bool isPath = IsFilePath( pathOrName );
-    
+    char filePath[DMOD_MAX_PATH_LENGTH];
+
     if( !isPath )
     {
         // It's a module name, use Dmod_LoadModuleByName
         printf("Loading module by name: %s\n", pathOrName);
-        if( !Dmod_LoadModuleByName( pathOrName ) )
+        if( !Dmod_FindModuleFile( pathOrName, DMOD_ARCH, filePath, sizeof(filePath) ) )
         {
-            printf("Cannot load module by name: %s\n", pathOrName);
+            printf("Cannot find module file for module name: %s\n", pathOrName);
             Dmod_Free( appArgv );
             return -1;
         }
-        
-        // Store the module name for later operations
-        loadedModuleName = pathOrName;
+        context = Dmod_LoadFile( filePath );
     }
     // Check if the file is a DMP package
     else if( Dmod_IsDMPFile( pathOrName ) )
@@ -389,46 +387,6 @@ int main( int argc, char *argv[] )
             printf("Warning: --module parameter is only valid for DMP packages, ignoring\n");
         }
         context = Dmod_LoadFile( pathOrName );
-    }
-    
-    // Handle module loaded by name
-    if( loadedModuleName != NULL )
-    {
-        // Try to run as application module first
-        int result = Dmod_RunModule( loadedModuleName, appArgc, appArgv );
-        
-        // If it's not an application module, try as library
-        if( result == -EINVAL )
-        {
-            // For library modules: enable, then disable
-            printf("Module is a library, enabling...\n");
-            if( !Dmod_EnableModule( loadedModuleName, false, NULL ) )
-            {
-                printf("Cannot enable library module: %s\n", loadedModuleName);
-                Dmod_UnloadModule( loadedModuleName, false );
-                Dmod_Free( appArgv );
-                return -1;
-            }
-            printf("Library module enabled successfully\n");
-            
-            printf("Disabling library module...\n");
-            if( !Dmod_DisableModule( loadedModuleName, false ) )
-            {
-                printf("Cannot disable library module: %s\n", loadedModuleName);
-                Dmod_UnloadModule( loadedModuleName, false );
-                Dmod_Free( appArgv );
-                return -1;
-            }
-            printf("Library module disabled successfully\n");
-            Dmod_UnloadModule( loadedModuleName, false );
-            Dmod_Free( appArgv );
-            return 0;
-        }
-        
-        // Unload the module after running
-        Dmod_UnloadModule( loadedModuleName, false );
-        Dmod_Free( appArgv );
-        return result;
     }
     
     // Handle module loaded from file/package
