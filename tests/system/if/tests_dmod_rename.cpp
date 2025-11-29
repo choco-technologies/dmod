@@ -32,11 +32,9 @@ protected:
     void CreateTestFile(const char* path, const char* content)
     {
         void* file = Dmod_FileOpen(path, "wb");
-        if (file != NULL)
-        {
-            Dmod_FileWrite(content, 1, strlen(content), file);
-            Dmod_FileClose(file);
-        }
+        ASSERT_NE(file, nullptr) << "Failed to create test file: " << path;
+        Dmod_FileWrite(content, 1, strlen(content), file);
+        Dmod_FileClose(file);
     }
     
     bool FileExists(const char* path)
