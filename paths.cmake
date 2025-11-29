@@ -45,7 +45,7 @@ endif()
 # -----------------------------------------------------------------------------
 set(DMOD_INC_DIR ${DMOD_DIR}/inc)
 set(DMOD_SRC_DIR ${DMOD_DIR}/src)
-set(DMOD_SCRIPTS_DIR ${DMOD_DIR}/scripts)
+set(DMOD_SCRIPTS_DIR ${DMOD_DIR}/scripts CACHE PATH "Path to the scripts directory")
 set(DMOD_EXAMPLES_DIR ${DMOD_DIR}/examples)
 set(DMOD_TESTS_DIR ${DMOD_DIR}/tests)
 set(DMOD_CONFIGS_DIR ${DMOD_DIR}/configs)
