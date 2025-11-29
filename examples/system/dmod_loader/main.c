@@ -3,14 +3,76 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "dmod.h"
+
+// -----------------------------------------
+//
+//      Generate debug helper scripts
+//
+// -----------------------------------------
+void GenerateDebugScripts( Dmod_Context_t* context, const char* elfPath )
+{
+    // Calculate the text section address for GDB symbol loading
+    void* textAddress = (void*)((uintptr_t)context->Data + context->Footer->Text.SectionStart);
+    pid_t pid = getpid();
+    
+    // Generate GDB script: dmod_gdb_script.gdb
+    FILE* gdbScript = fopen("dmod_gdb_script.gdb", "w");
+    if( gdbScript != NULL )
+    {
+        fprintf(gdbScript, "# DMOD GDB Debug Script\n");
+        fprintf(gdbScript, "# Generated automatically by dmod_loader --debug\n");
+        fprintf(gdbScript, "# Module: %s\n\n", Dmod_GetName( context ));
+        fprintf(gdbScript, "# Load symbols at the correct text section address\n");
+        fprintf(gdbScript, "add-symbol-file %s %p\n\n", elfPath, textAddress);
+        fprintf(gdbScript, "# Common breakpoints (uncomment as needed)\n");
+        fprintf(gdbScript, "# break main\n");
+        fprintf(gdbScript, "# break dmod_init\n\n");
+        fprintf(gdbScript, "# Continue execution after attaching\n");
+        fprintf(gdbScript, "# continue\n");
+        fclose(gdbScript);
+        printf("  Generated: dmod_gdb_script.gdb\n");
+    }
+    else
+    {
+        printf("  Warning: Could not create dmod_gdb_script.gdb\n");
+    }
+    
+    // Generate bash script: dmod_debug.sh
+    FILE* bashScript = fopen("dmod_debug.sh", "w");
+    if( bashScript != NULL )
+    {
+        fprintf(bashScript, "#!/bin/bash\n");
+        fprintf(bashScript, "# DMOD Debug Helper Script\n");
+        fprintf(bashScript, "# Generated automatically by dmod_loader --debug\n");
+        fprintf(bashScript, "# Module: %s\n\n", Dmod_GetName( context ));
+        fprintf(bashScript, "# This script attaches GDB to the running dmod_loader process\n");
+        fprintf(bashScript, "# and loads the debug symbols at the correct address.\n\n");
+        fprintf(bashScript, "PID=%d\n", pid);
+        fprintf(bashScript, "GDB_SCRIPT=\"dmod_gdb_script.gdb\"\n\n");
+        fprintf(bashScript, "echo \"Attaching GDB to process $PID...\"\n");
+        fprintf(bashScript, "echo \"NOTE: You may need to run this with sudo\"\n");
+        fprintf(bashScript, "echo \"\"\n\n");
+        fprintf(bashScript, "sudo gdb -p $PID -x $GDB_SCRIPT\n");
+        fclose(bashScript);
+        // Make the script executable
+        chmod("dmod_debug.sh", 0755);
+        printf("  Generated: dmod_debug.sh\n");
+    }
+    else
+    {
+        printf("  Warning: Could not create dmod_debug.sh\n");
+    }
+}
 
 // -----------------------------------------
 //
 //      Print debug info and wait for debugger
 //
 // -----------------------------------------
-void WaitForDebugger( Dmod_Context_t* context )
+void WaitForDebugger( Dmod_Context_t* context, const char* elfPath )
 {
     // Calculate the text section address for GDB symbol loading
     // GDB needs the .text section address, not the base data address
@@ -27,22 +89,38 @@ void WaitForDebugger( Dmod_Context_t* context )
     printf("  Text section:   %p (offset: 0x%x)\n", textAddress, context->Footer->Text.SectionStart);
     printf("  Module size:    %zu bytes\n", context->Size);
     printf("\n");
-    printf("To debug this module with GDB:\n");
-    printf("\n");
-    printf("  1. In another terminal, attach GDB to this process:\n");
-    printf("     sudo gdb -p %d\n", getpid());
-    printf("\n");
-    printf("     NOTE: If you get 'ptrace: Operation not permitted', run:\n");
-    printf("     echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope\n");
-    printf("\n");
-    printf("  2. In GDB, load symbols from the module's ELF file:\n");
-    printf("     add-symbol-file <path/to/module_elf> %p\n", textAddress);
-    printf("\n");
-    printf("  3. Set breakpoints and continue:\n");
-    printf("     break main\n");
-    printf("     continue\n");
-    printf("\n");
-    printf("  4. Press ENTER here to resume execution\n");
+    
+    if( elfPath != NULL )
+    {
+        printf("Debug scripts generated in current directory:\n");
+        GenerateDebugScripts( context, elfPath );
+        printf("\n");
+        printf("To debug, simply run in another terminal:\n");
+        printf("  ./dmod_debug.sh\n");
+        printf("\n");
+        printf("Or manually:\n");
+        printf("  sudo gdb -p %d -x dmod_gdb_script.gdb\n", getpid());
+    }
+    else
+    {
+        printf("To debug this module with GDB:\n");
+        printf("\n");
+        printf("  1. In another terminal, attach GDB to this process:\n");
+        printf("     sudo gdb -p %d\n", getpid());
+        printf("\n");
+        printf("     NOTE: If you get 'ptrace: Operation not permitted', run:\n");
+        printf("     echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope\n");
+        printf("\n");
+        printf("  2. In GDB, load symbols from the module's ELF file:\n");
+        printf("     add-symbol-file <path/to/module_elf> %p\n", textAddress);
+        printf("\n");
+        printf("  3. Set breakpoints and continue:\n");
+        printf("     break main\n");
+        printf("     continue\n");
+        printf("\n");
+        printf("TIP: Use --debug-symbols <elf_path> to auto-generate debug scripts!\n");
+    }
+    
     printf("\n");
     printf("================================================================================\n");
     printf("Press ENTER to continue execution...\n");
@@ -93,7 +171,7 @@ bool IsFilePath( const char* str )
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug]\n", AppName);
+    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]]\n", AppName);
 }
 
 // -----------------------------------------
@@ -106,13 +184,14 @@ void PrintHelp( const char* AppName )
     printf("-- Dynamic Module Loader ver. " DMOD_VERSION_STRING " --\n\n");
     printf("The DMOD is a dynamic module loader that allows to load and unload modules\n");
     printf("This is an example application that uses the DMOD system\n\n");
-    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug]\n", AppName);
+    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]]\n", AppName);
     printf("Options:\n");
     printf("  -h, --help                Print this help message\n");
     printf("  -v, --version             Print version information\n");
     printf("  --module <module_name>    Specify which module to load from a DMP package\n");
     printf("  --args <arguments>        Arguments to pass to the application module\n");
-    printf("  --debug                   Print module base address and wait for debugger\n\n");
+    printf("  --debug [elf_path]        Debug mode: pause after load, show addresses\n");
+    printf("                            If elf_path is provided, generates ready-to-use debug scripts\n\n");
     printf("Module Types:\n");
     printf("  Application    Runs the module's main function\n");
     printf("  Library        Enables the module, then disables it\n\n");
@@ -126,6 +205,7 @@ void PrintHelp( const char* AppName )
     printf("  %s my-app.dmf --args \"arg1 arg2\"              # Load file with arguments\n", AppName);
     printf("  %s my_module --args \"--verbose\"               # Load module by name with arguments\n", AppName);
     printf("  %s my-app.dmf --debug                         # Debug mode: shows base address\n", AppName);
+    printf("  %s my-app.dmf --debug ./my-app                # Debug mode + generate scripts\n", AppName);
 }
 
 // -----------------------------------------
@@ -163,6 +243,7 @@ int main( int argc, char *argv[] )
     // Parse arguments
     const char* pathOrName = argv[1];
     const char* moduleName = NULL;
+    const char* debugElfPath = NULL;
     int appArgc = 0;
     char** appArgv = NULL;
     bool debugMode = false;
@@ -170,6 +251,7 @@ int main( int argc, char *argv[] )
     // Look for --module, --args and --debug flags
     int moduleIndex = -1;
     int argsIndex = -1;
+    int debugIndex = -1;
     for( int i = 2; i < argc; i++ )
     {
         if( strcmp( argv[i], "--module" ) == 0 )
@@ -184,6 +266,18 @@ int main( int argc, char *argv[] )
         else if( strcmp( argv[i], "--debug" ) == 0 )
         {
             debugMode = true;
+            debugIndex = i;
+        }
+    }
+
+    // Get ELF path if provided after --debug (optional)
+    if( debugIndex != -1 && argc > debugIndex + 1 )
+    {
+        // Check if next argument is not another flag
+        const char* nextArg = argv[debugIndex + 1];
+        if( nextArg[0] != '-' )
+        {
+            debugElfPath = nextArg;
         }
     }
 
@@ -348,7 +442,7 @@ int main( int argc, char *argv[] )
     // If debug mode is enabled, print debug info and wait for debugger
     if( debugMode )
     {
-        WaitForDebugger( context );
+        WaitForDebugger( context, debugElfPath );
     }
 
     const Dmod_RequiredModule_t* reqModule = Dmod_GetNextRequiredModule( context, NULL );

@@ -21,6 +21,24 @@ If you see this error, use one of the above solutions:
 Could not attach to process. [...] ptrace: Operation not permitted.
 ```
 
+## Quick Start (Easiest Method)
+
+The simplest way to debug a module:
+
+```bash
+# Start dmod_loader with --debug and path to ELF file
+./dmod_loader ./module.dmf --debug ./module
+
+# This generates two scripts in the current directory:
+#   dmod_gdb_script.gdb  - GDB commands with correct addresses
+#   dmod_debug.sh        - Bash script to run GDB with all parameters
+
+# In another terminal, simply run:
+./dmod_debug.sh
+
+# Press ENTER in the dmod_loader terminal to continue
+```
+
 ## Overview
 
 When a module is loaded by `dmod_loader`, it is placed at a dynamically allocated memory address that **changes on every run**. To debug the module with GDB, you need to:
@@ -33,8 +51,8 @@ When a module is loaded by `dmod_loader`, it is placed at a dynamically allocate
 **Important:** The module address changes every time the program runs due to memory allocation. You must use the address shown by `--debug` during that specific run.
 
 DMOD provides tools to simplify this process:
-- `--debug` flag in `dmod_loader` - pauses after load, shows the text section address
-- `dmod-debug.sh` script - helper script for the debugging workflow
+- `--debug [elf_path]` flag in `dmod_loader` - pauses after load, optionally generates debug scripts
+- Auto-generated `dmod_debug.sh` - one-command GDB attachment with correct addresses
 
 ## Prerequisites
 
@@ -43,7 +61,37 @@ DMOD provides tools to simplify this process:
 - Access to both the DMF file and the original ELF file
 - **Root access or ptrace permissions** (see above)
 
-## Method 1: Using the `--debug` Flag (Recommended)
+## Method 1: Auto-Generated Scripts (Recommended)
+
+### Step 1: Start dmod_loader with --debug and ELF path
+
+```bash
+./dmod_loader ./module.dmf --debug ./module_elf
+```
+
+This will:
+1. Load the module and pause
+2. Generate `dmod_gdb_script.gdb` with correct addresses
+3. Generate `dmod_debug.sh` with pre-filled PID and script path
+
+### Step 2: Run the generated script (in another terminal)
+
+```bash
+./dmod_debug.sh
+```
+
+### Step 3: Set breakpoints in GDB
+
+```bash
+(gdb) break main
+(gdb) c
+```
+
+### Step 4: Resume dmod_loader
+
+Press **ENTER** in the dmod_loader terminal to continue execution.
+
+## Method 2: Manual Debugging
 
 ### Step 1: Start dmod_loader with --debug
 
