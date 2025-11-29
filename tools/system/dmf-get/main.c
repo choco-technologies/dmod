@@ -666,7 +666,7 @@ static char* FindManifest(const char* dmf_dir, const char* dmfc_dir) {
  * @brief Print usage information
  */
 static void PrintUsage(const char* app_name) {
-    Dmod_Printf("Usage: %s [options] [<module_name>[@version]]\n\n", app_name);
+    Dmod_Printf("Usage: %s [options] [install] [<module_name>[@version]]\n\n", app_name);
     Dmod_Printf("Options:\n");
     Dmod_Printf("  -d, --dependencies <path> Path or URL to dependencies (.dmd) file\n");
     Dmod_Printf("  -m, --manifest <path>     Path or URL to manifest file\n");
@@ -689,6 +689,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s      Default manifest path or URL\n\n", ENV_MANIFEST);
     Dmod_Printf("Examples:\n");
     Dmod_Printf("  %s mymodule              # Download latest version\n", app_name);
+    Dmod_Printf("  %s install mymodule      # Same as above (install is optional)\n", app_name);
     Dmod_Printf("  %s mymodule@1.0          # Download specific version\n", app_name);
     Dmod_Printf("  %s mymodule@>=1.0        # Download version >= 1.0\n", app_name);
     Dmod_Printf("  %s mymodule@>=1.0<=2.0   # Download version in range [1.0, 2.0]\n", app_name);
@@ -1046,6 +1047,23 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         else {
+            // Support "install" subcommand for compatibility with other package managers
+            // e.g., "dmf-get install mymodule" is equivalent to "dmf-get mymodule"
+            // Only skip "install" if there's another positional argument after it
+            // This allows a module named "install" to still be downloaded
+            if (!module_spec && strcmp(argv[i], "install") == 0) {
+                // Check if there's another positional argument after "install"
+                bool has_more_positional = false;
+                for (int j = i + 1; j < argc; j++) {
+                    if (argv[j][0] != '-') {
+                        has_more_positional = true;
+                        break;
+                    }
+                }
+                if (has_more_positional) {
+                    continue;  // Skip the "install" keyword
+                }
+            }
             if (module_spec) {
                 DMOD_LOG_ERROR("Error: Multiple module names specified\n");
                 return 1;

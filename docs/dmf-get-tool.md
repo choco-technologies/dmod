@@ -134,6 +134,9 @@ Added to `.github/workflows/ci.yml`:
 # Basic download
 dmf-get mymodule
 
+# Same as above, using 'install' subcommand (compatible with other package managers)
+dmf-get install mymodule
+
 # Specific version
 dmf-get mymodule@1.0
 
