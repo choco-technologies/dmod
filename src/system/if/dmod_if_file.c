@@ -384,3 +384,39 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Rename, ( const char* OldPath, 
     return -1;
     #endif
 }
+
+/**
+ * @brief Remove a directory
+ * 
+ * @param Path Path to the directory to remove
+ * 
+ * @return 0 on success, -1 on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _RemoveDir, ( const char* Path ))
+{
+    #if DMOD_USE_DIRENT
+    return rmdir(Path);
+    #else
+    DMOD_LOG_ERROR("Dmod_RemoveDir interface not implemented\n");
+    (void)Path;
+    return -1;
+    #endif
+}
+
+/**
+ * @brief Remove a file
+ * 
+ * @param Path Path to the file to remove
+ * 
+ * @return 0 on success, -1 on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileRemove, ( const char* Path ))
+{
+    #if DMOD_USE_DIRENT
+    return unlink(Path);
+    #else
+    DMOD_LOG_ERROR("Dmod_FileRemove interface not implemented\n");
+    (void)Path;
+    return -1;
+    #endif
+}

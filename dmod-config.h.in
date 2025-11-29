@@ -9,6 +9,7 @@
 #define DMOD_MAX_REQUIRED_MODULES       @DMOD_MAX_REQUIRED_MODULES@
 #define DMOD_USE_STDLIB                 @DMOD_USE_STDLIB@
 #define DMOD_USE_GETENV                 @DMOD_USE_GETENV@
+#define DMOD_USE_ENVIRON                @DMOD_USE_ENVIRON@
 #define DMOD_USE_STDIO                  @DMOD_USE_STDIO@
 #define DMOD_USE_DIRENT                 @DMOD_USE_DIRENT@
 #define DMOD_USE_ASSERT                 @DMOD_USE_ASSERT@

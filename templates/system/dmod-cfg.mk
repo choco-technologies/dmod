@@ -11,6 +11,9 @@ DMOD_USE_STDLIB=ON
 # Use getenv function
 DMOD_USE_GETENV=ON
 
+# Use environ global variable for environment iteration
+DMOD_USE_ENVIRON=ON
+
 # Use stdio library
 DMOD_USE_STDIO=ON
 

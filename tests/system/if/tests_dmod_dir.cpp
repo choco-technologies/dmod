@@ -171,3 +171,39 @@ TEST_F(DmodDirTest, FullWorkflow)
     
     ASSERT_TRUE(true);
 }
+
+/**
+ * @brief Test for Dmod_RemoveDir
+ * 
+ * The test checks if the function can remove an empty directory.
+ */
+TEST_F(DmodDirTest, RemoveDir)
+{
+    // Create test directory
+    int result = Dmod_MakeDir(testDirPath, 0755);
+    ASSERT_EQ(result, 0);
+    
+    // Verify directory exists
+    void* dir = Dmod_OpenDir(testDirPath);
+    ASSERT_NE(dir, nullptr);
+    Dmod_CloseDir(dir);
+    
+    // Remove directory
+    result = Dmod_RemoveDir(testDirPath);
+    ASSERT_EQ(result, 0);
+    
+    // Verify directory no longer exists
+    dir = Dmod_OpenDir(testDirPath);
+    ASSERT_EQ(dir, nullptr);
+}
+
+/**
+ * @brief Test for Dmod_RemoveDir with non-existent path
+ * 
+ * The test checks if the function handles non-existent paths correctly.
+ */
+TEST_F(DmodDirTest, RemoveDirNonExistent)
+{
+    int result = Dmod_RemoveDir("/non/existent/path/xyz123456");
+    ASSERT_EQ(result, -1);
+}

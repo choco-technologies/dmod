@@ -4,6 +4,9 @@ set(DMOD_USE_STDLIB ON CACHE BOOL "Enable to use the standard library")
 # Use getenv function
 set(DMOD_USE_GETENV ON CACHE BOOL "Enable to use the getenv function")
 
+# Use environ global variable for environment iteration
+set(DMOD_USE_ENVIRON ON CACHE BOOL "Enable to use the environ global variable")
+
 # Use stdio library
 set(DMOD_USE_STDIO ON CACHE BOOL "Enable to use the stdio library")
 

@@ -127,3 +127,106 @@ TEST_F(DmodEnvTest, SetEnvEmptyValue)
     ASSERT_NE(value, nullptr);
     ASSERT_STREQ(value, emptyValue);
 }
+
+/**
+ * @brief Test for Dmod_Unsetenv with existing variable
+ * 
+ * The test checks if the function can unset an existing environment variable.
+ */
+TEST_F(DmodEnvTest, UnsetenvExistingVariable)
+{
+    const char* testName = "DMOD_TEST_VAR_UNSET";
+    const char* testValue = "to_be_removed";
+    
+    // Set the variable first
+    int result = Dmod_SetEnv(testName, testValue, 1);
+    ASSERT_EQ(result, 0);
+    
+    // Verify it exists
+    const char* value = Dmod_GetEnv(testName);
+    ASSERT_NE(value, nullptr);
+    ASSERT_STREQ(value, testValue);
+    
+    // Unset the variable
+    result = Dmod_Unsetenv(testName);
+    ASSERT_EQ(result, 0);
+    
+    // Verify it's gone
+    value = Dmod_GetEnv(testName);
+    ASSERT_EQ(value, nullptr);
+}
+
+/**
+ * @brief Test for Dmod_Unsetenv with non-existent variable
+ * 
+ * The test checks if the function handles non-existent variables correctly.
+ */
+TEST_F(DmodEnvTest, UnsetenvNonExistent)
+{
+    // Unsetting a non-existent variable should succeed (POSIX behavior)
+    int result = Dmod_Unsetenv("DMOD_TEST_VAR_DOES_NOT_EXIST_XYZ123");
+    ASSERT_EQ(result, 0);
+}
+
+/**
+ * @brief Test for Dmod_GetNextEnvName iteration
+ * 
+ * The test checks if the function can iterate through environment variables.
+ */
+TEST_F(DmodEnvTest, GetNextEnvNameIteration)
+{
+    // Get the first environment variable
+    const char* first = Dmod_GetNextEnvName(NULL);
+    ASSERT_NE(first, nullptr);
+    
+    // Save the first name since Dmod_GetNextEnvName uses a static buffer
+    char firstName[256];
+    strncpy(firstName, first, sizeof(firstName) - 1);
+    firstName[sizeof(firstName) - 1] = '\0';
+    
+    // Should have at least one more environment variable
+    const char* second = Dmod_GetNextEnvName(firstName);
+    // Second could be null if there's only one env var, but typically there are more
+    if (second != nullptr)
+    {
+        // Names should be different
+        ASSERT_STRNE(firstName, second);
+    }
+}
+
+/**
+ * @brief Test for Dmod_GetNextEnvName with custom variable
+ * 
+ * The test verifies that a newly set variable appears in the iteration.
+ */
+TEST_F(DmodEnvTest, GetNextEnvNameFindsCustomVar)
+{
+    const char* testName = "DMOD_TEST_ITERATE_VAR";
+    const char* testValue = "iterate_value";
+    
+    // Set a custom variable
+    int result = Dmod_SetEnv(testName, testValue, 1);
+    ASSERT_EQ(result, 0);
+    
+    // Iterate and look for our variable
+    bool found = false;
+    const char* envName = Dmod_GetNextEnvName(NULL);
+    int count = 0;
+    const int maxIterations = 10000; // Safety limit
+    
+    while (envName != NULL && count < maxIterations)
+    {
+        if (strcmp(envName, testName) == 0)
+        {
+            found = true;
+            break;
+        }
+        envName = Dmod_GetNextEnvName(envName);
+        count++;
+    }
+    
+    ASSERT_TRUE(found);
+    
+    // Clean up
+    Dmod_Unsetenv(testName);
+}
