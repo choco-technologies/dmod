@@ -40,6 +40,10 @@
 #   include "private/dmod_scf.h"
 #   include <stdarg.h>
 #endif
+#if DMOD_USE_TERMIOS
+#   include <termios.h>
+#   include <unistd.h>
+#endif
 
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
@@ -183,11 +187,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Scanf, ( const char* Format, ..
 //                              STDIN FLAGS FUNCTIONS
 //==============================================================================
 
-#if DMOD_USE_TERMIOS
-#   include <termios.h>
-#   include <unistd.h>
-#endif
-
 /**
  * @brief Global variable to store stdin flags when termios is not available
  */
@@ -259,8 +258,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Stdin_SetFlags, ( uint32_t Flag
         return -1;
     }
     
-    /* Also update the global variable for consistency */
-    g_StdinFlags = Flags;
     return 0;
     #else
     /* When termios is not available, just store the flags in the global variable */
