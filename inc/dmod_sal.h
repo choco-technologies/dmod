@@ -330,6 +330,15 @@ DMOD_BUILTIN_API(Dmod, 1.0, int  , _Sscanf,  ( const char* Buffer, const char* F
 DMOD_BUILTIN_API(Dmod, 1.0, int  , _Vscanf,  ( const char* Format, va_list Args ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int  , _Scanf,   ( const char* Format, ... ) );
 
+/**
+ * @brief Stdin flags for terminal I/O control
+ */
+#define DMOD_STDIN_FLAG_ECHO        (1 << 0)  /**< Enable echo of input characters */
+#define DMOD_STDIN_FLAG_CANONICAL   (1 << 1)  /**< Enable canonical (line-buffered) mode */
+
+DMOD_BUILTIN_API(Dmod, 1.0, uint32_t, _Stdin_GetFlags, ( void ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int     , _Stdin_SetFlags, ( uint32_t Flags ) );
+
 //! @}
 
 /**

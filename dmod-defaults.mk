@@ -61,6 +61,10 @@ ifndef DMOD_USE_REALLOC
     DMOD_USE_REALLOC = ON
 endif
 
+ifndef DMOD_USE_TERMIOS
+    DMOD_USE_TERMIOS = ON
+endif
+
 ifndef DMOD_USE_FASTLZ
     DMOD_USE_FASTLZ = ON
 endif
