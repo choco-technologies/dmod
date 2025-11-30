@@ -386,17 +386,11 @@ void* Dmod_GetFunction( Dmod_Context_t* Context, const char* Signature )
     }
 
     size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
-    bool crossplatform = Context->Inputs.Crossplatform;
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        const char* entrySignature = crossplatform ? 
-            (const char*)(uintptr_t)Context->Inputs.InputSectionCross->Entries[i].Signature : 
-            Context->Inputs.InputSection->Entries[i].Signature;
-        if( Dmod_ApiSignature_AreEqual( entrySignature, Signature ) )
+        if( Dmod_ApiSignature_AreEqual( Context->Inputs.InputSection->Entries[i].Signature, Signature ) )
         {
-            return crossplatform ? 
-                (void*)(uintptr_t)Context->Inputs.InputSectionCross->Entries[i].Function : 
-                Context->Inputs.InputSection->Entries[i].Function;
+            return Context->Inputs.InputSection->Entries[i].Function;
         }
     }
 
@@ -459,13 +453,9 @@ Dmod_Context_t* Dmod_GetNextDifModule( const char* DifSignature, Dmod_Context_t*
 
         // Check if this module implements the DIF
         size_t numberOfInputs = Dmod_Api_GetNumberOfEntries( &Dmod_Contexts[i]->Inputs );
-        bool crossplatform = Dmod_Contexts[i]->Inputs.Crossplatform;
         for(size_t j = 0; j < numberOfInputs; j++)
         {
-            const char* entrySignature = crossplatform ? 
-                (const char*)(uintptr_t)Dmod_Contexts[i]->Inputs.InputSectionCross->Entries[j].Signature : 
-                Dmod_Contexts[i]->Inputs.InputSection->Entries[j].Signature;
-            if( Dmod_ApiSignature_AreEqual( entrySignature, DifSignature ) )
+            if( Dmod_ApiSignature_AreEqual( Dmod_Contexts[i]->Inputs.InputSection->Entries[j].Signature, DifSignature ) )
             {
                 Dmod_ExitCritical();
                 return Dmod_Contexts[i];
@@ -507,17 +497,11 @@ void* Dmod_GetDifFunction( Dmod_Context_t* Context, const char* DifSignature )
     }
 
     size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
-    bool crossplatform = Context->Inputs.Crossplatform;
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        const char* entrySignature = crossplatform ? 
-            (const char*)(uintptr_t)Context->Inputs.InputSectionCross->Entries[i].Signature : 
-            Context->Inputs.InputSection->Entries[i].Signature;
-        if( Dmod_ApiSignature_AreEqual( entrySignature, DifSignature ) )
+        if( Dmod_ApiSignature_AreEqual( Context->Inputs.InputSection->Entries[i].Signature, DifSignature ) )
         {
-            return crossplatform ? 
-                (void*)(uintptr_t)Context->Inputs.InputSectionCross->Entries[i].Function : 
-                Context->Inputs.InputSection->Entries[i].Function;
+            return Context->Inputs.InputSection->Entries[i].Function;
         }
     }
 
