@@ -178,3 +178,93 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Scanf, ( const char* Format, ..
     va_end( Args );
     return Ret;
 }
+
+//==============================================================================
+//                              STDIN FLAGS FUNCTIONS
+//==============================================================================
+
+#if DMOD_USE_TERMIOS
+#   include <termios.h>
+#   include <unistd.h>
+#endif
+
+/**
+ * @brief Global variable to store stdin flags when termios is not available
+ */
+static uint32_t g_StdinFlags = DMOD_STDIN_FLAG_ECHO | DMOD_STDIN_FLAG_CANONICAL;
+
+/**
+ * @brief Get the current stdin flags
+ * 
+ * @return Current stdin flags (combination of DMOD_STDIN_FLAG_*)
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, uint32_t, _Stdin_GetFlags, ( void ))
+{
+    #if DMOD_USE_TERMIOS
+    struct termios term;
+    uint32_t flags = 0;
+    
+    if (tcgetattr(STDIN_FILENO, &term) != 0)
+    {
+        return g_StdinFlags;
+    }
+    
+    if (term.c_lflag & ECHO)
+    {
+        flags |= DMOD_STDIN_FLAG_ECHO;
+    }
+    if (term.c_lflag & ICANON)
+    {
+        flags |= DMOD_STDIN_FLAG_CANONICAL;
+    }
+    
+    return flags;
+    #else
+    return g_StdinFlags;
+    #endif
+}
+
+/**
+ * @brief Set the stdin flags
+ * 
+ * @param Flags New stdin flags (combination of DMOD_STDIN_FLAG_*)
+ * 
+ * @return 0 on success, -1 on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Stdin_SetFlags, ( uint32_t Flags ))
+{
+    #if DMOD_USE_TERMIOS
+    struct termios term;
+    
+    if (tcgetattr(STDIN_FILENO, &term) != 0)
+    {
+        return -1;
+    }
+    
+    /* Clear the flags we're going to set */
+    term.c_lflag &= ~(ECHO | ICANON);
+    
+    /* Set requested flags */
+    if (Flags & DMOD_STDIN_FLAG_ECHO)
+    {
+        term.c_lflag |= ECHO;
+    }
+    if (Flags & DMOD_STDIN_FLAG_CANONICAL)
+    {
+        term.c_lflag |= ICANON;
+    }
+    
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &term) != 0)
+    {
+        return -1;
+    }
+    
+    /* Also update the global variable for consistency */
+    g_StdinFlags = Flags;
+    return 0;
+    #else
+    /* When termios is not available, just store the flags in the global variable */
+    g_StdinFlags = Flags;
+    return 0;
+    #endif
+}

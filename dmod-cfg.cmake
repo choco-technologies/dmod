@@ -28,6 +28,9 @@ set(DMOD_USE_ALIGNED_MALLOC_MOCK OFF CACHE BOOL "Enable to use aligned malloc mo
 # Use realloc function
 set(DMOD_USE_REALLOC ON CACHE BOOL "Enable to use the realloc function")
 
+# Use termios for terminal I/O control
+set(DMOD_USE_TERMIOS ON CACHE BOOL "Enable to use termios for terminal I/O control (echo, canonical mode)")
+
 # Use FastLZ compression library
 set(DMOD_USE_FASTLZ ON CACHE BOOL "Enable to use the FastLZ compression library")
 
