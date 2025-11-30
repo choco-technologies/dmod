@@ -183,7 +183,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
     Dmod_Event_ModuleLoadingInProgress( Path, 100 );
 
     DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
-    DMOD_LOG_INFO("To debug this module in gdb: add-symbol-file %s %p\n", Path, DMOD_GET_TEXT_SECTION_ADDR(context));
+    DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", Dmod_Context_GetModuleName( context ), DMOD_GET_TEXT_SECTION_ADDR(context));
 
     return context;
 }
