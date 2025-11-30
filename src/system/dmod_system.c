@@ -1490,16 +1490,7 @@ int Dmod_RunModule(const char* Module, int argc, char *argv[])
     }
     else 
     {
-        char filePath[DMOD_MAX_PATH_LENGTH];
-        if(Dmod_FindModuleFile( Module, DMOD_ARCH, filePath, sizeof(filePath) ))
-        {
-            context = Dmod_LoadFile( filePath );
-        }
-        else 
-        {
-            DMOD_LOG_ERROR("Cannot run module - module file not found: %s\n", Module);
-            return -ENOENT;
-        }
+        context = Dmod_LoadModuleByName( Module );    
     }
     if( context == NULL )
     {

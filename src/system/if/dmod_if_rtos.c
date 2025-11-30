@@ -81,7 +81,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _Mutex_New, ( bool Recursive )
 
     return Mutex;
     #else
-    DMOD_LOG_WARN("Dmod_Mutex_New interface not implemented\n");
     return NULL;
     #endif
 }
