@@ -25,6 +25,19 @@ static bool PrepareModulePath( const char* RepoDir, const char* ModuleName, bool
 static bool CheckModuleArchitecture( const char* FilePath, const char* ExpectedArch );
 
 //==============================================================================
+//                              LOCAL MACROS
+//==============================================================================
+
+/**
+ * @brief Get the text section address for a loaded module
+ * 
+ * This is the address that should be used with gdb's add-symbol-file command
+ * to debug the module.
+ */
+#define DMOD_GET_TEXT_SECTION_ADDR(ctx) \
+    ((void*)((uint8_t*)(ctx)->Data + (ctx)->Footer->Text.SectionStart))
+
+//==============================================================================
 //                              FUNCTION IMPLEMENTATIONS
 //==============================================================================
 
@@ -170,6 +183,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
     Dmod_Event_ModuleLoadingInProgress( Path, 100 );
 
     DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
+    DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", Dmod_Context_GetModuleName( context ), DMOD_GET_TEXT_SECTION_ADDR(context));
 
     return context;
 }
@@ -256,6 +270,7 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(context), 100 );
 
     DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
+    DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", Dmod_Context_GetModuleName( context ), DMOD_GET_TEXT_SECTION_ADDR(context));
     Dmod_Event_ModuleLoaded( context );
 
     return context;
@@ -368,6 +383,7 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
     Dmod_Event_ModuleLoadingInProgress( slot->FilePath, 100 );
 
     DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
+    DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", Dmod_Context_GetModuleName( context ), DMOD_GET_TEXT_SECTION_ADDR(context));
 
     return context;
 }
