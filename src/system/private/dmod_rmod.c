@@ -248,7 +248,7 @@ bool Dmod_RMod_AreRequiredModulesEnabled( Dmod_Context_t* Context )
 
         if( !Dmod_Mgr_IsEnabled( Context->RequiredModules[i].Name ) )
         {
-            DMOD_LOG_VERBOSE("Required module '%s' is not enabled\n", Context->RequiredModules[i].Name);
+            DMOD_LOG_INFO("Required module '%s' is not enabled\n", Context->RequiredModules[i].Name);
             return false;
         }
     }
