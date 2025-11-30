@@ -436,44 +436,45 @@ bool Dmod_FindModuleFile(const char* ModuleName, const char* ArchName, char* out
  * 
  * @return True if module was loaded
  */
-bool Dmod_LoadModuleByName(const char* ModuleName)
+Dmod_Context_t* Dmod_LoadModuleByName(const char* ModuleName)
 {
     if( ModuleName == NULL )
     {
         DMOD_LOG_ERROR("Cannot load module by name - invalid name\n");
-        return false;
+        return NULL;
     }
 
     if(Dmod_Mgr_IsLoaded(ModuleName))
     {
         DMOD_LOG_INFO("Module %s is already loaded\n", ModuleName);
-        return true;
+        return Dmod_Context_Get(ModuleName);
     }
 
     Dmod_SearchNode_t* searchNode = Dmod_Hlp_PrepareModulesSearchNodes();
     Dmod_SearchNode_t* currentNode = searchNode;
+    Dmod_Context_t* context = NULL;
     while( currentNode != NULL )
     {
         const char* repoDir = currentNode->Path;
         char filePath[DMOD_MAX_FILE_PATH_LENGTH];
         DMOD_LOG_VERBOSE("Searching for module '%s' in '%s'\n", ModuleName, repoDir);
-
+        
         if( 
             (
                 PrepareModulePath(repoDir, ModuleName, false, filePath, sizeof(filePath))
              && Dmod_FileAvailable(filePath)
-             && Dmod_LoadFile( filePath ) != NULL
+             && (context = Dmod_LoadFile( filePath )) != NULL
                 ) ||
             (
                 PrepareModulePath(repoDir, ModuleName, true, filePath, sizeof(filePath))
              && Dmod_FileAvailable(filePath)
-             && Dmod_LoadFile( filePath ) != NULL
+             && (context = Dmod_LoadFile( filePath )) != NULL
                 )
             )
         {   
             DMOD_LOG_INFO("Loaded module '%s' from file '%s'\n", ModuleName, filePath);
             Dmod_Hlp_FreeSearchPathList( searchNode );
-            return true;
+            return context;
         }
         else 
         {
@@ -486,15 +487,12 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
     if( moduleEntry != NULL && slot != NULL )
     {
         DMOD_LOG_INFO("Using module '%s' from package '%s'\n", ModuleName, Dmod_Pck_GetPackageName( slot ));
-        Dmod_Context_t* context = Dmod_LoadFromPackage( Dmod_Pck_GetPackageName( slot ), ModuleName );
-        if( context != NULL )
-        {
-            return true;
-        }
+        context = Dmod_LoadFromPackage( Dmod_Pck_GetPackageName( slot ), ModuleName );
+        return context;
     }
     DMOD_LOG_ERROR("Cannot load module by name - module not found: %s\n", ModuleName);
     Dmod_Mgr_PrintSystemModules();
-    return false;
+    return NULL;
 }
 
 /**
@@ -503,31 +501,31 @@ bool Dmod_LoadModuleByName(const char* ModuleName)
  * @param ModuleName Name of the module
  * @param PackageName Name of the package
  * 
- * @return True if module was loaded
+ * @return Context pointer if module was loaded successfully, NULL otherwise
  */
-bool Dmod_LoadModuleFromPackage(const char* ModuleName, const char* PackageName)
+Dmod_Context_t* Dmod_LoadModuleFromPackage(const char* ModuleName, const char* PackageName)
 {
     if( ModuleName == NULL || PackageName == NULL )
     {
         DMOD_LOG_ERROR("Cannot load module by name from package - invalid name\n");
-        return false;
+        return NULL;
     }
 
     if(Dmod_Mgr_IsLoaded(ModuleName))
     {
         DMOD_LOG_INFO("Module %s is already loaded\n", ModuleName);
-        return true;
+        return Dmod_Context_Get(ModuleName);
     }
 
     Dmod_Context_t* context = Dmod_LoadFromPackage( PackageName, ModuleName );
     if( context == NULL )
     {
         DMOD_LOG_ERROR("Cannot load module by name from package - module not found: %s in package %s\n", ModuleName, PackageName);
-        return false;
+        return NULL;
     }
 
     DMOD_LOG_INFO("Using module '%s' from package '%s'\n", ModuleName, PackageName);
-    return true;
+    return context;
 }
 
 /**
@@ -1368,24 +1366,24 @@ const char* Dmod_GetModuleVersion(const char* ModuleName)
  * 
  * @param ModuleName Name of the module
  * 
- * @return true if module was loaded successfully, false otherwise
+ * @return Pointer to the context
  */
-bool Dmod_LoadModule(const char* FilePath)
+Dmod_Context_t* Dmod_LoadModule(const char* FilePath)
 {
     if( FilePath == NULL )
     {
         DMOD_LOG_ERROR("Cannot load module - invalid module name\n");
-        return false;
+        return NULL;
     }
 
     Dmod_Context_t* context = Dmod_LoadFile( FilePath );
     if( context == NULL )
     {
         DMOD_LOG_ERROR("Cannot load module: %s\n", FilePath);
-        return false;
+        return NULL;
     }
 
-    return true;
+    return context;
 }
 
 /**
