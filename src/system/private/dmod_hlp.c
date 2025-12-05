@@ -156,6 +156,7 @@ Dmod_SearchNode_t* Dmod_Hlp_PrepareSearchNodes( Dmod_SearchNode_t* Tail, const c
 Dmod_SearchNode_t* Dmod_Hlp_PrepareModulesSearchNodes( void )
 {
     Dmod_SearchNode_t* tail = NULL;
+    tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetEnv("PATH") );
     #ifdef DMOD_DMF_DIR
     tail = Dmod_Hlp_PrepareSearchNodes( tail, DMOD_DMF_DIR );
     #endif
@@ -167,7 +168,6 @@ Dmod_SearchNode_t* Dmod_Hlp_PrepareModulesSearchNodes( void )
     tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetEnv("DMOD_REPO_PATHS") );
     tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetEnv("DMOD_DMFC_DIR") );
     tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetEnv("DMOD_DMF_DIR") );
-    tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetEnv("PATH") );
 
     return tail;
 }
