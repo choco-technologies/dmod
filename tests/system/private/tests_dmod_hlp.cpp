@@ -119,15 +119,22 @@ TEST_F(DmodHlpTest, PrepareModulesSearchNodesIncludesPATH)
     const char* testPath = "/tmp/dmod_test_path";
     const char* originalPath = Dmod_GetEnv("PATH");
     
+    // Allocate buffer for new PATH based on original PATH length
+    size_t originalLen = originalPath ? strlen(originalPath) : 0;
+    size_t testPathLen = strlen(testPath);
+    size_t separatorLen = strlen(DMOD_ARRAY_SEP);
+    size_t newPathLen = testPathLen + separatorLen + originalLen + 1;
+    char* newPath = (char*)malloc(newPathLen);
+    ASSERT_NE(newPath, nullptr);
+    
     // Create a new PATH with our test path
-    char newPath[4096];
     if (originalPath != NULL)
     {
-        snprintf(newPath, sizeof(newPath), "%s%s%s", testPath, DMOD_ARRAY_SEP, originalPath);
+        snprintf(newPath, newPathLen, "%s%s%s", testPath, DMOD_ARRAY_SEP, originalPath);
     }
     else
     {
-        snprintf(newPath, sizeof(newPath), "%s", testPath);
+        snprintf(newPath, newPathLen, "%s", testPath);
     }
     
     // Set the new PATH
@@ -143,11 +150,16 @@ TEST_F(DmodHlpTest, PrepareModulesSearchNodesIncludesPATH)
     
     // Clean up
     Dmod_Hlp_FreeSearchPathList(tail);
+    free(newPath);
     
-    // Restore original PATH
+    // Restore original PATH or unset it if it was not set before
     if (originalPath != NULL)
     {
         Dmod_SetEnv("PATH", originalPath, 1);
+    }
+    else
+    {
+        Dmod_Unsetenv("PATH");
     }
 }
 
