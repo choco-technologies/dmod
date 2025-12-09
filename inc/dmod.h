@@ -107,6 +107,7 @@ DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsModuleRequired, (const char* Module
 DMOD_BUILTIN_API( Dmod, 1.0, const char*, _GetModuleVersion, (const char* ModuleName) );
 DMOD_BUILTIN_API( Dmod, 1.0, Dmod_Context_t*, _LoadModule, (const char* FilePath) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _FindModuleFile, (const char* ModuleName, const char* ArchName, char* outFilePath, size_t MaxLength) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool       , _FindMatch, (const char* PartialName, char* outModuleName, size_t MaxLength) );
 DMOD_BUILTIN_API( Dmod, 1.0, Dmod_Context_t*, _LoadModuleByName, (const char* ModuleName) );
 DMOD_BUILTIN_API( Dmod, 1.0, Dmod_Context_t*, _LoadModuleFromPackage, (const char* PackageName, const char* ModuleName) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _UnloadModule, (const char* ModuleName, bool Force) );
