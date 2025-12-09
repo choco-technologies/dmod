@@ -490,27 +490,33 @@ bool Dmod_FindMatch(const char* PartialName, char* outModuleName, size_t MaxLeng
             {
                 // Check if file has .dmf or .dmfc extension
                 size_t fileNameLen = strlen(fileName);
-                if( fileNameLen > 4 )
+                size_t moduleNameLen = 0;
+                bool hasDmfExt = false;
+                
+                // Check for .dmf extension
+                if( fileNameLen > 4 && strcmp(fileName + fileNameLen - 4, ".dmf") == 0 )
                 {
-                    const char* ext = fileName + fileNameLen - 4;
-                    if( strcmp(ext, ".dmf") == 0 || (fileNameLen > 5 && strcmp(fileName + fileNameLen - 5, ".dmfc") == 0) )
+                    moduleNameLen = fileNameLen - 4;
+                    hasDmfExt = true;
+                }
+                // Check for .dmfc extension
+                else if( fileNameLen > 5 && strcmp(fileName + fileNameLen - 5, ".dmfc") == 0 )
+                {
+                    moduleNameLen = fileNameLen - 5;
+                    hasDmfExt = true;
+                }
+                
+                if( hasDmfExt && moduleNameLen >= partialLen && strncmp(fileName, PartialName, partialLen) == 0 )
+                {
+                    // Ensure we have room for module name plus null terminator
+                    if( moduleNameLen + 1 <= MaxLength )
                     {
-                        // Extract module name (without extension)
-                        size_t moduleNameLen = (strcmp(ext, ".dmf") == 0) ? fileNameLen - 4 : fileNameLen - 5;
-                        
-                        // Check if module name starts with partial name
-                        if( moduleNameLen >= partialLen && strncmp(fileName, PartialName, partialLen) == 0 )
-                        {
-                            if( moduleNameLen < MaxLength )
-                            {
-                                strncpy(outModuleName, fileName, moduleNameLen);
-                                outModuleName[moduleNameLen] = '\0';
-                                DMOD_LOG_INFO("Found matching module '%s' for partial name '%s'\n", outModuleName, PartialName);
-                                Dmod_CloseDir(dir);
-                                Dmod_Hlp_FreeSearchPathList(searchNode);
-                                return true;
-                            }
-                        }
+                        memcpy(outModuleName, fileName, moduleNameLen);
+                        outModuleName[moduleNameLen] = '\0';
+                        DMOD_LOG_INFO("Found matching module '%s' for partial name '%s'\n", outModuleName, PartialName);
+                        Dmod_CloseDir(dir);
+                        Dmod_Hlp_FreeSearchPathList(searchNode);
+                        return true;
                     }
                 }
             }
@@ -533,10 +539,11 @@ bool Dmod_FindMatch(const char* PartialName, char* outModuleName, size_t MaxLeng
                     size_t moduleNameLen = strlen(entry->ModuleName);
                     if( moduleNameLen >= partialLen && strncmp(entry->ModuleName, PartialName, partialLen) == 0 )
                     {
-                        if( moduleNameLen < MaxLength )
+                        // Ensure we have room for module name plus null terminator
+                        if( moduleNameLen + 1 <= MaxLength )
                         {
-                            strncpy(outModuleName, entry->ModuleName, MaxLength - 1);
-                            outModuleName[MaxLength - 1] = '\0';
+                            memcpy(outModuleName, entry->ModuleName, moduleNameLen);
+                            outModuleName[moduleNameLen] = '\0';
                             DMOD_LOG_INFO("Found matching module '%s' in package '%s' for partial name '%s'\n", 
                                          outModuleName, Dmod_Pck_GetPackageName(slot), PartialName);
                             Dmod_Hlp_FreeSearchPathList(searchNode);
