@@ -1512,7 +1512,9 @@ int Dmod_RunModule(const char* Module, int argc, char *argv[])
         return -ENOENT;
     }
 
-    return Dmod_Run( context, argc, argv );
+    int result = Dmod_Run( context, argc, argv );
+    Dmod_Unload( context, false );
+    return result;
 }
 
 /**
