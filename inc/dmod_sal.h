@@ -339,6 +339,18 @@ DMOD_BUILTIN_API(Dmod, 1.0, int  , _Scanf,   ( const char* Format, ... ) );
 DMOD_BUILTIN_API(Dmod, 1.0, uint32_t, _Stdin_GetFlags, ( void ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int     , _Stdin_SetFlags, ( uint32_t Flags ) );
 
+/**
+ * @brief Input mode configuration flags
+ */
+typedef enum
+{
+   Dmod_InputMode_EchoOff  = (1<<0),  /**< Disable echo of input characters */
+   Dmod_InputMode_LineMode = (1<<1),  /**< Enable line-buffered (canonical) mode */
+   Dmod_InputMode_Default  = Dmod_InputMode_LineMode  /**< Default mode with line buffering */
+} Dmod_InputMode_t;
+
+DMOD_BUILTIN_API(Dmod, 1.0, bool, _ConfigureInput, ( Dmod_InputMode_t InputMode ) );
+
 //! @}
 
 /**

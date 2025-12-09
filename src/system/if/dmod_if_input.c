@@ -265,3 +265,34 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Stdin_SetFlags, ( uint32_t Flag
     return 0;
     #endif
 }
+
+/**
+ * @brief Configure input mode for stdin
+ * 
+ * This function configures the input mode for stdin based on the provided flags.
+ * It translates high-level input mode flags to low-level stdin flags.
+ * 
+ * @param InputMode Input mode configuration (combination of Dmod_InputMode_t flags)
+ * 
+ * @return true on success, false on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _ConfigureInput, ( Dmod_InputMode_t InputMode ))
+{
+    uint32_t stdinFlags = 0;
+    
+    /* Translate InputMode flags to stdin flags */
+    /* Note: EchoOff means we should NOT set ECHO flag */
+    if (!(InputMode & Dmod_InputMode_EchoOff))
+    {
+        stdinFlags |= DMOD_STDIN_FLAG_ECHO;
+    }
+    
+    /* LineMode means we should set CANONICAL flag */
+    if (InputMode & Dmod_InputMode_LineMode)
+    {
+        stdinFlags |= DMOD_STDIN_FLAG_CANONICAL;
+    }
+    
+    /* Set the stdin flags */
+    return (Dmod_Stdin_SetFlags(stdinFlags) == 0);
+}
