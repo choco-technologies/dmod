@@ -184,12 +184,19 @@ DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message
 #ifdef DMOD_NO_LOGGING
 #   define DMOD_LOG(...)                                   ((void)0)    
 #else
+#   ifdef MODULE_NAME
+#   define DMOD_LOG(LogLevel,...)                          \
+                                if(Dmod_CheckLogLevel(LogLevel)) {\
+                                    Dmod_Printf( MODULE_NAME __VA_ARGS__ );\
+                                    Dmod_Printf( "\033[0m" );\
+                                }
+#   else 
 #   define DMOD_LOG(LogLevel,...)                          \
                                 if(Dmod_CheckLogLevel(LogLevel)) {\
                                     Dmod_Printf( __VA_ARGS__ );\
                                     Dmod_Printf( "\033[0m" );\
                                 }
-
+#   endif
 #endif 
 
 #ifdef DMOD_LOG_LEVEL
