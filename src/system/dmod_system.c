@@ -446,6 +446,121 @@ bool Dmod_FindModuleFile(const char* ModuleName, const char* ArchName, char* out
 }
 
 /**
+ * @brief Find module name that matches the partial name
+ * 
+ * This function searches all available paths (including packages) and looks for 
+ * a module whose name starts with the provided partial name. For example, 
+ * calling Dmod_FindMatch('mk', ...) will return 'mkdir' if such a module exists.
+ * 
+ * @param PartialName Partial module name to search for
+ * @param outModuleName Output buffer for the full module name
+ * @param MaxLength Maximum length of the output buffer
+ * 
+ * @return True if a matching module was found, false otherwise
+ */
+bool Dmod_FindMatch(const char* PartialName, char* outModuleName, size_t MaxLength)
+{
+    if( PartialName == NULL || outModuleName == NULL || MaxLength == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot find match - invalid parameters\n");
+        return false;
+    }
+
+    size_t partialLen = strlen(PartialName);
+    if( partialLen == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot find match - empty partial name\n");
+        return false;
+    }
+
+    Dmod_SearchNode_t* searchNode = Dmod_Hlp_PrepareModulesSearchNodes();
+    Dmod_SearchNode_t* currentNode = searchNode;
+    
+    // Search in filesystem paths
+    while( currentNode != NULL )
+    {
+        const char* repoDir = currentNode->Path;
+        DMOD_LOG_VERBOSE("Searching for module matching '%s' in '%s'\n", PartialName, repoDir);
+
+        void* dir = Dmod_OpenDir(repoDir);
+        if( dir != NULL )
+        {
+            const char* fileName;
+            while( (fileName = Dmod_ReadDir(dir)) != NULL )
+            {
+                // Check if file has .dmf or .dmfc extension
+                size_t fileNameLen = strlen(fileName);
+                size_t moduleNameLen = 0;
+                bool hasDmfExt = false;
+                
+                // Check for .dmf extension
+                if( fileNameLen > 4 && strcmp(fileName + fileNameLen - 4, ".dmf") == 0 )
+                {
+                    moduleNameLen = fileNameLen - 4;
+                    hasDmfExt = true;
+                }
+                // Check for .dmfc extension
+                else if( fileNameLen > 5 && strcmp(fileName + fileNameLen - 5, ".dmfc") == 0 )
+                {
+                    moduleNameLen = fileNameLen - 5;
+                    hasDmfExt = true;
+                }
+                
+                if( hasDmfExt && moduleNameLen >= partialLen && strncmp(fileName, PartialName, partialLen) == 0 )
+                {
+                    // Ensure we have room for module name plus null terminator
+                    if( moduleNameLen + 1 <= MaxLength )
+                    {
+                        memcpy(outModuleName, fileName, moduleNameLen);
+                        outModuleName[moduleNameLen] = '\0';
+                        DMOD_LOG_INFO("Found matching module '%s' for partial name '%s'\n", outModuleName, PartialName);
+                        Dmod_CloseDir(dir);
+                        Dmod_Hlp_FreeSearchPathList(searchNode);
+                        return true;
+                    }
+                }
+            }
+            Dmod_CloseDir(dir);
+        }
+        currentNode = currentNode->Prev;
+    }
+    
+    // Search in packages
+    for( size_t i = 0; i < DMOD_MAX_NUMBER_OF_PACKAGES; i++ )
+    {
+        Dmod_PackageSlot_t* slot = &Dmod_Packages[i];
+        if( Dmod_Pck_IsSlotUsed(slot) && slot->DmpHeader != NULL && slot->ModuleEntries != NULL )
+        {
+            for( uint32_t j = 0; j < slot->DmpHeader->ModuleCount; j++ )
+            {
+                Dmod_DmpModuleEntry_t* entry = &slot->ModuleEntries[j];
+                if( entry->ModuleName != NULL )
+                {
+                    size_t moduleNameLen = strlen(entry->ModuleName);
+                    if( moduleNameLen >= partialLen && strncmp(entry->ModuleName, PartialName, partialLen) == 0 )
+                    {
+                        // Ensure we have room for module name plus null terminator
+                        if( moduleNameLen + 1 <= MaxLength )
+                        {
+                            memcpy(outModuleName, entry->ModuleName, moduleNameLen);
+                            outModuleName[moduleNameLen] = '\0';
+                            DMOD_LOG_INFO("Found matching module '%s' in package '%s' for partial name '%s'\n", 
+                                         outModuleName, Dmod_Pck_GetPackageName(slot), PartialName);
+                            Dmod_Hlp_FreeSearchPathList(searchNode);
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    Dmod_Hlp_FreeSearchPathList(searchNode);
+    DMOD_LOG_VERBOSE("No matching module found for partial name '%s'\n", PartialName);
+    return false;
+}
+
+/**
  * @brief Load module by name
  * 
  * @param ModuleName Name of the module
