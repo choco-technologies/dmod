@@ -231,7 +231,7 @@ Extract only the header files from a module package:
 
 ```bash
 # Extract to specified directory
-dmf-get headers mymodule --output ./mymodule/inc
+dmf-get headers mymodule -o ./mymodule/inc
 
 # Extract to DMOD_INC_DIR environment variable path
 dmf-get headers mymodule
@@ -249,7 +249,7 @@ Extract only the documentation from a module package:
 
 ```bash
 # Extract to specified directory
-dmf-get docs mymodule --output ./mymodule/docs
+dmf-get docs mymodule -o ./mymodule/docs
 
 # Extract to DMOD_DOC_DIR environment variable path
 dmf-get docs mymodule

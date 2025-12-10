@@ -1006,9 +1006,9 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("Examples:\n");
     Dmod_Printf("  %s mymodule              # Download latest version\n", app_name);
     Dmod_Printf("  %s install mymodule      # Same as above (install is explicit)\n", app_name);
-    Dmod_Printf("  %s headers dmini --output ./dmini/inc  # Extract headers to specified path\n", app_name);
+    Dmod_Printf("  %s headers dmini -o ./dmini/inc  # Extract headers to specified path\n", app_name);
     Dmod_Printf("  %s headers dmini         # Extract headers to $DMOD_INC_DIR\n", app_name);
-    Dmod_Printf("  %s docs dmini --output ./dmini/docs    # Extract docs to specified path\n", app_name);
+    Dmod_Printf("  %s docs dmini -o ./dmini/docs    # Extract docs to specified path\n", app_name);
     Dmod_Printf("  %s docs dmini            # Extract docs to $DMOD_DOC_DIR\n", app_name);
     Dmod_Printf("  %s mymodule@1.0          # Download specific version\n", app_name);
     Dmod_Printf("  %s mymodule@>=1.0        # Download version >= 1.0\n", app_name);
