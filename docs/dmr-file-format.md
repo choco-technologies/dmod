@@ -111,7 +111,9 @@ docs=./docs => ${destination}/${module}/docs
 readme=./README.md => ${destination}/${module}/README.md
 ```
 
-**Note**: Documentation should be in Markdown format (`.md` files), not HTML, to ensure it can be displayed in console environments and easily converted to other formats.
+**Note**: Documentation should be in Markdown format (`.md` files), not HTML, to ensure it can be displayed in console environments and easily converted to other formats. Module documentation can be extracted using `dmf-get docs <module>` and viewed using the `dmf-man` tool, which provides a `man`-like interface with VT100 terminal formatting.
+
+For more information about viewing module documentation, see the [dmf-man tool documentation](../tools/system/dmf-man/README.md).
 
 #### Header Files
 
