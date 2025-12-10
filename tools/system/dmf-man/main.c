@@ -50,29 +50,38 @@
  * @brief Print usage message
  */
 static void PrintUsage(const char* app_name) {
-    printf("Usage: %s [OPTIONS] <module_name>\n", app_name);
-    printf("\n");
-    printf("Options:\n");
-    printf("  -d, --doc-dir <path>  Path to documentation directory\n");
-    printf("  -h, --help            Show this help message\n");
-    printf("  -v, --version         Show version information\n");
-    printf("\n");
-    printf("Environment Variables:\n");
-    printf("  %s     Documentation directory (checked first)\n", ENV_DOC_DIR);
-    printf("  %s        DMF directory (used as fallback: <dir>/<module>/docs)\n", ENV_DMF_DIR);
-    printf("\n");
-    printf("Examples:\n");
-    printf("  %s mymodule                    # Search in default locations\n", app_name);
-    printf("  %s -d /path/to/docs mymodule   # Use custom documentation directory\n", app_name);
+    Dmod_Printf("Usage: %s [OPTIONS] <module_name>\n", app_name);
+    Dmod_Printf("\n");
+    Dmod_Printf("Options:\n");
+    Dmod_Printf("  -d, --doc-dir <path>  Path to documentation directory\n");
+    Dmod_Printf("  -p, --paged           Enable paged output (default)\n");
+    Dmod_Printf("  -a, --all             Show all content at once (no paging)\n");
+    Dmod_Printf("  -h, --help            Show this help message\n");
+    Dmod_Printf("  -v, --version         Show version information\n");
+    Dmod_Printf("\n");
+    Dmod_Printf("Environment Variables:\n");
+    Dmod_Printf("  %s     Documentation directory (checked first)\n", ENV_DOC_DIR);
+    Dmod_Printf("  %s        DMF directory (used as fallback: <dir>/<module>/docs)\n", ENV_DMF_DIR);
+    Dmod_Printf("\n");
+    Dmod_Printf("Examples:\n");
+    Dmod_Printf("  %s mymodule                    # Search in default locations\n", app_name);
+    Dmod_Printf("  %s -d /path/to/docs mymodule   # Use custom documentation directory\n", app_name);
+    Dmod_Printf("  %s -a mymodule                 # Show all at once without paging\n", app_name);
+    Dmod_Printf("\n");
+    Dmod_Printf("Navigation (when paged):\n");
+    Dmod_Printf("  Arrow Up/Down    Scroll one line\n");
+    Dmod_Printf("  Page Up/Down     Scroll one page\n");
+    Dmod_Printf("  Home/End         Go to start/end\n");
+    Dmod_Printf("  q or Q           Quit\n");
 }
 
 /**
  * @brief Print help message
  */
 static void PrintHelp(const char* app_name) {
-    printf("-- dmf-man - DMOD Documentation Viewer ver. " DMOD_VERSION_STRING " --\n\n");
-    printf("This tool displays documentation for DMOD modules.\n");
-    printf("Documentation is rendered from Markdown with basic VT100 formatting.\n\n");
+    Dmod_Printf("-- dmf-man - DMOD Documentation Viewer ver. " DMOD_VERSION_STRING " --\n\n");
+    Dmod_Printf("This tool displays documentation for DMOD modules.\n");
+    Dmod_Printf("Documentation is rendered from Markdown with basic VT100 formatting.\n\n");
     PrintUsage(app_name);
 }
 
@@ -80,16 +89,7 @@ static void PrintHelp(const char* app_name) {
  * @brief Check if a file exists
  */
 static bool FileExists(const char* path) {
-    struct stat st;
-    return stat(path, &st) == 0 && S_ISREG(st.st_mode);
-}
-
-/**
- * @brief Check if a directory exists
- */
-static bool DirExists(const char* path) {
-    struct stat st;
-    return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+    return Dmod_FileAvailable(path);
 }
 
 /**
@@ -108,21 +108,21 @@ static char* FindDocumentation(const char* module_name, const char* custom_doc_d
     // Try custom doc directory first
     if (custom_doc_dir) {
         // Try <custom_doc_dir>/<module>.md
-        snprintf(path, sizeof(path), "%s/%s.md", custom_doc_dir, module_name);
+        Dmod_SnPrintf(path, sizeof(path), "%s/%s.md", custom_doc_dir, module_name);
         if (FileExists(path)) {
-            return strdup(path);
+            return Dmod_StrDup(path);
         }
         
         // Try <custom_doc_dir>/<module>/README.md
-        snprintf(path, sizeof(path), "%s/%s/README.md", custom_doc_dir, module_name);
+        Dmod_SnPrintf(path, sizeof(path), "%s/%s/README.md", custom_doc_dir, module_name);
         if (FileExists(path)) {
-            return strdup(path);
+            return Dmod_StrDup(path);
         }
         
         // Try <custom_doc_dir>/README.md
-        snprintf(path, sizeof(path), "%s/README.md", custom_doc_dir);
+        Dmod_SnPrintf(path, sizeof(path), "%s/README.md", custom_doc_dir);
         if (FileExists(path)) {
-            return strdup(path);
+            return Dmod_StrDup(path);
         }
     }
     
@@ -130,21 +130,21 @@ static char* FindDocumentation(const char* module_name, const char* custom_doc_d
     const char* doc_dir = Dmod_GetEnv(ENV_DOC_DIR);
     if (doc_dir) {
         // Try <doc_dir>/<module>.md
-        snprintf(path, sizeof(path), "%s/%s.md", doc_dir, module_name);
+        Dmod_SnPrintf(path, sizeof(path), "%s/%s.md", doc_dir, module_name);
         if (FileExists(path)) {
-            return strdup(path);
+            return Dmod_StrDup(path);
         }
         
         // Try <doc_dir>/<module>/README.md
-        snprintf(path, sizeof(path), "%s/%s/README.md", doc_dir, module_name);
+        Dmod_SnPrintf(path, sizeof(path), "%s/%s/README.md", doc_dir, module_name);
         if (FileExists(path)) {
-            return strdup(path);
+            return Dmod_StrDup(path);
         }
         
         // Try <doc_dir>/README.md
-        snprintf(path, sizeof(path), "%s/README.md", doc_dir);
+        Dmod_SnPrintf(path, sizeof(path), "%s/README.md", doc_dir);
         if (FileExists(path)) {
-            return strdup(path);
+            return Dmod_StrDup(path);
         }
     }
     
@@ -155,21 +155,21 @@ static char* FindDocumentation(const char* module_name, const char* custom_doc_d
     }
     
     // Try <dmf_dir>/<module>/docs/<module>.md
-    snprintf(path, sizeof(path), "%s/%s/docs/%s.md", dmf_dir, module_name, module_name);
+    Dmod_SnPrintf(path, sizeof(path), "%s/%s/docs/%s.md", dmf_dir, module_name, module_name);
     if (FileExists(path)) {
-        return strdup(path);
+        return Dmod_StrDup(path);
     }
     
     // Try <dmf_dir>/<module>/docs/README.md
-    snprintf(path, sizeof(path), "%s/%s/docs/README.md", dmf_dir, module_name);
+    Dmod_SnPrintf(path, sizeof(path), "%s/%s/docs/README.md", dmf_dir, module_name);
     if (FileExists(path)) {
-        return strdup(path);
+        return Dmod_StrDup(path);
     }
     
     // Try <dmf_dir>/<module>/README.md
-    snprintf(path, sizeof(path), "%s/%s/README.md", dmf_dir, module_name);
+    Dmod_SnPrintf(path, sizeof(path), "%s/%s/README.md", dmf_dir, module_name);
     if (FileExists(path)) {
-        return strdup(path);
+        return Dmod_StrDup(path);
     }
     
     return NULL;
@@ -299,7 +299,7 @@ static void ProcessInlineFormatting(const char* line, char* output, size_t outpu
 /**
  * @brief Render markdown file to terminal
  */
-static bool RenderMarkdown(const char* file_path) {
+static bool RenderMarkdown(const char* file_path, bool paged) {
     FILE* file = fopen(file_path, "r");
     if (!file) {
         DMOD_LOG_ERROR("Failed to open documentation file: %s\n", file_path);
@@ -319,16 +319,16 @@ static bool RenderMarkdown(const char* file_path) {
         if (StartsWith(line, "```")) {
             in_code_block = !in_code_block;
             if (in_code_block) {
-                printf("%s", VT100_DIM);
+                Dmod_Printf("%s", VT100_DIM);
             } else {
-                printf("%s", VT100_RESET);
+                Dmod_Printf("%s", VT100_RESET);
             }
             continue;
         }
         
         // If in code block, print as-is with dim color
         if (in_code_block) {
-            printf("%s\n", line);
+            Dmod_Printf("%s\n", line);
             continue;
         }
         
@@ -341,26 +341,26 @@ static bool RenderMarkdown(const char* file_path) {
                 // Different formatting for different header levels
                 switch (level) {
                     case 1:
-                        printf("\n%s%s%s%s\n", VT100_BOLD, VT100_BLUE, text, VT100_RESET);
+                        Dmod_Printf("\n%s%s%s%s\n", VT100_BOLD, VT100_BLUE, text, VT100_RESET);
                         // Print underline
                         for (size_t i = 0; i < strlen(text); i++) {
-                            printf("=");
+                            Dmod_Printf("=");
                         }
-                        printf("\n");
+                        Dmod_Printf("\n");
                         break;
                     case 2:
-                        printf("\n%s%s%s%s\n", VT100_BOLD, VT100_CYAN, text, VT100_RESET);
+                        Dmod_Printf("\n%s%s%s%s\n", VT100_BOLD, VT100_CYAN, text, VT100_RESET);
                         // Print underline
                         for (size_t i = 0; i < strlen(text); i++) {
-                            printf("-");
+                            Dmod_Printf("-");
                         }
-                        printf("\n");
+                        Dmod_Printf("\n");
                         break;
                     case 3:
-                        printf("\n%s%s%s%s\n", VT100_BOLD, VT100_GREEN, text, VT100_RESET);
+                        Dmod_Printf("\n%s%s%s%s\n", VT100_BOLD, VT100_GREEN, text, VT100_RESET);
                         break;
                     default:
-                        printf("\n%s%s%s\n", VT100_BOLD, text, VT100_RESET);
+                        Dmod_Printf("\n%s%s%s\n", VT100_BOLD, text, VT100_RESET);
                         break;
                 }
                 continue;
@@ -370,11 +370,11 @@ static bool RenderMarkdown(const char* file_path) {
         // Handle horizontal rules
         if (StartsWith(line, "---") || StartsWith(line, "***") || StartsWith(line, "___")) {
             if (strlen(line) >= 3) {
-                printf("%s", VT100_DIM);
+                Dmod_Printf("%s", VT100_DIM);
                 for (int i = 0; i < 80; i++) {
-                    printf("─");
+                    Dmod_Printf("─");
                 }
-                printf("%s\n", VT100_RESET);
+                Dmod_Printf("%s\n", VT100_RESET);
                 continue;
             }
         }
@@ -384,7 +384,7 @@ static bool RenderMarkdown(const char* file_path) {
             in_list = true;
             const char* text = line + 2;
             ProcessInlineFormatting(text, formatted, sizeof(formatted));
-            printf("  %s•%s %s\n", VT100_YELLOW, VT100_RESET, formatted);
+            Dmod_Printf("  %s•%s %s\n", VT100_YELLOW, VT100_RESET, formatted);
             continue;
         }
         
@@ -400,7 +400,7 @@ static bool RenderMarkdown(const char* file_path) {
                     num[num_len] = '\0';
                     const char* text = dot + 2;
                     ProcessInlineFormatting(text, formatted, sizeof(formatted));
-                    printf("  %s%s.%s %s\n", VT100_YELLOW, num, VT100_RESET, formatted);
+                    Dmod_Printf("  %s%s.%s %s\n", VT100_YELLOW, num, VT100_RESET, formatted);
                     continue;
                 }
             }
@@ -408,24 +408,24 @@ static bool RenderMarkdown(const char* file_path) {
         
         // Handle indented code (4 spaces or tab)
         if (StartsWith(line, "    ") || line[0] == '\t') {
-            printf("%s%s%s\n", VT100_DIM, line, VT100_RESET);
+            Dmod_Printf("%s%s%s\n", VT100_DIM, line, VT100_RESET);
             continue;
         }
         
         // Empty line - reset list mode
         if (strlen(line) == 0) {
             in_list = false;
-            printf("\n");
+            Dmod_Printf("\n");
             continue;
         }
         
         // Regular paragraph text with inline formatting
         ProcessInlineFormatting(line, formatted, sizeof(formatted));
-        printf("%s\n", formatted);
+        Dmod_Printf("%s\n", formatted);
     }
     
     // Reset formatting at end
-    printf("%s", VT100_RESET);
+    Dmod_Printf("%s", VT100_RESET);
     
     fclose(file);
     return true;
@@ -437,6 +437,7 @@ static bool RenderMarkdown(const char* file_path) {
 int main(int argc, char* argv[]) {
     const char* module_name = NULL;
     const char* custom_doc_dir = NULL;
+    bool paged = true;  // Paging enabled by default
     
     // Parse command-line arguments
     for (int i = 1; i < argc; i++) {
@@ -444,22 +445,26 @@ int main(int argc, char* argv[]) {
             PrintHelp(argv[0]);
             return 0;
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-            printf("dmf-man ver. " DMOD_VERSION_STRING "\n");
+            Dmod_Printf("dmf-man ver. " DMOD_VERSION_STRING "\n");
             return 0;
         } else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--doc-dir") == 0) {
             if (i + 1 >= argc) {
-                fprintf(stderr, "Error: %s requires an argument\n", argv[i]);
+                DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i]);
                 PrintUsage(argv[0]);
                 return 1;
             }
             custom_doc_dir = argv[++i];
+        } else if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--all") == 0) {
+            paged = false;
+        } else if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--paged") == 0) {
+            paged = true;
         } else if (argv[i][0] == '-') {
-            fprintf(stderr, "Error: Unknown option: %s\n", argv[i]);
+            DMOD_LOG_ERROR("Error: Unknown option: %s\n", argv[i]);
             PrintUsage(argv[0]);
             return 1;
         } else {
             if (module_name) {
-                fprintf(stderr, "Error: Multiple module names specified\n");
+                DMOD_LOG_ERROR("Error: Multiple module names specified\n");
                 PrintUsage(argv[0]);
                 return 1;
             }
@@ -468,7 +473,7 @@ int main(int argc, char* argv[]) {
     }
     
     if (!module_name) {
-        fprintf(stderr, "Error: No module name specified\n");
+        DMOD_LOG_ERROR("Error: No module name specified\n");
         PrintUsage(argv[0]);
         return 1;
     }
@@ -482,40 +487,43 @@ int main(int argc, char* argv[]) {
     // Find documentation
     char* doc_path = FindDocumentation(module_name, custom_doc_dir);
     if (!doc_path) {
-        fprintf(stderr, "Error: No documentation found for module: %s\n", module_name);
-        fprintf(stderr, "\nSearched in:\n");
+        DMOD_LOG_ERROR("Error: No documentation found for module: %s\n", module_name);
+        DMOD_LOG_ERROR("\nSearched in:\n");
         
         if (custom_doc_dir) {
-            fprintf(stderr, "  - %s/%s.md\n", custom_doc_dir, module_name);
-            fprintf(stderr, "  - %s/%s/README.md\n", custom_doc_dir, module_name);
-            fprintf(stderr, "  - %s/README.md\n", custom_doc_dir);
+            DMOD_LOG_ERROR("  - %s/%s.md\n", custom_doc_dir, module_name);
+            DMOD_LOG_ERROR("  - %s/%s/README.md\n", custom_doc_dir, module_name);
+            DMOD_LOG_ERROR("  - %s/README.md\n", custom_doc_dir);
         }
         
         const char* doc_dir = Dmod_GetEnv(ENV_DOC_DIR);
         if (doc_dir) {
-            fprintf(stderr, "  - %s/%s.md\n", doc_dir, module_name);
-            fprintf(stderr, "  - %s/%s/README.md\n", doc_dir, module_name);
+            DMOD_LOG_ERROR("  - %s/%s.md\n", doc_dir, module_name);
+            DMOD_LOG_ERROR("  - %s/%s/README.md\n", doc_dir, module_name);
         }
         
         const char* dmf_dir = Dmod_GetEnv(ENV_DMF_DIR);
         if (!dmf_dir) {
             dmf_dir = DEFAULT_DMF_DIR;
         }
-        fprintf(stderr, "  - %s/%s/docs/%s.md\n", dmf_dir, module_name, module_name);
-        fprintf(stderr, "  - %s/%s/docs/README.md\n", dmf_dir, module_name);
-        fprintf(stderr, "  - %s/%s/README.md\n", dmf_dir, module_name);
+        DMOD_LOG_ERROR("  - %s/%s/docs/%s.md\n", dmf_dir, module_name, module_name);
+        DMOD_LOG_ERROR("  - %s/%s/docs/README.md\n", dmf_dir, module_name);
+        DMOD_LOG_ERROR("  - %s/%s/README.md\n", dmf_dir, module_name);
+        
+        DMOD_LOG_ERROR("\nTip: You can try to install documentation with:\n");
+        DMOD_LOG_ERROR("  dmf-get docs %s\n", module_name);
         
         Dmod_Deinitialize();
         return 1;
     }
     
     // Render the documentation
-    printf("%s=== Documentation for %s ===%s\n", VT100_BOLD, module_name, VT100_RESET);
-    printf("%sFile: %s%s\n\n", VT100_DIM, doc_path, VT100_RESET);
+    Dmod_Printf("%s=== Documentation for %s ===%s\n", VT100_BOLD, module_name, VT100_RESET);
+    Dmod_Printf("%sFile: %s%s\n\n", VT100_DIM, doc_path, VT100_RESET);
     
-    bool success = RenderMarkdown(doc_path);
+    bool success = RenderMarkdown(doc_path, paged);
     
-    free(doc_path);
+    Dmod_Free(doc_path);
     Dmod_Deinitialize();
     
     return success ? 0 : 1;
