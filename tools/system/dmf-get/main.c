@@ -31,6 +31,8 @@
 #define ENV_DMF_DIR "DMOD_DMF_DIR"
 #define ENV_DMFC_DIR "DMOD_DMFC_DIR"
 #define ENV_MANIFEST "DMOD_MANIFEST"
+#define ENV_INC_DIR "DMOD_INC_DIR"
+#define ENV_DOC_DIR "DMOD_DOC_DIR"
 
 /**
  * @brief Structure to hold download data for curl
@@ -193,6 +195,166 @@ static void GetCurrentDmodVersion(Dmod_SemanticVersion_t* version) {
     version->major = dmod_VERSION_MAJOR;
     version->minor = dmod_VERSION_MINOR;
     version->patch = 0; // Patch not defined in dmod_VERSION
+}
+
+/**
+ * @brief Extract specific resource (headers or docs) from ZIP file
+ * 
+ * @param zip_path Path to the ZIP file
+ * @param output_dir Directory to copy the extracted resource to
+ * @param module_name Module name to search for
+ * @param resource_key Resource key to extract ("inc" for headers, "docs" for documentation)
+ * @return true if extraction succeeded and resource was found and copied
+ */
+static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir, 
+                                   const char* module_name, const char* resource_key) {
+    // Create temporary extraction directory in /tmp
+    char extract_dir[512];
+    Dmod_SnPrintf(extract_dir, sizeof(extract_dir), "/tmp/dmod_extract_%s_%d", module_name, (int)getpid());
+    
+    if (Dmod_MakeDir(extract_dir, 0755) != 0) {
+        DMOD_LOG_ERROR("Failed to create temporary directory: %s\n", extract_dir);
+        return false;
+    }
+    
+    // Validate paths for safety
+    if (!IsPathSafe(zip_path) || !IsPathSafe(output_dir)) {
+        DMOD_LOG_ERROR("Invalid path detected (contains unsafe characters)\n");
+        char rm_cmd[1024];
+        Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", extract_dir);
+        system(rm_cmd);
+        return false;
+    }
+    
+    // Use system unzip command
+    char unzip_cmd[1024];
+    Dmod_SnPrintf(unzip_cmd, sizeof(unzip_cmd), "unzip -o -q \"%s\" -d \"%s\"", zip_path, extract_dir);
+    
+    int result = system(unzip_cmd);
+    if (result != 0) {
+        DMOD_LOG_ERROR("Failed to extract ZIP file: %s\n", zip_path);
+        // Clean up temp directory
+        char rm_cmd[1024];
+        Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", extract_dir);
+        system(rm_cmd);
+        return false;
+    }
+    
+    DMOD_LOG_INFO("Extracted ZIP to temporary directory\n");
+    
+    // Look for .dmr file first
+    char dmr_file[512] = "";
+    void* dir = Dmod_OpenDir(extract_dir);
+    if (dir) {
+        const char* entry_name;
+        while ((entry_name = Dmod_ReadDir(dir)) != NULL) {
+            if (strcmp(entry_name, ".") == 0 || strcmp(entry_name, "..") == 0) {
+                continue;
+            }
+            
+            size_t len = strlen(entry_name);
+            bool is_dmr = (len > 4 && strcmp(entry_name + len - 4, ".dmr") == 0);
+            
+            if (is_dmr) {
+                char expected_dmr[256];
+                Dmod_SnPrintf(expected_dmr, sizeof(expected_dmr), "%s.dmr", module_name);
+                if (strcmp(entry_name, expected_dmr) == 0) {
+                    Dmod_SnPrintf(dmr_file, sizeof(dmr_file), "%s/%s", extract_dir, entry_name);
+                    DMOD_LOG_INFO("Found resource file: %s\n", entry_name);
+                    break;
+                }
+            }
+        }
+        Dmod_CloseDir(dir);
+    }
+    
+    char source_path[1024] = "";
+    bool found_resource = false;
+    
+    // Try to get resource path from .dmr file
+    if (dmr_file[0] != '\0') {
+        DMOD_LOG_INFO("Reading resource path from .dmr file\n");
+        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name);
+        if (res_ctx) {
+            if (Dmod_Resource_ParseFile(res_ctx, dmr_file)) {
+                size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
+                for (size_t i = 0; i < res_count; i++) {
+                    Dmod_ResourceEntry_t res_entry;
+                    if (Dmod_Resource_GetEntry(res_ctx, i, &res_entry)) {
+                        if (strcmp(res_entry.key, resource_key) == 0) {
+                            // Build full source path
+                            Dmod_SnPrintf(source_path, sizeof(source_path), "%s/%s", 
+                                        extract_dir, res_entry.source);
+                            found_resource = true;
+                            DMOD_LOG_INFO("Found %s resource in .dmr: %s\n", resource_key, res_entry.source);
+                            break;
+                        }
+                    }
+                }
+            }
+            Dmod_Resource_Free(res_ctx);
+        }
+    }
+    
+    // Fall back to standard structure: <module>/<resource_key>
+    if (!found_resource) {
+        DMOD_LOG_INFO("No .dmr file or resource not found in .dmr, using default structure\n");
+        Dmod_SnPrintf(source_path, sizeof(source_path), "%s/%s/%s", 
+                    extract_dir, module_name, resource_key);
+    }
+    
+    // Check if source exists
+    struct stat st;
+    if (stat(source_path, &st) != 0) {
+        DMOD_LOG_ERROR("Resource '%s' not found in package at: %s\n", resource_key, source_path);
+        // Clean up temp directory
+        char rm_cmd[1024];
+        Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", extract_dir);
+        system(rm_cmd);
+        return false;
+    }
+    
+    // Ensure output directory exists
+    char mkdir_cmd[2048];
+    Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", output_dir);
+    int mkdir_result = system(mkdir_cmd);
+    if (mkdir_result != 0) {
+        DMOD_LOG_ERROR("Failed to create output directory: %s\n", output_dir);
+        // Clean up temp directory
+        char rm_cmd[1024];
+        Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", extract_dir);
+        system(rm_cmd);
+        return false;
+    }
+    
+    // Copy the resource
+    char cp_cmd[2048];
+    if (S_ISDIR(st.st_mode)) {
+        // For directories, copy directory itself (not just contents)
+        Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp -r \"%s\" \"%s\"", source_path, output_dir);
+    } else {
+        // For files, copy the file
+        Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp \"%s\" \"%s\"", source_path, output_dir);
+    }
+    
+    int cp_result = system(cp_cmd);
+    if (cp_result == 0) {
+        DMOD_LOG_INFO("Resource '%s' installed successfully to: %s\n", resource_key, output_dir);
+    } else {
+        DMOD_LOG_ERROR("Failed to install resource '%s'\n", resource_key);
+        // Clean up temp directory
+        char rm_cmd[1024];
+        Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", extract_dir);
+        system(rm_cmd);
+        return false;
+    }
+    
+    // Clean up temp directory
+    char rm_temp_cmd[1024];
+    Dmod_SnPrintf(rm_temp_cmd, sizeof(rm_temp_cmd), "rm -rf \"%s\"", extract_dir);
+    system(rm_temp_cmd);
+    
+    return true;
 }
 
 /**
@@ -813,7 +975,11 @@ static char* FindManifest(const char* dmf_dir, const char* dmfc_dir) {
  * @brief Print usage information
  */
 static void PrintUsage(const char* app_name) {
-    Dmod_Printf("Usage: %s [options] [install] [<module_name>[@version]]\n\n", app_name);
+    Dmod_Printf("Usage: %s [options] <command> [<module_name>[@version]]\n\n", app_name);
+    Dmod_Printf("Commands:\n");
+    Dmod_Printf("  install <module>          Download and install module (default command)\n");
+    Dmod_Printf("  headers <module>          Extract module headers to output directory\n");
+    Dmod_Printf("  docs <module>             Extract module documentation to output directory\n\n");
     Dmod_Printf("Options:\n");
     Dmod_Printf("  -d, --dependencies <path> Path or URL to dependencies (.dmd) file\n");
     Dmod_Printf("  -m, --manifest <path>     Path or URL to manifest file\n");
@@ -834,10 +1000,16 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s       Tools name (e.g., arch/x86_64)\n", ENV_TOOLS_NAME);
     Dmod_Printf("  %s          DMF output directory\n", ENV_DMF_DIR);
     Dmod_Printf("  %s         DMFC output directory\n", ENV_DMFC_DIR);
-    Dmod_Printf("  %s      Default manifest path or URL\n\n", ENV_MANIFEST);
+    Dmod_Printf("  %s      Default manifest path or URL\n", ENV_MANIFEST);
+    Dmod_Printf("  %s       Include/headers output directory\n", ENV_INC_DIR);
+    Dmod_Printf("  %s       Documentation output directory\n\n", ENV_DOC_DIR);
     Dmod_Printf("Examples:\n");
     Dmod_Printf("  %s mymodule              # Download latest version\n", app_name);
-    Dmod_Printf("  %s install mymodule      # Same as above (install is optional)\n", app_name);
+    Dmod_Printf("  %s install mymodule      # Same as above (install is explicit)\n", app_name);
+    Dmod_Printf("  %s headers dmini -o ./dmini/inc  # Extract headers to specified path\n", app_name);
+    Dmod_Printf("  %s headers dmini         # Extract headers to $DMOD_INC_DIR or $DMOD_DMF_DIR/dmini/inc\n", app_name);
+    Dmod_Printf("  %s docs dmini -o ./dmini/docs    # Extract docs to specified path\n", app_name);
+    Dmod_Printf("  %s docs dmini            # Extract docs to $DMOD_DOC_DIR or $DMOD_DMF_DIR/dmini/docs\n", app_name);
     Dmod_Printf("  %s mymodule@1.0          # Download specific version\n", app_name);
     Dmod_Printf("  %s mymodule@>=1.0        # Download version >= 1.0\n", app_name);
     Dmod_Printf("  %s mymodule@>=1.0<=2.0   # Download version in range [1.0, 2.0]\n", app_name);
@@ -854,6 +1026,117 @@ static void PrintUsage(const char* app_name) {
 static void PrintVersion() {
     Dmod_Printf("dmf-get version " DMOD_VERSION_STRING "\n");
     Dmod_Printf("DMOD Package Manager\n");
+}
+
+/**
+ * @brief Extract and install resource (headers or docs) from a module package
+ * 
+ * @param module_name Module name
+ * @param module_version Module version (can be NULL)
+ * @param manifest_ctx Manifest context
+ * @param output_dir Output directory
+ * @param tools_name Tools name for substitution
+ * @param arch_name Architecture name for substitution
+ * @param cpu_name CPU name for substitution (can be NULL)
+ * @param cpu_family CPU family for substitution (can be NULL)
+ * @param resource_key Resource key ("inc" for headers, "docs" for documentation)
+ * @return 0 on success, non-zero on failure
+ */
+static int ExtractResourceCommand(const char* module_name, const char* module_version,
+                                  Dmod_ManifestContext_t* manifest_ctx,
+                                  const char* output_dir, const char* tools_name,
+                                  const char* arch_name, const char* cpu_name,
+                                  const char* cpu_family, const char* resource_key) {
+    // Find module in manifest
+    Dmod_ManifestEntry_t entry;
+    Dmod_ManifestNode_t* node = Dmod_Manifest_FindEntry(manifest_ctx, module_name, module_version, NULL, &entry);
+    if (!node) {
+        DMOD_LOG_ERROR("Error: Module not found: %s\n", module_name);
+        DMOD_LOG_ERROR("  %s\n", Dmod_Manifest_GetError(manifest_ctx));
+        return 1;
+    }
+    
+    // Determine which version to use for URL substitution
+    const char* version_to_use = module_version ? module_version : 
+                                (entry.version[0] ? entry.version : NULL);
+    
+    // Substitute <version> in URL if needed
+    char final_url[1024];
+    const char* url_ptr = entry.url;
+    const char* version_placeholder = strstr(entry.url, "<version>");
+    
+    if (version_placeholder && !version_to_use) {
+        version_to_use = "latest";
+    }
+    
+    if (version_placeholder && version_to_use) {
+        size_t prefix_len = version_placeholder - entry.url;
+        const char* suffix = version_placeholder + strlen("<version>");
+        Dmod_SnPrintf(final_url, sizeof(final_url), "%.*s%s%s",
+                     (int)prefix_len, entry.url, version_to_use, suffix);
+        url_ptr = final_url;
+    }
+    
+    DMOD_LOG_INFO("Downloading package for %s from: %s\n", resource_key, url_ptr);
+    
+    // Download the package
+    char* download_buffer = NULL;
+    size_t download_size = 0;
+    if (!DownloadWithCurl(url_ptr, &download_buffer, &download_size, NULL)) {
+        DMOD_LOG_ERROR("Failed to download package\n");
+        return 1;
+    }
+    
+    // Validate module_name to prevent path traversal
+    if (!IsPathSafe(module_name)) {
+        DMOD_LOG_ERROR("Invalid module name (contains unsafe characters)\n");
+        Dmod_Free(download_buffer);
+        return 1;
+    }
+    
+    // Save to temporary file
+    char zip_path[512];
+    Dmod_SnPrintf(zip_path, sizeof(zip_path), "/tmp/dmod_resource_%s_%d.zip", module_name, (int)getpid());
+    
+    FILE* zip_file = fopen(zip_path, "wb");
+    if (!zip_file) {
+        DMOD_LOG_ERROR("Failed to create temporary file: %s\n", zip_path);
+        Dmod_Free(download_buffer);
+        return 1;
+    }
+    
+    size_t written = fwrite(download_buffer, 1, download_size, zip_file);
+    fclose(zip_file);
+    
+    if (written != download_size) {
+        DMOD_LOG_ERROR("Failed to write complete package to temporary file\n");
+        Dmod_Free(download_buffer);
+        // Clean up incomplete file
+        char rm_cmd[1024];
+        Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -f \"%s\"", zip_path);
+        system(rm_cmd);
+        return 1;
+    }
+    
+    Dmod_Free(download_buffer);
+    
+    DMOD_LOG_INFO("Package downloaded, extracting %s...\n", resource_key);
+    
+    // Extract the resource
+    bool success = ExtractResourceFromZip(zip_path, output_dir, module_name, resource_key);
+    
+    // Clean up zip file
+    char rm_cmd[1024];
+    Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -f \"%s\"", zip_path);
+    system(rm_cmd);
+    
+    if (!success) {
+        DMOD_LOG_ERROR("Failed to extract %s from package\n", resource_key);
+        return 1;
+    }
+    
+    DMOD_LOG_INFO("Successfully extracted %s to: %s\n", resource_key, output_dir);
+    return 0;
 }
 
 /**
@@ -1100,6 +1383,7 @@ int main(int argc, char* argv[]) {
     const char* cpu_name = NULL;
     const char* cpu_family = NULL;
     const char* preferred_type = NULL;
+    const char* command = NULL;  // Command: install (default), headers, or docs
     bool no_dependencies = false;
     bool ignore_missing = false;
     bool skip_arch_check = false;
@@ -1202,23 +1486,28 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         else {
-            // Support "install" subcommand for compatibility with other package managers
-            // e.g., "dmf-get install mymodule" is equivalent to "dmf-get mymodule"
-            // Only skip "install" if there's another positional argument after it
-            // This allows a module named "install" to still be downloaded
-            if (!module_spec && strcmp(argv[i], "install") == 0) {
-                // Check if there's another positional argument after "install"
-                bool has_more_positional = false;
-                for (int j = i + 1; j < argc; j++) {
-                    if (argv[j][0] != '-') {
-                        has_more_positional = true;
-                        break;
+            // Handle subcommands: install, headers, docs
+            // Check if this is a command keyword
+            if (!command && !module_spec) {
+                if (strcmp(argv[i], "install") == 0 || 
+                    strcmp(argv[i], "headers") == 0 || 
+                    strcmp(argv[i], "docs") == 0) {
+                    // Check if there's another positional argument after this command
+                    bool has_more_positional = false;
+                    for (int j = i + 1; j < argc; j++) {
+                        if (argv[j][0] != '-') {
+                            has_more_positional = true;
+                            break;
+                        }
                     }
-                }
-                if (has_more_positional) {
-                    continue;  // Skip the "install" keyword
+                    if (has_more_positional) {
+                        command = argv[i];
+                        continue;  // Skip the command keyword
+                    }
+                    // If no more positional args, treat as module name
                 }
             }
+            
             if (module_spec) {
                 DMOD_LOG_ERROR("Error: Multiple module names specified\n");
                 return 1;
@@ -1241,6 +1530,144 @@ int main(int argc, char* argv[]) {
     
     // Initialize curl
     curl_global_init(CURL_GLOBAL_DEFAULT);
+    
+    // Handle headers and docs commands
+    if (command && (strcmp(command, "headers") == 0 || strcmp(command, "docs") == 0)) {
+        if (!module_spec) {
+            DMOD_LOG_ERROR("Error: No module name specified for %s command\n", command);
+            PrintUsage(argv[0]);
+            curl_global_cleanup();
+            return 1;
+        }
+        
+        if (dependencies_path) {
+            DMOD_LOG_ERROR("Error: Cannot use %s command with dependencies file\n", command);
+            curl_global_cleanup();
+            return 1;
+        }
+        
+        // Parse module name and version first
+        char module_name[256];
+        char module_version[128] = "";
+        strncpy(module_name, module_spec, sizeof(module_name) - 1);
+        module_name[sizeof(module_name) - 1] = '\0';
+        
+        char* version_sep = strchr(module_name, '@');
+        if (version_sep) {
+            *version_sep = '\0';
+            strncpy(module_version, version_sep + 1, sizeof(module_version) - 1);
+            module_version[sizeof(module_version) - 1] = '\0';
+        }
+        
+        // Determine output directory based on command
+        const char* resource_key;
+        char default_output_dir[1024];
+        if (strcmp(command, "headers") == 0) {
+            resource_key = "inc";
+            if (!output_dir) {
+                output_dir = Dmod_GetEnv(ENV_INC_DIR);
+                if (!output_dir) {
+                    // Default to $DMOD_DMF_DIR/<module_name>/inc
+                    const char* dmf_dir = GetEnvOrDefault(ENV_DMF_DIR, DEFAULT_DMF_DIR);
+                    Dmod_SnPrintf(default_output_dir, sizeof(default_output_dir), "%s/%s/inc", dmf_dir, module_name);
+                    output_dir = default_output_dir;
+                    DMOD_LOG_INFO("No output directory specified, using default: %s\n", output_dir);
+                }
+            }
+        } else { // docs
+            resource_key = "docs";
+            if (!output_dir) {
+                output_dir = Dmod_GetEnv(ENV_DOC_DIR);
+                if (!output_dir) {
+                    // Default to $DMOD_DMF_DIR/<module_name>/docs
+                    const char* dmf_dir = GetEnvOrDefault(ENV_DMF_DIR, DEFAULT_DMF_DIR);
+                    Dmod_SnPrintf(default_output_dir, sizeof(default_output_dir), "%s/%s/docs", dmf_dir, module_name);
+                    output_dir = default_output_dir;
+                    DMOD_LOG_INFO("No output directory specified, using default: %s\n", output_dir);
+                }
+            }
+        }
+        
+        // Get manifest path
+        if (!manifest_path) {
+            manifest_path = Dmod_GetEnv(ENV_MANIFEST);
+            if (!manifest_path) {
+                const char* dmf_dir = GetEnvOrDefault(ENV_DMF_DIR, DEFAULT_DMF_DIR);
+                const char* dmfc_dir = GetEnvOrDefault(ENV_DMFC_DIR, DEFAULT_DMFC_DIR);
+                
+                char* found_manifest = FindManifest(dmf_dir, dmfc_dir);
+                if (found_manifest) {
+                    manifest_path = found_manifest;
+                    DMOD_LOG_INFO("Using manifest: %s\n", manifest_path);
+                } else {
+                    manifest_path = DEFAULT_MANIFEST_URL;
+                    DMOD_LOG_INFO("Using default manifest: %s\n", manifest_path);
+                }
+            }
+        }
+        
+        // Get configuration
+        if (!tools_name) {
+            tools_name = GetEnvOrDefault(ENV_TOOLS_NAME, "arch/x86_64");
+        }
+        
+        char arch_buffer[DMOD_MAX_ARCH_NAME_LENGTH];
+        if (tools_name && !arch_name) {
+            strcpy(arch_buffer, tools_name);
+            char* start = arch_buffer;
+            if (strncmp(start, "arch/", 5) == 0) {
+                start += 5;
+            }
+            for (char* p = start; *p; p++) {
+                if (*p == '/') {
+                    *p = '-';
+                }
+            }
+            arch_name = start;
+        }
+        
+        // Initialize manifest parser
+        Dmod_ManifestContext_t* manifest_ctx = Dmod_Manifest_Init(tools_name, arch_name, cpu_name, cpu_family, DownloadWithCurl, NULL);
+        if (!manifest_ctx) {
+            DMOD_LOG_ERROR("Error: Failed to initialize manifest parser\n");
+            curl_global_cleanup();
+            return 1;
+        }
+        
+        // Parse manifest
+        bool manifest_parse_success = false;
+        if (strncmp(manifest_path, "http://", 7) == 0 || 
+            strncmp(manifest_path, "https://", 8) == 0) {
+            manifest_parse_success = Dmod_Manifest_ParseUrl(manifest_ctx, manifest_path);
+        } else {
+            manifest_parse_success = Dmod_Manifest_ParseFile(manifest_ctx, manifest_path);
+        }
+        
+        if (!manifest_parse_success) {
+            DMOD_LOG_ERROR("Error: Failed to parse manifest: %s\n", 
+                    Dmod_Manifest_GetError(manifest_ctx));
+            Dmod_Manifest_Free(manifest_ctx);
+            curl_global_cleanup();
+            return 1;
+        }
+        
+        // Extract the resource
+        int result = ExtractResourceCommand(
+            module_name,
+            module_version[0] ? module_version : NULL,
+            manifest_ctx,
+            output_dir,
+            tools_name,
+            arch_name,
+            cpu_name,
+            cpu_family,
+            resource_key
+        );
+        
+        Dmod_Manifest_Free(manifest_ctx);
+        curl_global_cleanup();
+        return result;
+    }
     
     // If arch_name not specified, default to system architecture
     if (!arch_name && !skip_arch_check && !tools_name) {

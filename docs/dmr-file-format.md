@@ -101,13 +101,17 @@ dmfc=./module.dmfc => ${DMOD_DMF_DIR}/${module}.dmfc
 
 #### Documentation
 
+Documentation should be provided in Markdown format for better portability and console display.
+
 ```dmr
-# Documentation folder
+# Documentation folder (should contain Markdown files)
 docs=./docs => ${destination}/${module}/docs
 
 # README file
 readme=./README.md => ${destination}/${module}/README.md
 ```
+
+**Note**: Documentation should be in Markdown format (`.md` files), not HTML, to ensure it can be displayed in console environments and easily converted to other formats.
 
 #### Header Files
 
@@ -221,6 +225,47 @@ The `--mini` mode is useful for:
 - Faster installation
 - Containerized environments
 
+#### Extract Headers Only (`headers` command)
+
+Extract only the header files from a module package:
+
+```bash
+# Extract to specified directory
+dmf-get headers mymodule -o ./mymodule/inc
+
+# Extract to DMOD_INC_DIR environment variable path (if set)
+# or defaults to $DMOD_DMF_DIR/mymodule/inc
+dmf-get headers mymodule
+```
+
+This command:
+- Downloads the module package
+- Extracts only the `inc` resource as defined in the DMR file
+- Falls back to `<module>/inc` folder if no DMR file exists
+- If no output directory specified, uses `DMOD_INC_DIR` or defaults to `$DMOD_DMF_DIR/<module>/inc`
+- Useful for development when you only need API headers
+
+#### Extract Documentation Only (`docs` command)
+
+Extract only the documentation from a module package:
+
+```bash
+# Extract to specified directory
+dmf-get docs mymodule -o ./mymodule/docs
+
+# Extract to DMOD_DOC_DIR environment variable path (if set)
+# or defaults to $DMOD_DMF_DIR/mymodule/docs
+dmf-get docs mymodule
+```
+
+This command:
+- Downloads the module package
+- Extracts only the `docs` resource as defined in the DMR file
+- Falls back to `<module>/docs` folder if no DMR file exists
+- If no output directory specified, uses `DMOD_DOC_DIR` or defaults to `$DMOD_DMF_DIR/<module>/docs`
+- Useful for offline documentation access
+- Documentation should be in Markdown format for console viewing
+
 ### Example Workflow
 
 1. Create a `mymodule.dmr` file in your module package
@@ -269,7 +314,7 @@ examples=./examples => ${destination}/${module}/examples
 # Main module binary - required for functionality
 dmf=./mymodule.dmf => ${DMOD_DMF_DIR}/${module}.dmf
 
-# API documentation in HTML format
+# API documentation in Markdown format
 docs=./api-docs => ${destination}/${module}/docs
 
 # C header files for module integration
