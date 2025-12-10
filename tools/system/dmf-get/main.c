@@ -269,6 +269,7 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
     }
     
     char source_path[1024] = "";
+    char destination_path[1024] = "";
     bool found_resource = false;
     
     // Try to get resource path from .dmr file
@@ -285,8 +286,12 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
                             // Build full source path
                             Dmod_SnPrintf(source_path, sizeof(source_path), "%s/%s", 
                                         extract_dir, res_entry.source);
+                            // Store the resolved destination from DMR
+                            strncpy(destination_path, res_entry.destination, sizeof(destination_path) - 1);
+                            destination_path[sizeof(destination_path) - 1] = '\0';
                             found_resource = true;
-                            DMOD_LOG_INFO("Found %s resource in .dmr: %s\n", resource_key, res_entry.source);
+                            DMOD_LOG_INFO("Found %s resource in .dmr: %s => %s\n", 
+                                        resource_key, res_entry.source, res_entry.destination);
                             break;
                         }
                     }
@@ -301,6 +306,9 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
         DMOD_LOG_INFO("No .dmr file or resource not found in .dmr, using default structure\n");
         Dmod_SnPrintf(source_path, sizeof(source_path), "%s/%s/%s", 
                     extract_dir, module_name, resource_key);
+        // Use output_dir as destination when no DMR entry found
+        strncpy(destination_path, output_dir, sizeof(destination_path) - 1);
+        destination_path[sizeof(destination_path) - 1] = '\0';
     }
     
     // Check if source exists
@@ -316,10 +324,10 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
     
     // Ensure output directory exists
     char mkdir_cmd[2048];
-    Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", output_dir);
+    Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", destination_path);
     int mkdir_result = system(mkdir_cmd);
     if (mkdir_result != 0) {
-        DMOD_LOG_ERROR("Failed to create output directory: %s\n", output_dir);
+        DMOD_LOG_ERROR("Failed to create output directory: %s\n", destination_path);
         // Clean up temp directory
         char rm_cmd[1024];
         Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", extract_dir);
@@ -331,15 +339,15 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
     char cp_cmd[2048];
     if (S_ISDIR(st.st_mode)) {
         // For directories, copy contents (not the directory itself) to avoid nested structure
-        Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp -r \"%s/.\" \"%s\"", source_path, output_dir);
+        Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp -r \"%s/.\" \"%s\"", source_path, destination_path);
     } else {
         // For files, copy the file
-        Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp \"%s\" \"%s\"", source_path, output_dir);
+        Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp \"%s\" \"%s\"", source_path, destination_path);
     }
     
     int cp_result = system(cp_cmd);
     if (cp_result == 0) {
-        DMOD_LOG_INFO("Resource '%s' installed successfully to: %s\n", resource_key, output_dir);
+        DMOD_LOG_INFO("Resource '%s' installed successfully to: %s\n", resource_key, destination_path);
     } else {
         DMOD_LOG_ERROR("Failed to install resource '%s'\n", resource_key);
         // Clean up temp directory
