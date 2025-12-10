@@ -330,11 +330,11 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
     // Copy the resource
     char cp_cmd[2048];
     if (S_ISDIR(st.st_mode)) {
-        // For directories, copy contents
-        Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp -r \"%s\"/* \"%s\"/", source_path, output_dir);
+        // For directories, copy directory itself (not just contents)
+        Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp -r \"%s\" \"%s\"", source_path, output_dir);
     } else {
         // For files, copy the file
-        Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp \"%s\" \"%s\"/", source_path, output_dir);
+        Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp \"%s\" \"%s\"", source_path, output_dir);
     }
     
     int cp_result = system(cp_cmd);
@@ -1087,6 +1087,13 @@ static int ExtractResourceCommand(const char* module_name, const char* module_ve
         return 1;
     }
     
+    // Validate module_name to prevent path traversal
+    if (!IsPathSafe(module_name)) {
+        DMOD_LOG_ERROR("Invalid module name (contains unsafe characters)\n");
+        Dmod_Free(download_buffer);
+        return 1;
+    }
+    
     // Save to temporary file
     char zip_path[512];
     Dmod_SnPrintf(zip_path, sizeof(zip_path), "/tmp/dmod_resource_%s_%d.zip", module_name, (int)getpid());
@@ -1098,8 +1105,19 @@ static int ExtractResourceCommand(const char* module_name, const char* module_ve
         return 1;
     }
     
-    fwrite(download_buffer, 1, download_size, zip_file);
+    size_t written = fwrite(download_buffer, 1, download_size, zip_file);
     fclose(zip_file);
+    
+    if (written != download_size) {
+        DMOD_LOG_ERROR("Failed to write complete package to temporary file\n");
+        Dmod_Free(download_buffer);
+        // Clean up incomplete file
+        char rm_cmd[1024];
+        Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -f \"%s\"", zip_path);
+        system(rm_cmd);
+        return 1;
+    }
+    
     Dmod_Free(download_buffer);
     
     DMOD_LOG_INFO("Package downloaded, extracting %s...\n", resource_key);
