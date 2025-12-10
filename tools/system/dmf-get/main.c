@@ -287,8 +287,7 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
                             Dmod_SnPrintf(source_path, sizeof(source_path), "%s/%s", 
                                         extract_dir, res_entry.source);
                             // Store the resolved destination from DMR
-                            strncpy(destination_path, res_entry.destination, sizeof(destination_path) - 1);
-                            destination_path[sizeof(destination_path) - 1] = '\0';
+                            Dmod_SnPrintf(destination_path, sizeof(destination_path), "%s", res_entry.destination);
                             found_resource = true;
                             DMOD_LOG_INFO("Found %s resource in .dmr: %s => %s\n", 
                                         resource_key, res_entry.source, res_entry.destination);
@@ -307,8 +306,7 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
         Dmod_SnPrintf(source_path, sizeof(source_path), "%s/%s/%s", 
                     extract_dir, module_name, resource_key);
         // Use output_dir as destination when no DMR entry found
-        strncpy(destination_path, output_dir, sizeof(destination_path) - 1);
-        destination_path[sizeof(destination_path) - 1] = '\0';
+        Dmod_SnPrintf(destination_path, sizeof(destination_path), "%s", output_dir);
     }
     
     // Check if source exists
