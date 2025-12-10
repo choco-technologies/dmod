@@ -233,7 +233,8 @@ Extract only the header files from a module package:
 # Extract to specified directory
 dmf-get headers mymodule -o ./mymodule/inc
 
-# Extract to DMOD_INC_DIR environment variable path
+# Extract to DMOD_INC_DIR environment variable path (if set)
+# or defaults to $DMOD_DMF_DIR/mymodule/inc
 dmf-get headers mymodule
 ```
 
@@ -241,6 +242,7 @@ This command:
 - Downloads the module package
 - Extracts only the `inc` resource as defined in the DMR file
 - Falls back to `<module>/inc` folder if no DMR file exists
+- If no output directory specified, uses `DMOD_INC_DIR` or defaults to `$DMOD_DMF_DIR/<module>/inc`
 - Useful for development when you only need API headers
 
 #### Extract Documentation Only (`docs` command)
@@ -251,7 +253,8 @@ Extract only the documentation from a module package:
 # Extract to specified directory
 dmf-get docs mymodule -o ./mymodule/docs
 
-# Extract to DMOD_DOC_DIR environment variable path
+# Extract to DMOD_DOC_DIR environment variable path (if set)
+# or defaults to $DMOD_DMF_DIR/mymodule/docs
 dmf-get docs mymodule
 ```
 
@@ -259,6 +262,7 @@ This command:
 - Downloads the module package
 - Extracts only the `docs` resource as defined in the DMR file
 - Falls back to `<module>/docs` folder if no DMR file exists
+- If no output directory specified, uses `DMOD_DOC_DIR` or defaults to `$DMOD_DMF_DIR/<module>/docs`
 - Useful for offline documentation access
 - Documentation should be in Markdown format for console viewing
 

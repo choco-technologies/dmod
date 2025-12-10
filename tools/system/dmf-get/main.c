@@ -1007,9 +1007,9 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s mymodule              # Download latest version\n", app_name);
     Dmod_Printf("  %s install mymodule      # Same as above (install is explicit)\n", app_name);
     Dmod_Printf("  %s headers dmini -o ./dmini/inc  # Extract headers to specified path\n", app_name);
-    Dmod_Printf("  %s headers dmini         # Extract headers to $DMOD_INC_DIR\n", app_name);
+    Dmod_Printf("  %s headers dmini         # Extract headers to $DMOD_INC_DIR or $DMOD_DMF_DIR/dmini/inc\n", app_name);
     Dmod_Printf("  %s docs dmini -o ./dmini/docs    # Extract docs to specified path\n", app_name);
-    Dmod_Printf("  %s docs dmini            # Extract docs to $DMOD_DOC_DIR\n", app_name);
+    Dmod_Printf("  %s docs dmini            # Extract docs to $DMOD_DOC_DIR or $DMOD_DMF_DIR/dmini/docs\n", app_name);
     Dmod_Printf("  %s mymodule@1.0          # Download specific version\n", app_name);
     Dmod_Printf("  %s mymodule@>=1.0        # Download version >= 1.0\n", app_name);
     Dmod_Printf("  %s mymodule@>=1.0<=2.0   # Download version in range [1.0, 2.0]\n", app_name);
@@ -1546,16 +1546,32 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         
+        // Parse module name and version first
+        char module_name[256];
+        char module_version[128] = "";
+        strncpy(module_name, module_spec, sizeof(module_name) - 1);
+        module_name[sizeof(module_name) - 1] = '\0';
+        
+        char* version_sep = strchr(module_name, '@');
+        if (version_sep) {
+            *version_sep = '\0';
+            strncpy(module_version, version_sep + 1, sizeof(module_version) - 1);
+            module_version[sizeof(module_version) - 1] = '\0';
+        }
+        
         // Determine output directory based on command
         const char* resource_key;
+        char default_output_dir[1024];
         if (strcmp(command, "headers") == 0) {
             resource_key = "inc";
             if (!output_dir) {
                 output_dir = Dmod_GetEnv(ENV_INC_DIR);
                 if (!output_dir) {
-                    DMOD_LOG_ERROR("Error: No output directory specified. Use --output or set %s\n", ENV_INC_DIR);
-                    curl_global_cleanup();
-                    return 1;
+                    // Default to $DMOD_DMF_DIR/<module_name>/inc
+                    const char* dmf_dir = GetEnvOrDefault(ENV_DMF_DIR, DEFAULT_DMF_DIR);
+                    Dmod_SnPrintf(default_output_dir, sizeof(default_output_dir), "%s/%s/inc", dmf_dir, module_name);
+                    output_dir = default_output_dir;
+                    DMOD_LOG_INFO("No output directory specified, using default: %s\n", output_dir);
                 }
             }
         } else { // docs
@@ -1563,9 +1579,11 @@ int main(int argc, char* argv[]) {
             if (!output_dir) {
                 output_dir = Dmod_GetEnv(ENV_DOC_DIR);
                 if (!output_dir) {
-                    DMOD_LOG_ERROR("Error: No output directory specified. Use --output or set %s\n", ENV_DOC_DIR);
-                    curl_global_cleanup();
-                    return 1;
+                    // Default to $DMOD_DMF_DIR/<module_name>/docs
+                    const char* dmf_dir = GetEnvOrDefault(ENV_DMF_DIR, DEFAULT_DMF_DIR);
+                    Dmod_SnPrintf(default_output_dir, sizeof(default_output_dir), "%s/%s/docs", dmf_dir, module_name);
+                    output_dir = default_output_dir;
+                    DMOD_LOG_INFO("No output directory specified, using default: %s\n", output_dir);
                 }
             }
         }
@@ -1586,19 +1604,6 @@ int main(int argc, char* argv[]) {
                     DMOD_LOG_INFO("Using default manifest: %s\n", manifest_path);
                 }
             }
-        }
-        
-        // Parse module name and version
-        char module_name[256];
-        char module_version[128] = "";
-        strncpy(module_name, module_spec, sizeof(module_name) - 1);
-        module_name[sizeof(module_name) - 1] = '\0';
-        
-        char* version_sep = strchr(module_name, '@');
-        if (version_sep) {
-            *version_sep = '\0';
-            strncpy(module_version, version_sep + 1, sizeof(module_version) - 1);
-            module_version[sizeof(module_version) - 1] = '\0';
         }
         
         // Get configuration
