@@ -46,6 +46,208 @@
 #define VT100_CYAN "\033[36m"
 #define VT100_WHITE "\033[37m"
 
+// Terminal control
+#define VT100_CLEAR_SCREEN "\033[2J"
+#define VT100_CURSOR_HOME "\033[H"
+#define VT100_CURSOR_SAVE "\0337"
+#define VT100_CURSOR_RESTORE "\0338"
+#define VT100_HIDE_CURSOR "\033[?25l"
+#define VT100_SHOW_CURSOR "\033[?25h"
+
+// Paging defaults
+#define DEFAULT_PAGE_HEIGHT 24  // Standard terminal height minus status line
+
+// Dynamic buffer for paged output
+typedef struct {
+    char** lines;
+    size_t count;
+    size_t capacity;
+} PageBuffer_t;
+
+/**
+ * @brief Initialize page buffer
+ */
+static void PageBuffer_Init(PageBuffer_t* buffer) {
+    buffer->lines = NULL;
+    buffer->count = 0;
+    buffer->capacity = 0;
+}
+
+/**
+ * @brief Add line to page buffer
+ */
+static bool PageBuffer_AddLine(PageBuffer_t* buffer, const char* line) {
+    if (buffer->count >= buffer->capacity) {
+        size_t new_capacity = buffer->capacity == 0 ? 128 : buffer->capacity * 2;
+        char** new_lines = (char**)Dmod_Realloc(buffer->lines, new_capacity * sizeof(char*));
+        if (!new_lines) {
+            return false;
+        }
+        buffer->lines = new_lines;
+        buffer->capacity = new_capacity;
+    }
+    
+    buffer->lines[buffer->count] = Dmod_StrDup(line);
+    if (!buffer->lines[buffer->count]) {
+        return false;
+    }
+    buffer->count++;
+    return true;
+}
+
+/**
+ * @brief Free page buffer
+ */
+static void PageBuffer_Free(PageBuffer_t* buffer) {
+    for (size_t i = 0; i < buffer->count; i++) {
+        Dmod_Free(buffer->lines[i]);
+    }
+    Dmod_Free(buffer->lines);
+    buffer->lines = NULL;
+    buffer->count = 0;
+    buffer->capacity = 0;
+}
+
+/**
+ * @brief Read a single character in raw mode
+ */
+static int ReadKey(void) {
+    char c;
+    if (read(STDIN_FILENO, &c, 1) == 1) {
+        // Handle escape sequences for arrow keys
+        if (c == '\033') {
+            char seq[3];
+            if (read(STDIN_FILENO, &seq[0], 1) != 1) return c;
+            if (read(STDIN_FILENO, &seq[1], 1) != 1) return c;
+            
+            if (seq[0] == '[') {
+                switch (seq[1]) {
+                    case 'A': return 'k';  // Up arrow -> k
+                    case 'B': return 'j';  // Down arrow -> j
+                    case 'C': return 'l';  // Right arrow -> l
+                    case 'D': return 'h';  // Left arrow -> h
+                    case '5': // Page Up
+                        if (read(STDIN_FILENO, &seq[2], 1) == 1 && seq[2] == '~') {
+                            return 'b';  // Page up -> b
+                        }
+                        break;
+                    case '6': // Page Down
+                        if (read(STDIN_FILENO, &seq[2], 1) == 1 && seq[2] == '~') {
+                            return 'f';  // Page down -> f
+                        }
+                        break;
+                    case 'H': return 'g';  // Home -> g
+                    case 'F': return 'G';  // End -> G
+                }
+            }
+        }
+        return c;
+    }
+    return -1;
+}
+
+/**
+ * @brief Display paged content
+ */
+static void DisplayPaged(const PageBuffer_t* buffer) {
+    if (buffer->count == 0) {
+        return;
+    }
+    
+    size_t current_line = 0;
+    size_t page_height = DEFAULT_PAGE_HEIGHT;
+    bool quit = false;
+    
+    // Save original stdin flags
+    uint32_t orig_flags = Dmod_Stdin_GetFlags();
+    
+    // Set raw mode (no echo, no canonical)
+    Dmod_Stdin_SetFlags(0);
+    
+    while (!quit && current_line < buffer->count) {
+        // Clear screen and move cursor to home
+        Dmod_Printf("%s%s", VT100_CLEAR_SCREEN, VT100_CURSOR_HOME);
+        
+        // Display current page
+        size_t lines_displayed = 0;
+        for (size_t i = current_line; i < buffer->count && lines_displayed < page_height; i++, lines_displayed++) {
+            Dmod_Printf("%s\n", buffer->lines[i]);
+        }
+        
+        // Display status line
+        if (current_line + page_height < buffer->count) {
+            Dmod_Printf("%s%s-- MORE -- (%.0f%%) [j/k=line, space/b=page, q=quit]%s", 
+                       VT100_REVERSE, VT100_BOLD,
+                       (100.0 * (current_line + page_height)) / buffer->count,
+                       VT100_RESET);
+        } else {
+            Dmod_Printf("%s%s-- END -- [q=quit]%s", 
+                       VT100_REVERSE, VT100_BOLD, VT100_RESET);
+        }
+        
+        fflush(stdout);
+        
+        // Read key
+        int key = ReadKey();
+        
+        switch (key) {
+            case 'q':
+            case 'Q':
+                quit = true;
+                break;
+            case ' ':  // Space - next page
+            case 'f':  // Page down
+                if (current_line + page_height < buffer->count) {
+                    current_line += page_height;
+                }
+                break;
+            case 'b':  // Page up
+                if (current_line >= page_height) {
+                    current_line -= page_height;
+                } else {
+                    current_line = 0;
+                }
+                break;
+            case 'j':  // Down one line
+            case '\n':
+            case '\r':
+                if (current_line < buffer->count) {
+                    current_line++;
+                }
+                break;
+            case 'k':  // Up one line
+                if (current_line > 0) {
+                    current_line--;
+                }
+                break;
+            case 'g':  // Home - go to top
+                current_line = 0;
+                break;
+            case 'G':  // End - go to bottom
+                if (buffer->count > page_height) {
+                    current_line = buffer->count - page_height;
+                } else {
+                    current_line = 0;
+                }
+                break;
+        }
+        
+        // If we're at the end, wait for quit
+        if (current_line + page_height >= buffer->count && key != 'q' && key != 'Q') {
+            // Already at the end, only allow quit or up movement
+            if (key != 'k' && key != 'b' && key != 'g') {
+                continue;  // Don't advance, wait for valid key
+            }
+        }
+    }
+    
+    // Clear screen one final time
+    Dmod_Printf("%s%s", VT100_CLEAR_SCREEN, VT100_CURSOR_HOME);
+    
+    // Restore original stdin flags
+    Dmod_Stdin_SetFlags(orig_flags);
+}
+
 /**
  * @brief Print usage message
  */
@@ -306,8 +508,15 @@ static bool RenderMarkdown(const char* file_path, bool paged) {
         return false;
     }
     
+    // Initialize page buffer if paged mode
+    PageBuffer_t page_buffer;
+    if (paged) {
+        PageBuffer_Init(&page_buffer);
+    }
+    
     char line[4096];
     char formatted[8192];
+    char output_line[8192];
     bool in_code_block = false;
     bool in_list = false;
     int list_indent = 0;
@@ -319,16 +528,26 @@ static bool RenderMarkdown(const char* file_path, bool paged) {
         if (StartsWith(line, "```")) {
             in_code_block = !in_code_block;
             if (in_code_block) {
-                Dmod_Printf("%s", VT100_DIM);
+                Dmod_SnPrintf(output_line, sizeof(output_line), "%s", VT100_DIM);
             } else {
-                Dmod_Printf("%s", VT100_RESET);
+                Dmod_SnPrintf(output_line, sizeof(output_line), "%s", VT100_RESET);
+            }
+            if (paged) {
+                PageBuffer_AddLine(&page_buffer, output_line);
+            } else {
+                Dmod_Printf("%s", output_line);
             }
             continue;
         }
         
         // If in code block, print as-is with dim color
         if (in_code_block) {
-            Dmod_Printf("%s\n", line);
+            Dmod_SnPrintf(output_line, sizeof(output_line), "%s", line);
+            if (paged) {
+                PageBuffer_AddLine(&page_buffer, output_line);
+            } else {
+                Dmod_Printf("%s\n", output_line);
+            }
             continue;
         }
         
@@ -341,26 +560,49 @@ static bool RenderMarkdown(const char* file_path, bool paged) {
                 // Different formatting for different header levels
                 switch (level) {
                     case 1:
-                        Dmod_Printf("\n%s%s%s%s\n", VT100_BOLD, VT100_BLUE, text, VT100_RESET);
+                        Dmod_SnPrintf(output_line, sizeof(output_line), "");
+                        if (paged) PageBuffer_AddLine(&page_buffer, output_line); else Dmod_Printf("\n");
+                        
+                        Dmod_SnPrintf(output_line, sizeof(output_line), "%s%s%s%s", VT100_BOLD, VT100_BLUE, text, VT100_RESET);
+                        if (paged) PageBuffer_AddLine(&page_buffer, output_line); else Dmod_Printf("%s\n", output_line);
+                        
                         // Print underline
-                        for (size_t i = 0; i < strlen(text); i++) {
-                            Dmod_Printf("=");
+                        char underline[256];
+                        size_t text_len = strlen(text);
+                        for (size_t i = 0; i < text_len && i < sizeof(underline) - 1; i++) {
+                            underline[i] = '=';
                         }
-                        Dmod_Printf("\n");
+                        underline[text_len < sizeof(underline) ? text_len : sizeof(underline) - 1] = '\0';
+                        if (paged) PageBuffer_AddLine(&page_buffer, underline); else Dmod_Printf("%s\n", underline);
                         break;
                     case 2:
-                        Dmod_Printf("\n%s%s%s%s\n", VT100_BOLD, VT100_CYAN, text, VT100_RESET);
+                        Dmod_SnPrintf(output_line, sizeof(output_line), "");
+                        if (paged) PageBuffer_AddLine(&page_buffer, output_line); else Dmod_Printf("\n");
+                        
+                        Dmod_SnPrintf(output_line, sizeof(output_line), "%s%s%s%s", VT100_BOLD, VT100_CYAN, text, VT100_RESET);
+                        if (paged) PageBuffer_AddLine(&page_buffer, output_line); else Dmod_Printf("%s\n", output_line);
+                        
                         // Print underline
-                        for (size_t i = 0; i < strlen(text); i++) {
-                            Dmod_Printf("-");
+                        text_len = strlen(text);
+                        for (size_t i = 0; i < text_len && i < sizeof(underline) - 1; i++) {
+                            underline[i] = '-';
                         }
-                        Dmod_Printf("\n");
+                        underline[text_len < sizeof(underline) ? text_len : sizeof(underline) - 1] = '\0';
+                        if (paged) PageBuffer_AddLine(&page_buffer, underline); else Dmod_Printf("%s\n", underline);
                         break;
                     case 3:
-                        Dmod_Printf("\n%s%s%s%s\n", VT100_BOLD, VT100_GREEN, text, VT100_RESET);
+                        Dmod_SnPrintf(output_line, sizeof(output_line), "");
+                        if (paged) PageBuffer_AddLine(&page_buffer, output_line); else Dmod_Printf("\n");
+                        
+                        Dmod_SnPrintf(output_line, sizeof(output_line), "%s%s%s%s", VT100_BOLD, VT100_GREEN, text, VT100_RESET);
+                        if (paged) PageBuffer_AddLine(&page_buffer, output_line); else Dmod_Printf("%s\n", output_line);
                         break;
                     default:
-                        Dmod_Printf("\n%s%s%s\n", VT100_BOLD, text, VT100_RESET);
+                        Dmod_SnPrintf(output_line, sizeof(output_line), "");
+                        if (paged) PageBuffer_AddLine(&page_buffer, output_line); else Dmod_Printf("\n");
+                        
+                        Dmod_SnPrintf(output_line, sizeof(output_line), "%s%s%s", VT100_BOLD, text, VT100_RESET);
+                        if (paged) PageBuffer_AddLine(&page_buffer, output_line); else Dmod_Printf("%s\n", output_line);
                         break;
                 }
                 continue;
@@ -370,11 +612,12 @@ static bool RenderMarkdown(const char* file_path, bool paged) {
         // Handle horizontal rules
         if (StartsWith(line, "---") || StartsWith(line, "***") || StartsWith(line, "___")) {
             if (strlen(line) >= 3) {
-                Dmod_Printf("%s", VT100_DIM);
-                for (int i = 0; i < 80; i++) {
-                    Dmod_Printf("─");
+                Dmod_SnPrintf(output_line, sizeof(output_line), "%s", VT100_DIM);
+                for (int i = 0; i < 80 && strlen(output_line) < sizeof(output_line) - 2; i++) {
+                    strcat(output_line, "─");
                 }
-                Dmod_Printf("%s\n", VT100_RESET);
+                strcat(output_line, VT100_RESET);
+                if (paged) PageBuffer_AddLine(&page_buffer, output_line); else Dmod_Printf("%s\n", output_line);
                 continue;
             }
         }
@@ -384,7 +627,8 @@ static bool RenderMarkdown(const char* file_path, bool paged) {
             in_list = true;
             const char* text = line + 2;
             ProcessInlineFormatting(text, formatted, sizeof(formatted));
-            Dmod_Printf("  %s•%s %s\n", VT100_YELLOW, VT100_RESET, formatted);
+            Dmod_SnPrintf(output_line, sizeof(output_line), "  %s•%s %s", VT100_YELLOW, VT100_RESET, formatted);
+            if (paged) PageBuffer_AddLine(&page_buffer, output_line); else Dmod_Printf("%s\n", output_line);
             continue;
         }
         
@@ -400,7 +644,8 @@ static bool RenderMarkdown(const char* file_path, bool paged) {
                     num[num_len] = '\0';
                     const char* text = dot + 2;
                     ProcessInlineFormatting(text, formatted, sizeof(formatted));
-                    Dmod_Printf("  %s%s.%s %s\n", VT100_YELLOW, num, VT100_RESET, formatted);
+                    Dmod_SnPrintf(output_line, sizeof(output_line), "  %s%s.%s %s", VT100_YELLOW, num, VT100_RESET, formatted);
+                    if (paged) PageBuffer_AddLine(&page_buffer, output_line); else Dmod_Printf("%s\n", output_line);
                     continue;
                 }
             }
@@ -408,24 +653,33 @@ static bool RenderMarkdown(const char* file_path, bool paged) {
         
         // Handle indented code (4 spaces or tab)
         if (StartsWith(line, "    ") || line[0] == '\t') {
-            Dmod_Printf("%s%s%s\n", VT100_DIM, line, VT100_RESET);
+            Dmod_SnPrintf(output_line, sizeof(output_line), "%s%s%s", VT100_DIM, line, VT100_RESET);
+            if (paged) PageBuffer_AddLine(&page_buffer, output_line); else Dmod_Printf("%s\n", output_line);
             continue;
         }
         
         // Empty line - reset list mode
         if (strlen(line) == 0) {
             in_list = false;
-            Dmod_Printf("\n");
+            if (paged) PageBuffer_AddLine(&page_buffer, ""); else Dmod_Printf("\n");
             continue;
         }
         
         // Regular paragraph text with inline formatting
         ProcessInlineFormatting(line, formatted, sizeof(formatted));
-        Dmod_Printf("%s\n", formatted);
+        if (paged) PageBuffer_AddLine(&page_buffer, formatted); else Dmod_Printf("%s\n", formatted);
     }
     
     // Reset formatting at end
-    Dmod_Printf("%s", VT100_RESET);
+    Dmod_SnPrintf(output_line, sizeof(output_line), "%s", VT100_RESET);
+    if (paged) {
+        PageBuffer_AddLine(&page_buffer, output_line);
+        // Display paged
+        DisplayPaged(&page_buffer);
+        PageBuffer_Free(&page_buffer);
+    } else {
+        Dmod_Printf("%s", output_line);
+    }
     
     fclose(file);
     return true;
