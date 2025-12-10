@@ -310,6 +310,12 @@ bool Dmod_Resource_ParseFile(Dmod_ResourceContext_t* ctx, const char* file_path)
     }
     
     size_t read_size = Dmod_FileRead(content, 1, file_size, file);
+    if (read_size > (size_t)file_size) {
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Read size exceeds file size");
+        Dmod_Free(content);
+        Dmod_FileClose(file);
+        return false;
+    }
     content[read_size] = '\0';
     
     Dmod_FileClose(file);

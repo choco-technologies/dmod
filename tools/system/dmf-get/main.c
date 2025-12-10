@@ -158,6 +158,34 @@ static int DownloadModule(const char* module_name, const char* module_version,
                           bool mini_mode, InstallationCounts_t* counts);
 
 /**
+ * @brief Sanitize path for use in shell commands
+ * 
+ * Checks that the path doesn't contain characters that could be used for
+ * command injection (quotes, semicolons, pipes, etc.)
+ * 
+ * @param path Path to validate
+ * @return true if path is safe, false otherwise
+ */
+static bool IsPathSafe(const char* path) {
+    if (!path) return false;
+    
+    // Check for dangerous characters
+    const char* dangerous = "'\";|&$`<>(){}[]!\\*?";
+    for (const char* p = path; *p; p++) {
+        if (strchr(dangerous, *p)) {
+            return false;
+        }
+    }
+    
+    // Path should not start with - (to avoid being interpreted as option)
+    if (path[0] == '-') {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
  * @brief Convert DMOD_VERSION hex to semantic version
  */
 static void GetCurrentDmodVersion(Dmod_SemanticVersion_t* version) {
@@ -421,6 +449,12 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                     Dmod_SnPrintf(full_source, sizeof(full_source), "%s/%s", 
                                  extract_dir, res_entry.source);
                     
+                    // Validate paths for safety
+                    if (!IsPathSafe(full_source) || !IsPathSafe(res_entry.destination)) {
+                        DMOD_LOG_ERROR("  Invalid path detected (contains unsafe characters)\n");
+                        continue;
+                    }
+                    
                     // Check if source is a file or directory
                     struct stat st;
                     if (stat(full_source, &st) != 0) {
@@ -436,9 +470,20 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                     char* last_slash = strrchr(dest_parent, '/');
                     if (last_slash) {
                         *last_slash = '\0';
+                        
+                        // Validate parent path
+                        if (!IsPathSafe(dest_parent)) {
+                            DMOD_LOG_ERROR("  Invalid destination path (contains unsafe characters)\n");
+                            continue;
+                        }
+                        
                         char mkdir_cmd[2048];
                         Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", dest_parent);
-                        system(mkdir_cmd);
+                        int mkdir_result = system(mkdir_cmd);
+                        if (mkdir_result != 0) {
+                            DMOD_LOG_ERROR("  Failed to create destination directory: %s\n", dest_parent);
+                            continue;
+                        }
                     }
                     
                     // Copy the resource
