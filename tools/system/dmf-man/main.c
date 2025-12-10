@@ -494,7 +494,7 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "  - %s/%s/docs/README.md\n", dmf_dir, module_name);
         fprintf(stderr, "  - %s/%s/README.md\n", dmf_dir, module_name);
         
-        Dmod_Finalize();
+        Dmod_Deinitialize();
         return 1;
     }
     
@@ -505,7 +505,7 @@ int main(int argc, char* argv[]) {
     bool success = RenderMarkdown(doc_path);
     
     free(doc_path);
-    Dmod_Finalize();
+    Dmod_Deinitialize();
     
     return success ? 0 : 1;
 }
