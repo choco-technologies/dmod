@@ -1124,10 +1124,11 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
     Dmod_Event_ModuleStopped( Context );
     Context->Running = false;
 
-    result = Dmod_Deinit( Context );
-    if( result != 0 )
+    int deinitResult = Dmod_Deinit( Context );
+    if( deinitResult != 0 )
     {
-        DMOD_LOG_ERROR("Cannot run module - deinit failed: %d\n", result);
+        DMOD_LOG_ERROR("Module deinit has failed: %d\n", deinitResult);
+        result = deinitResult;
     }
 
     Dmod_DisconnectOutputApis(Context);
