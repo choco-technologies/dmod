@@ -330,8 +330,8 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
     // Copy the resource
     char cp_cmd[2048];
     if (S_ISDIR(st.st_mode)) {
-        // For directories, copy directory itself (not just contents)
-        Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp -r \"%s\" \"%s\"", source_path, output_dir);
+        // For directories, copy contents (not the directory itself) to avoid nested structure
+        Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp -r \"%s/.\" \"%s\"", source_path, output_dir);
     } else {
         // For files, copy the file
         Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp \"%s\" \"%s\"", source_path, output_dir);
