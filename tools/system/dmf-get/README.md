@@ -69,6 +69,34 @@ dmf-get -d https://example.com/deps.dmd
 dmf-get -d deps.dmd -t arch/armv7/cortex-m7
 ```
 
+#### Extracting Specific Resources
+
+`dmf-get` supports extracting only specific resources from module packages:
+
+```bash
+# Extract only header files
+dmf-get headers mymodule
+dmf-get headers mymodule@1.0 -o /path/to/output
+
+# Extract only documentation
+dmf-get docs mymodule
+dmf-get docs mymodule@1.0 -o /path/to/output
+```
+
+The `docs` command extracts module documentation to `$DMOD_DOC_DIR` or `$DMOD_DMF_DIR/<module>/docs` by default. After extraction, you can view the documentation using the `dmf-man` tool:
+
+```bash
+# Extract and view documentation
+dmf-get docs mymodule
+dmf-man mymodule
+
+# Or use a custom documentation directory
+dmf-get docs mymodule -o /path/to/docs
+dmf-man -d /path/to/docs mymodule
+```
+
+For more information about viewing documentation, see the [dmf-man tool documentation](../dmf-man/README.md).
+
 ### Command-Line Options
 
 - `-d, --dependencies <path>` - Path or URL to dependencies (.dmd) file
