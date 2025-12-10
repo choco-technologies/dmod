@@ -33,6 +33,9 @@
 #define VT100_UNDERLINE "\033[4m"
 #define VT100_REVERSE "\033[7m"
 
+// Buffer safety margin for VT100 codes
+#define VT100_SAFETY_MARGIN 50
+
 // Colors
 #define VT100_BLACK "\033[30m"
 #define VT100_RED "\033[31m"
@@ -183,6 +186,10 @@ static bool StartsWith(const char* line, const char* prefix) {
  * @brief Count leading characters
  */
 static int CountLeading(const char* line, char c) {
+    if (!line) {
+        return 0;
+    }
+    
     int count = 0;
     while (line[count] == c) {
         count++;
@@ -209,7 +216,7 @@ static void ProcessInlineFormatting(const char* line, char* output, size_t outpu
     bool in_italic = false;
     bool in_code = false;
     
-    while (line[i] && j < output_size - 50) {
+    while (line[i] && j < output_size - VT100_SAFETY_MARGIN) {
         // Handle inline code `code`
         if (line[i] == '`' && !in_code) {
             in_code = true;
@@ -240,7 +247,9 @@ static void ProcessInlineFormatting(const char* line, char* output, size_t outpu
         if (!in_code && (line[i] == '*' && line[i+1] != '*') || (line[i] == '_' && line[i+1] != '_')) {
             // Check if it's not at word boundary for underscore
             if (line[i] == '_' && i > 0 && isalnum(line[i-1])) {
-                output[j++] = line[i++];
+                if (j < output_size - 1) {
+                    output[j++] = line[i++];
+                }
                 continue;
             }
             
@@ -265,7 +274,9 @@ static void ProcessInlineFormatting(const char* line, char* output, size_t outpu
                     size_t text_len = end_bracket - (line + i) - 1;
                     j += snprintf(output + j, output_size - j, "%s", VT100_UNDERLINE);
                     for (size_t k = 0; k < text_len && j < output_size - 1; k++) {
-                        output[j++] = line[i + 1 + k];
+                        if (j < output_size - 1) {
+                            output[j++] = line[i + 1 + k];
+                        }
                     }
                     j += snprintf(output + j, output_size - j, "%s", VT100_RESET);
                     i = end_paren - line + 1;
