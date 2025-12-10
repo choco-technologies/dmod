@@ -329,6 +329,7 @@ function(dmod_create_module moduleName version moduleType)
         COMMAND ${CMAKE_COMMAND} 
             -DOBJECT_FILES=${MODULE_OBJECT_FILES_STR}
             -DMODULE_NAME=${moduleName}
+            -DDMOD_MODULE_NAME="${moduleName}"
             -DANALYSIS_TYPE=summary
             -P ${DMOD_SCRIPTS_DIR}/memory_analysis.cmake
         COMMENT "Analyzing memory usage for ${moduleName}"
@@ -339,6 +340,7 @@ function(dmod_create_module moduleName version moduleType)
         COMMAND ${CMAKE_COMMAND} 
             -DOBJECT_FILES=${MODULE_OBJECT_FILES_STR}
             -DMODULE_NAME=${moduleName}
+            -DDMOD_MODULE_NAME="${moduleName}"
             -DANALYSIS_TYPE=detailed
             -P ${DMOD_SCRIPTS_DIR}/memory_analysis.cmake
         COMMENT "Detailed memory analysis for ${moduleName}"
