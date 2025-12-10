@@ -1,0 +1,39 @@
+{
+  "name": "dmod-resource",
+  "displayName": "DMOD Resource Language Support",
+  "description": "Syntax highlighting for DMOD Resource (.dmr) files",
+  "version": "1.0.0",
+  "publisher": "ChocoTechnologiesDMOD",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/choco-technologies/dmod"
+  },
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "dmr",
+        "aliases": [
+          "DMOD Resource",
+          "dmr"
+        ],
+        "extensions": [
+          ".dmr"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "dmr",
+        "scopeName": "source.dmr",
+        "path": "./syntaxes/dmr.tmLanguage.json"
+      }
+    ]
+  }
+}

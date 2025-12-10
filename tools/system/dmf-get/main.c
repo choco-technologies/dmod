@@ -18,6 +18,7 @@
 #include "dmod_manifest.h"
 #include "dmod_dependencies.h"
 #include "dmod_version.h"
+#include "dmod_resource.h"
 
 // Default paths
 #define DEFAULT_DMF_DIR "./dmf"
@@ -154,7 +155,7 @@ static int DownloadModule(const char* module_name, const char* module_version,
                           const char* cpu_family, const char* preferred_type,
                           bool download_dependencies, const char* default_manifest,
                           bool ignore_missing, bool skip_dmod_ver_check,
-                          InstallationCounts_t* counts);
+                          bool mini_mode, InstallationCounts_t* counts);
 
 /**
  * @brief Convert DMOD_VERSION hex to semantic version
@@ -173,6 +174,7 @@ static void GetCurrentDmodVersion(Dmod_SemanticVersion_t* version) {
  * @param output_dir Directory to copy the extracted file to
  * @param module_name Module name to search for
  * @param preferred_type Preferred file type (dmf or dmfc)
+ * @param mini_mode If true, only install dmf/dmfc files (ignore other resources from .dmr)
  * @param output_file Buffer to store the path to the final installed file
  * @param output_file_size Size of output_file buffer
  * @param output_dmd_file Buffer to store the path to the .dmd file if found (can be NULL)
@@ -181,6 +183,7 @@ static void GetCurrentDmodVersion(Dmod_SemanticVersion_t* version) {
  */
 static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir, 
                                      const char* module_name, const char* preferred_type,
+                                     bool mini_mode,
                                      char* output_file, size_t output_file_size,
                                      char* output_dmd_file, size_t output_dmd_file_size) {
     // Create temporary extraction directory in /tmp
@@ -223,6 +226,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
     char best_match[512] = "";
     char fallback_match[512] = "";
     char dmd_file[512] = "";
+    char dmr_file[512] = "";
     int best_priority = 0;
     
     while ((entry_name = Dmod_ReadDir(dir)) != NULL) {
@@ -231,11 +235,12 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
             continue;
         }
         
-        // Check if it's a .dmf, .dmfc or .dmd file
+        // Check if it's a .dmf, .dmfc, .dmd or .dmr file
         size_t len = strlen(entry_name);
         bool is_dmf = (len > 4 && strcmp(entry_name + len - 4, ".dmf") == 0);
         bool is_dmfc = (len > 5 && strcmp(entry_name + len - 5, ".dmfc") == 0);
         bool is_dmd = (len > 4 && strcmp(entry_name + len - 4, ".dmd") == 0);
+        bool is_dmr = (len > 4 && strcmp(entry_name + len - 4, ".dmr") == 0);
         
         // If it's a .dmd file, check if it matches the module name
         if (is_dmd) {
@@ -244,6 +249,17 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
             if (strcmp(entry_name, expected_dmd) == 0) {
                 Dmod_SnPrintf(dmd_file, sizeof(dmd_file), "%s/%s", extract_dir, entry_name);
                 DMOD_LOG_INFO("Found dependencies file: %s\n", entry_name);
+            }
+            continue;
+        }
+        
+        // If it's a .dmr file, check if it matches the module name
+        if (is_dmr) {
+            char expected_dmr[256];
+            Dmod_SnPrintf(expected_dmr, sizeof(expected_dmr), "%s.dmr", module_name);
+            if (strcmp(entry_name, expected_dmr) == 0) {
+                Dmod_SnPrintf(dmr_file, sizeof(dmr_file), "%s/%s", extract_dir, entry_name);
+                DMOD_LOG_INFO("Found resource file: %s\n", entry_name);
             }
             continue;
         }
@@ -365,6 +381,89 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
         }
     }
     
+    // Process .dmr file if found
+    if (dmr_file[0] != '\0') {
+        DMOD_LOG_INFO("Processing resource file: %s\n", dmr_file);
+        
+        // Initialize resource parser
+        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name);
+        if (!res_ctx) {
+            DMOD_LOG_ERROR("Failed to initialize resource parser\n");
+        } else {
+            // Parse the .dmr file
+            if (!Dmod_Resource_ParseFile(res_ctx, dmr_file)) {
+                DMOD_LOG_ERROR("Failed to parse resource file: %s\n", 
+                        Dmod_Resource_GetError(res_ctx));
+                Dmod_Resource_Free(res_ctx);
+            } else {
+                size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
+                DMOD_LOG_INFO("Found %zu resource entries in .dmr file\n", res_count);
+                
+                // Install resources based on mini_mode
+                for (size_t i = 0; i < res_count; i++) {
+                    Dmod_ResourceEntry_t res_entry;
+                    if (!Dmod_Resource_GetEntry(res_ctx, i, &res_entry)) {
+                        DMOD_LOG_ERROR("Failed to get resource entry %zu\n", i);
+                        continue;
+                    }
+                    
+                    // In mini mode, only install dmf/dmfc resources
+                    if (mini_mode && !res_entry.is_dmf_dmfc) {
+                        DMOD_LOG_INFO("  Skipping resource '%s' (mini mode)\n", res_entry.key);
+                        continue;
+                    }
+                    
+                    DMOD_LOG_INFO("  Installing resource '%s': %s => %s\n", 
+                           res_entry.key, res_entry.source, res_entry.destination);
+                    
+                    // Build source path (relative to extract_dir)
+                    char full_source[1024];
+                    Dmod_SnPrintf(full_source, sizeof(full_source), "%s/%s", 
+                                 extract_dir, res_entry.source);
+                    
+                    // Check if source is a file or directory
+                    struct stat st;
+                    if (stat(full_source, &st) != 0) {
+                        DMOD_LOG_WARN("  Resource source not found: %s\n", full_source);
+                        continue;
+                    }
+                    
+                    // Create destination directory if needed
+                    char dest_parent[1024];
+                    strncpy(dest_parent, res_entry.destination, sizeof(dest_parent) - 1);
+                    dest_parent[sizeof(dest_parent) - 1] = '\0';
+                    
+                    char* last_slash = strrchr(dest_parent, '/');
+                    if (last_slash) {
+                        *last_slash = '\0';
+                        char mkdir_cmd[2048];
+                        Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", dest_parent);
+                        system(mkdir_cmd);
+                    }
+                    
+                    // Copy the resource
+                    char cp_res_cmd[2048];
+                    if (S_ISDIR(st.st_mode)) {
+                        Dmod_SnPrintf(cp_res_cmd, sizeof(cp_res_cmd), 
+                                     "cp -r \"%s\" \"%s\"", full_source, res_entry.destination);
+                    } else {
+                        Dmod_SnPrintf(cp_res_cmd, sizeof(cp_res_cmd), 
+                                     "cp \"%s\" \"%s\"", full_source, res_entry.destination);
+                    }
+                    
+                    int cp_result = system(cp_res_cmd);
+                    if (cp_result == 0) {
+                        DMOD_LOG_INFO("  Resource installed successfully\n");
+                    } else {
+                        DMOD_LOG_ERROR("  Failed to install resource\n");
+                    }
+                }
+                
+                Dmod_Resource_Free(res_ctx);
+            }
+        }
+    }
+    
     // Clean up: remove ZIP file and temp directory
     char rm_zip_cmd[1024];
     Dmod_SnPrintf(rm_zip_cmd, sizeof(rm_zip_cmd), "rm -f \"%s\"", zip_path);
@@ -398,7 +497,8 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                                       const char* arch_name, const char* cpu_name,
                                       const char* cpu_family, const char* preferred_type,
                                       const char* default_manifest, bool ignore_missing,
-                                      bool skip_dmod_ver_check, InstallationCounts_t* counts) {
+                                      bool skip_dmod_ver_check, bool mini_mode,
+                                      InstallationCounts_t* counts) {
     int failed_count = 0;
     
     // First, try to load dependencies from .dmd file if provided
@@ -478,6 +578,7 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                 default_manifest,
                 ignore_missing,
                 skip_dmod_ver_check,
+                mini_mode,
                 counts
             );
             
@@ -581,6 +682,7 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                         default_manifest,
                         ignore_missing,
                         skip_dmod_ver_check,
+                        mini_mode,
                         counts
                     );
                     
@@ -680,6 +782,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --ignore-missing          Ignore missing dependencies and continue\n");
     Dmod_Printf("  --skip-arch-check         Skip architecture compatibility check\n");
     Dmod_Printf("  --skip-dmod-ver-check     Skip DMOD version compatibility check\n");
+    Dmod_Printf("  --mini                    Install only dmf/dmfc files (skip other resources from .dmr)\n");
     Dmod_Printf("  -h, --help                Show this help message\n");
     Dmod_Printf("  -v, --version             Show version information\n\n");
     Dmod_Printf("Environment Variables:\n");
@@ -723,6 +826,7 @@ static void PrintVersion() {
  * @param download_dependencies Whether to download dependencies
  * @param default_manifest Default manifest URL
  * @param ignore_missing Whether to ignore missing modules (continue on arch mismatch)
+ * @param mini_mode If true, only install dmf/dmfc files (ignore other resources from .dmr)
  * @param counts Pointer to installation counts (can be NULL)
  * @return 0 on success, non-zero on failure
  */
@@ -733,7 +837,7 @@ static int DownloadModule(const char* module_name, const char* module_version,
                           const char* cpu_family, const char* preferred_type,
                           bool download_dependencies, const char* default_manifest,
                           bool ignore_missing, bool skip_dmod_ver_check,
-                          InstallationCounts_t* counts) {
+                          bool mini_mode, InstallationCounts_t* counts) {
     // Try to find entries for this module, checking architecture for each
     Dmod_ManifestNode_t* last_node = NULL;
     Dmod_ManifestEntry_t entry;
@@ -856,6 +960,7 @@ static int DownloadModule(const char* module_name, const char* module_version,
         // If it's a ZIP file, extract it and find the DMF/DMFC file
         if (ext && strcmp(ext, ".zip") == 0) {
             if (!ExtractZipAndFindModule(output_file, output_dir, entry.name, preferred_type,
+                                        mini_mode,
                                         final_module_path, sizeof(final_module_path),
                                         dmd_file_path, sizeof(dmd_file_path))) {
                 DMOD_LOG_ERROR("Error: Failed to extract and find module from ZIP\n");
@@ -912,6 +1017,7 @@ static int DownloadModule(const char* module_name, const char* module_version,
                 default_manifest,
                 ignore_missing,
                 skip_dmod_ver_check,
+                mini_mode,
                 counts
             );
             
@@ -953,6 +1059,7 @@ int main(int argc, char* argv[]) {
     bool ignore_missing = false;
     bool skip_arch_check = false;
     bool skip_dmod_ver_check = false;
+    bool mini_mode = false;
     
     Dmod_SetLogLevel(Dmod_LogLevel_Info);
     Dmod_SetCrossplatformMode(true);
@@ -1037,6 +1144,9 @@ int main(int argc, char* argv[]) {
         }
         else if (strcmp(argv[i], "--skip-dmod-ver-check") == 0) {
             skip_dmod_ver_check = true;
+        }
+        else if (strcmp(argv[i], "--mini") == 0) {
+            mini_mode = true;
         }
         else if (strcmp(argv[i], "--verbose") == 0) {
             Dmod_SetLogLevel(Dmod_LogLevel_Verbose);
@@ -1234,6 +1344,7 @@ int main(int argc, char* argv[]) {
                 manifest_path,
                 ignore_missing,
                 skip_dmod_ver_check,
+                mini_mode,
                 &counts
             );
             
@@ -1328,6 +1439,7 @@ int main(int argc, char* argv[]) {
             manifest_path,
             ignore_missing,
             skip_dmod_ver_check,
+            mini_mode,
             &counts
         );
         

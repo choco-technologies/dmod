@@ -1,3 +1,4 @@
 add_subdirectory(dmod_version)
 add_subdirectory(dmod_manifest)
 add_subdirectory(dmod_dependencies)
+add_subdirectory(dmod_resource)

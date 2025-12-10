@@ -1,0 +1,20 @@
+# Example DMOD Resource File
+# This file demonstrates the .dmr format
+
+# Install the main module file
+dmf=./module.dmf => ${DMOD_DMF_DIR}/${module}.dmf
+
+# Install dependencies file
+dmd=./module.dmd => ${destination}/${module}.dmd
+
+# Install documentation folder
+docs=./module/docs => ${destination}/${module}/docs
+
+# Install header files
+inc=./module/inc => ${destination}/${module}/inc
+
+# Install license file
+license=./LICENSE => ${destination}/${module}/LICENSE
+
+# Install custom resource
+some_custom_resource=./module/info.txt => ${destination}/${module}/info.txt
