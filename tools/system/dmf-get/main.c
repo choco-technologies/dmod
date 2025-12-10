@@ -309,6 +309,15 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
         Dmod_SnPrintf(destination_path, sizeof(destination_path), "%s", output_dir);
     }
     
+    // Validate destination path for safety
+    if (!IsPathSafe(destination_path)) {
+        DMOD_LOG_ERROR("Invalid destination path detected (contains unsafe characters)\n");
+        char rm_cmd[1024];
+        Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", extract_dir);
+        system(rm_cmd);
+        return false;
+    }
+    
     // Check if source exists
     struct stat st;
     if (stat(source_path, &st) != 0) {
