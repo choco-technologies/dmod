@@ -107,8 +107,41 @@ For more information about viewing documentation, see the [dmf-man tool document
 - `--type <dmf|dmfc>` - Prefer dmf or dmfc file type
 - `--no-dependencies` - Don't download dependencies automatically
 - `-y, --yes` - Automatic yes to license prompts (non-interactive mode)
+- `-c, --clear-cache` - Clear downloaded manifests and packages cache
 - `-h, --help` - Show help message
 - `-v, --version` - Show version information
+
+## Caching
+
+`dmf-get` caches downloaded manifests and package files to reduce network requests and speed up subsequent downloads. The cache is stored in `~/.cache/dmod/dmf-get/` by default.
+
+### Cache Structure
+
+- `~/.cache/dmod/dmf-get/manifests/` - Cached manifest files
+- `~/.cache/dmod/dmf-get/packages/` - Cached package files (DMF/DMFC and ZIP files)
+
+### Clearing the Cache
+
+To clear all cached data:
+
+```bash
+dmf-get --clear-cache
+```
+
+Or use the short form:
+
+```bash
+dmf-get -c
+```
+
+### Custom Cache Directory
+
+You can customize the cache location using the `DMOD_CACHE_DIR` environment variable:
+
+```bash
+export DMOD_CACHE_DIR=/path/to/custom/cache
+dmf-get mymodule
+```
 
 ### Environment Variables
 
@@ -118,6 +151,7 @@ For more information about viewing documentation, see the [dmf-man tool document
 - `DMOD_DMF_DIR` - Default DMF output directory
 - `DMOD_DMFC_DIR` - Default DMFC output directory
 - `DMOD_MANIFEST` - Default manifest path or URL
+- `DMOD_CACHE_DIR` - Cache directory (default: `~/.cache/dmod/dmf-get`)
 
 ### Examples
 
@@ -333,8 +367,7 @@ Integration tests for dmf-get (includes .dmd file tests):
 
 ## Future Improvements
 
-- Dependency resolution and automatic download
-- Caching of downloaded modules
+- ~~Caching of downloaded modules~~ ✓ Implemented
 - Verify checksums/signatures
 - Support for more archive formats
 - Progress bars for downloads
