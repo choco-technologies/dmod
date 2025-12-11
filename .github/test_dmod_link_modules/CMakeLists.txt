@@ -35,9 +35,11 @@ get_target_property(INCLUDE_DIRS ${DMOD_MODULE_NAME} INCLUDE_DIRECTORIES)
 message(STATUS "Include directories for ${DMOD_MODULE_NAME}: ${INCLUDE_DIRS}")
 
 # Check if dmini include directory is in the list
-set(DMINI_INC_DIR "${DMOD_DMF_DIR}/dmini/inc")
+# dmf-get creates a subdirectory with the module name and an 'include' subdirectory inside
+# So the path is ${DMOD_DMF_DIR}/inc/dmini/include
+set(DMINI_INC_DIR "${DMOD_DMF_DIR}/inc/dmini/include")
 if("${INCLUDE_DIRS}" MATCHES "${DMINI_INC_DIR}")
     message(STATUS "SUCCESS: dmini include directory found in target includes")
 else()
-    message(WARNING "dmini include directory not found in target includes")
+    message(WARNING "dmini include directory not found in target includes. Expected: ${DMINI_INC_DIR}")
 endif()

@@ -493,7 +493,8 @@ function(dmod_link_modules targetName)
         endif()
         
         # Construct the header output directory
-        set(HEADER_OUTPUT_DIR "${DMOD_DMF_DIR}/${MODULE_NAME}/inc")
+        # Note: dmf-get creates a subdirectory with the module name, so we don't add it here
+        set(HEADER_OUTPUT_DIR "${DMOD_DMF_DIR}/inc")
         
         message(STATUS "Downloading headers for module: ${MODULE_NAME} -> ${HEADER_OUTPUT_DIR}")
         
@@ -514,11 +515,14 @@ function(dmod_link_modules targetName)
         endif()
         
         # Add the header directory to the target's include directories with specified visibility
-        if(EXISTS "${HEADER_OUTPUT_DIR}")
-            target_include_directories(${targetName} ${VISIBILITY} ${HEADER_OUTPUT_DIR})
-            message(STATUS "Added include directory for ${MODULE_NAME} (${VISIBILITY}): ${HEADER_OUTPUT_DIR}")
+        # dmf-get creates MODULE_NAME subdirectory with an 'include' subdirectory inside
+        # So the actual headers are in ${HEADER_OUTPUT_DIR}/${MODULE_NAME}/include
+        set(ACTUAL_HEADER_DIR "${HEADER_OUTPUT_DIR}/${MODULE_NAME}/include")
+        if(EXISTS "${ACTUAL_HEADER_DIR}")
+            target_include_directories(${targetName} ${VISIBILITY} ${ACTUAL_HEADER_DIR})
+            message(STATUS "Added include directory for ${MODULE_NAME} (${VISIBILITY}): ${ACTUAL_HEADER_DIR}")
         else()
-            message(WARNING "Header directory does not exist after download: ${HEADER_OUTPUT_DIR}")
+            message(WARNING "Header directory does not exist after download: ${ACTUAL_HEADER_DIR}")
         endif()
     endforeach()
 endfunction()

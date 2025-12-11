@@ -97,11 +97,13 @@ jobs:
       
       - name: Verify dmini headers were downloaded
         run: |
-          if [ -d ".github/test_dmod_link_modules/build/dmf/dmini/inc" ]; then
-            echo "SUCCESS: dmini headers downloaded to build/dmf/dmini/inc"
-            ls -la .github/test_dmod_link_modules/build/dmf/dmini/inc/
+          if [ -d ".github/test_dmod_link_modules/build/dmf/inc/dmini/include" ]; then
+            echo "SUCCESS: dmini headers downloaded to build/dmf/inc/dmini/include"
+            ls -la .github/test_dmod_link_modules/build/dmf/inc/dmini/include/
           else
-            echo "ERROR: dmini headers not found"
+            echo "ERROR: dmini headers not found at expected location"
+            echo "Searching for dmini directories..."
+            find .github/test_dmod_link_modules/build -name "dmini" -type d || true
             exit 1
           fi
       
