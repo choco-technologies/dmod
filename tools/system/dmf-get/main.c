@@ -157,7 +157,8 @@ static int DownloadModule(const char* module_name, const char* module_version,
                           const char* cpu_family, const char* preferred_type,
                           bool download_dependencies, const char* default_manifest,
                           bool ignore_missing, bool skip_dmod_ver_check,
-                          bool mini_mode, InstallationCounts_t* counts);
+                          bool mini_mode, bool auto_accept_license, 
+                          InstallationCounts_t* counts);
 
 /**
  * @brief Sanitize path for use in shell commands
@@ -373,6 +374,153 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
 }
 
 /**
+ * @brief Display license file content to the user
+ * 
+ * @param license_path Path to the license file
+ */
+static void DisplayLicense(const char* license_path) {
+    FILE* file = fopen(license_path, "r");
+    if (!file) {
+        DMOD_LOG_ERROR("Failed to open license file: %s\n", license_path);
+        return;
+    }
+    
+    Dmod_Printf("\n");
+    Dmod_Printf("================================================================================\n");
+    Dmod_Printf("LICENSE\n");
+    Dmod_Printf("================================================================================\n");
+    
+    char buffer[1024];
+    while (fgets(buffer, sizeof(buffer), file)) {
+        Dmod_Printf("%s", buffer);
+    }
+    
+    Dmod_Printf("================================================================================\n");
+    Dmod_Printf("\n");
+    
+    fclose(file);
+}
+
+/**
+ * @brief Prompt user to accept license
+ * 
+ * @return true if user accepts (y/Y), false otherwise
+ */
+static bool PromptLicenseAcceptance(void) {
+    Dmod_Printf("Do you accept the license terms? [y/N]: ");
+    fflush(stdout);
+    
+    char response[10];
+    if (fgets(response, sizeof(response), stdin) == NULL) {
+        return false;  // Error reading input
+    }
+    
+    // Trim newline
+    size_t len = strlen(response);
+    if (len > 0 && response[len - 1] == '\n') {
+        response[len - 1] = '\0';
+    }
+    
+    // Accept only 'y' or 'Y'
+    if (strcmp(response, "y") == 0 || strcmp(response, "Y") == 0) {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * @brief Check and handle license acceptance for a module
+ * 
+ * @param extract_dir Temporary directory where ZIP was extracted
+ * @param module_name Module name
+ * @param output_dir Output directory for the module
+ * @param auto_accept If true, automatically accept license without prompting
+ * @return true if license is accepted or not found, false if rejected
+ */
+static bool CheckLicenseAcceptance(const char* extract_dir, const char* module_name,
+                                   const char* output_dir, bool auto_accept) {
+    // Look for .dmr file to find license path
+    char dmr_file[512] = "";
+    void* dir = Dmod_OpenDir(extract_dir);
+    if (dir) {
+        const char* entry_name;
+        while ((entry_name = Dmod_ReadDir(dir)) != NULL) {
+            if (strcmp(entry_name, ".") == 0 || strcmp(entry_name, "..") == 0) {
+                continue;
+            }
+            
+            size_t len = strlen(entry_name);
+            bool is_dmr = (len > 4 && strcmp(entry_name + len - 4, ".dmr") == 0);
+            
+            if (is_dmr) {
+                char expected_dmr[256];
+                Dmod_SnPrintf(expected_dmr, sizeof(expected_dmr), "%s.dmr", module_name);
+                if (strcmp(entry_name, expected_dmr) == 0) {
+                    Dmod_SnPrintf(dmr_file, sizeof(dmr_file), "%s/%s", extract_dir, entry_name);
+                    break;
+                }
+            }
+        }
+        Dmod_CloseDir(dir);
+    }
+    
+    // If no .dmr file found, no license to check
+    if (dmr_file[0] == '\0') {
+        return true;
+    }
+    
+    // Parse .dmr file to find license resource
+    char license_source[1024] = "";
+    Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name);
+    if (res_ctx) {
+        if (Dmod_Resource_ParseFile(res_ctx, dmr_file)) {
+            size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
+            for (size_t i = 0; i < res_count; i++) {
+                Dmod_ResourceEntry_t res_entry;
+                if (Dmod_Resource_GetEntry(res_ctx, i, &res_entry)) {
+                    if (strcmp(res_entry.key, "license") == 0) {
+                        // Found license entry
+                        Dmod_SnPrintf(license_source, sizeof(license_source), "%s/%s", 
+                                    extract_dir, res_entry.source);
+                        break;
+                    }
+                }
+            }
+        }
+        Dmod_Resource_Free(res_ctx);
+    }
+    
+    // If no license found in .dmr, no license to check
+    if (license_source[0] == '\0') {
+        return true;
+    }
+    
+    // Check if license file exists
+    if (Dmod_Access(license_source, DMOD_R_OK) != 0) {
+        DMOD_LOG_WARN("License file specified in .dmr but not found: %s\n", license_source);
+        return true;  // Continue installation if license file is missing
+    }
+    
+    // If auto-accept is enabled, skip prompt
+    if (auto_accept) {
+        DMOD_LOG_INFO("License found - automatically accepting (--yes flag)\n");
+        return true;
+    }
+    
+    // Display license and prompt for acceptance
+    DisplayLicense(license_source);
+    
+    if (PromptLicenseAcceptance()) {
+        DMOD_LOG_INFO("License accepted\n");
+        return true;
+    } else {
+        DMOD_LOG_INFO("License rejected - installation cancelled\n");
+        return false;
+    }
+}
+
+/**
  * @brief Extract ZIP file and find DMF/DMFC file
  * 
  * @param zip_path Path to the ZIP file
@@ -380,6 +528,7 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
  * @param module_name Module name to search for
  * @param preferred_type Preferred file type (dmf or dmfc)
  * @param mini_mode If true, only install dmf/dmfc files (ignore other resources from .dmr)
+ * @param auto_accept_license If true, automatically accept license without prompting
  * @param output_file Buffer to store the path to the final installed file
  * @param output_file_size Size of output_file buffer
  * @param output_dmd_file Buffer to store the path to the .dmd file if found (can be NULL)
@@ -388,7 +537,7 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
  */
 static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir, 
                                      const char* module_name, const char* preferred_type,
-                                     bool mini_mode,
+                                     bool mini_mode, bool auto_accept_license,
                                      char* output_file, size_t output_file_size,
                                      char* output_dmd_file, size_t output_dmd_file_size) {
     // Create temporary extraction directory in /tmp
@@ -520,6 +669,16 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
     }
     
     Dmod_CloseDir(dir);
+    
+    // Check license acceptance before proceeding
+    if (!CheckLicenseAcceptance(extract_dir, module_name, output_dir, auto_accept_license)) {
+        DMOD_LOG_INFO("Installation cancelled by user\n");
+        // Clean up temp directory
+        char rm_cmd[1024];
+        Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", extract_dir);
+        system(rm_cmd);
+        return false;
+    }
     
     // Use best match or fallback
     const char* selected_temp_file = (best_match[0] != '\0') ? best_match : fallback_match;
@@ -712,6 +871,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
  * @param preferred_type Preferred file type
  * @param default_manifest Default manifest URL
  * @param ignore_missing Whether to ignore missing dependencies
+ * @param auto_accept_license If true, automatically accept license without prompting
  * @return 0 on success, non-zero on failure
  */
 static int ProcessModuleDependencies(const char* module_file_path, const char* dmd_file_path,
@@ -720,6 +880,7 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                                       const char* cpu_family, const char* preferred_type,
                                       const char* default_manifest, bool ignore_missing,
                                       bool skip_dmod_ver_check, bool mini_mode,
+                                      bool auto_accept_license,
                                       InstallationCounts_t* counts) {
     int failed_count = 0;
     
@@ -801,6 +962,7 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                 ignore_missing,
                 skip_dmod_ver_check,
                 mini_mode,
+                auto_accept_license,
                 counts
             );
             
@@ -905,6 +1067,7 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                         ignore_missing,
                         skip_dmod_ver_check,
                         mini_mode,
+                        auto_accept_license,
                         counts
                     );
                     
@@ -1009,6 +1172,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --skip-arch-check         Skip architecture compatibility check\n");
     Dmod_Printf("  --skip-dmod-ver-check     Skip DMOD version compatibility check\n");
     Dmod_Printf("  --mini                    Install only dmf/dmfc files (skip other resources from .dmr)\n");
+    Dmod_Printf("  -y, --yes                 Automatic yes to license prompts (non-interactive mode)\n");
     Dmod_Printf("  -h, --help                Show this help message\n");
     Dmod_Printf("  -v, --version             Show version information\n\n");
     Dmod_Printf("Environment Variables:\n");
@@ -1170,6 +1334,7 @@ static int ExtractResourceCommand(const char* module_name, const char* module_ve
  * @param default_manifest Default manifest URL
  * @param ignore_missing Whether to ignore missing modules (continue on arch mismatch)
  * @param mini_mode If true, only install dmf/dmfc files (ignore other resources from .dmr)
+ * @param auto_accept_license If true, automatically accept license without prompting
  * @param counts Pointer to installation counts (can be NULL)
  * @return 0 on success, non-zero on failure
  */
@@ -1180,7 +1345,8 @@ static int DownloadModule(const char* module_name, const char* module_version,
                           const char* cpu_family, const char* preferred_type,
                           bool download_dependencies, const char* default_manifest,
                           bool ignore_missing, bool skip_dmod_ver_check,
-                          bool mini_mode, InstallationCounts_t* counts) {
+                          bool mini_mode, bool auto_accept_license,
+                          InstallationCounts_t* counts) {
     // Try to find entries for this module, checking architecture for each
     Dmod_ManifestNode_t* last_node = NULL;
     Dmod_ManifestEntry_t entry;
@@ -1303,7 +1469,7 @@ static int DownloadModule(const char* module_name, const char* module_version,
         // If it's a ZIP file, extract it and find the DMF/DMFC file
         if (ext && strcmp(ext, ".zip") == 0) {
             if (!ExtractZipAndFindModule(output_file, output_dir, entry.name, preferred_type,
-                                        mini_mode,
+                                        mini_mode, auto_accept_license,
                                         final_module_path, sizeof(final_module_path),
                                         dmd_file_path, sizeof(dmd_file_path))) {
                 DMOD_LOG_ERROR("Error: Failed to extract and find module from ZIP\n");
@@ -1361,6 +1527,7 @@ static int DownloadModule(const char* module_name, const char* module_version,
                 ignore_missing,
                 skip_dmod_ver_check,
                 mini_mode,
+                auto_accept_license,
                 counts
             );
             
@@ -1404,6 +1571,7 @@ int main(int argc, char* argv[]) {
     bool skip_arch_check = false;
     bool skip_dmod_ver_check = false;
     bool mini_mode = false;
+    bool auto_accept_license = false;  // -y flag for automatic license acceptance
     
     Dmod_SetLogLevel(Dmod_LogLevel_Info);
     Dmod_SetCrossplatformMode(true);
@@ -1491,6 +1659,9 @@ int main(int argc, char* argv[]) {
         }
         else if (strcmp(argv[i], "--mini") == 0) {
             mini_mode = true;
+        }
+        else if (strcmp(argv[i], "-y") == 0 || strcmp(argv[i], "--yes") == 0) {
+            auto_accept_license = true;
         }
         else if (strcmp(argv[i], "--verbose") == 0) {
             Dmod_SetLogLevel(Dmod_LogLevel_Verbose);
@@ -1832,6 +2003,7 @@ int main(int argc, char* argv[]) {
                 ignore_missing,
                 skip_dmod_ver_check,
                 mini_mode,
+                auto_accept_license,
                 &counts
             );
             
@@ -1927,6 +2099,7 @@ int main(int argc, char* argv[]) {
             ignore_missing,
             skip_dmod_ver_check,
             mini_mode,
+            auto_accept_license,
             &counts
         );
         
