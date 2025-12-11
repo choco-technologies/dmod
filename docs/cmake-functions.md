@@ -95,12 +95,17 @@ By default, `DMOD_DMF_DIR` is set to `${CMAKE_BINARY_DIR}/dmf`.
 - A valid manifest file must be accessible (either specified via environment variables or using the default registry)
 - The modules must exist in the configured registry
 
-**Environment Variables:**
+**Environment Variables (for dmf-get):**
 
-The function respects the following environment variables (same as `dmf-get`):
-- `DMOD_DMF_DIR` - DMF directory for downloaded headers
+The `dmf-get` tool (used internally) respects the following environment variables:
 - `DMOD_MANIFEST` - Path or URL to the manifest file
 - `DMOD_TOOLS_NAME` - Tools name for platform-specific modules
+- `DMOD_INC_DIR` - Default include directory (overridden by the `-o` flag used by this function)
+
+**CMake Variables:**
+
+- `DMOD_DMF_DIR` - CMake variable controlling the base directory for downloaded headers (default: `${CMAKE_BINARY_DIR}/dmf`)
+- `DMOD_TOOLS_BIN_DIR` - CMake variable specifying where to find the dmf-get tool
 
 **Error Handling:**
 

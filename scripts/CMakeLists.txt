@@ -457,22 +457,14 @@ function(dmod_link_modules targetName)
         
         message(STATUS "Downloading headers for module: ${MODULE_NAME} -> ${HEADER_OUTPUT_DIR}")
         
-        # Execute dmf-get to download headers
-        if(MODULE_VERSION)
-            set(MODULE_SPEC_WITH_VERSION "${MODULE_NAME}@${MODULE_VERSION}")
-        else()
-            set(MODULE_SPEC_WITH_VERSION "${MODULE_NAME}")
-        endif()
-        
         # Create the output directory
         file(MAKE_DIRECTORY "${HEADER_OUTPUT_DIR}")
         
         # Run dmf-get headers command
         execute_process(
-            COMMAND ${DMF_GET} headers ${MODULE_SPEC_WITH_VERSION} -o ${HEADER_OUTPUT_DIR}
+            COMMAND ${DMF_GET} headers ${MODULE_SPEC} -o ${HEADER_OUTPUT_DIR}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             RESULT_VARIABLE DMF_GET_RESULT
-            OUTPUT_VARIABLE DMF_GET_OUTPUT
             ERROR_VARIABLE DMF_GET_ERROR
         )
         
