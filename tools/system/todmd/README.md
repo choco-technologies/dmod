@@ -15,7 +15,7 @@ The `todmd` tool reads a module's required dependencies and generates a `.dmd` f
 ## Usage
 
 ```bash
-todmd path/to/file.dmf [output.dmd]
+todmd path/to/file.dmf [output.dmd] [-r version_requirements.txt]
 ```
 
 ### Arguments
@@ -27,6 +27,7 @@ todmd path/to/file.dmf [output.dmd]
 
 - `-h, --help` - Print help message
 - `-v, --version` - Print version information
+- `-r <file>` - Version requirements file from `dmod_link_modules` (optional)
 
 ## Examples
 
@@ -38,6 +39,10 @@ todmd myapp.dmf
 # Generate dependencies file with custom name
 todmd myapp.dmf dependencies.dmd
 # Creates: dependencies.dmd
+
+# Generate dependencies file with version requirements
+todmd myapp.dmf -r version_requirements.txt
+# Creates: myapp.dmd with versions from version_requirements.txt
 ```
 
 ## Generated File Format
@@ -61,9 +66,46 @@ another_module
 
 1. Enables crossplatform mode using `Dmod_SetCrossplatformMode(true)` to allow loading modules without execution
 2. Loads the specified DMF module using `Dmod_LoadFile()`
-3. Iterates through required modules using `Dmod_GetNextRequiredModule()`
-4. Filters out system modules by checking the `SystemModule` flag in `Dmod_RequiredModule_t`
-5. Writes non-system modules to the output `.dmd` file
+3. Optionally loads version requirements from a file (if `-r` flag is provided)
+4. Iterates through required modules using `Dmod_GetNextRequiredModule()`
+5. For each module, checks if there's a version requirement specified in the version requirements file
+6. Merges version information: version requirements from the file take precedence over versions in the DMF
+7. Filters out system modules by checking the `SystemModule` flag in `Dmod_RequiredModule_t`
+8. Writes non-system modules with their versions to the output `.dmd` file
+
+## Version Requirements File Format
+
+The version requirements file is a simple text format:
+
+```
+# Comment lines start with #
+module_name@version
+another_module@1.2.3
+third_module
+```
+
+- Lines starting with `#` are comments
+- Each line contains a module name, optionally followed by `@version`
+- Empty lines are ignored
+
+## Integration with dmod_link_modules
+
+When using the `dmod_link_modules()` CMake function to specify module dependencies with versions, a version requirements file is automatically created. This file is then automatically passed to `todmd` during the build process, ensuring that:
+
+1. Version constraints specified in your `CMakeLists.txt` are preserved in the generated `.dmd` file
+2. These version constraints take precedence over any versions found in the DMF itself
+3. The `.dmd` file accurately reflects your build-time dependency requirements
+
+Example workflow:
+```cmake
+# In CMakeLists.txt
+dmod_link_modules(my_module
+    dmini@1.0
+    dmodex@0.2
+)
+```
+
+When the module is built, `todmd` automatically receives the version requirements and generates a `.dmd` file that includes these version constraints.
 
 ## Integration with dmf-get
 
