@@ -673,12 +673,21 @@ dmod_link_modules(${DMOD_MODULE_NAME}
     dmffs@1.0       # File system module (version 1.0)
     driver          # Driver module (latest version)
 )
+
+# Or specify visibility scope
+dmod_link_modules(${DMOD_MODULE_NAME}
+    PUBLIC
+        base_types@1.0   # Headers exposed to dependents
+    PRIVATE
+        internal_lib     # Private implementation headers
+)
 ```
 
 This function:
 - Downloads module headers using the `dmf-get` tool at CMake configuration time
 - Automatically adds the header directories to your module's include path
 - Supports version specifications (e.g., `module@1.0`) or latest versions (e.g., `module`)
+- Supports visibility scopes (PRIVATE, PUBLIC, INTERFACE) like `target_include_directories`
 
 For more details and examples, see:
 - [CMake Functions Reference](docs/cmake-functions.md)

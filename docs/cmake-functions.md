@@ -50,12 +50,16 @@ dmod_add_library(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
 
 ## Dependency Management Functions
 
-### `dmod_link_modules(targetName modules...)`
+### `dmod_link_modules(targetName [PRIVATE|PUBLIC|INTERFACE] modules...)`
 
 Downloads headers for external DMOD modules and links them to your target. This function uses the `dmf-get` tool to download module headers at CMake configuration time and automatically adds them to the target's include directories.
 
 **Parameters:**
 - `targetName` - Name of the target (must be created with `dmod_add_executable` or `dmod_add_library` first)
+- `PRIVATE|PUBLIC|INTERFACE` - Optional visibility scope (default: PRIVATE if not specified)
+  - `PRIVATE` - Headers available only to this target
+  - `PUBLIC` - Headers available to this target and targets that link to it
+  - `INTERFACE` - Headers available only to targets that link to this target
 - `modules...` - List of module specifications with optional versions
 
 **Module Specification Format:**
@@ -69,11 +73,18 @@ dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
     main.c
 )
 
-# Link external modules - download their headers and add to include path
+# Link external modules with default PRIVATE visibility
 dmod_link_modules(${DMOD_MODULE_NAME}
     dmlink@1.0      # Specific version
     dmffs           # Latest version
-    driver@2.3      # Another specific version
+)
+
+# Or specify visibility scope explicitly
+dmod_link_modules(${DMOD_MODULE_NAME}
+    PUBLIC
+        driver@2.3      # Public headers (available to dependents)
+    PRIVATE
+        internal_lib    # Private headers (only for this module)
 )
 ```
 
@@ -81,7 +92,8 @@ dmod_link_modules(${DMOD_MODULE_NAME}
 
 1. **Finds dmf-get tool**: The function searches for the `dmf-get` executable in `${DMOD_TOOLS_BIN_DIR}` or system PATH
 2. **Downloads headers**: For each module, it executes `dmf-get headers <module_spec> -o <output_dir>`
-3. **Adds include directories**: The downloaded headers (located at `${DMOD_DMF_DIR}/<module_name>/inc`) are automatically added to the target's private include directories
+3. **Passes configuration**: Automatically passes `-t ${DMOD_TOOLS_NAME}` if defined and `-m ${DMOD_DMM_URL}` if defined
+4. **Adds include directories**: The downloaded headers (located at `${DMOD_DMF_DIR}/<module_name>/inc`) are automatically added to the target's include directories with the specified visibility
 
 **Output Directory:**
 
@@ -106,6 +118,8 @@ The `dmf-get` tool (used internally) respects the following environment variable
 
 - `DMOD_DMF_DIR` - CMake variable controlling the base directory for downloaded headers (default: `${CMAKE_BINARY_DIR}/dmf`)
 - `DMOD_TOOLS_BIN_DIR` - CMake variable specifying where to find the dmf-get tool
+- `DMOD_TOOLS_NAME` - CMake variable for tools configuration name (e.g., "arch/x86_64"). If defined, passed to dmf-get via `-t` flag
+- `DMOD_DMM_URL` - CMake variable for manifest URL. If defined, passed to dmf-get via `-m` flag
 
 **Error Handling:**
 
@@ -119,6 +133,7 @@ The `dmf-get` tool (used internally) respects the following environment variable
 - Headers are downloaded during CMake configuration, not during build
 - If you need to update headers, re-run CMake configuration
 - The function only downloads headers (not the full module files)
+- Visibility scopes work the same way as `target_include_directories`
 
 ## Tool Creation Functions
 

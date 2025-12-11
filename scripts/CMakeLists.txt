@@ -404,7 +404,7 @@ endfunction()
 # Function to link external modules and download their headers
 #
 # Usage:
-#   dmod_link_modules(target_name
+#   dmod_link_modules(target_name [PRIVATE|PUBLIC|INTERFACE]
 #       module1@1.0
 #       module2
 #       module3@2.1
@@ -413,8 +413,33 @@ endfunction()
 # This function downloads headers for the specified modules using dmf-get
 # and adds them to the target's include directories.
 #
+# The visibility scope (PRIVATE, PUBLIC, or INTERFACE) can be specified and
+# works the same way as target_include_directories. If not specified, PRIVATE is used.
+#
 function(dmod_link_modules targetName)
-    set(MODULE_SPECS ${ARGN})
+    # Parse arguments for visibility scope
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs PRIVATE PUBLIC INTERFACE)
+    cmake_parse_arguments(DMOD_LINK "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    
+    # Determine visibility scope and module list
+    set(VISIBILITY "PRIVATE")
+    set(MODULE_SPECS "")
+    
+    if(DMOD_LINK_PRIVATE)
+        set(VISIBILITY "PRIVATE")
+        set(MODULE_SPECS ${DMOD_LINK_PRIVATE})
+    elseif(DMOD_LINK_PUBLIC)
+        set(VISIBILITY "PUBLIC")
+        set(MODULE_SPECS ${DMOD_LINK_PUBLIC})
+    elseif(DMOD_LINK_INTERFACE)
+        set(VISIBILITY "INTERFACE")
+        set(MODULE_SPECS ${DMOD_LINK_INTERFACE})
+    else()
+        # No visibility keyword specified, treat all unparsed args as module specs with PRIVATE visibility
+        set(MODULE_SPECS ${DMOD_LINK_UNPARSED_ARGUMENTS})
+    endif()
     
     # Check if target exists
     if(NOT TARGET ${targetName})
@@ -440,6 +465,21 @@ function(dmod_link_modules targetName)
         set(DMOD_DMF_DIR "${CMAKE_BINARY_DIR}/dmf")
     endif()
     
+    # Prepare dmf-get command options
+    set(DMF_GET_OPTIONS "")
+    
+    # Add tools name if defined
+    if(DEFINED DMOD_TOOLS_NAME)
+        list(APPEND DMF_GET_OPTIONS "-t" "${DMOD_TOOLS_NAME}")
+        message(STATUS "Using tools name: ${DMOD_TOOLS_NAME}")
+    endif()
+    
+    # Add manifest URL if DMOD_DMM_URL is defined
+    if(DEFINED DMOD_DMM_URL)
+        list(APPEND DMF_GET_OPTIONS "-m" "${DMOD_DMM_URL}")
+        message(STATUS "Using manifest: ${DMOD_DMM_URL}")
+    endif()
+    
     # Process each module specification
     foreach(MODULE_SPEC ${MODULE_SPECS})
         # Parse module name and version
@@ -460,9 +500,9 @@ function(dmod_link_modules targetName)
         # Create the output directory
         file(MAKE_DIRECTORY "${HEADER_OUTPUT_DIR}")
         
-        # Run dmf-get headers command
+        # Run dmf-get headers command with options
         execute_process(
-            COMMAND ${DMF_GET} headers ${MODULE_SPEC} -o ${HEADER_OUTPUT_DIR}
+            COMMAND ${DMF_GET} headers ${MODULE_SPEC} ${DMF_GET_OPTIONS} -o ${HEADER_OUTPUT_DIR}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             RESULT_VARIABLE DMF_GET_RESULT
             ERROR_VARIABLE DMF_GET_ERROR
@@ -473,10 +513,10 @@ function(dmod_link_modules targetName)
             continue()
         endif()
         
-        # Add the header directory to the target's include directories
+        # Add the header directory to the target's include directories with specified visibility
         if(EXISTS "${HEADER_OUTPUT_DIR}")
-            target_include_directories(${targetName} PRIVATE ${HEADER_OUTPUT_DIR})
-            message(STATUS "Added include directory for ${MODULE_NAME}: ${HEADER_OUTPUT_DIR}")
+            target_include_directories(${targetName} ${VISIBILITY} ${HEADER_OUTPUT_DIR})
+            message(STATUS "Added include directory for ${MODULE_NAME} (${VISIBILITY}): ${HEADER_OUTPUT_DIR}")
         else()
             message(WARNING "Header directory does not exist after download: ${HEADER_OUTPUT_DIR}")
         endif()

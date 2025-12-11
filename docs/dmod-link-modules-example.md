@@ -40,10 +40,18 @@ dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
     app_logic.c
 )
 
-# Link external module headers
+# Link external module headers - default PRIVATE visibility
 dmod_link_modules(${DMOD_MODULE_NAME}
     dmffs           # Latest version
     driver@1.0      # Specific version
+)
+
+# Or specify visibility explicitly
+dmod_link_modules(${DMOD_MODULE_NAME}
+    PUBLIC
+        base_types@1.0  # Public headers for interface
+    PRIVATE
+        internal_lib    # Private implementation headers
 )
 ```
 
@@ -88,11 +96,61 @@ When you run CMake configuration:
 
 3. **Adds include directories**: The header paths are added to your target
    ```
-   -- Added include directory for dmffs: /path/to/build/dmf/dmffs/inc
-   -- Added include directory for driver: /path/to/build/dmf/driver/inc
+   -- Added include directory for dmffs (PRIVATE): /path/to/build/dmf/dmffs/inc
+   -- Added include directory for driver (PRIVATE): /path/to/build/dmf/driver/inc
    ```
 
 4. **Headers are available**: You can now `#include` files from the downloaded headers in your source code
+
+## Visibility Scopes
+
+The function supports three visibility scopes, similar to `target_include_directories`:
+
+### PRIVATE (Default)
+Headers are only available to the target itself:
+
+```cmake
+dmod_link_modules(${DMOD_MODULE_NAME}
+    dmffs@1.0       # Implicitly PRIVATE
+    driver
+)
+```
+
+### PUBLIC
+Headers are available to both the target and any targets that link to it:
+
+```cmake
+dmod_link_modules(${DMOD_MODULE_NAME}
+    PUBLIC
+        base_types@1.0      # Headers exposed to dependents
+        common_utils
+)
+```
+
+This is useful when your module's public API requires types or functions from the linked module.
+
+### INTERFACE
+Headers are only available to targets that link to this target (not the target itself):
+
+```cmake
+dmod_link_modules(${DMOD_MODULE_NAME}
+    INTERFACE
+        header_only_lib     # Only for consumers of this module
+)
+```
+
+### Mixed Visibility
+You can specify different visibility for different modules:
+
+```cmake
+dmod_link_modules(${DMOD_MODULE_NAME}
+    PUBLIC
+        api_types@2.0       # Exposed through your API
+    PRIVATE
+        internal_impl       # Implementation detail
+        crypto_lib@1.5
+)
+```
 
 ## Advanced Example with Version Control
 
@@ -125,6 +183,42 @@ export DMOD_MANIFEST=https://my-registry.com/manifest.dmm
 # Build your module
 cmake -DDMOD_MODE=DMOD_MODULE -B build -S .
 cmake --build build/
+```
+
+## CMake Variables
+
+You can also use CMake variables to configure the function's behavior:
+
+### DMOD_TOOLS_NAME
+Specifies the tools configuration name for platform-specific modules:
+
+```bash
+cmake -DDMOD_MODE=DMOD_MODULE \
+      -DDMOD_TOOLS_NAME=arch/armv7/cortex-m7 \
+      -B build -S .
+```
+
+This is automatically passed to `dmf-get` via the `-t` flag, allowing it to download platform-specific headers.
+
+### DMOD_DMM_URL
+Specifies a custom manifest URL:
+
+```bash
+cmake -DDMOD_MODE=DMOD_MODULE \
+      -DDMOD_DMM_URL=https://my-company.com/dmod-manifest.dmm \
+      -B build -S .
+```
+
+This is automatically passed to `dmf-get` via the `-m` flag, allowing you to use a custom module registry.
+
+### Example with All Variables
+
+```bash
+cmake -DDMOD_MODE=DMOD_MODULE \
+      -DDMOD_TOOLS_NAME=arch/armv7/cortex-m7 \
+      -DDMOD_DMM_URL=https://registry.example.com/manifest.dmm \
+      -DDMOD_DMF_DIR=/opt/dmod/modules \
+      -B build -S .
 ```
 
 ## Using with Library Modules
