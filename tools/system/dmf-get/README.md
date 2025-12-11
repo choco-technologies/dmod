@@ -106,6 +106,7 @@ For more information about viewing documentation, see the [dmf-man tool document
 - `-a, --arch-name <name>` - Architecture name for variable substitution
 - `--type <dmf|dmfc>` - Prefer dmf or dmfc file type
 - `--no-dependencies` - Don't download dependencies automatically
+- `-y, --yes` - Automatic yes to license prompts (non-interactive mode)
 - `-h, --help` - Show help message
 - `-v, --version` - Show version information
 
@@ -130,7 +131,43 @@ dmf-get -t arch/armv7/cortex-m7 mymodule@1.0
 
 # Download to specific directory
 dmf-get -o ./my_modules mymodule
+
+# Non-interactive mode (automatically accept licenses)
+dmf-get -y mymodule
 ```
+
+## License Acceptance
+
+When downloading modules that include a license file (specified in the `.dmr` resource file), `dmf-get` will display the license and prompt for acceptance before installation:
+
+```
+================================================================================
+LICENSE
+================================================================================
+MIT License
+
+Copyright (c) 2024 Module Author
+...
+================================================================================
+
+Do you accept the license terms? [y/N]:
+```
+
+The user must enter `y` or `Y` to accept the license and continue with installation. Any other input (including just pressing Enter) will reject the license and cancel the installation.
+
+### Non-Interactive Mode
+
+For automated installations or CI/CD pipelines, use the `-y` or `--yes` flag to automatically accept all licenses:
+
+```bash
+# Automatically accept licenses without prompting
+dmf-get -y mymodule
+
+# Can be combined with other options
+dmf-get -y -d dependencies.dmd -o ./output
+```
+
+**Note**: Modules without license files will install normally without any prompts.
 
 ## Dependencies File Format (.dmd)
 
