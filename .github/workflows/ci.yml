@@ -87,6 +87,29 @@ jobs:
         working-directory: tests/integration
         run: bash test_whereisdmf.sh ../../build
       
+      - name: Test dmod_link_modules with dmini
+        run: |
+          mkdir -p .github/test_dmod_link_modules/build
+          cd .github/test_dmod_link_modules/build
+          cmake .. -DDMOD_MODE=DMOD_MODULE
+          cmake --build .
+          echo "dmod_link_modules test completed successfully"
+      
+      - name: Verify dmini headers were downloaded
+        run: |
+          if [ -d ".github/test_dmod_link_modules/build/dmf/dmini/inc" ]; then
+            echo "SUCCESS: dmini headers downloaded to build/dmf/dmini/inc"
+            ls -la .github/test_dmod_link_modules/build/dmf/dmini/inc/
+          else
+            echo "ERROR: dmini headers not found"
+            exit 1
+          fi
+      
+      - name: Test loading module built with dmod_link_modules
+        run: |
+          ./build/examples/system/dmod_loader/dmod_loader .github/test_dmod_link_modules/build/dmf/test_link.dmf
+          echo "Module with linked dependencies loaded successfully"
+      
       - name: Run coverage check
         working-directory: build
         run: cmake --build . --target coverage_check
