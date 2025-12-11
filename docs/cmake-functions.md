@@ -97,7 +97,11 @@ dmod_link_modules(${DMOD_MODULE_NAME}
 
 **Output Directory:**
 
-Headers are downloaded to: `${DMOD_DMF_DIR}/<module_name>/inc`
+Headers are downloaded to: `${DMOD_DMF_DIR}/inc/<module_name>/include/`
+
+For example, for the `dmini` module, headers are located at: `${DMOD_DMF_DIR}/inc/dmini/include/dmini.h`
+
+The include directory added to the target is: `${DMOD_DMF_DIR}/inc/<module_name>/include`, allowing you to use `#include <module_header.h>` directly.
 
 By default, `DMOD_DMF_DIR` is set to `${CMAKE_BINARY_DIR}/dmf`.
 
