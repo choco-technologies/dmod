@@ -11,6 +11,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
@@ -62,6 +64,13 @@ typedef struct {
 static bool CreateDirectoryRecursive(const char* path) {
     if (!path) return false;
     
+    // Check path length
+    size_t path_len = strlen(path);
+    if (path_len >= 2048) {
+        DMOD_LOG_ERROR("Path too long for directory creation: %zu bytes\n", path_len);
+        return false;
+    }
+    
     // Check if directory already exists
     struct stat st;
     if (stat(path, &st) == 0) {
@@ -72,9 +81,15 @@ static bool CreateDirectoryRecursive(const char* path) {
     }
     
     // Create a mutable copy of the path
-    char tmp[1024];
+    char tmp[2048];
     strncpy(tmp, path, sizeof(tmp) - 1);
     tmp[sizeof(tmp) - 1] = '\0';
+    
+    // Check for truncation
+    if (strlen(path) != strlen(tmp)) {
+        DMOD_LOG_ERROR("Path truncated during directory creation\n");
+        return false;
+    }
     
     // Create parent directories first
     for (char* p = tmp + 1; *p; p++) {
@@ -151,8 +166,8 @@ static bool InitCacheDir(void) {
  * @param filename_size Size of output buffer
  */
 static void GenerateCacheFilename(const char* url, char* filename, size_t filename_size) {
-    // Simple hash function (djb2)
-    unsigned long hash = 5381;
+    // Simple hash function (djb2) using fixed-width integer for portability
+    uint64_t hash = 5381;
     const char* str = url;
     int c;
     
@@ -178,9 +193,9 @@ static void GenerateCacheFilename(const char* url, char* filename, size_t filena
     safe_url_part[j] = '\0';
     
     if (safe_url_part[0] == '\0') {
-        Dmod_SnPrintf(filename, filename_size, "%lx", hash);
+        Dmod_SnPrintf(filename, filename_size, "%016" PRIx64, hash);
     } else {
-        Dmod_SnPrintf(filename, filename_size, "%lx-%s", hash, safe_url_part);
+        Dmod_SnPrintf(filename, filename_size, "%016" PRIx64 "-%s", hash, safe_url_part);
     }
 }
 
@@ -231,12 +246,16 @@ static bool LoadFromCache(const char* cache_path, char** buffer, size_t* size) {
         return false;
     }
     
-    // Get file size
-    fseek((FILE*)file, 0, SEEK_END);
-    long file_size = ftell((FILE*)file);
-    fseek((FILE*)file, 0, SEEK_SET);
+    // Get file size using fstat (more reliable than fseek/ftell)
+    int fd = fileno((FILE*)file);
+    struct stat st;
+    if (fstat(fd, &st) != 0) {
+        Dmod_FileClose(file);
+        return false;
+    }
     
-    if (file_size < 0) {
+    off_t file_size = st.st_size;
+    if (file_size < 0 || file_size > SIZE_MAX) {
         Dmod_FileClose(file);
         return false;
     }
@@ -313,8 +332,21 @@ static bool RemoveDirectoryContents(const char* dir_path) {
             continue;
         }
         
-        char file_path[1024];
-        Dmod_SnPrintf(file_path, sizeof(file_path), "%s/%s", dir_path, entry->d_name);
+        // Security: Reject entries with path traversal sequences
+        if (strstr(entry->d_name, "..") != NULL || strchr(entry->d_name, '/') != NULL) {
+            DMOD_LOG_VERBOSE("Skipping suspicious entry: %s\n", entry->d_name);
+            continue;
+        }
+        
+        char file_path[2048];  // Increased buffer size
+        int written = Dmod_SnPrintf(file_path, sizeof(file_path), "%s/%s", dir_path, entry->d_name);
+        
+        // Check for truncation
+        if (written < 0 || written >= (int)sizeof(file_path)) {
+            DMOD_LOG_VERBOSE("Path too long, skipping: %s/%s\n", dir_path, entry->d_name);
+            success = false;
+            continue;
+        }
         
         struct stat st;
         if (stat(file_path, &st) == 0) {
