@@ -16,7 +16,7 @@ endif
 #
 DMOD_LIB_NAME=libdmod_fastlz.a
 DMOD_SOURCES=fastlz.c
-DMOD_INC_DIRS = 
+DMOD_INC_DIRS = $(DMOD_DIR)/lib/third-party/FastLZ
 DMOD_LIBS = 
 DMOD_GEN_HEADERS_IN = 
 DMOD_DEFINITIONS = 
