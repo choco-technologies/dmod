@@ -11,6 +11,8 @@ The **Dmod (Dynamic Modules)** library allows you to add the functionality of lo
 - **Dynamic Loading**: Load and unload modules at runtime.
 - **Modular Architecture**: Design your system in a modular way, making it easier to manage and extend.
 - **Inter-Module Communication**: Modules can communicate with each other and the system using a common API.
+- **Package Management**: Built-in package manager (`dmf-get`) for downloading and managing module dependencies.
+- **CMake Integration**: Easy-to-use CMake functions like `dmod_link_modules` for automatic header management.
 - **Resource Management**: Efficiently manage resources and dependencies between modules.
 - **Cross-Platform Support**: Compatible with various embedded platforms.
 - **Easy integration**: Integrate Dmod seamlessly into your existing projects with minimal effort.
@@ -655,6 +657,41 @@ dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
 ```
 
 > **Note**: Please note, that `dmod_add_executable` will create a target for your module, which you can use just like any other CMake target.
+
+#### Linking External Modules
+
+If your module depends on headers from other DMOD modules, you can use the `dmod_link_modules` function to automatically download and link them:
+
+```CMake
+# Add the module executable
+dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION} 
+    main.c
+)
+
+# Link external module headers
+dmod_link_modules(${DMOD_MODULE_NAME}
+    dmffs@1.0       # File system module (version 1.0)
+    driver          # Driver module (latest version)
+)
+
+# Or specify visibility scope
+dmod_link_modules(${DMOD_MODULE_NAME}
+    PUBLIC
+        base_types@1.0   # Headers exposed to dependents
+    PRIVATE
+        internal_lib     # Private implementation headers
+)
+```
+
+This function:
+- Downloads module headers using the `dmf-get` tool at CMake configuration time
+- Automatically adds the header directories to your module's include path
+- Supports version specifications (e.g., `module@1.0`) or latest versions (e.g., `module`)
+- Supports visibility scopes (PRIVATE, PUBLIC, INTERFACE) like `target_include_directories`
+
+For more details and examples, see:
+- [CMake Functions Reference](docs/cmake-functions.md)
+- [dmod_link_modules Example](docs/dmod-link-modules-example.md)
 
 Once this file is created, you can build the module using the following commands:
 

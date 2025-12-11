@@ -401,6 +401,133 @@ function(dmod_add_library moduleName version)
 endfunction()
 
 #
+# Function to link external modules and download their headers
+#
+# Usage:
+#   dmod_link_modules(target_name [PRIVATE|PUBLIC|INTERFACE]
+#       module1@1.0
+#       module2
+#       module3@2.1
+#   )
+#
+# This function downloads headers for the specified modules using dmf-get
+# and adds them to the target's include directories.
+#
+# The visibility scope (PRIVATE, PUBLIC, or INTERFACE) can be specified and
+# works the same way as target_include_directories. If not specified, PRIVATE is used.
+#
+function(dmod_link_modules targetName)
+    # Parse arguments for visibility scope
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs PRIVATE PUBLIC INTERFACE)
+    cmake_parse_arguments(DMOD_LINK "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    
+    # Determine visibility scope and module list
+    set(VISIBILITY "PRIVATE")
+    set(MODULE_SPECS "")
+    
+    if(DMOD_LINK_PRIVATE)
+        set(VISIBILITY "PRIVATE")
+        set(MODULE_SPECS ${DMOD_LINK_PRIVATE})
+    elseif(DMOD_LINK_PUBLIC)
+        set(VISIBILITY "PUBLIC")
+        set(MODULE_SPECS ${DMOD_LINK_PUBLIC})
+    elseif(DMOD_LINK_INTERFACE)
+        set(VISIBILITY "INTERFACE")
+        set(MODULE_SPECS ${DMOD_LINK_INTERFACE})
+    else()
+        # No visibility keyword specified, treat all unparsed args as module specs with PRIVATE visibility
+        set(MODULE_SPECS ${DMOD_LINK_UNPARSED_ARGUMENTS})
+    endif()
+    
+    # Check if target exists
+    if(NOT TARGET ${targetName})
+        message(FATAL_ERROR "dmod_link_modules: Target '${targetName}' does not exist")
+    endif()
+    
+    # Find dmf-get tool
+    find_program(DMF_GET 
+        dmf-get
+        HINTS ${DMOD_TOOLS_BIN_DIR}
+        PATHS ENV PATH
+    )
+    
+    if(NOT DMF_GET)
+        message(WARNING "dmf-get tool not found. Skipping module headers download for ${targetName}. Build the tools first with -DDMOD_BUILD_TOOLS=ON")
+        return()
+    endif()
+    
+    message(STATUS "Using dmf-get: ${DMF_GET}")
+    
+    # Get the default DMF directory for headers
+    if(NOT DEFINED DMOD_DMF_DIR)
+        set(DMOD_DMF_DIR "${CMAKE_BINARY_DIR}/dmf")
+    endif()
+    
+    # Prepare dmf-get command options
+    set(DMF_GET_OPTIONS "")
+    
+    # Add tools name if defined
+    if(DEFINED DMOD_TOOLS_NAME)
+        list(APPEND DMF_GET_OPTIONS "-t" "${DMOD_TOOLS_NAME}")
+        message(STATUS "Using tools name: ${DMOD_TOOLS_NAME}")
+    endif()
+    
+    # Add manifest URL if DMOD_DMM_URL is defined
+    if(DEFINED DMOD_DMM_URL)
+        list(APPEND DMF_GET_OPTIONS "-m" "${DMOD_DMM_URL}")
+        message(STATUS "Using manifest: ${DMOD_DMM_URL}")
+    endif()
+    
+    # Process each module specification
+    foreach(MODULE_SPEC ${MODULE_SPECS})
+        # Parse module name and version
+        string(REGEX MATCH "^([^@]+)(@(.+))?$" MATCH_RESULT "${MODULE_SPEC}")
+        set(MODULE_NAME "${CMAKE_MATCH_1}")
+        set(MODULE_VERSION "${CMAKE_MATCH_3}")
+        
+        if(NOT MODULE_NAME)
+            message(WARNING "Invalid module specification: ${MODULE_SPEC}")
+            continue()
+        endif()
+        
+        # Construct the header output directory
+        # Note: dmf-get creates a subdirectory with the module name, so we don't add it here
+        set(HEADER_OUTPUT_DIR "${DMOD_DMF_DIR}/inc")
+        
+        message(STATUS "Downloading headers for module: ${MODULE_NAME} -> ${HEADER_OUTPUT_DIR}")
+        
+        # Create the output directory
+        file(MAKE_DIRECTORY "${HEADER_OUTPUT_DIR}")
+        
+        # Run dmf-get headers command with options
+        execute_process(
+            COMMAND ${DMF_GET} headers ${MODULE_SPEC} ${DMF_GET_OPTIONS} -o ${HEADER_OUTPUT_DIR}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            RESULT_VARIABLE DMF_GET_RESULT
+            ERROR_VARIABLE DMF_GET_ERROR
+        )
+        
+        if(NOT DMF_GET_RESULT EQUAL 0)
+            message(WARNING "Failed to download headers for ${MODULE_SPEC}: ${DMF_GET_ERROR}")
+            continue()
+        endif()
+        
+        # Add the header directory to the target's include directories with specified visibility
+        # dmf-get creates MODULE_NAME subdirectory with an 'include' subdirectory inside
+        # So the actual headers are in ${HEADER_OUTPUT_DIR}/${MODULE_NAME}/include
+        set(ACTUAL_HEADER_DIR "${HEADER_OUTPUT_DIR}/${MODULE_NAME}/include")
+        if(EXISTS "${ACTUAL_HEADER_DIR}")
+            target_include_directories(${targetName} ${VISIBILITY} ${ACTUAL_HEADER_DIR})
+            message(STATUS "Added include directory for ${MODULE_NAME} (${VISIBILITY}): ${ACTUAL_HEADER_DIR}")
+        else()
+            message(WARNING "Header directory does not exist after download: ${ACTUAL_HEADER_DIR}")
+        endif()
+    endforeach()
+endfunction()
+
+#
 # Function to create a DMOD system
 #
 function(dmod_add_tool toolName)
