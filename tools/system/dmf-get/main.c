@@ -13,6 +13,8 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <errno.h>
+#include <dirent.h>
 #include <curl/curl.h>
 #include "dmod.h"
 #include "dmod_manifest.h"
@@ -52,6 +54,48 @@ typedef struct {
 } DownloadBuffer_t;
 
 /**
+ * @brief Create directory recursively (mkdir -p equivalent)
+ * 
+ * @param path Directory path to create
+ * @return true if directory exists or was created, false otherwise
+ */
+static bool CreateDirectoryRecursive(const char* path) {
+    if (!path) return false;
+    
+    // Check if directory already exists
+    struct stat st;
+    if (stat(path, &st) == 0) {
+        if (S_ISDIR(st.st_mode)) {
+            return true;  // Directory already exists
+        }
+        return false;  // Path exists but is not a directory
+    }
+    
+    // Create a mutable copy of the path
+    char tmp[1024];
+    strncpy(tmp, path, sizeof(tmp) - 1);
+    tmp[sizeof(tmp) - 1] = '\0';
+    
+    // Create parent directories first
+    for (char* p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = '\0';
+            if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+                return false;
+            }
+            *p = '/';
+        }
+    }
+    
+    // Create the final directory
+    if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
  * @brief Initialize cache directory
  * 
  * Creates the cache directory structure if it doesn't exist.
@@ -85,10 +129,8 @@ static bool InitCacheDir(void) {
     Dmod_SnPrintf(manifest_dir, sizeof(manifest_dir), "%s/%s", g_cache_dir, CACHE_MANIFESTS_SUBDIR);
     Dmod_SnPrintf(package_dir, sizeof(package_dir), "%s/%s", g_cache_dir, CACHE_PACKAGES_SUBDIR);
     
-    // Create directories (mkdir -p equivalent)
-    char mkdir_cmd[2048];
-    Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p %s %s", manifest_dir, package_dir);
-    if (system(mkdir_cmd) != 0) {
+    // Create directories using safe function
+    if (!CreateDirectoryRecursive(manifest_dir) || !CreateDirectoryRecursive(package_dir)) {
         DMOD_LOG_VERBOSE("Failed to create cache directories, caching disabled\n");
         g_cache_enabled = false;
         return false;
@@ -251,6 +293,53 @@ static bool SaveToCache(const char* cache_path, const char* buffer, size_t size)
 }
 
 /**
+ * @brief Remove all files from a directory
+ * 
+ * @param dir_path Directory path
+ * @return true if successful, false otherwise
+ */
+static bool RemoveDirectoryContents(const char* dir_path) {
+    DIR* dir = opendir(dir_path);
+    if (!dir) {
+        return false;
+    }
+    
+    struct dirent* entry;
+    bool success = true;
+    
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip . and ..
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        
+        char file_path[1024];
+        Dmod_SnPrintf(file_path, sizeof(file_path), "%s/%s", dir_path, entry->d_name);
+        
+        struct stat st;
+        if (stat(file_path, &st) == 0) {
+            if (S_ISDIR(st.st_mode)) {
+                // Recursively remove directory
+                if (!RemoveDirectoryContents(file_path)) {
+                    success = false;
+                }
+                if (rmdir(file_path) != 0) {
+                    success = false;
+                }
+            } else {
+                // Remove file
+                if (unlink(file_path) != 0) {
+                    success = false;
+                }
+            }
+        }
+    }
+    
+    closedir(dir);
+    return success;
+}
+
+/**
  * @brief Clear all cached data
  * 
  * Removes all files from the cache directory.
@@ -265,24 +354,26 @@ static bool ClearCache(void) {
     
     DMOD_LOG_INFO("Clearing cache: %s\n", g_cache_dir);
     
-    char cmd[2048];
-    Dmod_SnPrintf(cmd, sizeof(cmd), "rm -rf %s/*", g_cache_dir);
-    
-    if (system(cmd) != 0) {
-        DMOD_LOG_ERROR("Failed to clear cache\n");
-        return false;
-    }
-    
-    // Recreate directory structure
+    // Remove contents of manifests and packages directories
     char manifest_dir[1024];
     char package_dir[1024];
     
     Dmod_SnPrintf(manifest_dir, sizeof(manifest_dir), "%s/%s", g_cache_dir, CACHE_MANIFESTS_SUBDIR);
     Dmod_SnPrintf(package_dir, sizeof(package_dir), "%s/%s", g_cache_dir, CACHE_PACKAGES_SUBDIR);
     
-    Dmod_SnPrintf(cmd, sizeof(cmd), "mkdir -p %s %s", manifest_dir, package_dir);
-    if (system(cmd) != 0) {
-        DMOD_LOG_ERROR("Failed to recreate cache directories\n");
+    bool success = true;
+    if (!RemoveDirectoryContents(manifest_dir)) {
+        DMOD_LOG_VERBOSE("Failed to clear manifests cache\n");
+        success = false;
+    }
+    
+    if (!RemoveDirectoryContents(package_dir)) {
+        DMOD_LOG_VERBOSE("Failed to clear packages cache\n");
+        success = false;
+    }
+    
+    if (!success) {
+        DMOD_LOG_ERROR("Failed to clear cache completely\n");
         return false;
     }
     
@@ -379,6 +470,53 @@ static bool DownloadWithCurl(const char* url, char** buffer, size_t* size, void*
 }
 
 /**
+ * @brief Download data from URL without caching (internal helper)
+ * 
+ * This is used by DownloadFile for package downloads that have their own caching logic.
+ */
+static bool DownloadWithCurlNoCache(const char* url, char** buffer, size_t* size) {
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        DMOD_LOG_ERROR("Failed to initialize curl\n");
+        return false;
+    }
+    
+    DownloadBuffer_t download = {0};
+    
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &download);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "dmf-get/1.0");
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    
+    CURLcode res = curl_easy_perform(curl);
+    
+    if (res != CURLE_OK) {
+        DMOD_LOG_ERROR("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        Dmod_Free(download.data);
+        curl_easy_cleanup(curl);
+        return false;
+    }
+    
+    long response_code;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    
+    curl_easy_cleanup(curl);
+    
+    if (response_code != 200) {
+        DMOD_LOG_ERROR("HTTP error %ld for URL: %s\n", response_code, url);
+        Dmod_Free(download.data);
+        return false;
+    }
+    
+    *buffer = download.data;
+    *size = download.size;
+    
+    return true;
+}
+
+/**
  * @brief Download a file from URL to local path with caching
  * 
  * This function checks the cache for package files and uses cached
@@ -406,11 +544,12 @@ static bool DownloadFile(const char* url, const char* output_path) {
     
     // Download if not in cache or cache load failed
     if (!buffer) {
-        if (!DownloadWithCurl(url, &buffer, &size, NULL)) {
+        // Use non-caching version to avoid double-caching
+        if (!DownloadWithCurlNoCache(url, &buffer, &size)) {
             return false;
         }
         
-        // Save to cache
+        // Save to cache (package cache)
         if (use_cache) {
             SaveToCache(cache_path, buffer, size);
         }
