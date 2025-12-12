@@ -91,9 +91,11 @@ dmod_link_modules(${DMOD_MODULE_NAME}
 **How It Works:**
 
 1. **Finds dmf-get tool**: The function searches for the `dmf-get` executable in `${DMOD_TOOLS_BIN_DIR}` or system PATH
-2. **Downloads headers**: For each module, it executes `dmf-get headers <module_spec> -o <output_dir>`
-3. **Passes configuration**: Automatically passes `-t ${DMOD_TOOLS_NAME}` if defined and `-m ${DMOD_DMM_URL}` if defined
-4. **Adds include directories**: The downloaded headers (located at `${DMOD_DMF_DIR}/<module_name>/inc`) are automatically added to the target's include directories with the specified visibility
+2. **Saves version requirements**: Creates a version requirements file (e.g., `<target_name>_version_requirements.txt`) containing all module version specifications
+3. **Downloads headers**: For each module, it executes `dmf-get headers <module_spec> -o <output_dir>`
+4. **Passes configuration**: Automatically passes `-t ${DMOD_TOOLS_NAME}` if defined and `-m ${DMOD_DMM_URL}` if defined
+5. **Adds include directories**: The downloaded headers (located at `${DMOD_DMF_DIR}/<module_name>/inc`) are automatically added to the target's include directories with the specified visibility
+6. **Integration with todmd**: When the module is built, the version requirements file is automatically passed to `todmd` when generating the `.dmd` dependencies file. This ensures that version constraints specified in `dmod_link_modules` are included in the generated `.dmd` file.
 
 **Output Directory:**
 

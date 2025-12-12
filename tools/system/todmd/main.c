@@ -3,6 +3,99 @@
 #include <stdlib.h>
 #include "dmod.h"
 
+// Maximum number of version requirements
+#define MAX_VERSION_REQUIREMENTS 64
+
+// Structure to hold a version requirement
+typedef struct {
+    char moduleName[64];
+    char version[32];
+} VersionRequirement_t;
+
+// -----------------------------------------
+//
+//      Load version requirements from file
+//
+// -----------------------------------------
+int LoadVersionRequirements( const char* filePath, VersionRequirement_t* requirements, int maxRequirements )
+{
+    FILE* file = fopen( filePath, "r" );
+    if( file == NULL )
+    {
+        DMOD_LOG_WARN("Cannot open version requirements file: %s\n", filePath);
+        return 0;
+    }
+    
+    int count = 0;
+    char line[256];
+    
+    while( fgets( line, sizeof(line), file ) != NULL && count < maxRequirements )
+    {
+        // Remove newline
+        size_t len = strlen(line);
+        if( len > 0 && line[len-1] == '\n' )
+        {
+            line[len-1] = '\0';
+        }
+        
+        // Skip empty lines and comments
+        if( line[0] == '\0' || line[0] == '#' )
+        {
+            continue;
+        }
+        
+        // Parse module@version format
+        char* atSign = strchr( line, '@' );
+        if( atSign != NULL )
+        {
+            // Module has version
+            size_t nameLen = atSign - line;
+            if( nameLen >= sizeof(requirements[count].moduleName) )
+            {
+                nameLen = sizeof(requirements[count].moduleName) - 1;
+            }
+            
+            strncpy( requirements[count].moduleName, line, nameLen );
+            requirements[count].moduleName[nameLen] = '\0';
+            
+            strncpy( requirements[count].version, atSign + 1, sizeof(requirements[count].version) - 1 );
+            requirements[count].version[sizeof(requirements[count].version) - 1] = '\0';
+        }
+        else
+        {
+            // Module without version
+            strncpy( requirements[count].moduleName, line, sizeof(requirements[count].moduleName) - 1 );
+            requirements[count].moduleName[sizeof(requirements[count].moduleName) - 1] = '\0';
+            requirements[count].version[0] = '\0';
+        }
+        
+        count++;
+    }
+    
+    fclose( file );
+    
+    Dmod_Printf("Loaded %d version requirements from %s\n", count, filePath);
+    
+    return count;
+}
+
+// -----------------------------------------
+//
+//      Find version requirement for a module
+//
+// -----------------------------------------
+const char* FindVersionRequirement( const VersionRequirement_t* requirements, int requirementCount, const char* moduleName )
+{
+    for( int i = 0; i < requirementCount; i++ )
+    {
+        if( strcmp( requirements[i].moduleName, moduleName ) == 0 )
+        {
+            return requirements[i].version[0] != '\0' ? requirements[i].version : NULL;
+        }
+    }
+    return NULL;
+}
+
 // -----------------------------------------
 //
 //      Prints usage message
@@ -10,7 +103,7 @@
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s path/to/file.dmf [output.dmd]\n", AppName);
+    printf("Usage: %s path/to/file.dmf [output.dmd] [-r version_requirements.txt]\n", AppName);
 }
 
 // -----------------------------------------
@@ -27,6 +120,7 @@ void PrintHelp( const char* AppName )
     printf("\nOptions:\n");
     printf("  -h, --help            Print this help message\n");
     printf("  -v, --version         Print version information\n");
+    printf("  -r <file>             Version requirements file from dmod_link_modules\n");
     printf("\nArguments:\n");
     printf("  path/to/file.dmf      Path to the DMF module file\n");
     printf("  [output.dmd]          (optional) Output .dmd file path (default: module_name.dmd)\n");
@@ -34,9 +128,13 @@ void PrintHelp( const char* AppName )
     printf("  The tool loads a module in crossplatform mode, reads its dependencies,\n");
     printf("  and creates a .dmd file listing all non-system required modules.\n");
     printf("  System modules are automatically filtered out.\n");
+    printf("\n");
+    printf("  If a version requirements file is provided with -r, the tool will merge\n");
+    printf("  version information from that file with the dependencies found in the DMF.\n");
     printf("\nExamples:\n");
     printf("  %s myapp.dmf                    # Creates myapp.dmd\n", AppName);
     printf("  %s myapp.dmf dependencies.dmd   # Creates dependencies.dmd\n", AppName);
+    printf("  %s myapp.dmf -r versions.txt    # Creates myapp.dmd with versions from versions.txt\n", AppName);
 }
 
 // -----------------------------------------
@@ -64,23 +162,49 @@ int main( int argc, char *argv[] )
         return 0;
     }
 
-    if( argc > 3 )
-    {
-        printf("Error: Too many arguments\n");
-        PrintUsage( argv[0] );
-        return -1;
-    }
-
-    const char* dmfPath = argv[1];
+    // Parse arguments
+    const char* dmfPath = NULL;
     const char* outputPath = NULL;
+    const char* versionReqsPath = NULL;
+    
+    // First argument is always the DMF path
+    dmfPath = argv[1];
+    
+    // Parse remaining arguments
+    for( int i = 2; i < argc; i++ )
+    {
+        if( strcmp( argv[i], "-r" ) == 0 )
+        {
+            // Next argument is the version requirements file
+            if( i + 1 < argc )
+            {
+                versionReqsPath = argv[i + 1];
+                i++; // Skip next argument
+            }
+            else
+            {
+                printf("Error: -r option requires a file path\n");
+                PrintUsage( argv[0] );
+                return -1;
+            }
+        }
+        else if( outputPath == NULL )
+        {
+            // This is the output path
+            outputPath = argv[i];
+        }
+        else
+        {
+            printf("Error: Too many arguments\n");
+            PrintUsage( argv[0] );
+            return -1;
+        }
+    }
+    
     char defaultOutputPath[256];
 
     // Determine output path
-    if( argc >= 3 )
-    {
-        outputPath = argv[2];
-    }
-    else
+    if( outputPath == NULL )
     {
         // Extract module name from path and create default output name
         const char* lastSlash = strrchr( dmfPath, '/' );
@@ -104,6 +228,16 @@ int main( int argc, char *argv[] )
     }
 
     printf("Reading module: %s\n", dmfPath);
+    
+    // Load version requirements if provided
+    VersionRequirement_t versionRequirements[MAX_VERSION_REQUIREMENTS];
+    int versionRequirementCount = 0;
+    
+    if( versionReqsPath != NULL )
+    {
+        printf("Loading version requirements from: %s\n", versionReqsPath);
+        versionRequirementCount = LoadVersionRequirements( versionReqsPath, versionRequirements, MAX_VERSION_REQUIREMENTS );
+    }
 
     // Initialize Dmod system
     if (!Dmod_Initialize())
@@ -165,10 +299,45 @@ int main( int argc, char *argv[] )
                 continue;
             }
             
-            // Write non-system module to .dmd file
-            bool hasVersion = (reqModule->Version[0] != '\0');
-            Dmod_FPrintf( outputFile, "%s%s%s\n", reqModule->Name, hasVersion ? "@" : "", reqModule->Version );
-            Dmod_Printf("  + %s%s%s\n", reqModule->Name, hasVersion ? "@" : "", reqModule->Version);
+            // Check if there's a version requirement for this module
+            const char* requiredVersion = FindVersionRequirement( versionRequirements, versionRequirementCount, reqModule->Name );
+            
+            // Determine which version to use:
+            // 1. If both DMF and requirements file specify a version, use the requirements file version (developer's explicit choice)
+            // 2. If only DMF has version, use DMF version
+            // 3. If only requirements file has version, use requirements file version
+            // 4. If neither has version, write module without version
+            
+            const char* versionToUse = NULL;
+            bool hasVersionInDmf = (reqModule->Version[0] != '\0');
+            
+            if( requiredVersion != NULL )
+            {
+                // Requirements file has version, use it (takes precedence)
+                versionToUse = requiredVersion;
+                if( hasVersionInDmf && strcmp( reqModule->Version, requiredVersion ) != 0 )
+                {
+                    DMOD_LOG_INFO("Overriding DMF version '%s' with requirement version '%s' for module: %s\n", 
+                                  reqModule->Version, requiredVersion, reqModule->Name);
+                }
+            }
+            else if( hasVersionInDmf )
+            {
+                // Only DMF has version
+                versionToUse = reqModule->Version;
+            }
+            
+            // Write module to .dmd file
+            if( versionToUse != NULL )
+            {
+                Dmod_FPrintf( outputFile, "%s@%s\n", reqModule->Name, versionToUse );
+                Dmod_Printf("  + %s@%s\n", reqModule->Name, versionToUse);
+            }
+            else
+            {
+                Dmod_FPrintf( outputFile, "%s\n", reqModule->Name );
+                Dmod_Printf("  + %s\n", reqModule->Name);
+            }
             moduleCount++;
         }
         
@@ -186,6 +355,10 @@ int main( int argc, char *argv[] )
     Dmod_Printf("\nSummary:\n");
     Dmod_Printf("  Non-system modules: %d\n", moduleCount);
     Dmod_Printf("  System modules (skipped): %d\n", systemModuleCount);
+    if( versionRequirementCount > 0 )
+    {
+        Dmod_Printf("  Version requirements applied: %d\n", versionRequirementCount);
+    }
     Dmod_Printf("  Output file: %s\n", outputPath);
     
     if( moduleCount == 0 && systemModuleCount == 0 )
