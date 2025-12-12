@@ -11,8 +11,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <errno.h>
+#include <dirent.h>
 #include <curl/curl.h>
 #include "dmod.h"
 #include "dmod_manifest.h"
@@ -33,6 +37,15 @@
 #define ENV_MANIFEST "DMOD_MANIFEST"
 #define ENV_INC_DIR "DMOD_INC_DIR"
 #define ENV_DOC_DIR "DMOD_DOC_DIR"
+#define ENV_CACHE_DIR "DMOD_CACHE_DIR"
+
+// Cache directories
+#define CACHE_MANIFESTS_SUBDIR "manifests"
+#define CACHE_PACKAGES_SUBDIR "packages"
+
+// Global cache directory
+static char g_cache_dir[1024] = {0};
+static bool g_cache_enabled = true;
 
 /**
  * @brief Structure to hold download data for curl
@@ -41,6 +54,364 @@ typedef struct {
     char* data;
     size_t size;
 } DownloadBuffer_t;
+
+/**
+ * @brief Create directory recursively (mkdir -p equivalent)
+ * 
+ * @param path Directory path to create
+ * @return true if directory exists or was created, false otherwise
+ */
+static bool CreateDirectoryRecursive(const char* path) {
+    if (!path) return false;
+    
+    // Check path length
+    size_t path_len = strlen(path);
+    if (path_len >= 2048) {
+        DMOD_LOG_ERROR("Path too long for directory creation: %zu bytes\n", path_len);
+        return false;
+    }
+    
+    // Check if directory already exists
+    struct stat st;
+    if (stat(path, &st) == 0) {
+        if (S_ISDIR(st.st_mode)) {
+            return true;  // Directory already exists
+        }
+        return false;  // Path exists but is not a directory
+    }
+    
+    // Create a mutable copy of the path
+    char tmp[2048];
+    strncpy(tmp, path, sizeof(tmp) - 1);
+    tmp[sizeof(tmp) - 1] = '\0';
+    
+    // Check for truncation
+    if (strlen(path) != strlen(tmp)) {
+        DMOD_LOG_ERROR("Path truncated during directory creation\n");
+        return false;
+    }
+    
+    // Create parent directories first
+    for (char* p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = '\0';
+            if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+                return false;
+            }
+            *p = '/';
+        }
+    }
+    
+    // Create the final directory
+    if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * @brief Initialize cache directory
+ * 
+ * Creates the cache directory structure if it doesn't exist.
+ * Uses DMOD_CACHE_DIR environment variable or defaults to ~/.cache/dmod/dmf-get
+ * 
+ * @return true if cache directory is available, false otherwise
+ */
+static bool InitCacheDir(void) {
+    if (g_cache_dir[0] != '\0') {
+        return true;  // Already initialized
+    }
+    
+    const char* cache_dir = Dmod_GetEnv(ENV_CACHE_DIR);
+    if (cache_dir) {
+        strncpy(g_cache_dir, cache_dir, sizeof(g_cache_dir) - 1);
+    } else {
+        // Use default: ~/.cache/dmod/dmf-get
+        const char* home = Dmod_GetEnv("HOME");
+        if (!home) {
+            DMOD_LOG_VERBOSE("HOME environment variable not set, caching disabled\n");
+            g_cache_enabled = false;
+            return false;
+        }
+        Dmod_SnPrintf(g_cache_dir, sizeof(g_cache_dir), "%s/.cache/dmod/dmf-get", home);
+    }
+    
+    // Create cache directory structure
+    char manifest_dir[1024];
+    char package_dir[1024];
+    
+    Dmod_SnPrintf(manifest_dir, sizeof(manifest_dir), "%s/%s", g_cache_dir, CACHE_MANIFESTS_SUBDIR);
+    Dmod_SnPrintf(package_dir, sizeof(package_dir), "%s/%s", g_cache_dir, CACHE_PACKAGES_SUBDIR);
+    
+    // Create directories using safe function
+    if (!CreateDirectoryRecursive(manifest_dir) || !CreateDirectoryRecursive(package_dir)) {
+        DMOD_LOG_VERBOSE("Failed to create cache directories, caching disabled\n");
+        g_cache_enabled = false;
+        return false;
+    }
+    
+    DMOD_LOG_VERBOSE("Cache directory: %s\n", g_cache_dir);
+    return true;
+}
+
+/**
+ * @brief Generate a cache filename from a URL
+ * 
+ * Creates a safe filename based on the URL by hashing it.
+ * Uses a simple hash to avoid issues with special characters in URLs.
+ * 
+ * @param url URL to generate cache filename for
+ * @param filename Output buffer for filename
+ * @param filename_size Size of output buffer
+ */
+static void GenerateCacheFilename(const char* url, char* filename, size_t filename_size) {
+    // Simple hash function (djb2) using fixed-width integer for portability
+    uint64_t hash = 5381;
+    const char* str = url;
+    int c;
+    
+    while ((c = *str++)) {
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    }
+    
+    // Use hash plus some URL context for filename
+    // Extract last part of URL for readability
+    const char* last_slash = strrchr(url, '/');
+    const char* url_part = last_slash ? last_slash + 1 : url;
+    
+    // Sanitize URL part (keep only alphanumeric, dash, underscore, dot)
+    char safe_url_part[128] = {0};
+    size_t j = 0;
+    for (size_t i = 0; url_part[i] && j < sizeof(safe_url_part) - 1; i++) {
+        char c = url_part[i];
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+            (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.') {
+            safe_url_part[j++] = c;
+        }
+    }
+    safe_url_part[j] = '\0';
+    
+    if (safe_url_part[0] == '\0') {
+        Dmod_SnPrintf(filename, filename_size, "%016" PRIx64, hash);
+    } else {
+        Dmod_SnPrintf(filename, filename_size, "%016" PRIx64 "-%s", hash, safe_url_part);
+    }
+}
+
+/**
+ * @brief Get path to cached file
+ * 
+ * @param url URL being cached
+ * @param is_manifest true if this is a manifest file, false for package
+ * @param cache_path Output buffer for cache path
+ * @param cache_path_size Size of output buffer
+ * @return true if cache path was generated, false otherwise
+ */
+static bool GetCachePath(const char* url, bool is_manifest, char* cache_path, size_t cache_path_size) {
+    if (!g_cache_enabled || !InitCacheDir()) {
+        return false;
+    }
+    
+    char filename[256];
+    GenerateCacheFilename(url, filename, sizeof(filename));
+    
+    const char* subdir = is_manifest ? CACHE_MANIFESTS_SUBDIR : CACHE_PACKAGES_SUBDIR;
+    Dmod_SnPrintf(cache_path, cache_path_size, "%s/%s/%s", g_cache_dir, subdir, filename);
+    
+    return true;
+}
+
+/**
+ * @brief Check if file exists in cache
+ * 
+ * @param cache_path Path to cached file
+ * @return true if file exists in cache, false otherwise
+ */
+static bool IsCached(const char* cache_path) {
+    return access(cache_path, F_OK) == 0;
+}
+
+/**
+ * @brief Load data from cache
+ * 
+ * @param cache_path Path to cached file
+ * @param buffer Output buffer pointer (will be allocated)
+ * @param size Output size of data
+ * @return true if data was loaded successfully, false otherwise
+ */
+static bool LoadFromCache(const char* cache_path, char** buffer, size_t* size) {
+    void* file = Dmod_FileOpen(cache_path, "rb");
+    if (!file) {
+        return false;
+    }
+    
+    // Get file size using fstat (more reliable than fseek/ftell)
+    int fd = fileno((FILE*)file);
+    struct stat st;
+    if (fstat(fd, &st) != 0) {
+        Dmod_FileClose(file);
+        return false;
+    }
+    
+    off_t file_size = st.st_size;
+    if (file_size < 0 || file_size > SIZE_MAX) {
+        Dmod_FileClose(file);
+        return false;
+    }
+    
+    // Allocate buffer
+    char* data = (char*)Dmod_Malloc(file_size + 1);
+    if (!data) {
+        Dmod_FileClose(file);
+        return false;
+    }
+    
+    // Read data
+    size_t read_size = Dmod_FileRead(data, 1, file_size, file);
+    Dmod_FileClose(file);
+    
+    if (read_size != (size_t)file_size) {
+        Dmod_Free(data);
+        return false;
+    }
+    
+    data[file_size] = '\0';
+    *buffer = data;
+    *size = file_size;
+    
+    DMOD_LOG_VERBOSE("Loaded from cache: %s (%zu bytes)\n", cache_path, *size);
+    return true;
+}
+
+/**
+ * @brief Save data to cache
+ * 
+ * @param cache_path Path to cache file
+ * @param buffer Data to save
+ * @param size Size of data
+ * @return true if data was saved successfully, false otherwise
+ */
+static bool SaveToCache(const char* cache_path, const char* buffer, size_t size) {
+    void* file = Dmod_FileOpen(cache_path, "wb");
+    if (!file) {
+        DMOD_LOG_VERBOSE("Failed to create cache file: %s\n", cache_path);
+        return false;
+    }
+    
+    size_t written = Dmod_FileWrite(buffer, 1, size, file);
+    Dmod_FileClose(file);
+    
+    if (written != size) {
+        DMOD_LOG_VERBOSE("Failed to write complete cache file: %s\n", cache_path);
+        return false;
+    }
+    
+    DMOD_LOG_VERBOSE("Saved to cache: %s (%zu bytes)\n", cache_path, size);
+    return true;
+}
+
+/**
+ * @brief Remove all files from a directory
+ * 
+ * @param dir_path Directory path
+ * @return true if successful, false otherwise
+ */
+static bool RemoveDirectoryContents(const char* dir_path) {
+    DIR* dir = opendir(dir_path);
+    if (!dir) {
+        return false;
+    }
+    
+    struct dirent* entry;
+    bool success = true;
+    
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip . and ..
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        
+        // Security: Reject entries with path traversal sequences
+        if (strstr(entry->d_name, "..") != NULL || strchr(entry->d_name, '/') != NULL) {
+            DMOD_LOG_VERBOSE("Skipping suspicious entry: %s\n", entry->d_name);
+            continue;
+        }
+        
+        char file_path[2048];  // Increased buffer size
+        int written = Dmod_SnPrintf(file_path, sizeof(file_path), "%s/%s", dir_path, entry->d_name);
+        
+        // Check for truncation
+        if (written < 0 || written >= (int)sizeof(file_path)) {
+            DMOD_LOG_VERBOSE("Path too long, skipping: %s/%s\n", dir_path, entry->d_name);
+            success = false;
+            continue;
+        }
+        
+        struct stat st;
+        if (stat(file_path, &st) == 0) {
+            if (S_ISDIR(st.st_mode)) {
+                // Recursively remove directory
+                if (!RemoveDirectoryContents(file_path)) {
+                    success = false;
+                }
+                if (rmdir(file_path) != 0) {
+                    success = false;
+                }
+            } else {
+                // Remove file
+                if (unlink(file_path) != 0) {
+                    success = false;
+                }
+            }
+        }
+    }
+    
+    closedir(dir);
+    return success;
+}
+
+/**
+ * @brief Clear all cached data
+ * 
+ * Removes all files from the cache directory.
+ * 
+ * @return true if cache was cleared successfully, false otherwise
+ */
+static bool ClearCache(void) {
+    if (!InitCacheDir()) {
+        DMOD_LOG_ERROR("Cache directory not available\n");
+        return false;
+    }
+    
+    DMOD_LOG_INFO("Clearing cache: %s\n", g_cache_dir);
+    
+    // Remove contents of manifests and packages directories
+    char manifest_dir[1024];
+    char package_dir[1024];
+    
+    Dmod_SnPrintf(manifest_dir, sizeof(manifest_dir), "%s/%s", g_cache_dir, CACHE_MANIFESTS_SUBDIR);
+    Dmod_SnPrintf(package_dir, sizeof(package_dir), "%s/%s", g_cache_dir, CACHE_PACKAGES_SUBDIR);
+    
+    bool success = true;
+    if (!RemoveDirectoryContents(manifest_dir)) {
+        DMOD_LOG_VERBOSE("Failed to clear manifests cache\n");
+        success = false;
+    }
+    
+    if (!RemoveDirectoryContents(package_dir)) {
+        DMOD_LOG_VERBOSE("Failed to clear packages cache\n");
+        success = false;
+    }
+    
+    if (!success) {
+        DMOD_LOG_ERROR("Failed to clear cache completely\n");
+        return false;
+    }
+    
+    DMOD_LOG_INFO("Cache cleared successfully\n");
+    return true;
+}
 
 /**
  * @brief Curl write callback
@@ -64,9 +435,78 @@ static size_t CurlWriteCallback(void* contents, size_t size, size_t nmemb, void*
 }
 
 /**
- * @brief Download function using libcurl
+ * @brief Download function using libcurl with caching support
+ * 
+ * This function first checks the cache for the requested URL.
+ * If found in cache, returns cached data. Otherwise downloads
+ * and saves to cache.
  */
 static bool DownloadWithCurl(const char* url, char** buffer, size_t* size, void* user_data) {
+    // Check cache first (manifests are cached)
+    char cache_path[1024];
+    if (g_cache_enabled && GetCachePath(url, true, cache_path, sizeof(cache_path))) {
+        if (IsCached(cache_path)) {
+            if (LoadFromCache(cache_path, buffer, size)) {
+                DMOD_LOG_INFO("Using cached manifest: %s\n", url);
+                return true;
+            } else {
+                DMOD_LOG_VERBOSE("Failed to load from cache, downloading...\n");
+            }
+        }
+    }
+    
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        DMOD_LOG_ERROR("Failed to initialize curl\n");
+        return false;
+    }
+    
+    DownloadBuffer_t download = {0};
+    
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &download);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "dmf-get/1.0");
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    
+    CURLcode res = curl_easy_perform(curl);
+    
+    if (res != CURLE_OK) {
+        DMOD_LOG_ERROR("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        Dmod_Free(download.data);
+        curl_easy_cleanup(curl);
+        return false;
+    }
+    
+    long response_code;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    
+    curl_easy_cleanup(curl);
+    
+    if (response_code != 200) {
+        DMOD_LOG_ERROR("HTTP error %ld for URL: %s\n", response_code, url);
+        Dmod_Free(download.data);
+        return false;
+    }
+    
+    // Save to cache
+    if (g_cache_enabled && cache_path[0] != '\0') {
+        SaveToCache(cache_path, download.data, download.size);
+    }
+    
+    *buffer = download.data;
+    *size = download.size;
+    
+    return true;
+}
+
+/**
+ * @brief Download data from URL without caching (internal helper)
+ * 
+ * This is used by DownloadFile for package downloads that have their own caching logic.
+ */
+static bool DownloadWithCurlNoCache(const char* url, char** buffer, size_t* size) {
     CURL* curl = curl_easy_init();
     if (!curl) {
         DMOD_LOG_ERROR("Failed to initialize curl\n");
@@ -109,7 +549,10 @@ static bool DownloadWithCurl(const char* url, char** buffer, size_t* size, void*
 }
 
 /**
- * @brief Download a file from URL to local path
+ * @brief Download a file from URL to local path with caching
+ * 
+ * This function checks the cache for package files and uses cached
+ * version if available. Otherwise downloads and saves to cache.
  */
 static bool DownloadFile(const char* url, const char* output_path) {
     DMOD_LOG_INFO("Downloading: %s\n", url);
@@ -117,8 +560,31 @@ static bool DownloadFile(const char* url, const char* output_path) {
     char* buffer = NULL;
     size_t size = 0;
     
-    if (!DownloadWithCurl(url, &buffer, &size, NULL)) {
-        return false;
+    // Check cache first (packages are cached)
+    char cache_path[1024];
+    bool use_cache = g_cache_enabled && GetCachePath(url, false, cache_path, sizeof(cache_path));
+    
+    if (use_cache && IsCached(cache_path)) {
+        if (LoadFromCache(cache_path, &buffer, &size)) {
+            DMOD_LOG_INFO("Using cached package: %s\n", url);
+        } else {
+            DMOD_LOG_VERBOSE("Failed to load from cache, downloading...\n");
+            buffer = NULL;
+            size = 0;
+        }
+    }
+    
+    // Download if not in cache or cache load failed
+    if (!buffer) {
+        // Use non-caching version to avoid double-caching
+        if (!DownloadWithCurlNoCache(url, &buffer, &size)) {
+            return false;
+        }
+        
+        // Save to cache (package cache)
+        if (use_cache) {
+            SaveToCache(cache_path, buffer, size);
+        }
     }
     
     void* file = Dmod_FileOpen(output_path, "wb");
@@ -1173,6 +1639,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --skip-dmod-ver-check     Skip DMOD version compatibility check\n");
     Dmod_Printf("  --mini                    Install only dmf/dmfc files (skip other resources from .dmr)\n");
     Dmod_Printf("  -y, --yes                 Automatic yes to license prompts (non-interactive mode)\n");
+    Dmod_Printf("  -c, --clear-cache         Clear downloaded manifests and packages cache\n");
     Dmod_Printf("  -h, --help                Show this help message\n");
     Dmod_Printf("  -v, --version             Show version information\n\n");
     Dmod_Printf("Environment Variables:\n");
@@ -1181,7 +1648,8 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s         DMFC output directory\n", ENV_DMFC_DIR);
     Dmod_Printf("  %s      Default manifest path or URL\n", ENV_MANIFEST);
     Dmod_Printf("  %s       Include/headers output directory\n", ENV_INC_DIR);
-    Dmod_Printf("  %s       Documentation output directory\n\n", ENV_DOC_DIR);
+    Dmod_Printf("  %s       Documentation output directory\n", ENV_DOC_DIR);
+    Dmod_Printf("  %s      Cache directory (default: ~/.cache/dmod/dmf-get)\n\n", ENV_CACHE_DIR);
     Dmod_Printf("Examples:\n");
     Dmod_Printf("  %s mymodule              # Download latest version\n", app_name);
     Dmod_Printf("  %s install mymodule      # Same as above (install is explicit)\n", app_name);
@@ -1197,6 +1665,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s --type dmfc module    # Prefer dmfc files\n", app_name);
     Dmod_Printf("  %s -a armv7-cortex-m7 module  # Use arch name directly\n", app_name);
     Dmod_Printf("  %s --cpu-name stm32f746ngh6 --cpu-family stm32f7 module  # Use CPU-specific module\n", app_name);
+    Dmod_Printf("  %s --clear-cache         # Clear all cached manifests and packages\n", app_name);
 }
 
 /**
@@ -1662,6 +2131,13 @@ int main(int argc, char* argv[]) {
         }
         else if (strcmp(argv[i], "-y") == 0 || strcmp(argv[i], "--yes") == 0) {
             auto_accept_license = true;
+        }
+        else if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--clear-cache") == 0) {
+            if (!ClearCache()) {
+                return 1;
+            }
+            Dmod_Printf("Cache cleared successfully\n");
+            return 0;
         }
         else if (strcmp(argv[i], "--verbose") == 0) {
             Dmod_SetLogLevel(Dmod_LogLevel_Verbose);
