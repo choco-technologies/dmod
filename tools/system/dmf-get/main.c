@@ -1604,13 +1604,8 @@ static char* FindManifest(const char* dmf_dir, const char* dmfc_dir) {
         return result;
     }
     
-    // Check current directory
-    if (Dmod_Access(DEFAULT_MANIFEST, DMOD_R_OK) == 0) {
-        size_t len = strlen(DEFAULT_MANIFEST);
-        char* result = Dmod_Malloc(len + 1);
-        if (result) strcpy(result, DEFAULT_MANIFEST);
-        return result;
-    }
+    // Note: We no longer check the current directory for manifest.dmm
+    // as this behavior was annoying and unexpected
     
     return NULL;
 }
