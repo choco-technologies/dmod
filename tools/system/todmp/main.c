@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <time.h>
 #include "dmod.h"
 #include "dmod_dependencies.h"
 
@@ -122,7 +126,8 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
     printf("Reading .dmd file: %s\n", dmdFilePath);
     
     // Initialize dependencies parser (no download function needed since modules should already be downloaded)
-    Dmod_DependenciesContext_t* dep_ctx = Dmod_Dependencies_Init(NULL, NULL, NULL);
+    // Use empty string as default manifest since we're not downloading anything
+    Dmod_DependenciesContext_t* dep_ctx = Dmod_Dependencies_Init("", NULL, NULL);
     if( dep_ctx == NULL )
     {
         printf("Error: Failed to initialize dependencies parser\n");
@@ -148,21 +153,6 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
     
     printf("Found %zu module(s) in .dmd file\n", dep_count);
     
-    // Build module file paths and verify they exist
-    char** modulePaths = (char**)malloc(dep_count * sizeof(char*));
-    if( modulePaths == NULL )
-    {
-        printf("Error: Cannot allocate memory for module paths\n");
-        Dmod_Dependencies_Free(dep_ctx);
-        return -1;
-    }
-    
-    // Initialize to NULL for cleanup
-    for( size_t i = 0; i < dep_count; i++ )
-    {
-        modulePaths[i] = NULL;
-    }
-    
     // Get the first module name (for main module if not specified)
     Dmod_DependencyEntry_t first_entry;
     const char* firstModuleName = NULL;
@@ -171,18 +161,25 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
         firstModuleName = first_entry.name;
     }
     
-    // Verify all modules exist
+    // Verify all modules exist and create a temporary directory with only the needed modules
+    char tempDir[DMOD_MAX_PATH_LENGTH];
+    snprintf(tempDir, sizeof(tempDir), "/tmp/todmp_temp_%ld", (long)time(NULL));
+    
+    // Create temporary directory using mkdir
+    if( mkdir(tempDir, 0755) != 0 )
+    {
+        printf("Error: Cannot create temporary directory '%s'\n", tempDir);
+        Dmod_Dependencies_Free(dep_ctx);
+        return -1;
+    }
+    
+    // Copy only the modules specified in .dmd file to temp directory
     for( size_t i = 0; i < dep_count; i++ )
     {
         Dmod_DependencyEntry_t dep_entry;
         if( !Dmod_Dependencies_GetEntry(dep_ctx, i, &dep_entry) )
         {
             printf("Error: Failed to get dependency entry %zu\n", i);
-            for( size_t j = 0; j < dep_count; j++ )
-            {
-                if( modulePaths[j] != NULL ) free( modulePaths[j] );
-            }
-            free( modulePaths );
             Dmod_Dependencies_Free(dep_ctx);
             return -1;
         }
@@ -190,25 +187,28 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
         printf("  [%zu] %s\n", i + 1, dep_entry.name);
         
         // Try both .dmf and .dmfc extensions
-        char modulePath[DMOD_MAX_PATH_LENGTH];
+        char sourcePath[DMOD_MAX_PATH_LENGTH];
+        char destPath[DMOD_MAX_PATH_LENGTH];
         bool found = false;
         
         // Try .dmf
-        snprintf(modulePath, sizeof(modulePath), "%s/%s.dmf", inputDir, dep_entry.name);
-        void* testFile = Dmod_FileOpen(modulePath, "rb");
+        snprintf(sourcePath, sizeof(sourcePath), "%s/%s.dmf", inputDir, dep_entry.name);
+        void* testFile = Dmod_FileOpen(sourcePath, "rb");
         if( testFile != NULL )
         {
             Dmod_FileClose(testFile);
+            snprintf(destPath, sizeof(destPath), "%s/%s.dmf", tempDir, dep_entry.name);
             found = true;
         }
         else
         {
             // Try .dmfc
-            snprintf(modulePath, sizeof(modulePath), "%s/%s.dmfc", inputDir, dep_entry.name);
-            testFile = Dmod_FileOpen(modulePath, "rb");
+            snprintf(sourcePath, sizeof(sourcePath), "%s/%s.dmfc", inputDir, dep_entry.name);
+            testFile = Dmod_FileOpen(sourcePath, "rb");
             if( testFile != NULL )
             {
                 Dmod_FileClose(testFile);
+                snprintf(destPath, sizeof(destPath), "%s/%s.dmfc", tempDir, dep_entry.name);
                 found = true;
             }
         }
@@ -217,22 +217,61 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
         {
             printf("Error: Module '%s' not found in directory '%s' (tried .dmf and .dmfc)\n", 
                    dep_entry.name, inputDir);
-            for( size_t j = 0; j < dep_count; j++ )
-            {
-                if( modulePaths[j] != NULL ) free( modulePaths[j] );
-            }
-            free( modulePaths );
             Dmod_Dependencies_Free(dep_ctx);
             return -1;
         }
+        
+        // Copy the file
+        void* srcFile = Dmod_FileOpen(sourcePath, "rb");
+        if( srcFile == NULL )
+        {
+            printf("Error: Cannot open source file '%s'\n", sourcePath);
+            Dmod_Dependencies_Free(dep_ctx);
+            return -1;
+        }
+        
+        size_t fileSize = Dmod_FileSize(srcFile);
+        void* buffer = Dmod_Malloc(fileSize);
+        if( buffer == NULL )
+        {
+            printf("Error: Cannot allocate memory for copying '%s'\n", sourcePath);
+            Dmod_FileClose(srcFile);
+            Dmod_Dependencies_Free(dep_ctx);
+            return -1;
+        }
+        
+        if( Dmod_FileRead(buffer, 1, fileSize, srcFile) != fileSize )
+        {
+            printf("Error: Cannot read source file '%s'\n", sourcePath);
+            Dmod_Free(buffer);
+            Dmod_FileClose(srcFile);
+            Dmod_Dependencies_Free(dep_ctx);
+            return -1;
+        }
+        Dmod_FileClose(srcFile);
+        
+        void* dstFile = Dmod_FileOpen(destPath, "wb");
+        if( dstFile == NULL )
+        {
+            printf("Error: Cannot create destination file '%s'\n", destPath);
+            Dmod_Free(buffer);
+            Dmod_Dependencies_Free(dep_ctx);
+            return -1;
+        }
+        
+        if( Dmod_FileWrite(buffer, 1, fileSize, dstFile) != fileSize )
+        {
+            printf("Error: Cannot write destination file '%s'\n", destPath);
+            Dmod_Free(buffer);
+            Dmod_FileClose(dstFile);
+            Dmod_Dependencies_Free(dep_ctx);
+            return -1;
+        }
+        
+        Dmod_FileClose(dstFile);
+        Dmod_Free(buffer);
     }
     
-    // Clean up module paths array
-    for( size_t i = 0; i < dep_count; i++ )
-    {
-        if( modulePaths[i] != NULL ) free( modulePaths[i] );
-    }
-    free( modulePaths );
     Dmod_Dependencies_Free(dep_ctx);
     
     // Use first module as main if not specified
@@ -243,17 +282,34 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
         printf("Using first module '%s' as main module\n", effectiveMainModule);
     }
     
-    // Create the DMP package
+    // Create the DMP package from temp directory
     printf("\nCreating DMP package...\n");
     printf("  Package name: %s\n", packageName);
-    printf("  Input directory: %s\n", inputDir);
+    printf("  Input directory: %s\n", tempDir);
     printf("  Output file: %s\n", outputFile);
     if( effectiveMainModule != NULL )
     {
         printf("  Main module: %s\n", effectiveMainModule);
     }
     
-    if( !Dmod_ToDMPFile(packageName, inputDir, outputFile, effectiveMainModule) )
+    bool result = Dmod_ToDMPFile(packageName, tempDir, outputFile, effectiveMainModule);
+    
+    // Clean up temporary directory
+    void* dir = Dmod_OpenDir(tempDir);
+    if( dir != NULL )
+    {
+        const char* fileName;
+        while( (fileName = Dmod_ReadDir(dir)) != NULL )
+        {
+            char filePath[DMOD_MAX_PATH_LENGTH];
+            snprintf(filePath, sizeof(filePath), "%s/%s", tempDir, fileName);
+            unlink(filePath);
+        }
+        Dmod_CloseDir(dir);
+    }
+    rmdir(tempDir);
+    
+    if( !result )
     {
         printf("Error: Failed to create DMP package\n");
         return -1;
