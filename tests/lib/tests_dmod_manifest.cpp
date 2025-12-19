@@ -305,10 +305,16 @@ TEST_F(DmodManifestTest, ParseIncludeDirectiveFail) {
     Dmod_ManifestContext_t* ctx = Dmod_Manifest_Init("arch/x86_64", nullptr, nullptr, nullptr, MockDownloadFunc, nullptr);
     ASSERT_NE(ctx, nullptr);
     
-    const char* manifest = "$include https://example.com/manifest.dmm\n";
+    // Test that parsing continues even when $include fails
+    const char* manifest = 
+        "$include https://example.com/manifest.dmm\n"
+        "testmod@1.0 https://example.com/test.dmf\n";
     
-    ASSERT_FALSE(Dmod_Manifest_Parse(ctx, manifest));
-    EXPECT_NE(Dmod_Manifest_GetError(ctx), nullptr);
+    // Parse should succeed, continuing after the failed include
+    ASSERT_TRUE(Dmod_Manifest_Parse(ctx, manifest));
+    
+    // Should have parsed the entry after the failed include
+    EXPECT_EQ(Dmod_Manifest_GetEntryCount(ctx), 1);
     
     Dmod_Manifest_Free(ctx);
 }
