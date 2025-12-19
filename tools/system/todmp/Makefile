@@ -1,6 +1,9 @@
 #
 # This is a makefile for the system tools
 #
+# NOTE: .dmd file support is only available when building with CMake.
+#       When building with make, only directory-based packaging is supported.
+#
 
 # -----------------------------------------------------------------------------
 # 	Paths configuration

@@ -3,6 +3,14 @@
 #include <stdlib.h>
 #include "dmod.h"
 
+#ifdef DMOD_ENABLE_DMD_SUPPORT
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <time.h>
+#include "dmod_dependencies.h"
+#endif
+
 // -----------------------------------------
 //
 //      Lists contents of a DMP package
@@ -88,6 +96,261 @@ int ListDMPPackage( const char* packageFile )
     return 0;
 }
 
+#ifdef DMOD_ENABLE_DMD_SUPPORT
+// -----------------------------------------
+//
+//      Check if file is a .dmd file
+//
+// -----------------------------------------
+bool IsDmdFile( const char* filePath )
+{
+    if( filePath == NULL )
+    {
+        return false;
+    }
+    
+    size_t len = strlen( filePath );
+    if( len < 5 )
+    {
+        return false;
+    }
+    
+    return strcmp( filePath + len - 4, ".dmd" ) == 0;
+}
+
+// -----------------------------------------
+//
+//      Create DMP package from .dmd file
+//
+// -----------------------------------------
+int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath, 
+                      const char* inputDir, const char* outputFile, 
+                      const char* mainModuleName )
+{
+    printf("Reading .dmd file: %s\n", dmdFilePath);
+    
+    // Initialize dependencies parser (no download function needed since modules should already be downloaded)
+    // Use empty string as default manifest since we're not downloading anything
+    Dmod_DependenciesContext_t* dep_ctx = Dmod_Dependencies_Init("", NULL, NULL);
+    if( dep_ctx == NULL )
+    {
+        printf("Error: Failed to initialize dependencies parser\n");
+        return -1;
+    }
+    
+    // Parse the .dmd file
+    if( !Dmod_Dependencies_ParseFile(dep_ctx, dmdFilePath) )
+    {
+        printf("Error: Failed to parse .dmd file: %s\n", 
+               Dmod_Dependencies_GetError(dep_ctx));
+        Dmod_Dependencies_Free(dep_ctx);
+        return -1;
+    }
+    
+    size_t dep_count = Dmod_Dependencies_GetEntryCount(dep_ctx);
+    if( dep_count == 0 )
+    {
+        printf("Error: No modules found in .dmd file\n");
+        Dmod_Dependencies_Free(dep_ctx);
+        return -1;
+    }
+    
+    printf("Found %zu module(s) in .dmd file\n", dep_count);
+    
+    // Get the first module name (for main module if not specified)
+    Dmod_DependencyEntry_t first_entry;
+    const char* firstModuleName = NULL;
+    if( Dmod_Dependencies_GetEntry(dep_ctx, 0, &first_entry) )
+    {
+        firstModuleName = first_entry.name;
+    }
+    
+    // Verify all modules exist and create a temporary directory with only the needed modules
+    char tempDir[DMOD_MAX_PATH_LENGTH];
+    char tempTemplate[] = "/tmp/todmp_XXXXXX";
+    
+    // Create secure temporary directory using mkdtemp
+    if( mkdtemp(tempTemplate) == NULL )
+    {
+        printf("Error: Cannot create temporary directory\n");
+        Dmod_Dependencies_Free(dep_ctx);
+        return -1;
+    }
+    
+    snprintf(tempDir, sizeof(tempDir), "%s", tempTemplate);
+    
+    // Copy only the modules specified in .dmd file to temp directory
+    for( size_t i = 0; i < dep_count; i++ )
+    {
+        Dmod_DependencyEntry_t dep_entry;
+        if( !Dmod_Dependencies_GetEntry(dep_ctx, i, &dep_entry) )
+        {
+            printf("Error: Failed to get dependency entry %zu\n", i);
+            Dmod_Dependencies_Free(dep_ctx);
+            return -1;
+        }
+        
+        printf("  [%zu] %s\n", i + 1, dep_entry.name);
+        
+        // Try both .dmf and .dmfc extensions
+        char sourcePath[DMOD_MAX_PATH_LENGTH];
+        char destPath[DMOD_MAX_PATH_LENGTH];
+        bool found = false;
+        
+        // Try .dmf
+        snprintf(sourcePath, sizeof(sourcePath), "%s/%s.dmf", inputDir, dep_entry.name);
+        void* testFile = Dmod_FileOpen(sourcePath, "rb");
+        if( testFile != NULL )
+        {
+            Dmod_FileClose(testFile);
+            snprintf(destPath, sizeof(destPath), "%s/%s.dmf", tempDir, dep_entry.name);
+            found = true;
+        }
+        else
+        {
+            // Try .dmfc
+            snprintf(sourcePath, sizeof(sourcePath), "%s/%s.dmfc", inputDir, dep_entry.name);
+            testFile = Dmod_FileOpen(sourcePath, "rb");
+            if( testFile != NULL )
+            {
+                Dmod_FileClose(testFile);
+                snprintf(destPath, sizeof(destPath), "%s/%s.dmfc", tempDir, dep_entry.name);
+                found = true;
+            }
+        }
+        
+        if( !found )
+        {
+            printf("Error: Module '%s' not found in directory '%s' (tried .dmf and .dmfc)\n", 
+                   dep_entry.name, inputDir);
+            
+            // Clean up temp directory before returning
+            void* cleanupDir = Dmod_OpenDir(tempDir);
+            if( cleanupDir != NULL )
+            {
+                const char* cleanupFile;
+                while( (cleanupFile = Dmod_ReadDir(cleanupDir)) != NULL )
+                {
+                    if( strcmp(cleanupFile, ".") == 0 || strcmp(cleanupFile, "..") == 0 ) continue;
+                    char cleanupPath[DMOD_MAX_PATH_LENGTH];
+                    snprintf(cleanupPath, sizeof(cleanupPath), "%s/%s", tempDir, cleanupFile);
+                    unlink(cleanupPath);
+                }
+                Dmod_CloseDir(cleanupDir);
+            }
+            rmdir(tempDir);
+            
+            Dmod_Dependencies_Free(dep_ctx);
+            return -1;
+        }
+        
+        // Copy the file using a buffer
+        void* srcFile = Dmod_FileOpen(sourcePath, "rb");
+        if( srcFile == NULL )
+        {
+            printf("Error: Cannot open source file '%s'\n", sourcePath);
+            Dmod_Dependencies_Free(dep_ctx);
+            return -1;
+        }
+        
+        void* dstFile = Dmod_FileOpen(destPath, "wb");
+        if( dstFile == NULL )
+        {
+            printf("Error: Cannot create destination file '%s'\n", destPath);
+            Dmod_FileClose(srcFile);
+            Dmod_Dependencies_Free(dep_ctx);
+            return -1;
+        }
+        
+        // Copy in 64KB chunks for efficiency
+        #define COPY_BUFFER_SIZE (64 * 1024)
+        void* buffer = Dmod_Malloc(COPY_BUFFER_SIZE);
+        if( buffer == NULL )
+        {
+            printf("Error: Cannot allocate copy buffer\n");
+            Dmod_FileClose(srcFile);
+            Dmod_FileClose(dstFile);
+            Dmod_Dependencies_Free(dep_ctx);
+            return -1;
+        }
+        
+        size_t bytesRead;
+        bool copySuccess = true;
+        while( (bytesRead = Dmod_FileRead(buffer, 1, COPY_BUFFER_SIZE, srcFile)) > 0 )
+        {
+            if( Dmod_FileWrite(buffer, 1, bytesRead, dstFile) != bytesRead )
+            {
+                printf("Error: Cannot write to destination file '%s'\n", destPath);
+                copySuccess = false;
+                break;
+            }
+        }
+        
+        Dmod_Free(buffer);
+        Dmod_FileClose(srcFile);
+        Dmod_FileClose(dstFile);
+        
+        if( !copySuccess )
+        {
+            Dmod_Dependencies_Free(dep_ctx);
+            return -1;
+        }
+    }
+    
+    Dmod_Dependencies_Free(dep_ctx);
+    
+    // Use first module as main if not specified
+    const char* effectiveMainModule = mainModuleName;
+    if( effectiveMainModule == NULL && firstModuleName != NULL )
+    {
+        effectiveMainModule = firstModuleName;
+        printf("Using first module '%s' as main module\n", effectiveMainModule);
+    }
+    
+    // Create the DMP package from temp directory
+    printf("\nCreating DMP package...\n");
+    printf("  Package name: %s\n", packageName);
+    printf("  Input directory: %s\n", tempDir);
+    printf("  Output file: %s\n", outputFile);
+    if( effectiveMainModule != NULL )
+    {
+        printf("  Main module: %s\n", effectiveMainModule);
+    }
+    
+    bool result = Dmod_ToDMPFile(packageName, tempDir, outputFile, effectiveMainModule);
+    
+    // Clean up temporary directory
+    void* dir = Dmod_OpenDir(tempDir);
+    if( dir != NULL )
+    {
+        const char* fileName;
+        while( (fileName = Dmod_ReadDir(dir)) != NULL )
+        {
+            // Skip . and .. entries
+            if( strcmp(fileName, ".") == 0 || strcmp(fileName, "..") == 0 )
+            {
+                continue;
+            }
+            
+            char filePath[DMOD_MAX_PATH_LENGTH];
+            snprintf(filePath, sizeof(filePath), "%s/%s", tempDir, fileName);
+            unlink(filePath);
+        }
+        Dmod_CloseDir(dir);
+    }
+    rmdir(tempDir);
+    
+    if( !result )
+    {
+        printf("Error: Failed to create DMP package\n");
+        return -1;
+    }
+    
+    printf("\nDMP package '%s' was successfully created at '%s'\n", packageName, outputFile);
+    return 0;
+}
+#endif // DMOD_ENABLE_DMD_SUPPORT
+
 // -----------------------------------------
 //
 //      Prints usage message
@@ -95,14 +358,25 @@ int ListDMPPackage( const char* packageFile )
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
+#ifdef DMOD_ENABLE_DMD_SUPPORT
     printf("Usage: %s <package_name> <input_dir> [output_file] [module_name]\n", AppName);
+    printf("       %s <package_name> <dmd_file> <input_dir> [output_file] [module_name]\n", AppName);
+#else
+    printf("Usage: %s <package_name> <input_dir> [output_file] [module_name]\n", AppName);
+#endif
     printf("       %s -l <package_file>\n", AppName);
     printf("\n");
     printf("Arguments:\n");
     printf("  <package_name>   - Name of the package (for the header)\n");
     printf("  <input_dir>      - Folder with modules to pack (.dmf or .dmfc files)\n");
+#ifdef DMOD_ENABLE_DMD_SUPPORT
+    printf("  <dmd_file>       - .dmd file specifying which modules to pack\n");
+#endif
     printf("  [output_file]    - (optional) Path to output .dmp file (default: ./package_name.dmp)\n");
     printf("  [module_name]    - (optional) Name of the main module in the package\n");
+#ifdef DMOD_ENABLE_DMD_SUPPORT
+    printf("                     (defaults to first module in .dmd file if provided)\n");
+#endif
     printf("  -l <package_file> - List contents of a DMP package\n");
 }
 
@@ -127,6 +401,10 @@ void PrintHelp( const char* AppName )
     printf("  %s kernel ./dmfc main-app ./out/kernel.dmp\n", AppName);
     printf("  %s mypackage ./modules\n", AppName);
     printf("  %s mypackage ./modules ./output/mypackage.dmp\n", AppName);
+#ifdef DMOD_ENABLE_DMD_SUPPORT
+    printf("  %s myapp deps.dmd ./modules ./myapp.dmp\n", AppName);
+    printf("  %s myapp deps.dmd ./modules ./myapp.dmp custom-main\n", AppName);
+#endif
     printf("  %s -l ./mypackage.dmp\n", AppName);
 }
 
@@ -174,7 +452,11 @@ int main( int argc, char *argv[] )
         return -1;
     }
 
+#ifdef DMOD_ENABLE_DMD_SUPPORT
+    if( argc > 6 )
+#else
     if( argc > 5 )
+#endif
     {
         printf("Error: Too many arguments\n");
         PrintUsage( argv[0] );
@@ -182,44 +464,91 @@ int main( int argc, char *argv[] )
     }
 
     const char* packageName = argv[1];
-    const char* inputDir = argv[2];
+    const char* secondArg = argv[2];
+    const char* inputDir = NULL;
+#ifdef DMOD_ENABLE_DMD_SUPPORT
+    const char* dmdFilePath = NULL;
+#endif
     const char* outputFile = NULL;
     const char* mainModuleName = NULL;
-
-    // Default output file: ./package_name.dmp
-    char defaultOutputFile[256];
-    if( argc >= 4 )
+    
+#ifdef DMOD_ENABLE_DMD_SUPPORT
+    // Check if second argument is a .dmd file
+    if( IsDmdFile(secondArg) )
     {
-        outputFile = argv[3];
+        // Format: todmp <package_name> <dmd_file> <input_dir> [output_file] [module_name]
+        dmdFilePath = secondArg;
+        
+        if( argc < 4 )
+        {
+            printf("Error: Missing input directory\n");
+            PrintUsage( argv[0] );
+            return -1;
+        }
+        
+        inputDir = argv[3];
+        
+        // Default output file: ./package_name.dmp
+        char defaultOutputFile[256];
+        if( argc >= 5 )
+        {
+            outputFile = argv[4];
+        }
+        else
+        {
+            snprintf( defaultOutputFile, sizeof(defaultOutputFile), "./%s.dmp", packageName );
+            outputFile = defaultOutputFile;
+        }
+        
+        // Optional main module name
+        if( argc >= 6 )
+        {
+            mainModuleName = argv[5];
+        }
+        
+        return CreateDMPFromDmd( packageName, dmdFilePath, inputDir, outputFile, mainModuleName );
     }
     else
+#endif // DMOD_ENABLE_DMD_SUPPORT
     {
-        snprintf( defaultOutputFile, sizeof(defaultOutputFile), "./%s.dmp", packageName );
-        outputFile = defaultOutputFile;
+        // Format: todmp <package_name> <input_dir> [output_file] [module_name]
+        inputDir = secondArg;
+        
+        // Default output file: ./package_name.dmp
+        char defaultOutputFile[256];
+        if( argc >= 4 )
+        {
+            outputFile = argv[3];
+        }
+        else
+        {
+            snprintf( defaultOutputFile, sizeof(defaultOutputFile), "./%s.dmp", packageName );
+            outputFile = defaultOutputFile;
+        }
+
+        // Optional main module name
+        if( argc >= 5 )
+        {
+            mainModuleName = argv[4];
+        }
+
+        printf("Creating DMP package...\n");
+        printf("  Package name: %s\n", packageName);
+        printf("  Input directory: %s\n", inputDir);
+        printf("  Output file: %s\n", outputFile);
+        if( mainModuleName != NULL )
+        {
+            printf("  Main module: %s\n", mainModuleName);
+        }
+
+        if( !Dmod_ToDMPFile( packageName, inputDir, outputFile, mainModuleName ) )
+        {
+            printf("Error: Failed to create DMP package\n");
+            return -1;
+        }
+
+        printf("DMP package '%s' was successfully created at '%s'\n", packageName, outputFile);
+
+        return 0;
     }
-
-    // Optional main module name
-    if( argc >= 5 )
-    {
-        mainModuleName = argv[4];
-    }
-
-    printf("Creating DMP package...\n");
-    printf("  Package name: %s\n", packageName);
-    printf("  Input directory: %s\n", inputDir);
-    printf("  Output file: %s\n", outputFile);
-    if( mainModuleName != NULL )
-    {
-        printf("  Main module: %s\n", mainModuleName);
-    }
-
-    if( !Dmod_ToDMPFile( packageName, inputDir, outputFile, mainModuleName ) )
-    {
-        printf("Error: Failed to create DMP package\n");
-        return -1;
-    }
-
-    printf("DMP package '%s' was successfully created at '%s'\n", packageName, outputFile);
-
-    return 0;
 }
