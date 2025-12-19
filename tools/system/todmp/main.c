@@ -163,15 +163,17 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
     
     // Verify all modules exist and create a temporary directory with only the needed modules
     char tempDir[DMOD_MAX_PATH_LENGTH];
-    snprintf(tempDir, sizeof(tempDir), "/tmp/todmp_temp_%ld", (long)time(NULL));
+    char tempTemplate[] = "/tmp/todmp_XXXXXX";
     
-    // Create temporary directory using mkdir
-    if( mkdir(tempDir, 0755) != 0 )
+    // Create secure temporary directory using mkdtemp
+    if( mkdtemp(tempTemplate) == NULL )
     {
-        printf("Error: Cannot create temporary directory '%s'\n", tempDir);
+        printf("Error: Cannot create temporary directory\n");
         Dmod_Dependencies_Free(dep_ctx);
         return -1;
     }
+    
+    snprintf(tempDir, sizeof(tempDir), "%s", tempTemplate);
     
     // Copy only the modules specified in .dmd file to temp directory
     for( size_t i = 0; i < dep_count; i++ )
@@ -217,11 +219,28 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
         {
             printf("Error: Module '%s' not found in directory '%s' (tried .dmf and .dmfc)\n", 
                    dep_entry.name, inputDir);
+            
+            // Clean up temp directory before returning
+            void* cleanupDir = Dmod_OpenDir(tempDir);
+            if( cleanupDir != NULL )
+            {
+                const char* cleanupFile;
+                while( (cleanupFile = Dmod_ReadDir(cleanupDir)) != NULL )
+                {
+                    if( strcmp(cleanupFile, ".") == 0 || strcmp(cleanupFile, "..") == 0 ) continue;
+                    char cleanupPath[DMOD_MAX_PATH_LENGTH];
+                    snprintf(cleanupPath, sizeof(cleanupPath), "%s/%s", tempDir, cleanupFile);
+                    unlink(cleanupPath);
+                }
+                Dmod_CloseDir(cleanupDir);
+            }
+            rmdir(tempDir);
+            
             Dmod_Dependencies_Free(dep_ctx);
             return -1;
         }
         
-        // Copy the file
+        // Copy the file using a buffer
         void* srcFile = Dmod_FileOpen(sourcePath, "rb");
         if( srcFile == NULL )
         {
@@ -230,46 +249,48 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
             return -1;
         }
         
-        size_t fileSize = Dmod_FileSize(srcFile);
-        void* buffer = Dmod_Malloc(fileSize);
-        if( buffer == NULL )
-        {
-            printf("Error: Cannot allocate memory for copying '%s'\n", sourcePath);
-            Dmod_FileClose(srcFile);
-            Dmod_Dependencies_Free(dep_ctx);
-            return -1;
-        }
-        
-        if( Dmod_FileRead(buffer, 1, fileSize, srcFile) != fileSize )
-        {
-            printf("Error: Cannot read source file '%s'\n", sourcePath);
-            Dmod_Free(buffer);
-            Dmod_FileClose(srcFile);
-            Dmod_Dependencies_Free(dep_ctx);
-            return -1;
-        }
-        Dmod_FileClose(srcFile);
-        
         void* dstFile = Dmod_FileOpen(destPath, "wb");
         if( dstFile == NULL )
         {
             printf("Error: Cannot create destination file '%s'\n", destPath);
-            Dmod_Free(buffer);
+            Dmod_FileClose(srcFile);
             Dmod_Dependencies_Free(dep_ctx);
             return -1;
         }
         
-        if( Dmod_FileWrite(buffer, 1, fileSize, dstFile) != fileSize )
+        // Copy in 64KB chunks for efficiency
+        #define COPY_BUFFER_SIZE (64 * 1024)
+        void* buffer = Dmod_Malloc(COPY_BUFFER_SIZE);
+        if( buffer == NULL )
         {
-            printf("Error: Cannot write destination file '%s'\n", destPath);
-            Dmod_Free(buffer);
+            printf("Error: Cannot allocate copy buffer\n");
+            Dmod_FileClose(srcFile);
             Dmod_FileClose(dstFile);
             Dmod_Dependencies_Free(dep_ctx);
             return -1;
         }
         
-        Dmod_FileClose(dstFile);
+        size_t bytesRead;
+        bool copySuccess = true;
+        while( (bytesRead = Dmod_FileRead(buffer, 1, COPY_BUFFER_SIZE, srcFile)) > 0 )
+        {
+            if( Dmod_FileWrite(buffer, 1, bytesRead, dstFile) != bytesRead )
+            {
+                printf("Error: Cannot write to destination file '%s'\n", destPath);
+                copySuccess = false;
+                break;
+            }
+        }
+        
         Dmod_Free(buffer);
+        Dmod_FileClose(srcFile);
+        Dmod_FileClose(dstFile);
+        
+        if( !copySuccess )
+        {
+            Dmod_Dependencies_Free(dep_ctx);
+            return -1;
+        }
     }
     
     Dmod_Dependencies_Free(dep_ctx);
@@ -301,6 +322,12 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
         const char* fileName;
         while( (fileName = Dmod_ReadDir(dir)) != NULL )
         {
+            // Skip . and .. entries
+            if( strcmp(fileName, ".") == 0 || strcmp(fileName, "..") == 0 )
+            {
+                continue;
+            }
+            
             char filePath[DMOD_MAX_PATH_LENGTH];
             snprintf(filePath, sizeof(filePath), "%s/%s", tempDir, fileName);
             unlink(filePath);
