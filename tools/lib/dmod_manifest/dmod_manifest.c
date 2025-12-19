@@ -291,8 +291,7 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
         if (!Dmod_Manifest_ParseUrl(ctx, url)) {
             // Save the error message before logging to avoid format string issues
             char error_msg[256];
-            strncpy(error_msg, ctx->error, sizeof(error_msg) - 1);
-            error_msg[sizeof(error_msg) - 1] = '\0';
+            Dmod_SnPrintf(error_msg, sizeof(error_msg), "%s", ctx->error);
             
             DMOD_LOG_WARN("Failed to include manifest from %s (continuing anyway): %s\n", 
                          url, error_msg);
