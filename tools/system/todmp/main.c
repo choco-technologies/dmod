@@ -1,12 +1,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "dmod.h"
+
+#ifdef DMOD_ENABLE_DMD_SUPPORT
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <time.h>
-#include "dmod.h"
 #include "dmod_dependencies.h"
+#endif
 
 // -----------------------------------------
 //
@@ -93,6 +96,7 @@ int ListDMPPackage( const char* packageFile )
     return 0;
 }
 
+#ifdef DMOD_ENABLE_DMD_SUPPORT
 // -----------------------------------------
 //
 //      Check if file is a .dmd file
@@ -345,6 +349,7 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
     printf("\nDMP package '%s' was successfully created at '%s'\n", packageName, outputFile);
     return 0;
 }
+#endif // DMOD_ENABLE_DMD_SUPPORT
 
 // -----------------------------------------
 //
@@ -353,17 +358,25 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
+#ifdef DMOD_ENABLE_DMD_SUPPORT
     printf("Usage: %s <package_name> <input_dir> [output_file] [module_name]\n", AppName);
     printf("       %s <package_name> <dmd_file> <input_dir> [output_file] [module_name]\n", AppName);
+#else
+    printf("Usage: %s <package_name> <input_dir> [output_file] [module_name]\n", AppName);
+#endif
     printf("       %s -l <package_file>\n", AppName);
     printf("\n");
     printf("Arguments:\n");
     printf("  <package_name>   - Name of the package (for the header)\n");
     printf("  <input_dir>      - Folder with modules to pack (.dmf or .dmfc files)\n");
+#ifdef DMOD_ENABLE_DMD_SUPPORT
     printf("  <dmd_file>       - .dmd file specifying which modules to pack\n");
+#endif
     printf("  [output_file]    - (optional) Path to output .dmp file (default: ./package_name.dmp)\n");
     printf("  [module_name]    - (optional) Name of the main module in the package\n");
+#ifdef DMOD_ENABLE_DMD_SUPPORT
     printf("                     (defaults to first module in .dmd file if provided)\n");
+#endif
     printf("  -l <package_file> - List contents of a DMP package\n");
 }
 
@@ -388,8 +401,10 @@ void PrintHelp( const char* AppName )
     printf("  %s kernel ./dmfc main-app ./out/kernel.dmp\n", AppName);
     printf("  %s mypackage ./modules\n", AppName);
     printf("  %s mypackage ./modules ./output/mypackage.dmp\n", AppName);
+#ifdef DMOD_ENABLE_DMD_SUPPORT
     printf("  %s myapp deps.dmd ./modules ./myapp.dmp\n", AppName);
     printf("  %s myapp deps.dmd ./modules ./myapp.dmp custom-main\n", AppName);
+#endif
     printf("  %s -l ./mypackage.dmp\n", AppName);
 }
 
@@ -437,7 +452,11 @@ int main( int argc, char *argv[] )
         return -1;
     }
 
+#ifdef DMOD_ENABLE_DMD_SUPPORT
     if( argc > 6 )
+#else
+    if( argc > 5 )
+#endif
     {
         printf("Error: Too many arguments\n");
         PrintUsage( argv[0] );
@@ -447,10 +466,13 @@ int main( int argc, char *argv[] )
     const char* packageName = argv[1];
     const char* secondArg = argv[2];
     const char* inputDir = NULL;
+#ifdef DMOD_ENABLE_DMD_SUPPORT
     const char* dmdFilePath = NULL;
+#endif
     const char* outputFile = NULL;
     const char* mainModuleName = NULL;
     
+#ifdef DMOD_ENABLE_DMD_SUPPORT
     // Check if second argument is a .dmd file
     if( IsDmdFile(secondArg) )
     {
@@ -487,6 +509,7 @@ int main( int argc, char *argv[] )
         return CreateDMPFromDmd( packageName, dmdFilePath, inputDir, outputFile, mainModuleName );
     }
     else
+#endif // DMOD_ENABLE_DMD_SUPPORT
     {
         // Format: todmp <package_name> <input_dir> [output_file] [module_name]
         inputDir = secondArg;

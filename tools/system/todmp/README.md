@@ -10,8 +10,10 @@
 - **Main module designation**: Specify which module is the main entry point
 - **Package listing**: View contents of existing DMP packages
 - **Automatic module discovery**: Scans directory for all modules
-- **Dependencies file support**: Create packages from .dmd files specifying module lists
+- **Dependencies file support**: Create packages from .dmd files specifying module lists (CMake build only)
 - **Simple distribution**: Single file for multiple modules
+
+> **Note**: `.dmd` file support is only available when building with CMake. When building with Make, only directory-based packaging is supported.
 
 ## Usage
 
@@ -27,7 +29,7 @@ todmp <package_name> <input_dir> [output_file] [module_name]
 - `[output_file]` - (Optional) Path to output .dmp file (default: `./package_name.dmp`)
 - `[module_name]` - (Optional) Name of the main module in the package
 
-### Creating a DMP Package from .dmd File
+### Creating a DMP Package from .dmd File (CMake build only)
 
 ```bash
 todmp <package_name> <dmd_file> <input_dir> [output_file] [module_name]
@@ -39,6 +41,8 @@ todmp <package_name> <dmd_file> <input_dir> [output_file] [module_name]
 - `<input_dir>` - Directory containing .dmf or .dmfc files
 - `[output_file]` - (Optional) Path to output .dmp file (default: `./package_name.dmp`)
 - `[module_name]` - (Optional) Name of the main module (defaults to first module in .dmd file)
+
+> **Note**: This feature requires building todmp with CMake. It is not available when building with Make.
 
 ### Listing Package Contents
 
@@ -254,6 +258,8 @@ cd tools/system/todmp
 make
 ```
 
+> **Note**: When building with Make, `.dmd` file support is not available. Only directory-based packaging is supported. For `.dmd` file support, build with CMake.
+
 ### Build with CMake
 
 ```bash
@@ -261,6 +267,8 @@ cd tools/system/todmp
 cmake -B build -S .
 cmake --build build
 ```
+
+> **Note**: CMake build includes `.dmd` file support for selective module packaging.
 
 ## Installation
 

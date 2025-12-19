@@ -2,6 +2,8 @@ dmod_add_tool(todmp
     main.c
 )
 
+target_compile_definitions(todmp PRIVATE DMOD_ENABLE_DMD_SUPPORT)
+
 target_link_libraries(todmp
     dmod_dependencies
 )

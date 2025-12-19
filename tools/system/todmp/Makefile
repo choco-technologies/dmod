@@ -1,6 +1,9 @@
 #
 # This is a makefile for the system tools
 #
+# NOTE: .dmd file support is only available when building with CMake.
+#       When building with make, only directory-based packaging is supported.
+#
 
 # -----------------------------------------------------------------------------
 # 	Paths configuration
@@ -14,8 +17,8 @@ TOOL_SRC_DIR=$(THIS_DIR)
 # -----------------------------------------------------------------------------
 PROJECT_NAME    = todmp
 DMOD_SOURCES	= main.c
-DMOD_INC_DIRS 	= $(DMOD_DIR)/tools/lib/dmod_dependencies
-DMOD_LIBS 	  	= dmod_dependencies
+DMOD_INC_DIRS 	= 
+DMOD_LIBS 	  	= 
 DEFINITIONS 	= 
 
 # -----------------------------------------------------------------------------
