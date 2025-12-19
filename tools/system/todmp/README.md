@@ -10,11 +10,12 @@
 - **Main module designation**: Specify which module is the main entry point
 - **Package listing**: View contents of existing DMP packages
 - **Automatic module discovery**: Scans directory for all modules
+- **Dependencies file support**: Create packages from .dmd files specifying module lists
 - **Simple distribution**: Single file for multiple modules
 
 ## Usage
 
-### Creating a DMP Package
+### Creating a DMP Package from Directory
 
 ```bash
 todmp <package_name> <input_dir> [output_file] [module_name]
@@ -25,6 +26,19 @@ todmp <package_name> <input_dir> [output_file] [module_name]
 - `<input_dir>` - Directory containing .dmf or .dmfc files to package
 - `[output_file]` - (Optional) Path to output .dmp file (default: `./package_name.dmp`)
 - `[module_name]` - (Optional) Name of the main module in the package
+
+### Creating a DMP Package from .dmd File
+
+```bash
+todmp <package_name> <dmd_file> <input_dir> [output_file] [module_name]
+```
+
+**Arguments:**
+- `<package_name>` - Name of the package (stored in package header)
+- `<dmd_file>` - Path to .dmd file specifying which modules to include
+- `<input_dir>` - Directory containing .dmf or .dmfc files
+- `[output_file]` - (Optional) Path to output .dmp file (default: `./package_name.dmp`)
+- `[module_name]` - (Optional) Name of the main module (defaults to first module in .dmd file)
 
 ### Listing Package Contents
 
@@ -65,6 +79,31 @@ todmp kernel ./dmfc main-app ./out/kernel.dmp
 
 Creates a kernel package where `main-app` is designated as the main module.
 
+### Create a package from .dmd file
+
+**Create a .dmd file** (`dependencies.dmd`):
+```dmd
+# My project dependencies
+core_module
+network_stack
+filesystem
+```
+
+**Create the package:**
+```bash
+todmp myapp dependencies.dmd ./modules ./myapp.dmp
+```
+
+This creates `./myapp.dmp` containing only the three modules listed in `dependencies.dmd`. The first module (`core_module`) will be automatically set as the main module.
+
+### Create a package from .dmd file with custom main module
+
+```bash
+todmp myapp dependencies.dmd ./modules ./myapp.dmp network_stack
+```
+
+This creates the package with `network_stack` as the main module instead of the first one in the .dmd file.
+
 ### List package contents
 
 ```bash
@@ -94,6 +133,54 @@ Modules:
       Offset: 58279 bytes
       Size: 8901 bytes
 ```
+
+## Using .dmd Files with todmp
+
+### What are .dmd files?
+
+`.dmd` (DMOD Dependencies) files provide a way to specify which modules should be included in a DMP package. This is particularly useful when:
+
+- You have a directory with many modules but only need a subset
+- You want to maintain reproducible builds with explicit module lists
+- You're working with pre-downloaded modules from `dmf-get`
+- You want to version-control your package composition
+
+### Benefits of .dmd files
+
+1. **Selective packaging**: Include only specific modules instead of all modules in a directory
+2. **Reproducible builds**: Explicitly declare which modules are in your package
+3. **Automatic main module**: First module in .dmd file becomes the main module by default
+4. **Version control friendly**: Track changes to package composition over time
+5. **Integration with dmf-get**: Use the same .dmd files for downloading and packaging
+
+### Example workflow with .dmd files
+
+**Step 1: Create a dependencies file** (`myapp.dmd`):
+```dmd
+# Core application modules
+app_main@1.0
+network_stack@2.1
+config_manager
+logger@1.5
+
+# Storage modules
+filesystem
+database@3.0
+```
+
+**Step 2: Download the modules** (optional, if not already downloaded):
+```bash
+dmf-get -d myapp.dmd -o ./modules
+```
+
+**Step 3: Create the DMP package**:
+```bash
+todmp myapp myapp.dmd ./modules ./dist/myapp.dmp
+```
+
+The resulting package will contain exactly the 6 modules listed in `myapp.dmd`, with `app_main` as the main module.
+
+**Note**: When using .dmd files with todmp, the modules should already be downloaded in the input directory. Version specifiers in the .dmd file are ignored during packaging - todmp will use whichever version of each module is present in the input directory.
 
 ## DMP Package Format
 
@@ -257,9 +344,12 @@ Common errors and solutions:
 3. **Test packages**: Always list package contents after creation to verify
 4. **Version packages**: Include version information in package names (e.g., `myapp-v1.2.dmp`)
 5. **Document main module**: Clearly indicate which module is the application entry point
+6. **Use .dmd files**: Maintain .dmd files to explicitly control which modules are packaged
+7. **Integrate with dmf-get**: Use the same .dmd file for downloading and packaging modules
 
 ## See Also
 
+- [DMD File Format](../../../docs/dmd-file-format.md) - Detailed documentation of .dmd file syntax
 - [DMOD Tools Installation Guide](../../../docs/tools-installation.md) - Complete guide for all DMOD tools
 - [todmfc](../todmfc/README.md) - DMF compression tool
 - [todmd](../todmd/README.md) - Dependencies file generator
