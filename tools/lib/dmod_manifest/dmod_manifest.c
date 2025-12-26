@@ -286,8 +286,18 @@ static bool ParseLine(Dmod_ManifestContext_t* ctx, char* line) {
         DMOD_LOG_VERBOSE("Including manifest from URL: %s\n", url);
         
         // Parse the included manifest
+        // Note: We continue parsing even if the included manifest fails to download
+        // This prevents a single failed include from stopping the entire parsing process
         if (!Dmod_Manifest_ParseUrl(ctx, url)) {
-            return false;
+            // Save the error message before logging to avoid format string issues
+            char error_msg[256];
+            Dmod_SnPrintf(error_msg, sizeof(error_msg), "%s", ctx->error);
+            
+            DMOD_LOG_WARN("Failed to include manifest from %s (continuing anyway): %s\n", 
+                         url, error_msg);
+            
+            // Clear error so it doesn't affect subsequent parsing
+            ctx->error[0] = '\0';
         }
         return true;
     }
