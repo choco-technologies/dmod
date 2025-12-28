@@ -2,8 +2,8 @@
  * @file example_read_modules.c
  * @brief Example demonstrating the Dmod_ReadNextModule function
  * 
- * This example shows how to use Dmod_ReadNextModule to iterate through
- * all available modules in the system.
+ * This example shows how to use Dmod_OpenModules, Dmod_ReadNextModule,
+ * and Dmod_CloseModules to iterate through all available modules.
  */
 
 #include <stdio.h>
@@ -22,7 +22,15 @@ int main(void)
     
     // Allocate module node structure (user-allocated)
     Dmod_ModuleNode_t moduleNode;
-    moduleNode._Data = NULL;  // Initialize to NULL for first call
+    moduleNode._Data = NULL;
+    
+    // Open module iteration
+    if (!Dmod_OpenModules(&moduleNode))
+    {
+        fprintf(stderr, "Failed to open module iteration\n");
+        Dmod_Deinitialize();
+        return 1;
+    }
     
     int moduleCount = 0;
     
@@ -42,6 +50,9 @@ int main(void)
     
     printf("--------------------------------------------------------------------------------\n");
     printf("Total modules found: %d\n", moduleCount);
+    
+    // Close module iteration (free resources)
+    Dmod_CloseModules(&moduleNode);
     
     // Cleanup DMOD system
     Dmod_Deinitialize();

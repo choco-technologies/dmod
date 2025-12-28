@@ -1,21 +1,28 @@
 # Module Listing Example
 
-This example demonstrates how to use the `Dmod_ReadNextModule` function to iterate through all available modules in the system.
+This example demonstrates how to use the `Dmod_OpenModules`, `Dmod_ReadNextModule`, and `Dmod_CloseModules` functions to iterate through all available modules in the system.
 
 ## Description
 
-The `Dmod_ReadNextModule` function allows you to enumerate all modules that are available in:
+These functions allow you to enumerate all modules that are available in:
 - Filesystem paths (configured via environment variables and search paths)
 - Loaded packages (.dmp files)
 
 ## Usage
 
-The function uses a stateful iterator pattern:
+The functions use an explicit open/close pattern to manage resources properly:
 
 ```c
 // Allocate module node structure
 Dmod_ModuleNode_t moduleNode;
-moduleNode._Data = NULL;  // Initialize to NULL for first call
+moduleNode._Data = NULL;
+
+// Open module iteration
+if (!Dmod_OpenModules(&moduleNode))
+{
+    fprintf(stderr, "Failed to open module iteration\n");
+    return 1;
+}
 
 // Iterate through all modules
 while (Dmod_ReadNextModule(&moduleNode))
@@ -25,15 +32,18 @@ while (Dmod_ReadNextModule(&moduleNode))
     // - moduleNode.header: Module header with name, version, etc.
     printf("Found module: %s at %s\n", moduleNode.header.Name, moduleNode.path);
 }
+
+// Close module iteration (important to free resources!)
+Dmod_CloseModules(&moduleNode);
 ```
 
 ## Key Points
 
 1. The user allocates the `Dmod_ModuleNode_t` structure
-2. Set `_Data` to `NULL` before the first call
-3. The function manages internal iteration state automatically
-4. Returns `true` while modules are found, `false` when iteration is complete
-5. Resources are automatically cleaned up when iteration finishes
+2. Call `Dmod_OpenModules` to initialize iteration
+3. Call `Dmod_ReadNextModule` repeatedly while it returns `true`
+4. **Always** call `Dmod_CloseModules` when done (even if stopping early) to free resources
+5. The open/close pattern prevents memory leaks
 
 ## Module Information Available
 

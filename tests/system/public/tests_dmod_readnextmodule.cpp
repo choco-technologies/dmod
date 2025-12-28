@@ -27,6 +27,16 @@ protected:
 // ===============================================================
 
 /**
+ * @brief Test for Dmod_OpenModules with NULL parameter
+ * 
+ * The test checks if the function handles NULL parameter correctly.
+ */
+TEST_F(DmodReadNextModuleTest, OpenModulesNullParameter)
+{
+    EXPECT_FALSE(Dmod_OpenModules(NULL));
+}
+
+/**
  * @brief Test for Dmod_ReadNextModule with NULL parameter
  * 
  * The test checks if the function handles NULL parameter correctly.
@@ -37,35 +47,69 @@ TEST_F(DmodReadNextModuleTest, ReadNextModuleNullParameter)
 }
 
 /**
- * @brief Test for Dmod_ReadNextModule basic initialization
+ * @brief Test for Dmod_CloseModules with NULL parameter
  * 
- * The test verifies that the function can initialize the iteration state
- * on first call with _Data set to NULL.
+ * The test checks if the function handles NULL parameter correctly.
  */
-TEST_F(DmodReadNextModuleTest, ReadNextModuleInitialization)
+TEST_F(DmodReadNextModuleTest, CloseModulesNullParameter)
+{
+    // Should not crash
+    Dmod_CloseModules(NULL);
+}
+
+/**
+ * @brief Test for Dmod_ReadNextModule without opening first
+ * 
+ * The test verifies that calling ReadNextModule without OpenModules fails properly.
+ */
+TEST_F(DmodReadNextModuleTest, ReadNextModuleWithoutOpen)
 {
     Dmod_ModuleNode_t node;
     memset(&node, 0, sizeof(node));
     node._Data = NULL;
     
-    // First call should initialize state
-    // Result depends on whether any modules are available
-    bool result = Dmod_ReadNextModule(&node);
+    EXPECT_FALSE(Dmod_ReadNextModule(&node));
+}
+
+/**
+ * @brief Test for Dmod_OpenModules basic initialization
+ * 
+ * The test verifies that the function can initialize the iteration state.
+ */
+TEST_F(DmodReadNextModuleTest, OpenModulesInitialization)
+{
+    Dmod_ModuleNode_t node;
+    memset(&node, 0, sizeof(node));
+    node._Data = NULL;
     
-    // Either we found a module (true) or there are no modules (false)
-    // Both are valid outcomes depending on the environment
-    if (result)
-    {
-        // If we found a module, verify the structure is populated
-        EXPECT_NE(node._Data, nullptr) << "Internal state should be initialized";
-        EXPECT_GT(strlen(node.path), 0) << "Path should not be empty";
-        EXPECT_GT(strlen(node.header.Name), 0) << "Module name should not be empty";
-    }
-    else
-    {
-        // If no modules found, state should be cleaned up
-        EXPECT_EQ(node._Data, nullptr) << "Internal state should be cleaned up when no modules found";
-    }
+    // Open should succeed
+    EXPECT_TRUE(Dmod_OpenModules(&node));
+    EXPECT_NE(node._Data, nullptr) << "Internal state should be initialized";
+    
+    // Clean up
+    Dmod_CloseModules(&node);
+    EXPECT_EQ(node._Data, nullptr) << "Internal state should be cleaned up";
+}
+
+/**
+ * @brief Test for Dmod_OpenModules double open
+ * 
+ * The test verifies that opening twice without closing fails.
+ */
+TEST_F(DmodReadNextModuleTest, OpenModulesDoubleOpen)
+{
+    Dmod_ModuleNode_t node;
+    memset(&node, 0, sizeof(node));
+    node._Data = NULL;
+    
+    // First open should succeed
+    EXPECT_TRUE(Dmod_OpenModules(&node));
+    
+    // Second open without close should fail
+    EXPECT_FALSE(Dmod_OpenModules(&node));
+    
+    // Clean up
+    Dmod_CloseModules(&node);
 }
 
 /**
@@ -78,6 +122,13 @@ TEST_F(DmodReadNextModuleTest, ReadNextModuleIteration)
     Dmod_ModuleNode_t node;
     memset(&node, 0, sizeof(node));
     node._Data = NULL;
+    
+    // Open module iteration
+    if (!Dmod_OpenModules(&node))
+    {
+        // No modules available or error - skip test
+        return;
+    }
     
     int moduleCount = 0;
     const int maxIterations = 1000; // Safety limit to prevent infinite loop
@@ -93,11 +144,14 @@ TEST_F(DmodReadNextModuleTest, ReadNextModuleIteration)
         moduleCount++;
     }
     
-    // After iteration completes, state should be cleaned up
-    EXPECT_EQ(node._Data, nullptr) << "Internal state should be cleaned up after iteration completes";
-    
     // We should have terminated before hitting the safety limit
     EXPECT_LT(moduleCount, maxIterations) << "Iteration should terminate naturally";
+    
+    // Clean up resources
+    Dmod_CloseModules(&node);
+    
+    // After cleanup, state should be NULL
+    EXPECT_EQ(node._Data, nullptr) << "Internal state should be cleaned up after close";
 }
 
 /**
@@ -111,6 +165,13 @@ TEST_F(DmodReadNextModuleTest, ReadNextModuleUniqueModules)
     memset(&node, 0, sizeof(node));
     node._Data = NULL;
     
+    // Open module iteration
+    if (!Dmod_OpenModules(&node))
+    {
+        // No modules available or error - skip test
+        return;
+    }
+    
     std::vector<std::string> paths;
     const int maxIterations = 100; // Reasonable limit for this test
     
@@ -119,6 +180,9 @@ TEST_F(DmodReadNextModuleTest, ReadNextModuleUniqueModules)
     {
         paths.push_back(std::string(node.path));
     }
+    
+    // Clean up
+    Dmod_CloseModules(&node);
     
     // Verify that we don't have duplicate paths
     // (Note: This is a soft requirement - in theory the same module could be in multiple paths)
@@ -138,24 +202,31 @@ TEST_F(DmodReadNextModuleTest, ReadNextModuleUniqueModules)
 }
 
 /**
- * @brief Test for Dmod_ReadNextModule early termination and restart
+ * @brief Test for early termination with proper cleanup
  * 
- * The test verifies that iteration can be stopped and restarted.
+ * The test verifies that CloseModules properly cleans up resources
+ * when iteration is stopped early.
  */
-TEST_F(DmodReadNextModuleTest, ReadNextModuleEarlyTerminationAndRestart)
+TEST_F(DmodReadNextModuleTest, ReadNextModuleEarlyTermination)
 {
     Dmod_ModuleNode_t node;
-    
-    // First iteration - read a few modules then stop
     memset(&node, 0, sizeof(node));
     node._Data = NULL;
     
-    int firstCount = 0;
+    // Open module iteration
+    if (!Dmod_OpenModules(&node))
+    {
+        // No modules available or error - skip test
+        return;
+    }
+    
+    // Read only a few modules then stop
+    int count = 0;
     for (int i = 0; i < 3; i++)
     {
         if (Dmod_ReadNextModule(&node))
         {
-            firstCount++;
+            count++;
         }
         else
         {
@@ -163,21 +234,54 @@ TEST_F(DmodReadNextModuleTest, ReadNextModuleEarlyTerminationAndRestart)
         }
     }
     
-    // If we found any modules and stopped early, _Data might still be set
-    // We need to manually clean up by calling until it returns false
-    if (node._Data != nullptr)
+    // State should still be valid if we stopped early
+    if (count > 0)
     {
-        while (Dmod_ReadNextModule(&node))
-        {
-            // Continue until iteration completes naturally
-        }
+        EXPECT_NE(node._Data, nullptr) << "State should be valid after partial iteration";
     }
     
-    EXPECT_EQ(node._Data, nullptr) << "State should be cleaned up after complete iteration";
+    // Clean up explicitly - this is the key improvement!
+    Dmod_CloseModules(&node);
+    EXPECT_EQ(node._Data, nullptr) << "State should be cleaned up after explicit close";
+}
+
+/**
+ * @brief Test for restart after complete iteration
+ * 
+ * The test verifies that iteration can be restarted after completion.
+ */
+TEST_F(DmodReadNextModuleTest, ReadNextModuleRestart)
+{
+    Dmod_ModuleNode_t node;
+    
+    // First iteration
+    memset(&node, 0, sizeof(node));
+    node._Data = NULL;
+    
+    if (!Dmod_OpenModules(&node))
+    {
+        // No modules available - skip test
+        return;
+    }
+    
+    int firstCount = 0;
+    while (Dmod_ReadNextModule(&node))
+    {
+        firstCount++;
+    }
+    
+    Dmod_CloseModules(&node);
+    EXPECT_EQ(node._Data, nullptr) << "State should be cleaned up after close";
     
     // Second iteration - start fresh
     memset(&node, 0, sizeof(node));
     node._Data = NULL;
+    
+    if (!Dmod_OpenModules(&node))
+    {
+        // Should succeed like first time
+        FAIL() << "Second open should succeed if first succeeded";
+    }
     
     int secondCount = 0;
     while (Dmod_ReadNextModule(&node))
@@ -185,9 +289,11 @@ TEST_F(DmodReadNextModuleTest, ReadNextModuleEarlyTerminationAndRestart)
         secondCount++;
     }
     
+    Dmod_CloseModules(&node);
+    
     // If we found modules in first iteration, we should find them in second too
     if (firstCount > 0)
     {
-        EXPECT_GT(secondCount, 0) << "Second iteration should also find modules";
+        EXPECT_EQ(secondCount, firstCount) << "Should find same number of modules in both iterations";
     }
 }

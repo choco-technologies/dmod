@@ -1858,12 +1858,59 @@ typedef struct
 } Dmod_ModuleIterationState_t;
 
 /**
+ * @brief Open module iteration
+ * 
+ * Initializes the module iteration state. Must be called before using Dmod_ReadNextModule.
+ * After iteration is complete or to stop early, call Dmod_CloseModules to free resources.
+ * 
+ * @param outModule Pointer to module node structure (user-allocated)
+ * @return true if initialization was successful, false otherwise
+ */
+bool Dmod_OpenModules( Dmod_ModuleNode_t* outModule )
+{
+    if( outModule == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot open modules - invalid output parameter\n");
+        return false;
+    }
+
+    // Check if already opened
+    if( outModule->_Data != NULL )
+    {
+        DMOD_LOG_ERROR("Cannot open modules - already opened (call Dmod_CloseModules first)\n");
+        return false;
+    }
+
+    Dmod_ModuleIterationState_t* state = (Dmod_ModuleIterationState_t*)Dmod_Malloc( sizeof(Dmod_ModuleIterationState_t) );
+    if( state == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot open modules - memory allocation failed\n");
+        return false;
+    }
+    
+    state->searchNodeHead = Dmod_Hlp_PrepareModulesSearchNodes();
+    if( state->searchNodeHead == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot open modules - failed to prepare search nodes\n");
+        Dmod_Free( state );
+        return false;
+    }
+    
+    state->currentNode = state->searchNodeHead;
+    state->currentDir = NULL;
+    state->packageIndex = 0;
+    state->moduleIndexInPackage = 0;
+    state->iteratingPackages = false;
+    outModule->_Data = state;
+
+    return true;
+}
+
+/**
  * @brief Read next module from available paths and packages
  * 
  * This function iterates through all available modules in the system, including
- * those in filesystem paths and packages. On first call, outModule->_Data should
- * be NULL. The function will initialize internal state and start iteration.
- * On subsequent calls, pass the same outModule structure to continue iteration.
+ * those in filesystem paths and packages. Must call Dmod_OpenModules first.
  * 
  * @param outModule Pointer to module node structure (user-allocated)
  * @return true if a module was found, false if iteration is complete or error occurred
@@ -1878,29 +1925,11 @@ bool Dmod_ReadNextModule( Dmod_ModuleNode_t* outModule )
 
     Dmod_ModuleIterationState_t* state = (Dmod_ModuleIterationState_t*)outModule->_Data;
 
-    // Initialize state on first call
+    // Check if modules were opened
     if( state == NULL )
     {
-        state = (Dmod_ModuleIterationState_t*)Dmod_Malloc( sizeof(Dmod_ModuleIterationState_t) );
-        if( state == NULL )
-        {
-            DMOD_LOG_ERROR("Cannot read next module - memory allocation failed\n");
-            return false;
-        }
-        
-        state->searchNodeHead = Dmod_Hlp_PrepareModulesSearchNodes();
-        if( state->searchNodeHead == NULL )
-        {
-            DMOD_LOG_ERROR("Cannot read next module - failed to prepare search nodes\n");
-            Dmod_Free( state );
-            return false;
-        }
-        state->currentNode = state->searchNodeHead;
-        state->currentDir = NULL;
-        state->packageIndex = 0;
-        state->moduleIndexInPackage = 0;
-        state->iteratingPackages = false;
-        outModule->_Data = state;
+        DMOD_LOG_ERROR("Cannot read next module - call Dmod_OpenModules first\n");
+        return false;
     }
 
     // Iterate through filesystem paths
@@ -2009,21 +2038,49 @@ bool Dmod_ReadNextModule( Dmod_ModuleNode_t* outModule )
         state->moduleIndexInPackage = 0;
     }
 
-    // Iteration complete, clean up
+    // No more modules found
+    return false;
+}
+
+/**
+ * @brief Close module iteration and free resources
+ * 
+ * Cleans up resources allocated by Dmod_OpenModules. Should be called after
+ * iteration is complete or when stopping iteration early.
+ * 
+ * @param outModule Pointer to module node structure
+ */
+void Dmod_CloseModules( Dmod_ModuleNode_t* outModule )
+{
+    if( outModule == NULL )
+    {
+        return;
+    }
+
+    Dmod_ModuleIterationState_t* state = (Dmod_ModuleIterationState_t*)outModule->_Data;
+    
+    if( state == NULL )
+    {
+        return; // Already closed or never opened
+    }
+
+    // Close any open directory
     if( state->currentDir != NULL )
     {
         Dmod_CloseDir( state->currentDir );
         state->currentDir = NULL;
     }
+    
+    // Free search node list
     if( state->searchNodeHead != NULL )
     {
         Dmod_Hlp_FreeSearchPathList( state->searchNodeHead );
         state->searchNodeHead = NULL;
     }
+    
+    // Free state structure
     Dmod_Free( state );
     outModule->_Data = NULL;
-
-    return false;
 }
 
 
