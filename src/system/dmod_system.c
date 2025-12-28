@@ -1843,3 +1843,182 @@ static bool CheckModuleArchitecture( const char* FilePath, const char* ExpectedA
     return true;
 }
 
+/**
+ * @brief Internal state structure for module iteration
+ */
+typedef struct 
+{
+    Dmod_SearchNode_t* searchNodeHead;   //!< Head of search nodes list
+    Dmod_SearchNode_t* currentNode;      //!< Current search node being processed
+    void* currentDir;                    //!< Current directory handle
+    size_t packageIndex;                 //!< Current package index
+    uint32_t moduleIndexInPackage;       //!< Current module index within package
+    bool iteratingPackages;              //!< Flag indicating if we're iterating packages
+} Dmod_ModuleIterationState_t;
+
+/**
+ * @brief Read next module from available paths and packages
+ * 
+ * This function iterates through all available modules in the system, including
+ * those in filesystem paths and packages. On first call, outModule->_Data should
+ * be NULL. The function will initialize internal state and start iteration.
+ * On subsequent calls, pass the same outModule structure to continue iteration.
+ * 
+ * @param outModule Pointer to module node structure (user-allocated)
+ * @return true if a module was found, false if iteration is complete or error occurred
+ */
+bool Dmod_ReadNextModule( Dmod_ModuleNode_t* outModule )
+{
+    if( outModule == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot read next module - invalid output parameter\n");
+        return false;
+    }
+
+    Dmod_ModuleIterationState_t* state = (Dmod_ModuleIterationState_t*)outModule->_Data;
+
+    // Initialize state on first call
+    if( state == NULL )
+    {
+        state = (Dmod_ModuleIterationState_t*)Dmod_Malloc( sizeof(Dmod_ModuleIterationState_t) );
+        if( state == NULL )
+        {
+            DMOD_LOG_ERROR("Cannot read next module - memory allocation failed\n");
+            return false;
+        }
+        
+        state->searchNodeHead = Dmod_Hlp_PrepareModulesSearchNodes();
+        state->currentNode = state->searchNodeHead;
+        state->currentDir = NULL;
+        state->packageIndex = 0;
+        state->moduleIndexInPackage = 0;
+        state->iteratingPackages = false;
+        outModule->_Data = state;
+    }
+
+    // Iterate through filesystem paths
+    while( !state->iteratingPackages )
+    {
+        // Open new directory if needed
+        if( state->currentDir == NULL && state->currentNode != NULL )
+        {
+            state->currentDir = Dmod_OpenDir( state->currentNode->Path );
+            if( state->currentDir == NULL )
+            {
+                // Failed to open directory, move to next node
+                state->currentNode = state->currentNode->Prev;
+                continue;
+            }
+        }
+
+        // No more directories to scan, switch to packages
+        if( state->currentNode == NULL )
+        {
+            state->iteratingPackages = true;
+            break;
+        }
+
+        // Read files from current directory
+        const char* fileName = Dmod_ReadDir( state->currentDir );
+        if( fileName != NULL )
+        {
+            // Check if file has .dmf or .dmfc extension
+            size_t fileNameLen = strlen(fileName);
+            bool hasDmfExt = false;
+            size_t moduleNameLen = 0;
+
+            if( fileNameLen > 4 && strcmp(fileName + fileNameLen - 4, ".dmf") == 0 )
+            {
+                moduleNameLen = fileNameLen - 4;
+                hasDmfExt = true;
+            }
+            else if( fileNameLen > 5 && strcmp(fileName + fileNameLen - 5, ".dmfc") == 0 )
+            {
+                moduleNameLen = fileNameLen - 5;
+                hasDmfExt = true;
+            }
+
+            if( hasDmfExt )
+            {
+                // Build full path
+                const char* dirPath = state->currentNode->Path;
+                size_t dirPathLen = strlen(dirPath);
+                size_t totalLen = dirPathLen + 1 + fileNameLen + 1; // dir + '/' + file + '\0'
+
+                if( totalLen <= DMOD_MAX_PATH_LENGTH )
+                {
+                    snprintf( outModule->path, DMOD_MAX_PATH_LENGTH, "%s/%s", dirPath, fileName );
+                    
+                    // Try to read module header
+                    if( Dmod_ReadModuleHeader( outModule->path, &outModule->header ) )
+                    {
+                        DMOD_LOG_VERBOSE("Found module '%s' at '%s'\n", outModule->header.Name, outModule->path);
+                        return true;
+                    }
+                }
+            }
+            continue; // Continue reading files from current directory
+        }
+        else
+        {
+            // Finished reading current directory, close it and move to next node
+            Dmod_CloseDir( state->currentDir );
+            state->currentDir = NULL;
+            state->currentNode = state->currentNode->Prev;
+        }
+    }
+
+    // Iterate through packages
+    while( state->iteratingPackages && state->packageIndex < DMOD_MAX_NUMBER_OF_PACKAGES )
+    {
+        Dmod_PackageSlot_t* slot = &Dmod_Packages[state->packageIndex];
+        
+        if( Dmod_Pck_IsSlotUsed(slot) && slot->DmpHeader != NULL && slot->ModuleEntries != NULL )
+        {
+            if( state->moduleIndexInPackage < slot->DmpHeader->ModuleCount )
+            {
+                Dmod_DmpModuleEntry_t* entry = &slot->ModuleEntries[state->moduleIndexInPackage];
+                state->moduleIndexInPackage++;
+
+                if( entry->ModuleName != NULL && entry->ModuleData != NULL )
+                {
+                    // Read header from module data
+                    Dmod_ModuleHeader_t* moduleHeader = (Dmod_ModuleHeader_t*)entry->ModuleData;
+                    memcpy( &outModule->header, moduleHeader, sizeof(Dmod_ModuleHeader_t) );
+                    
+                    // Build package path notation
+                    const char* packageName = Dmod_Pck_GetPackageName(slot);
+                    snprintf( outModule->path, DMOD_MAX_PATH_LENGTH, "[%s]/%s", 
+                             packageName ? packageName : "unknown", entry->ModuleName );
+                    
+                    DMOD_LOG_VERBOSE("Found module '%s' in package at '%s'\n", 
+                                   outModule->header.Name, outModule->path);
+                    return true;
+                }
+                continue; // Try next module in same package
+            }
+        }
+        
+        // Move to next package
+        state->packageIndex++;
+        state->moduleIndexInPackage = 0;
+    }
+
+    // Iteration complete, clean up
+    if( state->currentDir != NULL )
+    {
+        Dmod_CloseDir( state->currentDir );
+        state->currentDir = NULL;
+    }
+    if( state->searchNodeHead != NULL )
+    {
+        Dmod_Hlp_FreeSearchPathList( state->searchNodeHead );
+        state->searchNodeHead = NULL;
+    }
+    Dmod_Free( state );
+    outModule->_Data = NULL;
+
+    return false;
+}
+
+
