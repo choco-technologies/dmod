@@ -224,6 +224,90 @@ static void Dmod_Print_Pointer( char** Buffer, size_t* Pos, size_t Size, void* P
     }
 }
 
+static void Dmod_Print_LongLong( char** Buffer, size_t* Pos, size_t Size, int64_t Value, int* Count )
+{
+    char Temp[21]; // Enough for -9223372036854775808
+    int i = 0;
+    bool IsNegative = false;
+    uint64_t UValue;
+    
+    if( Value < 0 )
+    {
+        IsNegative = true;
+        // Handle most negative int64_t value specially to avoid overflow
+        if( Value == (int64_t)0x8000000000000000LL )
+        {
+            UValue = 0x8000000000000000ULL;
+        }
+        else
+        {
+            UValue = (uint64_t)(-Value);
+        }
+    }
+    else
+    {
+        UValue = (uint64_t)Value;
+    }
+    
+    // Convert to string (reversed)
+    do
+    {
+        Temp[i++] = '0' + (UValue % 10);
+        UValue /= 10;
+    } while( UValue > 0 );
+    
+    // Add sign
+    if( IsNegative )
+    {
+        Dmod_Print_Char( Buffer, Pos, Size, '-', Count );
+    }
+    
+    // Print in correct order
+    while( i > 0 )
+    {
+        Dmod_Print_Char( Buffer, Pos, Size, Temp[--i], Count );
+    }
+}
+
+static void Dmod_Print_ULongLong( char** Buffer, size_t* Pos, size_t Size, uint64_t Value, int* Count )
+{
+    char Temp[21]; // Enough for 18446744073709551615
+    int i = 0;
+    
+    // Convert to string (reversed)
+    do
+    {
+        Temp[i++] = '0' + (Value % 10);
+        Value /= 10;
+    } while( Value > 0 );
+    
+    // Print in correct order
+    while( i > 0 )
+    {
+        Dmod_Print_Char( Buffer, Pos, Size, Temp[--i], Count );
+    }
+}
+
+static void Dmod_Print_Hex64( char** Buffer, size_t* Pos, size_t Size, uint64_t Value, bool Uppercase, int* Count )
+{
+    char Temp[17]; // Enough for 16 hex digits
+    int i = 0;
+    const char* HexDigits = Uppercase ? "0123456789ABCDEF" : "0123456789abcdef";
+    
+    // Convert to hex string (reversed)
+    do
+    {
+        Temp[i++] = HexDigits[Value & 0xF];
+        Value >>= 4;
+    } while( Value > 0 );
+    
+    // Print in correct order
+    while( i > 0 )
+    {
+        Dmod_Print_Char( Buffer, Pos, Size, Temp[--i], Count );
+    }
+}
+
 //==============================================================================
 //                              PUBLIC FUNCTIONS
 //==============================================================================
@@ -271,6 +355,14 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                 Format++;
             }
             
+            // Parse length modifier
+            bool IsLongLong = false;
+            if( *Format == 'l' && *(Format + 1) == 'l' )
+            {
+                IsLongLong = true;
+                Format += 2;
+            }
+            
             // Handle format specifiers
             switch( *Format )
             {
@@ -297,26 +389,58 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                 
                 case 'd':
                 case 'i': {
-                    int32_t Value = va_arg( Args, int32_t );
-                    Dmod_Print_Int( BufPtr, &Pos, Size, Value, &Count );
+                    if( IsLongLong )
+                    {
+                        int64_t Value = va_arg( Args, int64_t );
+                        Dmod_Print_LongLong( BufPtr, &Pos, Size, Value, &Count );
+                    }
+                    else
+                    {
+                        int32_t Value = va_arg( Args, int32_t );
+                        Dmod_Print_Int( BufPtr, &Pos, Size, Value, &Count );
+                    }
                     break;
                 }
                 
                 case 'u': {
-                    uint32_t Value = va_arg( Args, uint32_t );
-                    Dmod_Print_UInt( BufPtr, &Pos, Size, Value, &Count );
+                    if( IsLongLong )
+                    {
+                        uint64_t Value = va_arg( Args, uint64_t );
+                        Dmod_Print_ULongLong( BufPtr, &Pos, Size, Value, &Count );
+                    }
+                    else
+                    {
+                        uint32_t Value = va_arg( Args, uint32_t );
+                        Dmod_Print_UInt( BufPtr, &Pos, Size, Value, &Count );
+                    }
                     break;
                 }
                 
                 case 'x': {
-                    uint32_t Value = va_arg( Args, uint32_t );
-                    Dmod_Print_Hex( BufPtr, &Pos, Size, Value, false, &Count );
+                    if( IsLongLong )
+                    {
+                        uint64_t Value = va_arg( Args, uint64_t );
+                        Dmod_Print_Hex64( BufPtr, &Pos, Size, Value, false, &Count );
+                    }
+                    else
+                    {
+                        uint32_t Value = va_arg( Args, uint32_t );
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, Value, false, &Count );
+                    }
                     break;
                 }
                 
                 case 'X': {
-                    uint32_t Value = va_arg( Args, uint32_t );
-                    Dmod_Print_Hex( BufPtr, &Pos, Size, Value, true, &Count );
+                    if( IsLongLong )
+                    {
+                        uint64_t Value = va_arg( Args, uint64_t );
+                        Dmod_Print_Hex64( BufPtr, &Pos, Size, Value, true, &Count );
+                    }
+                    else
+                    {
+                        uint32_t Value = va_arg( Args, uint32_t );
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, Value, true, &Count );
+                    }
                     break;
                 }
                 
@@ -345,6 +469,12 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                         {
                             Dmod_Print_Char( BufPtr, &Pos, Size, WidthStr[--i], &Count );
                         }
+                    }
+                    // Print length modifier if present
+                    if( IsLongLong )
+                    {
+                        Dmod_Print_Char( BufPtr, &Pos, Size, 'l', &Count );
+                        Dmod_Print_Char( BufPtr, &Pos, Size, 'l', &Count );
                     }
                     Dmod_Print_Char( BufPtr, &Pos, Size, *Format, &Count );
                     break;

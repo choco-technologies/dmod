@@ -210,4 +210,157 @@ TEST_F(DmodSnPrintfTest, SnPrintfZeroWidth)
     ASSERT_STREQ(buffer, "test");
 }
 
+/**
+ * @brief Test for Dmod_SnPrintf with %llu (unsigned long long)
+ * 
+ * The test checks if the function handles unsigned long long format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfUnsignedLongLong)
+{
+    char buffer[64];
+    uint64_t value = 18446744073709551615ULL; // Max uint64_t
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%llu", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "18446744073709551615");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %lld (signed long long)
+ * 
+ * The test checks if the function handles signed long long format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfSignedLongLong)
+{
+    char buffer[64];
+    int64_t value = -9223372036854775807LL - 1LL; // Min int64_t
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%lld", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "-9223372036854775808");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with positive %lld
+ * 
+ * The test checks if the function handles positive signed long long values.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfPositiveLongLong)
+{
+    char buffer[64];
+    int64_t value = 9223372036854775807LL; // Max int64_t
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%lld", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "9223372036854775807");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %llx (long long hex lowercase)
+ * 
+ * The test checks if the function handles long long hexadecimal format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfLongLongHexLowercase)
+{
+    char buffer[64];
+    uint64_t value = 0xFEDCBA9876543210ULL;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%llx", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "fedcba9876543210");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %llX (long long hex uppercase)
+ * 
+ * The test checks if the function handles long long hexadecimal uppercase format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfLongLongHexUppercase)
+{
+    char buffer[64];
+    uint64_t value = 0xFEDCBA9876543210ULL;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%llX", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "FEDCBA9876543210");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with small %llu value
+ * 
+ * The test checks if the function handles small unsigned long long values correctly.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfSmallUnsignedLongLong)
+{
+    char buffer[64];
+    uint64_t value = 42ULL;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%llu", value);
+    
+    ASSERT_EQ(result, 2);
+    ASSERT_STREQ(buffer, "42");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with zero %llu value
+ * 
+ * The test checks if the function handles zero unsigned long long value.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfZeroLongLong)
+{
+    char buffer[64];
+    uint64_t value = 0ULL;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%llu", value);
+    
+    ASSERT_EQ(result, 1);
+    ASSERT_STREQ(buffer, "0");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with mixed format specifiers including %llu
+ * 
+ * The test checks if the function handles multiple format specifiers including long long.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfMixedWithLongLong)
+{
+    char buffer[128];
+    uint64_t big_value = 1234567890123456789ULL;
+    int small_value = 42;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), 
+                                "Small: %d, Big: %llu, Hex: %llx", 
+                                small_value, big_value, big_value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "Small: 42, Big: 1234567890123456789, Hex: 112210f47de98115");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with negative zero %lld
+ * 
+ * The test checks if the function handles zero signed long long value.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfNegativeZeroLongLong)
+{
+    char buffer[64];
+    int64_t value = 0LL;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%lld", value);
+    
+    ASSERT_EQ(result, 1);
+    ASSERT_STREQ(buffer, "0");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %lli (signed long long, 'i' variant)
+ * 
+ * The test checks if the function handles %lli format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfSignedLongLongI)
+{
+    char buffer[64];
+    int64_t value = -1234567890123456789LL;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%lli", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "-1234567890123456789");
+}
+
 

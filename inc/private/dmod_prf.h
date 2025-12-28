@@ -68,6 +68,7 @@ extern "C" {
  * Supported format modifiers:
  * - Width: Minimum field width (e.g., %30s for 30 characters)
  * - Left-align: '-' flag for left-justification (e.g., %-30s)
+ * - Length modifier 'll': long long (64-bit) for d, i, u, x, X (e.g., %lld, %llu, %llx, %llX)
  */
 extern int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list Args );
 
