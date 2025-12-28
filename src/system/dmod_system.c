@@ -1889,6 +1889,12 @@ bool Dmod_ReadNextModule( Dmod_ModuleNode_t* outModule )
         }
         
         state->searchNodeHead = Dmod_Hlp_PrepareModulesSearchNodes();
+        if( state->searchNodeHead == NULL )
+        {
+            DMOD_LOG_ERROR("Cannot read next module - failed to prepare search nodes\n");
+            Dmod_Free( state );
+            return false;
+        }
         state->currentNode = state->searchNodeHead;
         state->currentDir = NULL;
         state->packageIndex = 0;
@@ -1926,16 +1932,13 @@ bool Dmod_ReadNextModule( Dmod_ModuleNode_t* outModule )
             // Check if file has .dmf or .dmfc extension
             size_t fileNameLen = strlen(fileName);
             bool hasDmfExt = false;
-            size_t moduleNameLen = 0;
 
             if( fileNameLen > 4 && strcmp(fileName + fileNameLen - 4, ".dmf") == 0 )
             {
-                moduleNameLen = fileNameLen - 4;
                 hasDmfExt = true;
             }
             else if( fileNameLen > 5 && strcmp(fileName + fileNameLen - 5, ".dmfc") == 0 )
             {
-                moduleNameLen = fileNameLen - 5;
                 hasDmfExt = true;
             }
 
