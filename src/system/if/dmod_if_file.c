@@ -245,6 +245,63 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _ReadDir, ( void* Dir ))
 }
 
 /**
+ * @brief Read directory entry with extended information
+ * 
+ * @param Dir Pointer to directory handle
+ * 
+ * @return Pointer to Dmod_DirEntry_t structure with entry information, NULL when no more entries
+ * 
+ * @note The returned pointer points to static storage that may be overwritten by subsequent calls.
+ *       This behavior is consistent with the POSIX readdir() function and the original Dmod_ReadDir().
+ *       Not thread-safe: use separate directory handles per thread.
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const Dmod_DirEntry_t*, _ReadDirEx, ( void* Dir ))
+{
+    #if DMOD_USE_DIRENT
+    static Dmod_DirEntry_t dirEntry;
+    struct dirent* entry = readdir((DIR*)Dir);
+    
+    if (entry == NULL)
+    {
+        return NULL;
+    }
+    
+    dirEntry.name = entry->d_name;
+    dirEntry.type = Dmod_DirEntryType_Unknown;
+    
+    // Determine entry type based on d_type if available
+    #if defined(_DIRENT_HAVE_D_TYPE)
+    // Use constants from dirent.h: DT_REG=8, DT_DIR=4, DT_LNK=10
+    // Direct comparison is used for compatibility with systems where these
+    // constants might not be properly available in preprocessor context
+    switch (entry->d_type)
+    {
+        case 8: // DT_REG - Regular file
+            dirEntry.type = Dmod_DirEntryType_File;
+            break;
+        case 4: // DT_DIR - Directory
+            dirEntry.type = Dmod_DirEntryType_Dir;
+            break;
+        case 10: // DT_LNK - Symbolic link
+            dirEntry.type = Dmod_DirEntryType_Link;
+            break;
+        case 0: // DT_UNKNOWN
+            dirEntry.type = Dmod_DirEntryType_Unknown;
+            break;
+        default: // Other types (socket, FIFO, etc.)
+            dirEntry.type = Dmod_DirEntryType_Other;
+            break;
+    }
+    #endif
+    
+    return &dirEntry;
+    #else
+    DMOD_LOG_ERROR("Dmod_ReadDirEx interface not implemented\n");
+    return NULL;
+    #endif
+}
+
+/**
  * @brief Close directory
  * 
  * @param Dir Pointer to directory handle

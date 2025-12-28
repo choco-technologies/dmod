@@ -207,3 +207,138 @@ TEST_F(DmodDirTest, RemoveDirNonExistent)
     int result = Dmod_RemoveDir("/non/existent/path/xyz123456");
     ASSERT_EQ(result, -1);
 }
+
+/**
+ * @brief Test for Dmod_ReadDirEx
+ * 
+ * The test checks if the function can read directory entries with extended information.
+ */
+TEST_F(DmodDirTest, ReadDirEx)
+{
+    // Use current directory which should have some entries
+    void* dir = Dmod_OpenDir(".");
+    
+    ASSERT_NE(dir, nullptr);
+    
+    // Read at least one entry
+    const Dmod_DirEntry_t* entry = Dmod_ReadDirEx(dir);
+    ASSERT_NE(entry, nullptr);
+    
+    // Entry name should not be empty
+    ASSERT_NE(entry->name, nullptr);
+    ASSERT_GT(strlen(entry->name), 0);
+    
+    // Entry type should be valid (even if unknown)
+    ASSERT_GE(entry->type, Dmod_DirEntryType_Unknown);
+    ASSERT_LE(entry->type, Dmod_DirEntryType_Other);
+    
+    Dmod_CloseDir(dir);
+}
+
+/**
+ * @brief Test for Dmod_ReadDirEx reaching end
+ * 
+ * The test checks if the function returns NULL when all entries are read.
+ */
+TEST_F(DmodDirTest, ReadDirExEnd)
+{
+    // Create empty test directory
+    Dmod_MakeDir(testDirPath, 0755);
+    
+    void* dir = Dmod_OpenDir(testDirPath);
+    ASSERT_NE(dir, nullptr);
+    
+    // Read all entries (should be . and .. at minimum)
+    int count = 0;
+    const Dmod_DirEntry_t* entry;
+    while ((entry = Dmod_ReadDirEx(dir)) != NULL && count < 100)
+    {
+        count++;
+    }
+    
+    // Should have read at least . and ..
+    ASSERT_GE(count, 2);
+    
+    // Reading past the end should return NULL
+    ASSERT_EQ(Dmod_ReadDirEx(dir), nullptr);
+    
+    Dmod_CloseDir(dir);
+}
+
+/**
+ * @brief Test for Dmod_ReadDirEx with directory type detection
+ * 
+ * The test checks if the function correctly identifies directory types.
+ */
+TEST_F(DmodDirTest, ReadDirExTypeDetection)
+{
+    // Use current directory which should have some entries
+    void* dir = Dmod_OpenDir(".");
+    
+    ASSERT_NE(dir, nullptr);
+    
+    bool foundDir = false;
+    bool foundAnyType = false;
+    const Dmod_DirEntry_t* entry;
+    
+    // Read entries and look for directories (. and .. should be present)
+    while ((entry = Dmod_ReadDirEx(dir)) != NULL)
+    {
+        if (entry->type == Dmod_DirEntryType_Dir)
+        {
+            foundDir = true;
+            foundAnyType = true;
+            break;
+        }
+        if (entry->type != Dmod_DirEntryType_Unknown)
+        {
+            foundAnyType = true;
+        }
+    }
+    
+    // Should find at least one directory (. or ..) OR have type detection available
+    // Note: On some filesystems, d_type might return DT_UNKNOWN for all entries
+    // In this case, we just verify that the function works without crashing
+    if (foundAnyType)
+    {
+        ASSERT_TRUE(foundDir);
+    }
+    
+    Dmod_CloseDir(dir);
+}
+
+/**
+ * @brief Test backward compatibility between Dmod_ReadDir and Dmod_ReadDirEx
+ * 
+ * The test ensures both functions work on the same directory and return the same entries.
+ */
+TEST_F(DmodDirTest, BackwardCompatibility)
+{
+    // Create test directory with a known file
+    Dmod_MakeDir(testDirPath, 0755);
+    
+    // Count entries using old API
+    void* dir1 = Dmod_OpenDir(testDirPath);
+    ASSERT_NE(dir1, nullptr);
+    
+    int countOld = 0;
+    while (Dmod_ReadDir(dir1) != NULL && countOld < 100)
+    {
+        countOld++;
+    }
+    Dmod_CloseDir(dir1);
+    
+    // Count entries using new API
+    void* dir2 = Dmod_OpenDir(testDirPath);
+    ASSERT_NE(dir2, nullptr);
+    
+    int countNew = 0;
+    while (Dmod_ReadDirEx(dir2) != NULL && countNew < 100)
+    {
+        countNew++;
+    }
+    Dmod_CloseDir(dir2);
+    
+    // Both should return the same count
+    ASSERT_EQ(countOld, countNew);
+}
