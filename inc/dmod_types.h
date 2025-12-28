@@ -276,6 +276,19 @@ typedef struct Dmod_SearchNode
     struct Dmod_SearchNode* Prev;   //!< Pointer to the prev node
 } Dmod_SearchNode_t;
 
+/**
+ * @brief Module iteration node
+ * 
+ * Structure used for iterating through all available modules in the system.
+ * The user should allocate this structure and pass it to Dmod_ReadNextModule.
+ */
+typedef struct 
+{
+    Dmod_ModuleHeader_t header;                 //!< Header of current module
+    char path[DMOD_MAX_PATH_LENGTH];            //!< Path to the current module
+    void* _Data;                                //!< Internal data used for iteration
+} Dmod_ModuleNode_t;
+
 #ifdef __cplusplus
 }
 #endif
