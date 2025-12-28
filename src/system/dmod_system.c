@@ -91,6 +91,29 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
         return NULL;
     }
 
+    // Check if path is in [package_name]/module_name format
+    if( Path[0] == '[' )
+    {
+        const char* closeBracket = strchr(Path, ']');
+        if( closeBracket != NULL && closeBracket[1] == '/' && closeBracket[2] != '\0' )
+        {
+            // Extract package name (between [ and ])
+            size_t packageNameLen = closeBracket - Path - 1;
+            char packageName[DMOD_MAX_PACKAGE_NAME_LENGTH];
+            if( packageNameLen > 0 && packageNameLen < DMOD_MAX_PACKAGE_NAME_LENGTH )
+            {
+                memcpy( packageName, Path + 1, packageNameLen );
+                packageName[packageNameLen] = '\0';
+                
+                // Module name starts after ]/
+                const char* moduleName = closeBracket + 2;
+                
+                DMOD_LOG_INFO("Loading module '%s' from package '%s'\n", moduleName, packageName);
+                return Dmod_LoadFromPackage( packageName, moduleName );
+            }
+        }
+    }
+
     if( Dmod_IsDMPFile(Path) )
     {
         uint32_t nIndex = UINT32_MAX;
