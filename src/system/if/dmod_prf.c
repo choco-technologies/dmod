@@ -41,6 +41,9 @@
 //                              HELPER FUNCTIONS
 //==============================================================================
 
+// Maximum field width to prevent integer overflow and unreasonable buffer usage
+#define DMOD_PRINTF_MAX_WIDTH 1024
+
 static int Dmod_StrLen( const char* Str )
 {
     int Len = 0;
@@ -252,7 +255,19 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
             int Width = 0;
             while( *Format >= '0' && *Format <= '9' )
             {
-                Width = Width * 10 + (*Format - '0');
+                int NewWidth = Width * 10 + (*Format - '0');
+                // Prevent overflow by capping at maximum width
+                if( NewWidth > DMOD_PRINTF_MAX_WIDTH )
+                {
+                    Width = DMOD_PRINTF_MAX_WIDTH;
+                    // Skip remaining digits
+                    while( *Format >= '0' && *Format <= '9' )
+                    {
+                        Format++;
+                    }
+                    break;
+                }
+                Width = NewWidth;
                 Format++;
             }
             
