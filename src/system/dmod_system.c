@@ -1237,11 +1237,11 @@ bool Dmod_ReadModuleHeader(const char* FilePath, Dmod_ModuleHeader_t* Header)
         return false;
     }
 
-    // Get file size to check if it's compressed
+    // Get file size
     size_t fileSize = Dmod_FileSize( file );
-    if( fileSize < sizeof(Dmod_ModuleHeader_t) )
+    if( fileSize == 0 )
     {
-        DMOD_LOG_ERROR("Cannot read module header - file too small\n");
+        DMOD_LOG_ERROR("Cannot read module header - file is empty\n");
         Dmod_FileClose( file );
         return false;
     }
@@ -1268,7 +1268,7 @@ bool Dmod_ReadModuleHeader(const char* FilePath, Dmod_ModuleHeader_t* Header)
     // Check if file is compressed (DMFC)
     void* dmfData = buffer;
     size_t dmfSize = fileSize;
-    bool needsFree = false;
+    bool dmfDataNeedsFree = false;
 
     if( Dmod_IsDMFC(buffer, fileSize) )
     {
@@ -1280,7 +1280,7 @@ bool Dmod_ReadModuleHeader(const char* FilePath, Dmod_ModuleHeader_t* Header)
             return false;
         }
         Dmod_Free( buffer );
-        needsFree = true;
+        dmfDataNeedsFree = true;
     }
 
     // Verify decompressed size is sufficient
@@ -1297,7 +1297,7 @@ bool Dmod_ReadModuleHeader(const char* FilePath, Dmod_ModuleHeader_t* Header)
     }
 
     // Clean up
-    if( needsFree )
+    if( dmfDataNeedsFree )
     {
         Dmod_Free( dmfData );
     }
