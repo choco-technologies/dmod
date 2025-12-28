@@ -75,6 +75,16 @@ static void Dmod_Print_String_Width( char** Buffer, size_t* Pos, size_t Size, co
     int StrLen = Dmod_StrLen( Str );
     int PadLen = Width - StrLen;
     
+    // If string is longer than or equal to width, no padding needed
+    if( PadLen <= 0 )
+    {
+        while( *Str )
+        {
+            Dmod_Print_Char( Buffer, Pos, Size, *Str++, Count );
+        }
+        return;
+    }
+    
     // Left-aligned: print string first, then padding
     if( LeftAlign )
     {
