@@ -122,3 +122,92 @@ TEST_F(DmodSnPrintfTest, SnPrintfZeroBuffer)
     ASSERT_EQ(result, 5); // Should return the required size
     ASSERT_EQ(buffer[0], 0); // Buffer should not be modified
 }
+
+/**
+ * @brief Test for Dmod_SnPrintf with left-aligned string (%-30s)
+ * 
+ * The test checks if the function handles left-aligned strings with width.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfLeftAlignedString)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%-30s", "test");
+    
+    ASSERT_EQ(result, 30); // Should be padded to 30 characters
+    ASSERT_STREQ(buffer, "test                          ");
+    ASSERT_EQ(strlen(buffer), 30);
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with right-aligned string (%30s)
+ * 
+ * The test checks if the function handles right-aligned strings with width.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfRightAlignedString)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%30s", "test");
+    
+    ASSERT_EQ(result, 30); // Should be padded to 30 characters
+    ASSERT_STREQ(buffer, "                          test");
+    ASSERT_EQ(strlen(buffer), 30);
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with multiple width-formatted strings
+ * 
+ * The test checks if the function handles multiple width-formatted strings like in module list.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfMultipleWidthStrings)
+{
+    char buffer[128];
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%-30s %-15s %-40s", 
+                                "Module Name", "Version", "Description");
+    
+    ASSERT_EQ(result, 30 + 1 + 15 + 1 + 40); // 30 + space + 15 + space + 40 = 87
+    ASSERT_STREQ(buffer, "Module Name                    Version         Description                             ");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with string longer than width
+ * 
+ * The test checks if the function handles strings longer than the specified width.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfStringLongerThanWidth)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%-10s", "This is a long string");
+    
+    ASSERT_EQ(result, 21); // String length is 21, no padding needed
+    ASSERT_STREQ(buffer, "This is a long string");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with mixed format specifiers and widths
+ * 
+ * The test checks if the function handles both width-formatted and regular specifiers.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfMixedWidthFormats)
+{
+    char buffer[128];
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%-20s: %d", "Count", 42);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "Count               : 42");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with zero width (should work like normal)
+ * 
+ * The test checks if the function handles zero width correctly.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfZeroWidth)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%-0s", "test");
+    
+    ASSERT_EQ(result, 4);
+    ASSERT_STREQ(buffer, "test");
+}
+
+

@@ -64,6 +64,10 @@ extern "C" {
  * - %X: hexadecimal (uppercase)
  * - %p: pointer
  * - %%: literal %
+ * 
+ * Supported format modifiers:
+ * - Width: Minimum field width (e.g., %30s for 30 characters)
+ * - Left-align: '-' flag for left-justification (e.g., %-30s)
  */
 extern int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list Args );
 

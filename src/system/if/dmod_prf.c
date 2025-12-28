@@ -41,6 +41,9 @@
 //                              HELPER FUNCTIONS
 //==============================================================================
 
+// Maximum field width to prevent integer overflow and unreasonable buffer usage
+#define DMOD_PRINTF_MAX_WIDTH 1024
+
 static int Dmod_StrLen( const char* Str )
 {
     int Len = 0;
@@ -65,6 +68,49 @@ static void Dmod_Print_String( char** Buffer, size_t* Pos, size_t Size, const ch
     while( *Str )
     {
         Dmod_Print_Char( Buffer, Pos, Size, *Str++, Count );
+    }
+}
+
+static void Dmod_Print_String_Width( char** Buffer, size_t* Pos, size_t Size, const char* Str, int Width, bool LeftAlign, int* Count )
+{
+    if( Str == NULL ) Str = "(null)";
+    
+    int StrLen = Dmod_StrLen( Str );
+    int PadLen = Width - StrLen;
+    
+    // If string is longer than or equal to width, no padding needed
+    if( PadLen <= 0 )
+    {
+        while( *Str )
+        {
+            Dmod_Print_Char( Buffer, Pos, Size, *Str++, Count );
+        }
+        return;
+    }
+    
+    // Left-aligned: print string first, then padding
+    if( LeftAlign )
+    {
+        while( *Str )
+        {
+            Dmod_Print_Char( Buffer, Pos, Size, *Str++, Count );
+        }
+        for( int i = 0; i < PadLen; i++ )
+        {
+            Dmod_Print_Char( Buffer, Pos, Size, ' ', Count );
+        }
+    }
+    // Right-aligned: print padding first, then string
+    else
+    {
+        for( int i = 0; i < PadLen; i++ )
+        {
+            Dmod_Print_Char( Buffer, Pos, Size, ' ', Count );
+        }
+        while( *Str )
+        {
+            Dmod_Print_Char( Buffer, Pos, Size, *Str++, Count );
+        }
     }
 }
 
@@ -197,6 +243,34 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
         {
             Format++;
             
+            // Parse flags
+            bool LeftAlign = false;
+            if( *Format == '-' )
+            {
+                LeftAlign = true;
+                Format++;
+            }
+            
+            // Parse width
+            int Width = 0;
+            while( *Format >= '0' && *Format <= '9' )
+            {
+                int NewWidth = Width * 10 + (*Format - '0');
+                // Prevent overflow by capping at maximum width
+                if( NewWidth > DMOD_PRINTF_MAX_WIDTH )
+                {
+                    Width = DMOD_PRINTF_MAX_WIDTH;
+                    // Skip remaining digits
+                    while( *Format >= '0' && *Format <= '9' )
+                    {
+                        Format++;
+                    }
+                    break;
+                }
+                Width = NewWidth;
+                Format++;
+            }
+            
             // Handle format specifiers
             switch( *Format )
             {
@@ -210,7 +284,14 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                     
                 case 's': {
                     const char* Str = va_arg( Args, const char* );
-                    Dmod_Print_String( BufPtr, &Pos, Size, Str, &Count );
+                    if( Width > 0 )
+                    {
+                        Dmod_Print_String_Width( BufPtr, &Pos, Size, Str, Width, LeftAlign, &Count );
+                    }
+                    else
+                    {
+                        Dmod_Print_String( BufPtr, &Pos, Size, Str, &Count );
+                    }
                     break;
                 }
                 
@@ -248,6 +329,23 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                 default:
                     // Unknown format specifier, just print it
                     Dmod_Print_Char( BufPtr, &Pos, Size, '%', &Count );
+                    if( LeftAlign ) Dmod_Print_Char( BufPtr, &Pos, Size, '-', &Count );
+                    // Print width digits if any
+                    if( Width > 0 )
+                    {
+                        char WidthStr[12];
+                        int i = 0;
+                        int TempWidth = Width;
+                        do
+                        {
+                            WidthStr[i++] = '0' + (TempWidth % 10);
+                            TempWidth /= 10;
+                        } while( TempWidth > 0 );
+                        while( i > 0 )
+                        {
+                            Dmod_Print_Char( BufPtr, &Pos, Size, WidthStr[--i], &Count );
+                        }
+                    }
                     Dmod_Print_Char( BufPtr, &Pos, Size, *Format, &Count );
                     break;
             }
