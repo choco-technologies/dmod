@@ -289,6 +289,29 @@ typedef struct
     void* _Data;                                //!< Internal data used for iteration
 } Dmod_ModuleNode_t;
 
+/**
+ * @brief Directory entry type
+ */
+typedef enum
+{
+    Dmod_DirEntryType_Unknown = 0,  //!< Unknown type
+    Dmod_DirEntryType_File,         //!< Regular file
+    Dmod_DirEntryType_Dir,          //!< Directory
+    Dmod_DirEntryType_Link,         //!< Symbolic link
+    Dmod_DirEntryType_Other         //!< Other type (socket, FIFO, etc.)
+} Dmod_DirEntryType_t;
+
+/**
+ * @brief Directory entry structure
+ * 
+ * Structure returned by Dmod_ReadDirEx containing information about a directory entry.
+ */
+typedef struct
+{
+    const char* name;               //!< Name of the entry
+    Dmod_DirEntryType_t type;       //!< Type of the entry
+} Dmod_DirEntry_t;
+
 #ifdef __cplusplus
 }
 #endif

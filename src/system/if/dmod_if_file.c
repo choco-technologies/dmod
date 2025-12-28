@@ -245,6 +245,56 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _ReadDir, ( void* Dir ))
 }
 
 /**
+ * @brief Read directory entry with extended information
+ * 
+ * @param Dir Pointer to directory handle
+ * 
+ * @return Pointer to Dmod_DirEntry_t structure with entry information, NULL when no more entries
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const Dmod_DirEntry_t*, _ReadDirEx, ( void* Dir ))
+{
+    #if DMOD_USE_DIRENT
+    static Dmod_DirEntry_t dirEntry;
+    struct dirent* entry = readdir((DIR*)Dir);
+    
+    if (entry == NULL)
+    {
+        return NULL;
+    }
+    
+    dirEntry.name = entry->d_name;
+    
+    // Determine entry type based on d_type if available
+    #ifdef _DIRENT_HAVE_D_TYPE
+    switch (entry->d_type)
+    {
+        case DT_REG:
+            dirEntry.type = Dmod_DirEntryType_File;
+            break;
+        case DT_DIR:
+            dirEntry.type = Dmod_DirEntryType_Dir;
+            break;
+        case DT_LNK:
+            dirEntry.type = Dmod_DirEntryType_Link;
+            break;
+        case DT_UNKNOWN:
+        default:
+            dirEntry.type = Dmod_DirEntryType_Unknown;
+            break;
+    }
+    #else
+    // If d_type is not available, type remains unknown
+    dirEntry.type = Dmod_DirEntryType_Unknown;
+    #endif
+    
+    return &dirEntry;
+    #else
+    DMOD_LOG_ERROR("Dmod_ReadDirEx interface not implemented\n");
+    return NULL;
+    #endif
+}
+
+/**
  * @brief Close directory
  * 
  * @param Dir Pointer to directory handle
