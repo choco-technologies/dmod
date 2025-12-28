@@ -1237,14 +1237,79 @@ bool Dmod_ReadModuleHeader(const char* FilePath, Dmod_ModuleHeader_t* Header)
         return false;
     }
 
-    if( Dmod_FileRead( Header, sizeof(Dmod_ModuleHeader_t), 1, file ) != 1 )
+    // Get file size to check if it's compressed
+    size_t fileSize = Dmod_FileSize( file );
+    if( fileSize < sizeof(Dmod_ModuleHeader_t) )
     {
-        DMOD_LOG_ERROR("Cannot read module header - cannot read header\n");
+        DMOD_LOG_ERROR("Cannot read module header - file too small\n");
+        Dmod_FileClose( file );
+        return false;
+    }
+
+    // Read file into buffer to check for compression
+    void* buffer = Dmod_Malloc( fileSize );
+    if( buffer == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot read module header - cannot allocate memory\n");
+        Dmod_FileClose( file );
+        return false;
+    }
+
+    if( Dmod_FileRead( buffer, 1, fileSize, file ) != fileSize )
+    {
+        DMOD_LOG_ERROR("Cannot read module header - cannot read file\n");
+        Dmod_Free( buffer );
         Dmod_FileClose( file );
         return false;
     }
 
     Dmod_FileClose( file );
+
+    // Check if file is compressed (DMFC)
+    void* dmfData = buffer;
+    size_t dmfSize = fileSize;
+    bool needsFree = false;
+
+    if( Dmod_IsDMFC(buffer, fileSize) )
+    {
+        // Decompress the file
+        if( !Dmod_FromDMFC(buffer, fileSize, &dmfData, &dmfSize) )
+        {
+            DMOD_LOG_ERROR("Cannot read module header - failed to decompress DMFC file\n");
+            Dmod_Free( buffer );
+            return false;
+        }
+        Dmod_Free( buffer );
+        needsFree = true;
+    }
+
+    // Verify decompressed size is sufficient
+    if( dmfSize < sizeof(Dmod_ModuleHeader_t) )
+    {
+        DMOD_LOG_ERROR("Cannot read module header - decompressed data too small\n");
+        if( needsFree )
+        {
+            Dmod_Free( dmfData );
+        }
+        else
+        {
+            Dmod_Free( buffer );
+        }
+        return false;
+    }
+
+    // Copy header from decompressed data
+    memcpy( Header, dmfData, sizeof(Dmod_ModuleHeader_t) );
+
+    // Clean up
+    if( needsFree )
+    {
+        Dmod_Free( dmfData );
+    }
+    else
+    {
+        Dmod_Free( buffer );
+    }
 
     return true;
 }
