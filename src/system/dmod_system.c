@@ -14,6 +14,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <errno.h>
+#include <stdio.h>
 
 //==============================================================================
 //                              LOCAL FUNCTION PROTOTYPES
@@ -1973,17 +1974,18 @@ bool Dmod_ReadNextModule( Dmod_ModuleNode_t* outModule )
     {
         Dmod_PackageSlot_t* slot = &Dmod_Packages[state->packageIndex];
         
-        if( Dmod_Pck_IsSlotUsed(slot) && slot->DmpHeader != NULL && slot->ModuleEntries != NULL )
+        if( Dmod_Pck_IsSlotUsed(slot) && slot->DmpHeader != NULL && slot->ModuleEntries != NULL && slot->PackageBuffer != NULL )
         {
             if( state->moduleIndexInPackage < slot->DmpHeader->ModuleCount )
             {
                 Dmod_DmpModuleEntry_t* entry = &slot->ModuleEntries[state->moduleIndexInPackage];
                 state->moduleIndexInPackage++;
 
-                if( entry->ModuleName != NULL && entry->ModuleData != NULL )
+                if( entry->ModuleName[0] != '\0' )
                 {
-                    // Read header from module data
-                    Dmod_ModuleHeader_t* moduleHeader = (Dmod_ModuleHeader_t*)entry->ModuleData;
+                    // Calculate module data pointer from package buffer and offset
+                    const void* moduleData = (const uint8_t*)slot->PackageBuffer + entry->ModuleOffset;
+                    Dmod_ModuleHeader_t* moduleHeader = (Dmod_ModuleHeader_t*)moduleData;
                     memcpy( &outModule->header, moduleHeader, sizeof(Dmod_ModuleHeader_t) );
                     
                     // Build package path notation
