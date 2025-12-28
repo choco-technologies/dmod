@@ -250,6 +250,10 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _ReadDir, ( void* Dir ))
  * @param Dir Pointer to directory handle
  * 
  * @return Pointer to Dmod_DirEntry_t structure with entry information, NULL when no more entries
+ * 
+ * @note The returned pointer points to static storage that may be overwritten by subsequent calls.
+ *       This behavior is consistent with the POSIX readdir() function and the original Dmod_ReadDir().
+ *       Not thread-safe: use separate directory handles per thread.
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const Dmod_DirEntry_t*, _ReadDirEx, ( void* Dir ))
 {
@@ -267,21 +271,26 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const Dmod_DirEntry_t*, _ReadDirEx, (
     
     // Determine entry type based on d_type if available
     #if defined(_DIRENT_HAVE_D_TYPE)
-    if (entry->d_type == 8) // DT_REG
+    // Use constants from dirent.h: DT_REG=8, DT_DIR=4, DT_LNK=10
+    // Direct comparison is used for compatibility with systems where these
+    // constants might not be properly available in preprocessor context
+    switch (entry->d_type)
     {
-        dirEntry.type = Dmod_DirEntryType_File;
-    }
-    else if (entry->d_type == 4) // DT_DIR
-    {
-        dirEntry.type = Dmod_DirEntryType_Dir;
-    }
-    else if (entry->d_type == 10) // DT_LNK
-    {
-        dirEntry.type = Dmod_DirEntryType_Link;
-    }
-    else if (entry->d_type != 0) // Not DT_UNKNOWN
-    {
-        dirEntry.type = Dmod_DirEntryType_Other;
+        case 8: // DT_REG - Regular file
+            dirEntry.type = Dmod_DirEntryType_File;
+            break;
+        case 4: // DT_DIR - Directory
+            dirEntry.type = Dmod_DirEntryType_Dir;
+            break;
+        case 10: // DT_LNK - Symbolic link
+            dirEntry.type = Dmod_DirEntryType_Link;
+            break;
+        case 0: // DT_UNKNOWN
+            dirEntry.type = Dmod_DirEntryType_Unknown;
+            break;
+        default: // Other types (socket, FIFO, etc.)
+            dirEntry.type = Dmod_DirEntryType_Other;
+            break;
     }
     #endif
     
