@@ -144,7 +144,7 @@ Dmod_PackageSlot_t* Dmod_Pck_FindSlotByName( const char* PackageName, uint32_t *
     for( size_t i = 0; i < DMOD_MAX_NUMBER_OF_PACKAGES; i++ )
     {
         const char* name = Dmod_Pck_GetPackageName( &Dmod_Packages[i] );
-        if( strcmp( name, PackageName ) == 0 )
+        if( name != NULL && strcmp( name, PackageName ) == 0 )
         {
             if( outIndex != NULL )
             {

@@ -91,6 +91,41 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
         return NULL;
     }
 
+    // Check if path is in [package_name]/module_name format
+    if( Path[0] == '[' )
+    {
+        const char* closeBracket = strchr(Path, ']');
+        if( closeBracket != NULL && closeBracket[1] == '/' && closeBracket[2] != '\0' )
+        {
+            // Extract package name (between [ and ])
+            size_t packageNameLen = closeBracket - Path - 1;
+            char packageName[DMOD_MAX_PACKAGE_NAME_LENGTH];
+            if( packageNameLen > 0 && packageNameLen < DMOD_MAX_PACKAGE_NAME_LENGTH )
+            {
+                memcpy( packageName, Path + 1, packageNameLen );
+                packageName[packageNameLen] = '\0';
+                
+                // Module name starts after ]/
+                const char* moduleName = closeBracket + 2;
+                
+                // Find the package slot first
+                Dmod_PackageSlot_t* slot = Dmod_Pck_FindSlotByName( packageName, NULL );
+                if( slot != NULL && Dmod_Pck_IsValidSlot( slot ) )
+                {
+                    // Use the package name from the slot (persistent pointer)
+                    const char* persistentPackageName = Dmod_Pck_GetPackageName( slot );
+                    DMOD_LOG_INFO("Loading module '%s' from package '%s'\n", moduleName, persistentPackageName);
+                    return Dmod_LoadFromPackage( persistentPackageName, moduleName );
+                }
+                else
+                {
+                    DMOD_LOG_ERROR("Cannot load module - package not found: %s\n", packageName);
+                    return NULL;
+                }
+            }
+        }
+    }
+
     if( Dmod_IsDMPFile(Path) )
     {
         uint32_t nIndex = UINT32_MAX;
