@@ -1980,7 +1980,7 @@ bool Dmod_ReadNextModule( Dmod_ModuleNode_t* outModule )
 
                 if( totalLen <= DMOD_MAX_PATH_LENGTH )
                 {
-                    snprintf( outModule->path, DMOD_MAX_PATH_LENGTH, "%s/%s", dirPath, fileName );
+                    Dmod_SnPrintf( outModule->path, DMOD_MAX_PATH_LENGTH, "%s/%s", dirPath, fileName );
                     
                     // Try to read module header
                     if( Dmod_ReadModuleHeader( outModule->path, &outModule->header ) )
@@ -2022,7 +2022,7 @@ bool Dmod_ReadNextModule( Dmod_ModuleNode_t* outModule )
                     
                     // Build package path notation
                     const char* packageName = Dmod_Pck_GetPackageName(slot);
-                    snprintf( outModule->path, DMOD_MAX_PATH_LENGTH, "[%s]/%s", 
+                    Dmod_SnPrintf( outModule->path, DMOD_MAX_PATH_LENGTH, "[%s]/%s", 
                              packageName ? packageName : "unknown", entry->ModuleName );
                     
                     DMOD_LOG_VERBOSE("Found module '%s' in package at '%s'\n", 
