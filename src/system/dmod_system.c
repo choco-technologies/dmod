@@ -1284,22 +1284,17 @@ bool Dmod_ReadModuleHeader(const char* FilePath, Dmod_ModuleHeader_t* Header)
     }
 
     // Verify decompressed size is sufficient
+    bool success = true;
     if( dmfSize < sizeof(Dmod_ModuleHeader_t) )
     {
         DMOD_LOG_ERROR("Cannot read module header - decompressed data too small\n");
-        if( needsFree )
-        {
-            Dmod_Free( dmfData );
-        }
-        else
-        {
-            Dmod_Free( buffer );
-        }
-        return false;
+        success = false;
     }
-
-    // Copy header from decompressed data
-    memcpy( Header, dmfData, sizeof(Dmod_ModuleHeader_t) );
+    else
+    {
+        // Copy header from decompressed data
+        memcpy( Header, dmfData, sizeof(Dmod_ModuleHeader_t) );
+    }
 
     // Clean up
     if( needsFree )
@@ -1311,7 +1306,7 @@ bool Dmod_ReadModuleHeader(const char* FilePath, Dmod_ModuleHeader_t* Header)
         Dmod_Free( buffer );
     }
 
-    return true;
+    return success;
 }
 
 /**
