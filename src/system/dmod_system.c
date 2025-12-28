@@ -906,7 +906,7 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
     {
         DMOD_LOG_ERROR("Cannot run module - cannot load required modules\n");
         Dmod_Mutex_Unlock(Context->Mutex);
-        return -ENOEXEC;
+        return false;
     }
 
     if(!Dmod_RMod_EnableRequiredModules(Context))
@@ -919,7 +919,7 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
         {
             DMOD_LOG_ERROR("Cannot run module - not all required modules are enabled\n");
             Dmod_Mutex_Unlock(Context->Mutex);
-            return -ENOEXEC;
+            return false;
         }
     }
 
@@ -958,7 +958,7 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
             DMOD_LOG_ERROR("Cannot run module - not all APIs are connected\n");
             Dmod_DisconnectOutputApis(Context);
             Dmod_Mutex_Unlock(Context->Mutex);
-            return -ENOEXEC;
+            return false;
         }
     }
 
