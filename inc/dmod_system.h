@@ -93,7 +93,6 @@ extern int              Dmod_Irq                ( Dmod_Context_t* Context, const
 extern uint64_t         Dmod_GetStackSize       ( Dmod_Context_t* Context );
 extern Dmod_ModuleType_t Dmod_GetModuleType     ( Dmod_Context_t* Context );
 extern Dmod_License_t*  Dmod_GetLicense         ( Dmod_Context_t* Context );
-extern const char*      Dmod_GetName            ( Dmod_Context_t* Context );
 extern bool             Dmod_GetFileArchitecture ( const char* FilePath, char* outArch, size_t MaxLength );
 
 // DMF System
