@@ -263,28 +263,26 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const Dmod_DirEntry_t*, _ReadDirEx, (
     }
     
     dirEntry.name = entry->d_name;
+    dirEntry.type = Dmod_DirEntryType_Unknown;
     
     // Determine entry type based on d_type if available
-    #ifdef _DIRENT_HAVE_D_TYPE
-    switch (entry->d_type)
+    #if defined(_DIRENT_HAVE_D_TYPE)
+    if (entry->d_type == 8) // DT_REG
     {
-        case DT_REG:
-            dirEntry.type = Dmod_DirEntryType_File;
-            break;
-        case DT_DIR:
-            dirEntry.type = Dmod_DirEntryType_Dir;
-            break;
-        case DT_LNK:
-            dirEntry.type = Dmod_DirEntryType_Link;
-            break;
-        case DT_UNKNOWN:
-        default:
-            dirEntry.type = Dmod_DirEntryType_Unknown;
-            break;
+        dirEntry.type = Dmod_DirEntryType_File;
     }
-    #else
-    // If d_type is not available, type remains unknown
-    dirEntry.type = Dmod_DirEntryType_Unknown;
+    else if (entry->d_type == 4) // DT_DIR
+    {
+        dirEntry.type = Dmod_DirEntryType_Dir;
+    }
+    else if (entry->d_type == 10) // DT_LNK
+    {
+        dirEntry.type = Dmod_DirEntryType_Link;
+    }
+    else if (entry->d_type != 0) // Not DT_UNKNOWN
+    {
+        dirEntry.type = Dmod_DirEntryType_Other;
+    }
     #endif
     
     return &dirEntry;
