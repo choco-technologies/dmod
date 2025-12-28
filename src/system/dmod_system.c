@@ -108,8 +108,20 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
                 // Module name starts after ]/
                 const char* moduleName = closeBracket + 2;
                 
-                DMOD_LOG_INFO("Loading module '%s' from package '%s'\n", moduleName, packageName);
-                return Dmod_LoadFromPackage( packageName, moduleName );
+                // Find the package slot first
+                Dmod_PackageSlot_t* slot = Dmod_Pck_FindSlotByName( packageName, NULL );
+                if( slot != NULL && Dmod_Pck_IsValidSlot( slot ) )
+                {
+                    // Use the package name from the slot (persistent pointer)
+                    const char* persistentPackageName = Dmod_Pck_GetPackageName( slot );
+                    DMOD_LOG_INFO("Loading module '%s' from package '%s'\n", moduleName, persistentPackageName);
+                    return Dmod_LoadFromPackage( persistentPackageName, moduleName );
+                }
+                else
+                {
+                    DMOD_LOG_ERROR("Cannot load module - package not found: %s\n", packageName);
+                    return NULL;
+                }
             }
         }
     }

@@ -5,5 +5,6 @@ set(TEST_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_arch.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_findmatch.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_readnextmodule.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_loadfile_package_path.cpp
         PARENT_SCOPE
         )
