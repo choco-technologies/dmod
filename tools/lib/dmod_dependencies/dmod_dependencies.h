@@ -40,12 +40,18 @@ extern "C" {
 #define DMOD_DEPENDENCIES_MAX_URL_LEN 512
 
 /**
+ * @brief Maximum length for configuration paths
+ */
+#define DMOD_DEPENDENCIES_MAX_CONFIG_LEN 256
+
+/**
  * @brief Represents a single dependency entry
  */
 typedef struct {
     char name[DMOD_DEPENDENCIES_MAX_NAME_LEN];      /**< Module name */
     char version[DMOD_DEPENDENCIES_MAX_VERSION_LEN]; /**< Module version or constraint (empty if not specified) */
     char manifest[DMOD_DEPENDENCIES_MAX_URL_LEN];   /**< Manifest URL to use for this module */
+    char config[DMOD_DEPENDENCIES_MAX_CONFIG_LEN];  /**< Configuration file path (empty if not specified) */
     Dmod_VersionConstraint_t constraint;             /**< Parsed version constraint */
     bool has_constraint;                             /**< Whether constraint is parsed and valid */
 } Dmod_DependencyEntry_t;

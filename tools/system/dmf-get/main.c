@@ -840,6 +840,109 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
 }
 
 /**
+ * @brief Copy configuration file from module package to specified destination
+ * 
+ * @param module_name Name of the module
+ * @param config_path Relative path to configuration file within module's config directory
+ * @param output_dir Output directory where module was installed
+ * @param config_dest_dir Destination directory for the configuration file
+ * @return true if configuration file was copied successfully, false otherwise
+ */
+static bool CopyConfigurationFile(const char* module_name, const char* config_path,
+                                  const char* output_dir, const char* config_dest_dir) {
+    if (!module_name || !config_path || !output_dir || !config_dest_dir) {
+        DMOD_LOG_ERROR("Invalid parameters for configuration file copy\n");
+        return false;
+    }
+    
+    DMOD_LOG_INFO("Looking for configuration file: %s for module: %s\n", config_path, module_name);
+    
+    // First, check if the module has a .dmr file in the output directory
+    char dmr_path[1024];
+    Dmod_SnPrintf(dmr_path, sizeof(dmr_path), "%s/%s.dmr", output_dir, module_name);
+    
+    char config_source[1024] = "";
+    
+    // Try to find config directory path from .dmr file
+    if (Dmod_Access(dmr_path, DMOD_R_OK) == 0) {
+        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name);
+        if (res_ctx) {
+            if (Dmod_Resource_ParseFile(res_ctx, dmr_path)) {
+                size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
+                for (size_t i = 0; i < res_count; i++) {
+                    Dmod_ResourceEntry_t res_entry;
+                    if (Dmod_Resource_GetEntry(res_ctx, i, &res_entry)) {
+                        // Look for "config" resource entry
+                        if (strcmp(res_entry.key, "config") == 0 || 
+                            strcmp(res_entry.key, "configs") == 0) {
+                            // Build full path: destination from .dmr + config_path
+                            Dmod_SnPrintf(config_source, sizeof(config_source), "%s/%s", 
+                                        res_entry.destination, config_path);
+                            DMOD_LOG_INFO("Found config directory in .dmr: %s\n", res_entry.destination);
+                            break;
+                        }
+                    }
+                }
+            }
+            Dmod_Resource_Free(res_ctx);
+        }
+    }
+    
+    // If not found in .dmr, try default location: output_dir/module_name/config/
+    if (config_source[0] == '\0') {
+        Dmod_SnPrintf(config_source, sizeof(config_source), "%s/%s/config/%s", 
+                    output_dir, module_name, config_path);
+        DMOD_LOG_INFO("Using default config location: %s\n", config_source);
+    }
+    
+    // Validate source path for safety
+    if (!IsPathSafe(config_source) || !IsPathSafe(config_dest_dir)) {
+        DMOD_LOG_ERROR("Invalid configuration path (contains unsafe characters)\n");
+        return false;
+    }
+    
+    // Check if source file exists
+    if (Dmod_Access(config_source, DMOD_R_OK) != 0) {
+        DMOD_LOG_ERROR("Configuration file not found: %s\n", config_source);
+        return false;
+    }
+    
+    // Create destination directory if needed
+    char mkdir_cmd[2048];
+    Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", config_dest_dir);
+    int mkdir_result = system(mkdir_cmd);
+    if (mkdir_result != 0) {
+        DMOD_LOG_ERROR("Failed to create configuration destination directory: %s\n", config_dest_dir);
+        return false;
+    }
+    
+    // Extract filename from config_path
+    const char* filename = strrchr(config_path, '/');
+    if (filename) {
+        filename++; // Skip the '/'
+    } else {
+        filename = config_path;
+    }
+    
+    // Build full destination path
+    char config_dest[1024];
+    Dmod_SnPrintf(config_dest, sizeof(config_dest), "%s/%s", config_dest_dir, filename);
+    
+    // Copy the configuration file
+    char cp_cmd[2048];
+    Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp \"%s\" \"%s\"", config_source, config_dest);
+    
+    int cp_result = system(cp_cmd);
+    if (cp_result == 0) {
+        DMOD_LOG_INFO("Configuration file copied successfully to: %s\n", config_dest);
+        return true;
+    } else {
+        DMOD_LOG_ERROR("Failed to copy configuration file\n");
+        return false;
+    }
+}
+
+/**
  * @brief Display license file content to the user
  * 
  * @param license_path Path to the license file
@@ -1623,6 +1726,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  -d, --dependencies <path> Path or URL to dependencies (.dmd) file\n");
     Dmod_Printf("  -m, --manifest <path>     Path or URL to manifest file\n");
     Dmod_Printf("  -o, --output-dir <path>   Output directory for downloaded modules\n");
+    Dmod_Printf("  --config-dir <path>       Directory where configuration files should be copied\n");
     Dmod_Printf("  -t, --tools-name <name>   Tools name for variable substitution\n");
     Dmod_Printf("  -a, --arch-name <name>    Architecture name for variable substitution\n");
     Dmod_Printf("  --cpu-name <name>         CPU name for variable substitution (e.g., stm32f746ngh6)\n");
@@ -1656,6 +1760,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s mymodule@>=1.0        # Download version >= 1.0\n", app_name);
     Dmod_Printf("  %s mymodule@>=1.0<=2.0   # Download version in range [1.0, 2.0]\n", app_name);
     Dmod_Printf("  %s -d deps.dmd           # Download all modules from deps.dmd\n", app_name);
+    Dmod_Printf("  %s -d deps.dmd --config-dir ./config  # Download modules and copy configs to ./config\n", app_name);
     Dmod_Printf("  %s -m http://... module  # Use custom manifest\n", app_name);
     Dmod_Printf("  %s --type dmfc module    # Prefer dmfc files\n", app_name);
     Dmod_Printf("  %s -a armv7-cortex-m7 module  # Use arch name directly\n", app_name);
@@ -2024,6 +2129,7 @@ int main(int argc, char* argv[]) {
     const char* dependencies_path = NULL;
     const char* manifest_path = NULL;
     const char* output_dir = NULL;
+    const char* config_dir = NULL;
     const char* tools_name = NULL;
     const char* arch_name = NULL;
     const char* cpu_name = NULL;
@@ -2069,6 +2175,13 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
             output_dir = argv[i];
+        }
+        else if (strcmp(argv[i], "--config-dir") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
+                return 1;
+            }
+            config_dir = argv[i];
         }
         else if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--tools-name") == 0) {
             if (++i >= argc) {
@@ -2482,6 +2595,12 @@ int main(int argc, char* argv[]) {
             
             if (download_result != 0) {
                 counts.failed_count++;
+            } else if (dep_entry.config[0] != '\0' && config_dir != NULL) {
+                // If module specifies a configuration file and config_dir is provided, copy it
+                DMOD_LOG_INFO("  Configuration file specified: %s\n", dep_entry.config);
+                if (!CopyConfigurationFile(dep_entry.name, dep_entry.config, output_dir, config_dir)) {
+                    DMOD_LOG_WARN("  Failed to copy configuration file (module was installed successfully)\n");
+                }
             }
         }
         
