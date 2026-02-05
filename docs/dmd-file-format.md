@@ -25,7 +25,7 @@ Lines starting with `#` are treated as comments and ignored:
 
 ### Module Entries
 
-Modules are specified by name, optionally followed by a version or version constraint:
+Modules are specified by name, optionally followed by a version or version constraint, and optionally a configuration file path:
 
 ```dmd
 # Module without version (downloads latest available)
@@ -34,6 +34,13 @@ dmffs
 # Module with specific version
 driver@1.0
 spi@2.5.1
+
+# Module with configuration file
+dmclk@1.0 mcu/stm32f7.ini
+uart@2.5 configs/uart_115200.ini
+
+# Module with configuration but no version
+gpio configs/gpio_default.cfg
 
 # Module with version range - all versions >= 1.0
 dmffs@>=1.0
@@ -48,6 +55,85 @@ spi@>=1.0<=2.0
 i2c@>1.0      # Greater than 1.0 (exclusive)
 can@<2.0      # Less than 2.0 (exclusive)
 ```
+
+#### Configuration Files
+
+Modules can optionally specify a configuration file that should be copied during installation. The configuration file path is relative to the module's configuration directory (as defined in the module's `.dmr` file, or the default `config/` directory).
+
+**Format**: `module[@version] [config_path] [custom_dest_name]`
+
+**Basic usage**:
+```dmd
+# Install dmclk version 1.0 with mcu/stm32f7.ini configuration
+# Copies to: <config-dir>/dmclk/stm32f7.ini
+dmclk@1.0 mcu/stm32f7.ini
+
+# Install uart with configuration but use latest version
+uart configs/uart_default.ini
+```
+
+**Custom destination filename**:
+```dmd
+# Specify custom destination filename (no module subdirectory)
+# Copies to: <config-dir>/clk.ini
+dmclk@1.0 mcu/stm32f7.ini clk.ini
+```
+
+**Multiple configurations from same driver**:
+```dmd
+# Use driver version 1.0, but copy configs from different versions
+dmclk@1.0                          # Install driver v1.0
+dmclk@0.1 mcu/stm32f7.ini         # Copy config from v0.1 to dmclk/stm32f7.ini
+dmclk@0.2 mcu/high-speed.ini      # Copy config from v0.2 to dmclk/high-speed.ini
+```
+
+This allows using a specific driver version while accessing configuration files from multiple versions of the module.
+
+**Variable substitution in configuration paths**:
+
+Configuration paths support variable substitution using `${VARIABLE_NAME}` syntax. Variables can be defined via command-line options or environment variables:
+
+```dmd
+# Use variable in config path
+dmclk@1.0 boards/${BOARD}/config.ini
+
+# Variable in both config path and destination
+uart@2.0 boards/${BOARD}/uart.ini ${BOARD}_uart.ini
+```
+
+Command-line usage:
+```bash
+# Define variables with -D or --define
+dmf-get -d project-deps.dmd --config-dir ./config -D BOARD=stm32f7
+
+# Multiple variables
+dmf-get -d deps.dmd --config-dir ./config -D BOARD=stm32f7 -D VERSION=v1
+```
+
+Variables are substituted in:
+- Configuration file paths (source)
+- Custom destination filenames
+
+Variable lookup order:
+1. User-defined variables (via `-D` option)
+2. Environment variables
+
+If a variable is not found, the original `${VAR}` syntax is kept in the path.
+
+To copy the configuration files during installation, use the `--config-dir` option with dmf-get:
+
+```bash
+# Install modules and copy configuration files to ./config directory
+dmf-get -d project-deps.dmd --config-dir ./config
+```
+
+**Configuration file lookup**:
+1. The path specified in the module's `.dmr` file with the `config` or `configs` resource key
+2. If not found, the default location: `<module_install_dir>/<module_name>/config/<config_path>`
+
+**Destination naming**:
+- **Default**: `<config-dir>/<module_name>/<filename>`
+- **With custom name**: `<config-dir>/<custom_dest_name>`
 
 #### Version Constraint Syntax
 
@@ -93,6 +179,16 @@ module2@2.0 $from https://special-registry.com/manifest.dmm
 
 # Back to default manifest for this module
 module3@1.5
+```
+
+Configuration files can be combined with inline `$from`:
+
+```dmd
+# Module with configuration and custom manifest
+dmclk@1.0 mcu/stm32f7.ini $from https://hw-registry.com/manifest.dmm
+
+# Configuration with default manifest
+uart@2.5 configs/uart.ini
 ```
 
 ### Include Directive

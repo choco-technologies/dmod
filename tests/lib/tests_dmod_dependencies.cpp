@@ -396,3 +396,182 @@ TEST_F(DmodDependenciesTest, ParseEmptyInlineFromDirective) {
     
     Dmod_Dependencies_Free(ctx);
 }
+
+// ===============================================================
+//                  Configuration Tests
+// ===============================================================
+
+TEST_F(DmodDependenciesTest, ParseModuleWithConfig) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* dependencies = "dmclk@1.0 mcu/stm32f7.ini\n";
+    
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
+    EXPECT_EQ(Dmod_Dependencies_GetEntryCount(ctx), 1);
+    
+    Dmod_DependencyEntry_t entry;
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.name, "dmclk");
+    EXPECT_STREQ(entry.version, "1.0");
+    EXPECT_STREQ(entry.config, "mcu/stm32f7.ini");
+    EXPECT_STREQ(entry.manifest, "https://example.com/manifest.dmm");
+    
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, ParseModuleWithoutVersionButWithConfig) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* dependencies = "dmclk configs/default.ini\n";
+    
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
+    EXPECT_EQ(Dmod_Dependencies_GetEntryCount(ctx), 1);
+    
+    Dmod_DependencyEntry_t entry;
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.name, "dmclk");
+    EXPECT_STREQ(entry.version, "");
+    EXPECT_STREQ(entry.config, "configs/default.ini");
+    EXPECT_STREQ(entry.manifest, "https://example.com/manifest.dmm");
+    
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, ParseMultipleModulesWithConfig) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* dependencies = 
+        "dmclk@1.0 mcu/stm32f7.ini\n"
+        "uart@2.5 uart/config.ini\n"
+        "spi\n"  // No config
+        "i2c@1.2\n";  // No config
+    
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
+    EXPECT_EQ(Dmod_Dependencies_GetEntryCount(ctx), 4);
+    
+    Dmod_DependencyEntry_t entry;
+    
+    // First module with config
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.name, "dmclk");
+    EXPECT_STREQ(entry.version, "1.0");
+    EXPECT_STREQ(entry.config, "mcu/stm32f7.ini");
+    
+    // Second module with config
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 1, &entry));
+    EXPECT_STREQ(entry.name, "uart");
+    EXPECT_STREQ(entry.version, "2.5");
+    EXPECT_STREQ(entry.config, "uart/config.ini");
+    
+    // Third module without config
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 2, &entry));
+    EXPECT_STREQ(entry.name, "spi");
+    EXPECT_STREQ(entry.version, "");
+    EXPECT_STREQ(entry.config, "");
+    
+    // Fourth module without config
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 3, &entry));
+    EXPECT_STREQ(entry.name, "i2c");
+    EXPECT_STREQ(entry.version, "1.2");
+    EXPECT_STREQ(entry.config, "");
+    
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, ParseModuleWithConfigAndInlineFrom) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* dependencies = "dmclk@1.0 mcu/stm32f7.ini $from https://custom.com/manifest.dmm\n";
+    
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
+    EXPECT_EQ(Dmod_Dependencies_GetEntryCount(ctx), 1);
+    
+    Dmod_DependencyEntry_t entry;
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.name, "dmclk");
+    EXPECT_STREQ(entry.version, "1.0");
+    EXPECT_STREQ(entry.config, "mcu/stm32f7.ini");
+    EXPECT_STREQ(entry.manifest, "https://custom.com/manifest.dmm");
+    
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, ParseModuleWithConfigAndCustomDestName) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* dependencies = "dmclk@1.0 mcu/stm32f7.ini clk.ini\n";
+    
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
+    EXPECT_EQ(Dmod_Dependencies_GetEntryCount(ctx), 1);
+    
+    Dmod_DependencyEntry_t entry;
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.name, "dmclk");
+    EXPECT_STREQ(entry.version, "1.0");
+    EXPECT_STREQ(entry.config, "mcu/stm32f7.ini");
+    EXPECT_STREQ(entry.config_dest, "clk.ini");
+    EXPECT_STREQ(entry.manifest, "https://example.com/manifest.dmm");
+    
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, ParseModuleWithConfigNoVersionButWithCustomDest) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    const char* dependencies = "dmclk configs/default.ini my-config.ini\n";
+    
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
+    EXPECT_EQ(Dmod_Dependencies_GetEntryCount(ctx), 1);
+    
+    Dmod_DependencyEntry_t entry;
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.name, "dmclk");
+    EXPECT_STREQ(entry.version, "");
+    EXPECT_STREQ(entry.config, "configs/default.ini");
+    EXPECT_STREQ(entry.config_dest, "my-config.ini");
+    EXPECT_STREQ(entry.manifest, "https://example.com/manifest.dmm");
+    
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, ParseMultipleEntriesSameDriverDifferentConfigs) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+    
+    // Test case from user comment: same driver with different versions for configs
+    const char* dependencies = 
+        "dmclk@1.0\n"
+        "dmclk@0.1 mcu/stm32f7.ini\n"
+        "dmclk@0.2 mcu/high-speed.ini\n";
+    
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
+    EXPECT_EQ(Dmod_Dependencies_GetEntryCount(ctx), 3);
+    
+    Dmod_DependencyEntry_t entry;
+    
+    // First entry: driver only
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.name, "dmclk");
+    EXPECT_STREQ(entry.version, "1.0");
+    EXPECT_STREQ(entry.config, "");
+    
+    // Second entry: same driver with config from version 0.1
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 1, &entry));
+    EXPECT_STREQ(entry.name, "dmclk");
+    EXPECT_STREQ(entry.version, "0.1");
+    EXPECT_STREQ(entry.config, "mcu/stm32f7.ini");
+    
+    // Third entry: same driver with config from version 0.2
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 2, &entry));
+    EXPECT_STREQ(entry.name, "dmclk");
+    EXPECT_STREQ(entry.version, "0.2");
+    EXPECT_STREQ(entry.config, "mcu/high-speed.ini");
+    
+    Dmod_Dependencies_Free(ctx);
+}

@@ -132,6 +132,29 @@ api_header=./api.h => ${destination}/${module}/include/api.h
 dmd=./module.dmd => ${destination}/${module}.dmd
 ```
 
+#### Configuration Files
+
+Configuration directories can be specified so that individual configuration files can be copied during module installation:
+
+```dmr
+# Configuration directory
+config=./configs => ${destination}/${module}/config
+
+# Alternative naming
+configs=./config-files => ${destination}/${module}/configs
+```
+
+When a module specifies a configuration file in the `.dmd` file (e.g., `dmclk@1.0 mcu/stm32f7.ini`), dmf-get will look for that file in:
+1. The path specified by the `config` or `configs` resource in the `.dmr` file
+2. If not found, the default location: `${destination}/${module}/config/`
+
+Configuration files are copied when using the `--config-dir` option with dmf-get:
+
+```bash
+# Install modules and copy specified configuration files
+dmf-get -d project-deps.dmd --config-dir ./project-config
+```
+
 #### License and Legal
 
 ```dmr

@@ -7,6 +7,11 @@ dmf=./module.dmf => ${DMOD_DMF_DIR}/${module}.dmf
 # Install dependencies file
 dmd=./module.dmd => ${destination}/${module}.dmd
 
+# Install configuration directory
+config=./configs => ${destination}/${module}/config
+# or
+configs=./configs => ${destination}/${module}/configs
+
 # Install documentation folder
 docs=./module/docs => ${destination}/${module}/docs
 
