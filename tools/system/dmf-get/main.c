@@ -43,6 +43,10 @@
 #define CACHE_MANIFESTS_SUBDIR "manifests"
 #define CACHE_PACKAGES_SUBDIR "packages"
 
+// Buffer sizes
+#define DMOD_MAX_PATH_LEN 1024
+#define DMOD_MAX_CMD_LEN 2048
+
 // Global cache directory
 static char g_cache_dir[1024] = {0};
 static bool g_cache_enabled = true;
@@ -858,10 +862,10 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
     DMOD_LOG_INFO("Looking for configuration file: %s for module: %s\n", config_path, module_name);
     
     // First, check if the module has a .dmr file in the output directory
-    char dmr_path[1024];
+    char dmr_path[DMOD_MAX_PATH_LEN];
     Dmod_SnPrintf(dmr_path, sizeof(dmr_path), "%s/%s.dmr", output_dir, module_name);
     
-    char config_source[1024] = "";
+    char config_source[DMOD_MAX_PATH_LEN] = "";
     
     // Try to find config directory path from .dmr file
     if (Dmod_Access(dmr_path, DMOD_R_OK) == 0) {
@@ -895,7 +899,7 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
         DMOD_LOG_INFO("Using default config location: %s\n", config_source);
     }
     
-    // Validate source path for safety
+    // Validate paths for safety - prevents command injection through shell metacharacters
     if (!IsPathSafe(config_source) || !IsPathSafe(config_dest_dir)) {
         DMOD_LOG_ERROR("Invalid configuration path (contains unsafe characters)\n");
         return false;
@@ -908,7 +912,8 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
     }
     
     // Create destination directory if needed
-    char mkdir_cmd[2048];
+    // Note: Using system() with validated paths is consistent with the codebase pattern
+    char mkdir_cmd[DMOD_MAX_CMD_LEN];
     Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", config_dest_dir);
     int mkdir_result = system(mkdir_cmd);
     if (mkdir_result != 0) {
@@ -925,11 +930,12 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
     }
     
     // Build full destination path
-    char config_dest[1024];
+    char config_dest[DMOD_MAX_PATH_LEN];
     Dmod_SnPrintf(config_dest, sizeof(config_dest), "%s/%s", config_dest_dir, filename);
     
     // Copy the configuration file
-    char cp_cmd[2048];
+    // Note: Using system() with validated paths is consistent with the codebase pattern
+    char cp_cmd[DMOD_MAX_CMD_LEN];
     Dmod_SnPrintf(cp_cmd, sizeof(cp_cmd), "cp \"%s\" \"%s\"", config_source, config_dest);
     
     int cp_result = system(cp_cmd);

@@ -90,6 +90,8 @@ static bool AddEntry(Dmod_DependenciesContext_t* ctx, const char* name,
     if (config) {
         strncpy(node->entry.config, config, DMOD_DEPENDENCIES_MAX_CONFIG_LEN - 1);
         node->entry.config[DMOD_DEPENDENCIES_MAX_CONFIG_LEN - 1] = '\0';
+    } else {
+        node->entry.config[0] = '\0';
     }
     
     // Add to list
