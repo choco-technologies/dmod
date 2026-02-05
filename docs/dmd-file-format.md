@@ -60,16 +60,34 @@ can@<2.0      # Less than 2.0 (exclusive)
 
 Modules can optionally specify a configuration file that should be copied during installation. The configuration file path is relative to the module's configuration directory (as defined in the module's `.dmr` file, or the default `config/` directory).
 
-Format: `module[@version] [config_path]`
+**Format**: `module[@version] [config_path] [custom_dest_name]`
 
-Example:
+**Basic usage**:
 ```dmd
 # Install dmclk version 1.0 with mcu/stm32f7.ini configuration
+# Copies to: <config-dir>/dmclk/stm32f7.ini
 dmclk@1.0 mcu/stm32f7.ini
 
 # Install uart with configuration but use latest version
 uart configs/uart_default.ini
 ```
+
+**Custom destination filename**:
+```dmd
+# Specify custom destination filename (no module subdirectory)
+# Copies to: <config-dir>/clk.ini
+dmclk@1.0 mcu/stm32f7.ini clk.ini
+```
+
+**Multiple configurations from same driver**:
+```dmd
+# Use driver version 1.0, but copy configs from different versions
+dmclk@1.0                          # Install driver v1.0
+dmclk@0.1 mcu/stm32f7.ini         # Copy config from v0.1 to dmclk/stm32f7.ini
+dmclk@0.2 mcu/high-speed.ini      # Copy config from v0.2 to dmclk/high-speed.ini
+```
+
+This allows using a specific driver version while accessing configuration files from multiple versions of the module.
 
 To copy the configuration files during installation, use the `--config-dir` option with dmf-get:
 
@@ -78,9 +96,13 @@ To copy the configuration files during installation, use the `--config-dir` opti
 dmf-get -d project-deps.dmd --config-dir ./config
 ```
 
-The configuration file will be looked up in:
+**Configuration file lookup**:
 1. The path specified in the module's `.dmr` file with the `config` or `configs` resource key
 2. If not found, the default location: `<module_install_dir>/<module_name>/config/<config_path>`
+
+**Destination naming**:
+- **Default**: `<config-dir>/<module_name>/<filename>`
+- **With custom name**: `<config-dir>/<custom_dest_name>`
 
 #### Version Constraint Syntax
 

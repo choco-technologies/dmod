@@ -60,7 +60,8 @@ static void SetError(Dmod_DependenciesContext_t* ctx, const char* format, ...) {
  * @brief Add a dependency entry to the list
  */
 static bool AddEntry(Dmod_DependenciesContext_t* ctx, const char* name, 
-                     const char* version, const char* manifest, const char* config) {
+                     const char* version, const char* manifest, const char* config,
+                     const char* config_dest) {
     DependencyNode_t* node = (DependencyNode_t*)Dmod_Malloc(sizeof(DependencyNode_t));
     if (!node) {
         SetError(ctx, "Out of memory");
@@ -92,6 +93,14 @@ static bool AddEntry(Dmod_DependenciesContext_t* ctx, const char* name,
         node->entry.config[DMOD_DEPENDENCIES_MAX_CONFIG_LEN - 1] = '\0';
     } else {
         node->entry.config[0] = '\0';
+    }
+    
+    // Copy config destination if provided
+    if (config_dest) {
+        strncpy(node->entry.config_dest, config_dest, DMOD_DEPENDENCIES_MAX_CONFIG_LEN - 1);
+        node->entry.config_dest[DMOD_DEPENDENCIES_MAX_CONFIG_LEN - 1] = '\0';
+    } else {
+        node->entry.config_dest[0] = '\0';
     }
     
     // Add to list
@@ -233,15 +242,18 @@ static bool ParseLine(Dmod_DependenciesContext_t* ctx, char* line) {
         line = TrimWhitespace(line);
     }
     
-    // Parse: module[@version] [config_path]
+    // Parse: module[@version] [config_path] [config_dest]
     char* at_sign = strchr(line, '@');
     char module_name[DMOD_DEPENDENCIES_MAX_NAME_LEN];
     char module_version[DMOD_DEPENDENCIES_MAX_VERSION_LEN] = {0};
     char module_config[DMOD_DEPENDENCIES_MAX_CONFIG_LEN] = {0};
-    char* rest_of_line = NULL;
+    char module_config_dest[DMOD_DEPENDENCIES_MAX_CONFIG_LEN] = {0};
     
-    if (at_sign) {
-        // Has version
+    // First, extract module name (and version if present)
+    char* first_space = strchr(line, ' ');
+    
+    if (at_sign && (!first_space || at_sign < first_space)) {
+        // Has version: module@version ...
         size_t name_len = at_sign - line;
         if (name_len >= sizeof(module_name)) {
             SetError(ctx, "Module name too long: %s", line);
@@ -256,73 +268,103 @@ static bool ParseLine(Dmod_DependenciesContext_t* ctx, char* line) {
         char* trimmed_name = TrimWhitespace(module_name);
         memmove(module_name, trimmed_name, strlen(trimmed_name) + 1);
         
-        // Get version and possibly config
-        rest_of_line = at_sign + 1;
-    } else {
-        // No version, might have config
-        rest_of_line = line;
-    }
-    
-    // Parse version and config from rest_of_line
-    if (rest_of_line && at_sign) {
-        // We have version, parse it and check for config
-        char* space = strchr(rest_of_line, ' ');
-        if (space) {
-            // We have both version and config
-            size_t version_len = space - rest_of_line;
+        // Extract version (up to first space or end of string)
+        char* version_start = at_sign + 1;
+        char* version_end = strchr(version_start, ' ');
+        
+        if (version_end) {
+            size_t version_len = version_end - version_start;
             if (version_len >= sizeof(module_version)) {
                 SetError(ctx, "Version string too long");
                 if (manifest_for_entry) Dmod_Free(manifest_for_entry);
                 return false;
             }
-            strncpy(module_version, rest_of_line, version_len);
+            strncpy(module_version, version_start, version_len);
             module_version[version_len] = '\0';
             
-            // Get config path
-            char* config = TrimWhitespace(space + 1);
-            if (config[0] != '\0') {
-                strncpy(module_config, config, sizeof(module_config) - 1);
-                module_config[sizeof(module_config) - 1] = '\0';
+            // Parse config and optional config_dest after version
+            char* config_start = TrimWhitespace(version_end + 1);
+            if (config_start[0] != '\0') {
+                char* config_space = strchr(config_start, ' ');
+                if (config_space) {
+                    // Both config and config_dest
+                    size_t config_len = config_space - config_start;
+                    if (config_len >= sizeof(module_config)) {
+                        SetError(ctx, "Config path too long");
+                        if (manifest_for_entry) Dmod_Free(manifest_for_entry);
+                        return false;
+                    }
+                    strncpy(module_config, config_start, config_len);
+                    module_config[config_len] = '\0';
+                    
+                    // Get config_dest
+                    char* config_dest = TrimWhitespace(config_space + 1);
+                    if (config_dest[0] != '\0') {
+                        strncpy(module_config_dest, config_dest, sizeof(module_config_dest) - 1);
+                        module_config_dest[sizeof(module_config_dest) - 1] = '\0';
+                    }
+                } else {
+                    // Only config
+                    strncpy(module_config, config_start, sizeof(module_config) - 1);
+                    module_config[sizeof(module_config) - 1] = '\0';
+                }
             }
         } else {
-            // Only version
-            char* version = TrimWhitespace(rest_of_line);
+            // Version goes to end of string
+            char* version = TrimWhitespace(version_start);
             strncpy(module_version, version, sizeof(module_version) - 1);
             module_version[sizeof(module_version) - 1] = '\0';
         }
-    } else if (rest_of_line) {
-        // No @ sign, parse module name and possibly config
-        char* space = strchr(rest_of_line, ' ');
-        if (space) {
-            // We have both module name and config
-            size_t name_len = space - rest_of_line;
-            if (name_len >= sizeof(module_name)) {
-                SetError(ctx, "Module name too long: %s", line);
-                if (manifest_for_entry) Dmod_Free(manifest_for_entry);
-                return false;
-            }
-            strncpy(module_name, rest_of_line, name_len);
-            module_name[name_len] = '\0';
-            
-            // Trim the name
-            char* trimmed_name = TrimWhitespace(module_name);
-            memmove(module_name, trimmed_name, strlen(trimmed_name) + 1);
-            
-            // Get config path
-            char* config = TrimWhitespace(space + 1);
-            if (config[0] != '\0') {
-                strncpy(module_config, config, sizeof(module_config) - 1);
+    } else if (first_space) {
+        // No version, but has space: module config_path [config_dest]
+        size_t name_len = first_space - line;
+        if (name_len >= sizeof(module_name)) {
+            SetError(ctx, "Module name too long: %s", line);
+            if (manifest_for_entry) Dmod_Free(manifest_for_entry);
+            return false;
+        }
+        strncpy(module_name, line, name_len);
+        module_name[name_len] = '\0';
+        
+        // Trim the name
+        char* trimmed_name = TrimWhitespace(module_name);
+        memmove(module_name, trimmed_name, strlen(trimmed_name) + 1);
+        
+        // Parse config and optional config_dest
+        char* config_start = TrimWhitespace(first_space + 1);
+        if (config_start[0] != '\0') {
+            char* config_space = strchr(config_start, ' ');
+            if (config_space) {
+                // Both config and config_dest
+                size_t config_len = config_space - config_start;
+                if (config_len >= sizeof(module_config)) {
+                    SetError(ctx, "Config path too long");
+                    if (manifest_for_entry) Dmod_Free(manifest_for_entry);
+                    return false;
+                }
+                strncpy(module_config, config_start, config_len);
+                module_config[config_len] = '\0';
+                
+                // Get config_dest
+                char* config_dest = TrimWhitespace(config_space + 1);
+                if (config_dest[0] != '\0') {
+                    strncpy(module_config_dest, config_dest, sizeof(module_config_dest) - 1);
+                    module_config_dest[sizeof(module_config_dest) - 1] = '\0';
+                }
+            } else {
+                // Only config
+                strncpy(module_config, config_start, sizeof(module_config) - 1);
                 module_config[sizeof(module_config) - 1] = '\0';
             }
-        } else {
-            // Only module name
-            strncpy(module_name, rest_of_line, sizeof(module_name) - 1);
-            module_name[sizeof(module_name) - 1] = '\0';
-            
-            // Trim the name
-            char* trimmed_name = TrimWhitespace(module_name);
-            memmove(module_name, trimmed_name, strlen(trimmed_name) + 1);
         }
+    } else {
+        // Only module name
+        strncpy(module_name, line, sizeof(module_name) - 1);
+        module_name[sizeof(module_name) - 1] = '\0';
+        
+        // Trim the name
+        char* trimmed_name = TrimWhitespace(module_name);
+        memmove(module_name, trimmed_name, strlen(trimmed_name) + 1);
     }
     
     // Validate module name
@@ -336,7 +378,8 @@ static bool ParseLine(Dmod_DependenciesContext_t* ctx, char* line) {
     const char* manifest = manifest_for_entry ? manifest_for_entry : 
                           (ctx->current_manifest ? ctx->current_manifest : ctx->default_manifest);
     bool result = AddEntry(ctx, module_name, module_version[0] ? module_version : NULL, manifest, 
-                          module_config[0] ? module_config : NULL);
+                          module_config[0] ? module_config : NULL,
+                          module_config_dest[0] ? module_config_dest : NULL);
     
     // Free the inline manifest memory after adding the entry
     if (manifest_for_entry) {

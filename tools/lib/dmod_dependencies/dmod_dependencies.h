@@ -52,6 +52,7 @@ typedef struct {
     char version[DMOD_DEPENDENCIES_MAX_VERSION_LEN]; /**< Module version or constraint (empty if not specified) */
     char manifest[DMOD_DEPENDENCIES_MAX_URL_LEN];   /**< Manifest URL to use for this module */
     char config[DMOD_DEPENDENCIES_MAX_CONFIG_LEN];  /**< Configuration file path (empty if not specified) */
+    char config_dest[DMOD_DEPENDENCIES_MAX_CONFIG_LEN]; /**< Custom destination filename for config (empty if not specified) */
     Dmod_VersionConstraint_t constraint;             /**< Parsed version constraint */
     bool has_constraint;                             /**< Whether constraint is parsed and valid */
 } Dmod_DependencyEntry_t;

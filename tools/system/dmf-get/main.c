@@ -850,10 +850,12 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
  * @param config_path Relative path to configuration file within module's config directory
  * @param output_dir Output directory where module was installed
  * @param config_dest_dir Destination directory for the configuration file
+ * @param custom_dest_name Optional custom destination filename (can be NULL)
  * @return true if configuration file was copied successfully, false otherwise
  */
 static bool CopyConfigurationFile(const char* module_name, const char* config_path,
-                                  const char* output_dir, const char* config_dest_dir) {
+                                  const char* output_dir, const char* config_dest_dir,
+                                  const char* custom_dest_name) {
     if (!module_name || !config_path || !output_dir || !config_dest_dir) {
         DMOD_LOG_ERROR("Invalid parameters for configuration file copy\n");
         return false;
@@ -911,27 +913,72 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
         return false;
     }
     
-    // Create destination directory if needed
-    // Note: Using system() with validated paths is consistent with the codebase pattern
-    char mkdir_cmd[DMOD_MAX_CMD_LEN];
-    Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", config_dest_dir);
-    int mkdir_result = system(mkdir_cmd);
-    if (mkdir_result != 0) {
-        DMOD_LOG_ERROR("Failed to create configuration destination directory: %s\n", config_dest_dir);
+    // Build full destination path
+    char config_dest[DMOD_MAX_PATH_LEN];
+    
+    if (custom_dest_name && custom_dest_name[0] != '\0') {
+        // Use custom destination filename (no module subdirectory)
+        Dmod_SnPrintf(config_dest, sizeof(config_dest), "%s/%s", config_dest_dir, custom_dest_name);
+    } else {
+        // Default: use module_name/filename pattern
+        // Extract filename from config_path
+        const char* filename = strrchr(config_path, '/');
+        if (filename) {
+            filename++; // Skip the '/'
+        } else {
+            filename = config_path;
+        }
+        
+        // Create module subdirectory path
+        char module_subdir[DMOD_MAX_PATH_LEN];
+        Dmod_SnPrintf(module_subdir, sizeof(module_subdir), "%s/%s", config_dest_dir, module_name);
+        
+        // Validate module subdir path
+        if (!IsPathSafe(module_subdir)) {
+            DMOD_LOG_ERROR("Invalid module subdirectory path (contains unsafe characters)\n");
+            return false;
+        }
+        
+        // Create module subdirectory
+        char mkdir_cmd[DMOD_MAX_CMD_LEN];
+        Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", module_subdir);
+        int mkdir_result = system(mkdir_cmd);
+        if (mkdir_result != 0) {
+            DMOD_LOG_ERROR("Failed to create module subdirectory: %s\n", module_subdir);
+            return false;
+        }
+        
+        Dmod_SnPrintf(config_dest, sizeof(config_dest), "%s/%s", module_subdir, filename);
+    }
+    
+    // Validate destination path
+    if (!IsPathSafe(config_dest)) {
+        DMOD_LOG_ERROR("Invalid destination path (contains unsafe characters)\n");
         return false;
     }
     
-    // Extract filename from config_path
-    const char* filename = strrchr(config_path, '/');
-    if (filename) {
-        filename++; // Skip the '/'
-    } else {
-        filename = config_path;
-    }
+    // Create destination directory if needed (parent of config_dest)
+    char dest_parent[DMOD_MAX_PATH_LEN];
+    strncpy(dest_parent, config_dest, sizeof(dest_parent) - 1);
+    dest_parent[sizeof(dest_parent) - 1] = '\0';
     
-    // Build full destination path
-    char config_dest[DMOD_MAX_PATH_LEN];
-    Dmod_SnPrintf(config_dest, sizeof(config_dest), "%s/%s", config_dest_dir, filename);
+    char* last_slash = strrchr(dest_parent, '/');
+    if (last_slash) {
+        *last_slash = '\0';
+        
+        if (!IsPathSafe(dest_parent)) {
+            DMOD_LOG_ERROR("Invalid parent directory path (contains unsafe characters)\n");
+            return false;
+        }
+        
+        char mkdir_cmd[DMOD_MAX_CMD_LEN];
+        Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", dest_parent);
+        int mkdir_result = system(mkdir_cmd);
+        if (mkdir_result != 0) {
+            DMOD_LOG_ERROR("Failed to create configuration destination directory: %s\n", dest_parent);
+            return false;
+        }
+    }
     
     // Copy the configuration file
     // Note: Using system() with validated paths is consistent with the codebase pattern
@@ -2604,7 +2651,8 @@ int main(int argc, char* argv[]) {
             } else if (dep_entry.config[0] != '\0' && config_dir != NULL) {
                 // If module specifies a configuration file and config_dir is provided, copy it
                 DMOD_LOG_INFO("  Configuration file specified: %s\n", dep_entry.config);
-                if (!CopyConfigurationFile(dep_entry.name, dep_entry.config, output_dir, config_dir)) {
+                const char* custom_dest = (dep_entry.config_dest[0] != '\0') ? dep_entry.config_dest : NULL;
+                if (!CopyConfigurationFile(dep_entry.name, dep_entry.config, output_dir, config_dir, custom_dest)) {
                     DMOD_LOG_WARN("  Failed to copy configuration file (module was installed successfully)\n");
                 }
             }

@@ -12,12 +12,22 @@ i2c@2.5
 uart@1.2.3
 
 # Module entries with configuration files
-# Format: module[@version] config_path
+# Format: module[@version] config_path [custom_dest_name]
 dmclk@1.0 mcu/stm32f7.ini
 uart@1.2.3 configs/uart_115200.ini
 
 # Module with configuration but no version
 gpio configs/gpio_default.cfg
+
+# Module with custom destination filename
+# This will create clk.ini directly in config dir (without dmclk/ subdirectory)
+dmclk@1.0 mcu/stm32f7.ini clk.ini
+
+# Multiple entries for same driver with different config versions
+# Use driver from 1.0, but copy configs from different versions
+dmclk@1.0
+dmclk@0.1 mcu/stm32f7.ini
+dmclk@0.2 mcu/high-speed.ini
 
 # Module entries with version ranges
 dmffs_extended@>=1.0        # Version 1.0 or newer
@@ -46,3 +56,6 @@ crypto_module@2.1 $from https://security-registry.com/manifest.dmm
 
 # Module with configuration and inline $from
 adc@1.5 config/adc_12bit.ini $from https://custom-registry.com/manifest.dmm
+
+# Configuration with custom name and inline $from
+dac@2.0 config/dac_default.ini my_dac.ini $from https://hw-registry.com/manifest.dmm
