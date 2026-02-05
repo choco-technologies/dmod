@@ -89,6 +89,37 @@ dmclk@0.2 mcu/high-speed.ini      # Copy config from v0.2 to dmclk/high-speed.in
 
 This allows using a specific driver version while accessing configuration files from multiple versions of the module.
 
+**Variable substitution in configuration paths**:
+
+Configuration paths support variable substitution using `${VARIABLE_NAME}` syntax. Variables can be defined via command-line options or environment variables:
+
+```dmd
+# Use variable in config path
+dmclk@1.0 boards/${BOARD}/config.ini
+
+# Variable in both config path and destination
+uart@2.0 boards/${BOARD}/uart.ini ${BOARD}_uart.ini
+```
+
+Command-line usage:
+```bash
+# Define variables with -D or --define
+dmf-get -d project-deps.dmd --config-dir ./config -D BOARD=stm32f7
+
+# Multiple variables
+dmf-get -d deps.dmd --config-dir ./config -D BOARD=stm32f7 -D VERSION=v1
+```
+
+Variables are substituted in:
+- Configuration file paths (source)
+- Custom destination filenames
+
+Variable lookup order:
+1. User-defined variables (via `-D` option)
+2. Environment variables
+
+If a variable is not found, the original `${VAR}` syntax is kept in the path.
+
 To copy the configuration files during installation, use the `--config-dir` option with dmf-get:
 
 ```bash

@@ -47,6 +47,135 @@
 #define DMOD_MAX_PATH_LEN 1024
 #define DMOD_MAX_CMD_LEN 2048
 
+// Maximum number of user-defined variables
+#define MAX_USER_VARIABLES 32
+
+// Structure to hold user-defined variables
+typedef struct {
+    char name[128];
+    char value[512];
+} UserVariable_t;
+
+// Global array of user-defined variables
+static UserVariable_t g_user_variables[MAX_USER_VARIABLES];
+static size_t g_user_variable_count = 0;
+
+/**
+ * @brief Add a user-defined variable
+ * 
+ * @param name Variable name
+ * @param value Variable value
+ * @return true if added successfully, false if array is full
+ */
+static bool AddUserVariable(const char* name, const char* value) {
+    if (g_user_variable_count >= MAX_USER_VARIABLES) {
+        return false;
+    }
+    
+    strncpy(g_user_variables[g_user_variable_count].name, name, sizeof(g_user_variables[0].name) - 1);
+    g_user_variables[g_user_variable_count].name[sizeof(g_user_variables[0].name) - 1] = '\0';
+    
+    strncpy(g_user_variables[g_user_variable_count].value, value, sizeof(g_user_variables[0].value) - 1);
+    g_user_variables[g_user_variable_count].value[sizeof(g_user_variables[0].value) - 1] = '\0';
+    
+    g_user_variable_count++;
+    return true;
+}
+
+/**
+ * @brief Get value of a user-defined variable
+ * 
+ * @param name Variable name
+ * @return Variable value or NULL if not found
+ */
+static const char* GetUserVariable(const char* name) {
+    for (size_t i = 0; i < g_user_variable_count; i++) {
+        if (strcmp(g_user_variables[i].name, name) == 0) {
+            return g_user_variables[i].value;
+        }
+    }
+    return NULL;
+}
+
+/**
+ * @brief Substitute variables in a string
+ * 
+ * Replaces ${VAR_NAME} with variable values.
+ * Checks user-defined variables first, then environment variables.
+ * 
+ * @param input Input string with variables
+ * @param output Output buffer
+ * @param output_size Size of output buffer
+ * @return true on success, false on buffer overflow
+ */
+static bool SubstituteConfigVariables(const char* input, char* output, size_t output_size) {
+    const char* src = input;
+    char* dst = output;
+    char* dst_end = output + output_size - 1;
+    
+    while (*src && dst < dst_end) {
+        if (src[0] == '$' && src[1] == '{') {
+            // Found variable start
+            const char* var_start = src + 2;
+            const char* var_end = strchr(var_start, '}');
+            
+            if (!var_end) {
+                // Malformed variable, copy as-is
+                *dst++ = *src++;
+                continue;
+            }
+            
+            // Extract variable name
+            size_t var_len = var_end - var_start;
+            char var_name[128];
+            if (var_len >= sizeof(var_name)) {
+                // Variable name too long, copy as-is
+                *dst++ = *src++;
+                continue;
+            }
+            
+            strncpy(var_name, var_start, var_len);
+            var_name[var_len] = '\0';
+            
+            // Substitute variable (check user variables first, then environment)
+            const char* value = GetUserVariable(var_name);
+            if (!value) {
+                value = Dmod_GetEnv(var_name);
+            }
+            
+            if (value) {
+                size_t value_len = strlen(value);
+                if (dst + value_len >= dst_end) {
+                    // Buffer overflow
+                    return false;
+                }
+                strcpy(dst, value);
+                dst += value_len;
+            } else {
+                // Variable not found, keep the original ${var} syntax
+                size_t placeholder_len = (var_end - src) + 1;
+                if (dst + placeholder_len >= dst_end) {
+                    return false;
+                }
+                strncpy(dst, src, placeholder_len);
+                dst += placeholder_len;
+            }
+            
+            src = var_end + 1;
+        } else {
+            *dst++ = *src++;
+        }
+    }
+    
+    if (dst >= dst_end && *src) {
+        // Buffer overflow
+        return false;
+    }
+    
+    *dst = '\0';
+    return true;
+}
+
 // Global cache directory
 static char g_cache_dir[1024] = {0};
 static bool g_cache_enabled = true;
@@ -861,7 +990,25 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
         return false;
     }
     
-    DMOD_LOG_INFO("Looking for configuration file: %s for module: %s\n", config_path, module_name);
+    // Substitute variables in config_path
+    char substituted_config_path[DMOD_MAX_PATH_LEN];
+    if (!SubstituteConfigVariables(config_path, substituted_config_path, sizeof(substituted_config_path))) {
+        DMOD_LOG_ERROR("Failed to substitute variables in config path: %s\n", config_path);
+        return false;
+    }
+    
+    // Also substitute variables in custom_dest_name if provided
+    char substituted_dest_name[DMOD_MAX_PATH_LEN];
+    const char* final_dest_name = NULL;
+    if (custom_dest_name && custom_dest_name[0] != '\0') {
+        if (!SubstituteConfigVariables(custom_dest_name, substituted_dest_name, sizeof(substituted_dest_name))) {
+            DMOD_LOG_ERROR("Failed to substitute variables in custom destination name: %s\n", custom_dest_name);
+            return false;
+        }
+        final_dest_name = substituted_dest_name;
+    }
+    
+    DMOD_LOG_INFO("Looking for configuration file: %s for module: %s\n", substituted_config_path, module_name);
     
     // First, check if the module has a .dmr file in the output directory
     char dmr_path[DMOD_MAX_PATH_LEN];
@@ -881,9 +1028,9 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
                         // Look for "config" resource entry
                         if (strcmp(res_entry.key, "config") == 0 || 
                             strcmp(res_entry.key, "configs") == 0) {
-                            // Build full path: destination from .dmr + config_path
+                            // Build full path: destination from .dmr + substituted config_path
                             Dmod_SnPrintf(config_source, sizeof(config_source), "%s/%s", 
-                                        res_entry.destination, config_path);
+                                        res_entry.destination, substituted_config_path);
                             DMOD_LOG_INFO("Found config directory in .dmr: %s\n", res_entry.destination);
                             break;
                         }
@@ -897,7 +1044,7 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
     // If not found in .dmr, try default location: output_dir/module_name/config/
     if (config_source[0] == '\0') {
         Dmod_SnPrintf(config_source, sizeof(config_source), "%s/%s/config/%s", 
-                    output_dir, module_name, config_path);
+                    output_dir, module_name, substituted_config_path);
         DMOD_LOG_INFO("Using default config location: %s\n", config_source);
     }
     
@@ -916,17 +1063,17 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
     // Build full destination path
     char config_dest[DMOD_MAX_PATH_LEN];
     
-    if (custom_dest_name && custom_dest_name[0] != '\0') {
+    if (final_dest_name && final_dest_name[0] != '\0') {
         // Use custom destination filename (no module subdirectory)
-        Dmod_SnPrintf(config_dest, sizeof(config_dest), "%s/%s", config_dest_dir, custom_dest_name);
+        Dmod_SnPrintf(config_dest, sizeof(config_dest), "%s/%s", config_dest_dir, final_dest_name);
     } else {
         // Default: use module_name/filename pattern
-        // Extract filename from config_path
-        const char* filename = strrchr(config_path, '/');
+        // Extract filename from substituted_config_path
+        const char* filename = strrchr(substituted_config_path, '/');
         if (filename) {
             filename++; // Skip the '/'
         } else {
-            filename = config_path;
+            filename = substituted_config_path;
         }
         
         // Create module subdirectory path
@@ -1780,6 +1927,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  -m, --manifest <path>     Path or URL to manifest file\n");
     Dmod_Printf("  -o, --output-dir <path>   Output directory for downloaded modules\n");
     Dmod_Printf("  --config-dir <path>       Directory where configuration files should be copied\n");
+    Dmod_Printf("  -D, --define <VAR=value>  Define variable for config path substitution\n");
     Dmod_Printf("  -t, --tools-name <name>   Tools name for variable substitution\n");
     Dmod_Printf("  -a, --arch-name <name>    Architecture name for variable substitution\n");
     Dmod_Printf("  --cpu-name <name>         CPU name for variable substitution (e.g., stm32f746ngh6)\n");
@@ -1814,6 +1962,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s mymodule@>=1.0<=2.0   # Download version in range [1.0, 2.0]\n", app_name);
     Dmod_Printf("  %s -d deps.dmd           # Download all modules from deps.dmd\n", app_name);
     Dmod_Printf("  %s -d deps.dmd --config-dir ./config  # Download modules and copy configs to ./config\n", app_name);
+    Dmod_Printf("  %s -d deps.dmd --config-dir ./config -D BOARD=stm32f7  # Use variable substitution in config paths\n", app_name);
     Dmod_Printf("  %s -m http://... module  # Use custom manifest\n", app_name);
     Dmod_Printf("  %s --type dmfc module    # Prefer dmfc files\n", app_name);
     Dmod_Printf("  %s -a armv7-cortex-m7 module  # Use arch name directly\n", app_name);
@@ -2235,6 +2384,38 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
             config_dir = argv[i];
+        }
+        else if (strcmp(argv[i], "-D") == 0 || strcmp(argv[i], "--define") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
+                return 1;
+            }
+            // Parse VAR=value format
+            char* equals = strchr(argv[i], '=');
+            if (!equals) {
+                DMOD_LOG_ERROR("Error: --define requires format VAR=value, got: %s\n", argv[i]);
+                return 1;
+            }
+            
+            // Extract variable name and value
+            size_t name_len = equals - argv[i];
+            char var_name[128];
+            if (name_len >= sizeof(var_name)) {
+                DMOD_LOG_ERROR("Error: Variable name too long: %s\n", argv[i]);
+                return 1;
+            }
+            
+            strncpy(var_name, argv[i], name_len);
+            var_name[name_len] = '\0';
+            
+            const char* var_value = equals + 1;
+            
+            if (!AddUserVariable(var_name, var_value)) {
+                DMOD_LOG_ERROR("Error: Too many variables defined (max %d)\n", MAX_USER_VARIABLES);
+                return 1;
+            }
+            
+            DMOD_LOG_INFO("Defined variable: %s=%s\n", var_name, var_value);
         }
         else if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--tools-name") == 0) {
             if (++i >= argc) {

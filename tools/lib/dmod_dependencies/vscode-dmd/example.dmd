@@ -23,6 +23,11 @@ gpio configs/gpio_default.cfg
 # This will create clk.ini directly in config dir (without dmclk/ subdirectory)
 dmclk@1.0 mcu/stm32f7.ini clk.ini
 
+# Variable substitution in configuration paths
+# Use with: dmf-get -d deps.dmd --config-dir ./config -D BOARD=stm32f7
+dmclk@1.0 boards/${BOARD}/config.ini
+uart@2.0 boards/${BOARD}/uart.ini ${BOARD}_uart.ini
+
 # Multiple entries for same driver with different config versions
 # Use driver from 1.0, but copy configs from different versions
 dmclk@1.0
