@@ -25,7 +25,7 @@ Lines starting with `#` are treated as comments and ignored:
 
 ### Module Entries
 
-Modules are specified by name, optionally followed by a version or version constraint:
+Modules are specified by name, optionally followed by a version or version constraint, and optionally a configuration file path:
 
 ```dmd
 # Module without version (downloads latest available)
@@ -34,6 +34,13 @@ dmffs
 # Module with specific version
 driver@1.0
 spi@2.5.1
+
+# Module with configuration file
+dmclk@1.0 mcu/stm32f7.ini
+uart@2.5 configs/uart_115200.ini
+
+# Module with configuration but no version
+gpio configs/gpio_default.cfg
 
 # Module with version range - all versions >= 1.0
 dmffs@>=1.0
@@ -48,6 +55,32 @@ spi@>=1.0<=2.0
 i2c@>1.0      # Greater than 1.0 (exclusive)
 can@<2.0      # Less than 2.0 (exclusive)
 ```
+
+#### Configuration Files
+
+Modules can optionally specify a configuration file that should be copied during installation. The configuration file path is relative to the module's configuration directory (as defined in the module's `.dmr` file, or the default `config/` directory).
+
+Format: `module[@version] [config_path]`
+
+Example:
+```dmd
+# Install dmclk version 1.0 with mcu/stm32f7.ini configuration
+dmclk@1.0 mcu/stm32f7.ini
+
+# Install uart with configuration but use latest version
+uart configs/uart_default.ini
+```
+
+To copy the configuration files during installation, use the `--config-dir` option with dmf-get:
+
+```bash
+# Install modules and copy configuration files to ./config directory
+dmf-get -d project-deps.dmd --config-dir ./config
+```
+
+The configuration file will be looked up in:
+1. The path specified in the module's `.dmr` file with the `config` or `configs` resource key
+2. If not found, the default location: `<module_install_dir>/<module_name>/config/<config_path>`
 
 #### Version Constraint Syntax
 
@@ -93,6 +126,16 @@ module2@2.0 $from https://special-registry.com/manifest.dmm
 
 # Back to default manifest for this module
 module3@1.5
+```
+
+Configuration files can be combined with inline `$from`:
+
+```dmd
+# Module with configuration and custom manifest
+dmclk@1.0 mcu/stm32f7.ini $from https://hw-registry.com/manifest.dmm
+
+# Configuration with default manifest
+uart@2.5 configs/uart.ini
 ```
 
 ### Include Directive
