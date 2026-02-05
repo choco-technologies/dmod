@@ -11,6 +11,14 @@ spi@1.0
 i2c@2.5
 uart@1.2.3
 
+# Module entries with configuration files
+# Format: module[@version] config_path
+dmclk@1.0 mcu/stm32f7.ini
+uart@1.2.3 configs/uart_115200.ini
+
+# Module with configuration but no version
+gpio configs/gpio_default.cfg
+
 # Module entries with version ranges
 dmffs_extended@>=1.0        # Version 1.0 or newer
 old_driver@<=2.0            # Version 2.0 or older
@@ -35,3 +43,6 @@ display_lib@4.5
 
 # Inline $from directive for a single module
 crypto_module@2.1 $from https://security-registry.com/manifest.dmm
+
+# Module with configuration and inline $from
+adc@1.5 config/adc_12bit.ini $from https://custom-registry.com/manifest.dmm
