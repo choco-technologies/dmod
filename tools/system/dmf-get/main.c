@@ -2552,6 +2552,32 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
+    // Validate --config option usage
+    if (config_file) {
+        if (!config_dir) {
+            DMOD_LOG_ERROR("Error: --config requires --config-dir to be specified\n");
+            PrintUsage(argv[0]);
+            return 1;
+        }
+        if (dependencies_path) {
+            DMOD_LOG_ERROR("Error: --config cannot be used with -d/--dependencies\n");
+            DMOD_LOG_ERROR("       Use configuration syntax in .dmd file instead\n");
+            PrintUsage(argv[0]);
+            return 1;
+        }
+        if (command && (strcmp(command, "headers") == 0 || strcmp(command, "docs") == 0)) {
+            DMOD_LOG_ERROR("Error: --config cannot be used with %s command\n", command);
+            PrintUsage(argv[0]);
+            return 1;
+        }
+    }
+    
+    if (config_dest_name && !config_file) {
+        DMOD_LOG_ERROR("Error: --config-dest requires --config to be specified\n");
+        PrintUsage(argv[0]);
+        return 1;
+    }
+    
     // Initialize curl
     curl_global_init(CURL_GLOBAL_DEFAULT);
     
