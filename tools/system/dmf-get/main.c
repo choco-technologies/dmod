@@ -1041,11 +1041,22 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
         }
     }
     
-    // If not found in .dmr, try default location: output_dir/module_name/config/
+    // If not found in .dmr, try default locations: output_dir/module_name/configs/ and output_dir/module_name/config/
     if (config_source[0] == '\0') {
-        Dmod_SnPrintf(config_source, sizeof(config_source), "%s/%s/config/%s", 
+        // Try "configs" first (plural - common convention)
+        char config_path_plural[DMOD_MAX_PATH_LEN];
+        Dmod_SnPrintf(config_path_plural, sizeof(config_path_plural), "%s/%s/configs/%s", 
                     output_dir, module_name, substituted_config_path);
-        DMOD_LOG_INFO("Using default config location: %s\n", config_source);
+        
+        if (Dmod_Access(config_path_plural, DMOD_R_OK) == 0) {
+            Dmod_SnPrintf(config_source, sizeof(config_source), "%s", config_path_plural);
+            DMOD_LOG_INFO("Using default config location: %s\n", config_source);
+        } else {
+            // Fall back to "config" (singular)
+            Dmod_SnPrintf(config_source, sizeof(config_source), "%s/%s/config/%s", 
+                        output_dir, module_name, substituted_config_path);
+            DMOD_LOG_INFO("Using default config location: %s\n", config_source);
+        }
     }
     
     // Validate paths for safety - prevents command injection through shell metacharacters
@@ -1610,6 +1621,36 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                 }
                 
                 Dmod_Resource_Free(res_ctx);
+            }
+        }
+    } else {
+        // No .dmr file found - copy entire extracted directory to output_dir/module_name/
+        // This ensures config files and other resources are available
+        DMOD_LOG_INFO("No .dmr file found, copying entire package structure\n");
+        
+        char module_dir[1024];
+        Dmod_SnPrintf(module_dir, sizeof(module_dir), "%s/%s", output_dir, module_name);
+        
+        // Validate path for safety
+        if (IsPathSafe(module_dir)) {
+            // Create module directory
+            char mkdir_cmd[2048];
+            Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", module_dir);
+            int mkdir_result = system(mkdir_cmd);
+            
+            if (mkdir_result == 0) {
+                // Copy all contents from extract_dir to module_dir
+                char cp_all_cmd[2048];
+                Dmod_SnPrintf(cp_all_cmd, sizeof(cp_all_cmd), "cp -r \"%s/.\" \"%s/\"", extract_dir, module_dir);
+                int cp_result = system(cp_all_cmd);
+                
+                if (cp_result == 0) {
+                    DMOD_LOG_INFO("Package contents copied to: %s\n", module_dir);
+                } else {
+                    DMOD_LOG_WARN("Failed to copy package contents to module directory\n");
+                }
+            } else {
+                DMOD_LOG_WARN("Failed to create module directory: %s\n", module_dir);
             }
         }
     }
