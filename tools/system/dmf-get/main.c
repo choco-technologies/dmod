@@ -1014,8 +1014,7 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
     
     // First, check if config_path is an absolute path
     if (substituted_config_path[0] == '/') {
-        strncpy(config_source, substituted_config_path, sizeof(config_source) - 1);
-        config_source[sizeof(config_source) - 1] = '\0';
+        Dmod_SnPrintf(config_source, sizeof(config_source), "%s", substituted_config_path);
         DMOD_LOG_INFO("Using absolute config path: %s\n", config_source);
     }
     // Second, check if config file exists in config_dest_dir (user-specified source directory)
@@ -1024,8 +1023,7 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
         Dmod_SnPrintf(user_config_path, sizeof(user_config_path), "%s/%s", 
                     config_dest_dir, substituted_config_path);
         if (Dmod_Access(user_config_path, DMOD_R_OK) == 0) {
-            strncpy(config_source, user_config_path, sizeof(config_source) - 1);
-            config_source[sizeof(config_source) - 1] = '\0';
+            Dmod_SnPrintf(config_source, sizeof(config_source), "%s", user_config_path);
             DMOD_LOG_INFO("Found config in specified config-dir: %s\n", config_source);
         }
     }
