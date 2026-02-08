@@ -51,6 +51,15 @@ dmf-get -o /path/to/output mymodule
 
 # Specify tools name for variable substitution
 dmf-get -t arch/armv7/cortex-m7 mymodule
+
+# Download module and copy configuration file
+dmf-get mymodule@1.0 --config board/config.ini --config-dir ./config
+
+# Example: Download module with specific config (as requested in issue)
+dmf-get dmclk@0.4 --config board/stm32f746g-disco.ini --config-dir ./config
+
+# Download with custom config destination name
+dmf-get mymodule --config mcu/default.ini --config-dir ./cfg --config-dest my.ini
 ```
 
 #### Multiple Modules with Dependencies File (.dmd)
@@ -97,11 +106,50 @@ dmf-man -d /path/to/docs mymodule
 
 For more information about viewing documentation, see the [dmf-man tool documentation](../dmf-man/README.md).
 
+#### Copying Configuration Files from Modules
+
+When downloading a single module from the command line, you can specify a configuration file to copy from the module package using the `--config` option. This feature is similar to the configuration file support in `.dmd` files.
+
+```bash
+# Copy a configuration file from the module to a destination directory
+dmf-get dmclk@0.4 --config board/stm32f746g-disco.ini --config-dir ./config
+
+# This will:
+# 1. Download and install the dmclk@0.4 module
+# 2. Look for board/stm32f746g-disco.ini in the module's config directory
+# 3. Copy it to ./config/dmclk/stm32f746g-disco.ini
+
+# Specify a custom destination filename (without module subdirectory)
+dmf-get mymodule --config mcu/default.ini --config-dir ./cfg --config-dest my.ini
+# Copies to: ./cfg/my.ini (instead of ./cfg/mymodule/default.ini)
+
+# Use with variable substitution
+dmf-get mymodule --config boards/${BOARD}/config.ini --config-dir ./config -D BOARD=stm32f7
+# Substitutes ${BOARD} with stm32f7 in the config path
+```
+
+**Configuration File Lookup:**
+1. The configuration file is searched in the module's config directory as specified in the `.dmr` file
+2. If not found in `.dmr`, the default location `<output-dir>/<module-name>/config/<config-path>` is used
+
+**Destination Naming:**
+- **Default behavior**: Configuration file is copied to `<config-dir>/<module-name>/<filename>`
+- **With --config-dest**: Configuration file is copied to `<config-dir>/<custom-name>`
+
+**Requirements:**
+- Both `--config` and `--config-dir` must be specified together
+- The module must be successfully installed before the configuration file is copied
+- If configuration file copying fails, the module installation still succeeds (with a warning)
+
 ### Command-Line Options
 
 - `-d, --dependencies <path>` - Path or URL to dependencies (.dmd) file
 - `-m, --manifest <path>` - Path or URL to manifest file
 - `-o, --output-dir <path>` - Output directory for downloaded modules
+- `--config <path>` - Configuration file to copy from module (for single module only)
+- `--config-dir <path>` - Directory where configuration files should be copied
+- `--config-dest <name>` - Custom destination filename for configuration file
+- `-D, --define <VAR=value>` - Define variable for configuration path substitution
 - `-t, --tools-name <name>` - Tools name for variable substitution
 - `-a, --arch-name <name>` - Architecture name for variable substitution
 - `--type <dmf|dmfc>` - Prefer dmf or dmfc file type
@@ -165,6 +213,9 @@ dmf-get -t arch/armv7/cortex-m7 mymodule@1.0
 
 # Download to specific directory
 dmf-get -o ./my_modules mymodule
+
+# Download module with configuration file (as requested in issue)
+dmf-get dmclk@0.4 --config board/stm32f746g-disco.ini --config-dir ./config
 
 # Non-interactive mode (automatically accept licenses)
 dmf-get -y mymodule

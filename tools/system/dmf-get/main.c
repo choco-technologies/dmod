@@ -1927,6 +1927,8 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  -m, --manifest <path>     Path or URL to manifest file\n");
     Dmod_Printf("  -o, --output-dir <path>   Output directory for downloaded modules\n");
     Dmod_Printf("  --config-dir <path>       Directory where configuration files should be copied\n");
+    Dmod_Printf("  --config <path>           Configuration file to copy (for single module only)\n");
+    Dmod_Printf("  --config-dest <name>      Custom destination filename for config file\n");
     Dmod_Printf("  -D, --define <VAR=value>  Define variable for config path substitution\n");
     Dmod_Printf("  -t, --tools-name <name>   Tools name for variable substitution\n");
     Dmod_Printf("  -a, --arch-name <name>    Architecture name for variable substitution\n");
@@ -1963,6 +1965,8 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s -d deps.dmd           # Download all modules from deps.dmd\n", app_name);
     Dmod_Printf("  %s -d deps.dmd --config-dir ./config  # Download modules and copy configs to ./config\n", app_name);
     Dmod_Printf("  %s -d deps.dmd --config-dir ./config -D BOARD=stm32f7  # Use variable substitution in config paths\n", app_name);
+    Dmod_Printf("  %s dmclk@0.4 --config board/stm32f746g-disco.ini --config-dir ./config  # Download module with config\n", app_name);
+    Dmod_Printf("  %s mymodule --config mcu/config.ini --config-dir ./cfg --config-dest my.ini  # Custom config destination\n", app_name);
     Dmod_Printf("  %s -m http://... module  # Use custom manifest\n", app_name);
     Dmod_Printf("  %s --type dmfc module    # Prefer dmfc files\n", app_name);
     Dmod_Printf("  %s -a armv7-cortex-m7 module  # Use arch name directly\n", app_name);
@@ -2332,6 +2336,8 @@ int main(int argc, char* argv[]) {
     const char* manifest_path = NULL;
     const char* output_dir = NULL;
     const char* config_dir = NULL;
+    const char* config_file = NULL;  // Configuration file to copy for single module
+    const char* config_dest_name = NULL;  // Custom destination name for config file
     const char* tools_name = NULL;
     const char* arch_name = NULL;
     const char* cpu_name = NULL;
@@ -2384,6 +2390,20 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
             config_dir = argv[i];
+        }
+        else if (strcmp(argv[i], "--config") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
+                return 1;
+            }
+            config_file = argv[i];
+        }
+        else if (strcmp(argv[i], "--config-dest") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
+                return 1;
+            }
+            config_dest_name = argv[i];
         }
         else if (strcmp(argv[i], "-D") == 0 || strcmp(argv[i], "--define") == 0) {
             if (++i >= argc) {
@@ -2528,6 +2548,32 @@ int main(int argc, char* argv[]) {
     
     if (module_spec && dependencies_path) {
         DMOD_LOG_ERROR("Error: Cannot specify both module name and dependencies file\n");
+        PrintUsage(argv[0]);
+        return 1;
+    }
+    
+    // Validate --config option usage
+    if (config_file) {
+        if (!config_dir) {
+            DMOD_LOG_ERROR("Error: --config requires --config-dir to be specified\n");
+            PrintUsage(argv[0]);
+            return 1;
+        }
+        if (dependencies_path) {
+            DMOD_LOG_ERROR("Error: --config cannot be used with -d/--dependencies\n");
+            DMOD_LOG_ERROR("       Use configuration syntax in .dmd file instead\n");
+            PrintUsage(argv[0]);
+            return 1;
+        }
+        if (command && (strcmp(command, "headers") == 0 || strcmp(command, "docs") == 0)) {
+            DMOD_LOG_ERROR("Error: --config cannot be used with %s command\n", command);
+            PrintUsage(argv[0]);
+            return 1;
+        }
+    }
+    
+    if (config_dest_name && !config_file) {
+        DMOD_LOG_ERROR("Error: --config-dest requires --config to be specified\n");
         PrintUsage(argv[0]);
         return 1;
     }
@@ -2930,6 +2976,12 @@ int main(int argc, char* argv[]) {
         
         if (result != 0) {
             counts.failed_count++;
+        } else if (config_file && config_dir) {
+            // If configuration file is specified via command line, copy it
+            DMOD_LOG_INFO("Configuration file specified: %s\n", config_file);
+            if (!CopyConfigurationFile(module_name, config_file, output_dir, config_dir, config_dest_name)) {
+                DMOD_LOG_WARN("Failed to copy configuration file (module was installed successfully)\n");
+            }
         }
         
         // Print installation summary
