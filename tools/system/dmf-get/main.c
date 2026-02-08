@@ -1010,56 +1010,38 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
     
     DMOD_LOG_INFO("Looking for configuration file: %s for module: %s\n", substituted_config_path, module_name);
     
+    // First, check if the module has a .dmr file in the output directory
+    char dmr_path[DMOD_MAX_PATH_LEN];
+    Dmod_SnPrintf(dmr_path, sizeof(dmr_path), "%s/%s.dmr", output_dir, module_name);
+    
     char config_source[DMOD_MAX_PATH_LEN] = "";
     
-    // First, check if config_path is an absolute path
-    if (substituted_config_path[0] == '/') {
-        Dmod_SnPrintf(config_source, sizeof(config_source), "%s", substituted_config_path);
-        DMOD_LOG_INFO("Using absolute config path: %s\n", config_source);
-    }
-    // Second, check if config file exists in config_dest_dir (user-specified source directory)
-    else {
-        char user_config_path[DMOD_MAX_PATH_LEN];
-        Dmod_SnPrintf(user_config_path, sizeof(user_config_path), "%s/%s", 
-                    config_dest_dir, substituted_config_path);
-        if (Dmod_Access(user_config_path, DMOD_R_OK) == 0) {
-            Dmod_SnPrintf(config_source, sizeof(config_source), "%s", user_config_path);
-            DMOD_LOG_INFO("Found config in specified config-dir: %s\n", config_source);
-        }
-    }
-    
-    // Third, check if the module has a .dmr file in the output directory
-    if (config_source[0] == '\0') {
-        char dmr_path[DMOD_MAX_PATH_LEN];
-        Dmod_SnPrintf(dmr_path, sizeof(dmr_path), "%s/%s.dmr", output_dir, module_name);
-        
-        // Try to find config directory path from .dmr file
-        if (Dmod_Access(dmr_path, DMOD_R_OK) == 0) {
-            Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name);
-            if (res_ctx) {
-                if (Dmod_Resource_ParseFile(res_ctx, dmr_path)) {
-                    size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
-                    for (size_t i = 0; i < res_count; i++) {
-                        Dmod_ResourceEntry_t res_entry;
-                        if (Dmod_Resource_GetEntry(res_ctx, i, &res_entry)) {
-                            // Look for "config" resource entry
-                            if (strcmp(res_entry.key, "config") == 0 || 
-                                strcmp(res_entry.key, "configs") == 0) {
-                                // Build full path: destination from .dmr + substituted config_path
-                                Dmod_SnPrintf(config_source, sizeof(config_source), "%s/%s", 
-                                            res_entry.destination, substituted_config_path);
-                                DMOD_LOG_INFO("Found config directory in .dmr: %s\n", res_entry.destination);
-                                break;
-                            }
+    // Try to find config directory path from .dmr file
+    if (Dmod_Access(dmr_path, DMOD_R_OK) == 0) {
+        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name);
+        if (res_ctx) {
+            if (Dmod_Resource_ParseFile(res_ctx, dmr_path)) {
+                size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
+                for (size_t i = 0; i < res_count; i++) {
+                    Dmod_ResourceEntry_t res_entry;
+                    if (Dmod_Resource_GetEntry(res_ctx, i, &res_entry)) {
+                        // Look for "config" resource entry
+                        if (strcmp(res_entry.key, "config") == 0 || 
+                            strcmp(res_entry.key, "configs") == 0) {
+                            // Build full path: destination from .dmr + substituted config_path
+                            Dmod_SnPrintf(config_source, sizeof(config_source), "%s/%s", 
+                                        res_entry.destination, substituted_config_path);
+                            DMOD_LOG_INFO("Found config directory in .dmr: %s\n", res_entry.destination);
+                            break;
                         }
                     }
                 }
-                Dmod_Resource_Free(res_ctx);
             }
+            Dmod_Resource_Free(res_ctx);
         }
     }
     
-    // Finally, try default location: output_dir/module_name/config/
+    // If not found in .dmr, try default location: output_dir/module_name/config/
     if (config_source[0] == '\0') {
         Dmod_SnPrintf(config_source, sizeof(config_source), "%s/%s/config/%s", 
                     output_dir, module_name, substituted_config_path);
