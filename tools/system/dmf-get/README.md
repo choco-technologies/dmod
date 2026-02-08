@@ -119,6 +119,15 @@ dmf-get dmclk@0.4 --config board/stm32f746g-disco.ini --config-dir ./config
 # 2. Look for board/stm32f746g-disco.ini in the module's config directory
 # 3. Copy it to ./config/dmclk/stm32f746g-disco.ini
 
+# Use an external configuration file (from config-dir)
+# If you have a config file in ./my-configs/board/stm32f746g-disco.ini
+dmf-get dmclk --config board/stm32f746g-disco.ini --config-dir ./my-configs
+
+# This will:
+# 1. Look for ./my-configs/board/stm32f746g-disco.ini first
+# 2. If found, copy it to ./my-configs/dmclk/stm32f746g-disco.ini (same directory tree)
+# 3. If not found, fall back to looking in the module's config directory
+
 # Specify a custom destination filename (without module subdirectory)
 dmf-get mymodule --config mcu/default.ini --config-dir ./cfg --config-dest my.ini
 # Copies to: ./cfg/my.ini (instead of ./cfg/mymodule/default.ini)
@@ -129,8 +138,10 @@ dmf-get mymodule --config boards/${BOARD}/config.ini --config-dir ./config -D BO
 ```
 
 **Configuration File Lookup:**
-1. The configuration file is searched in the module's config directory as specified in the `.dmr` file
-2. If not found in `.dmr`, the default location `<output-dir>/<module-name>/config/<config-path>` is used
+1. If `<config-path>` is an absolute path, it is used directly
+2. If `<config-path>` is relative, check `<config-dir>/<config-path>` first (allows using external config files)
+3. If not found in `<config-dir>`, search in the module's config directory as specified in the `.dmr` file
+4. If not found in `.dmr`, try the default location `<output-dir>/<module-name>/config/<config-path>`
 
 **Destination Naming:**
 - **Default behavior**: Configuration file is copied to `<config-dir>/<module-name>/<filename>`
