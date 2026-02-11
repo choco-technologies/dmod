@@ -36,6 +36,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <limits.h>
 
 //==============================================================================
 //                              HELPER FUNCTIONS
@@ -308,6 +309,44 @@ static void Dmod_Print_Hex64( char** Buffer, size_t* Pos, size_t Size, uint64_t 
     }
 }
 
+static void Dmod_Print_Octal( char** Buffer, size_t* Pos, size_t Size, uint32_t Value, int* Count )
+{
+    char Temp[12]; // Enough for 11 octal digits (32-bit)
+    int i = 0;
+    
+    // Convert to octal string (reversed)
+    do
+    {
+        Temp[i++] = '0' + (Value & 0x7);
+        Value >>= 3;
+    } while( Value > 0 );
+    
+    // Print in correct order
+    while( i > 0 )
+    {
+        Dmod_Print_Char( Buffer, Pos, Size, Temp[--i], Count );
+    }
+}
+
+static void Dmod_Print_Octal64( char** Buffer, size_t* Pos, size_t Size, uint64_t Value, int* Count )
+{
+    char Temp[23]; // Enough for 22 octal digits (64-bit)
+    int i = 0;
+    
+    // Convert to octal string (reversed)
+    do
+    {
+        Temp[i++] = '0' + (Value & 0x7);
+        Value >>= 3;
+    } while( Value > 0 );
+    
+    // Print in correct order
+    while( i > 0 )
+    {
+        Dmod_Print_Char( Buffer, Pos, Size, Temp[--i], Count );
+    }
+}
+
 //==============================================================================
 //                              PUBLIC FUNCTIONS
 //==============================================================================
@@ -356,11 +395,47 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
             }
             
             // Parse length modifier
-            bool IsLongLong = false;
-            if( *Format == 'l' && *(Format + 1) == 'l' )
+            typedef enum {
+                LEN_NONE,    // default (int/unsigned int)
+                LEN_HH,      // char
+                LEN_H,       // short
+                LEN_L,       // long
+                LEN_LL,      // long long
+                LEN_Z        // size_t
+            } LengthModifier;
+            
+            LengthModifier LenMod = LEN_NONE;
+            
+            if( *Format == 'h' )
             {
-                IsLongLong = true;
-                Format += 2;
+                if( *(Format + 1) == 'h' )
+                {
+                    LenMod = LEN_HH;
+                    Format += 2;
+                }
+                else
+                {
+                    LenMod = LEN_H;
+                    Format++;
+                }
+            }
+            else if( *Format == 'l' )
+            {
+                if( *(Format + 1) == 'l' )
+                {
+                    LenMod = LEN_LL;
+                    Format += 2;
+                }
+                else
+                {
+                    LenMod = LEN_L;
+                    Format++;
+                }
+            }
+            else if( *Format == 'z' )
+            {
+                LenMod = LEN_Z;
+                Format++;
             }
             
             // Handle format specifiers
@@ -389,10 +464,32 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                 
                 case 'd':
                 case 'i': {
-                    if( IsLongLong )
+                    if( LenMod == LEN_LL )
                     {
                         int64_t Value = va_arg( Args, int64_t );
                         Dmod_Print_LongLong( BufPtr, &Pos, Size, Value, &Count );
+                    }
+                    else if( LenMod == LEN_L || LenMod == LEN_Z )
+                    {
+                        // long and size_t/ssize_t are typically same size
+                        long Value = va_arg( Args, long );
+                        #if LONG_MAX == INT64_MAX
+                        Dmod_Print_LongLong( BufPtr, &Pos, Size, (int64_t)Value, &Count );
+                        #else
+                        Dmod_Print_Int( BufPtr, &Pos, Size, (int32_t)Value, &Count );
+                        #endif
+                    }
+                    else if( LenMod == LEN_HH )
+                    {
+                        // char is promoted to int in varargs
+                        int Value = va_arg( Args, int );
+                        Dmod_Print_Int( BufPtr, &Pos, Size, (int32_t)(signed char)Value, &Count );
+                    }
+                    else if( LenMod == LEN_H )
+                    {
+                        // short is promoted to int in varargs
+                        int Value = va_arg( Args, int );
+                        Dmod_Print_Int( BufPtr, &Pos, Size, (int32_t)(short)Value, &Count );
                     }
                     else
                     {
@@ -403,10 +500,32 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                 }
                 
                 case 'u': {
-                    if( IsLongLong )
+                    if( LenMod == LEN_LL )
                     {
                         uint64_t Value = va_arg( Args, uint64_t );
                         Dmod_Print_ULongLong( BufPtr, &Pos, Size, Value, &Count );
+                    }
+                    else if( LenMod == LEN_L || LenMod == LEN_Z )
+                    {
+                        // unsigned long and size_t are typically same size
+                        unsigned long Value = va_arg( Args, unsigned long );
+                        #if ULONG_MAX == UINT64_MAX
+                        Dmod_Print_ULongLong( BufPtr, &Pos, Size, (uint64_t)Value, &Count );
+                        #else
+                        Dmod_Print_UInt( BufPtr, &Pos, Size, (uint32_t)Value, &Count );
+                        #endif
+                    }
+                    else if( LenMod == LEN_HH )
+                    {
+                        // unsigned char is promoted to int in varargs
+                        unsigned int Value = va_arg( Args, unsigned int );
+                        Dmod_Print_UInt( BufPtr, &Pos, Size, (uint32_t)(unsigned char)Value, &Count );
+                    }
+                    else if( LenMod == LEN_H )
+                    {
+                        // unsigned short is promoted to int in varargs
+                        unsigned int Value = va_arg( Args, unsigned int );
+                        Dmod_Print_UInt( BufPtr, &Pos, Size, (uint32_t)(unsigned short)Value, &Count );
                     }
                     else
                     {
@@ -417,10 +536,29 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                 }
                 
                 case 'x': {
-                    if( IsLongLong )
+                    if( LenMod == LEN_LL )
                     {
                         uint64_t Value = va_arg( Args, uint64_t );
                         Dmod_Print_Hex64( BufPtr, &Pos, Size, Value, false, &Count );
+                    }
+                    else if( LenMod == LEN_L || LenMod == LEN_Z )
+                    {
+                        unsigned long Value = va_arg( Args, unsigned long );
+                        #if ULONG_MAX == UINT64_MAX
+                        Dmod_Print_Hex64( BufPtr, &Pos, Size, (uint64_t)Value, false, &Count );
+                        #else
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)Value, false, &Count );
+                        #endif
+                    }
+                    else if( LenMod == LEN_HH )
+                    {
+                        unsigned int Value = va_arg( Args, unsigned int );
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)(unsigned char)Value, false, &Count );
+                    }
+                    else if( LenMod == LEN_H )
+                    {
+                        unsigned int Value = va_arg( Args, unsigned int );
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)(unsigned short)Value, false, &Count );
                     }
                     else
                     {
@@ -431,15 +569,67 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                 }
                 
                 case 'X': {
-                    if( IsLongLong )
+                    if( LenMod == LEN_LL )
                     {
                         uint64_t Value = va_arg( Args, uint64_t );
                         Dmod_Print_Hex64( BufPtr, &Pos, Size, Value, true, &Count );
+                    }
+                    else if( LenMod == LEN_L || LenMod == LEN_Z )
+                    {
+                        unsigned long Value = va_arg( Args, unsigned long );
+                        #if ULONG_MAX == UINT64_MAX
+                        Dmod_Print_Hex64( BufPtr, &Pos, Size, (uint64_t)Value, true, &Count );
+                        #else
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)Value, true, &Count );
+                        #endif
+                    }
+                    else if( LenMod == LEN_HH )
+                    {
+                        unsigned int Value = va_arg( Args, unsigned int );
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)(unsigned char)Value, true, &Count );
+                    }
+                    else if( LenMod == LEN_H )
+                    {
+                        unsigned int Value = va_arg( Args, unsigned int );
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)(unsigned short)Value, true, &Count );
                     }
                     else
                     {
                         uint32_t Value = va_arg( Args, uint32_t );
                         Dmod_Print_Hex( BufPtr, &Pos, Size, Value, true, &Count );
+                    }
+                    break;
+                }
+                
+                case 'o': {
+                    if( LenMod == LEN_LL )
+                    {
+                        uint64_t Value = va_arg( Args, uint64_t );
+                        Dmod_Print_Octal64( BufPtr, &Pos, Size, Value, &Count );
+                    }
+                    else if( LenMod == LEN_L || LenMod == LEN_Z )
+                    {
+                        unsigned long Value = va_arg( Args, unsigned long );
+                        #if ULONG_MAX == UINT64_MAX
+                        Dmod_Print_Octal64( BufPtr, &Pos, Size, (uint64_t)Value, &Count );
+                        #else
+                        Dmod_Print_Octal( BufPtr, &Pos, Size, (uint32_t)Value, &Count );
+                        #endif
+                    }
+                    else if( LenMod == LEN_HH )
+                    {
+                        unsigned int Value = va_arg( Args, unsigned int );
+                        Dmod_Print_Octal( BufPtr, &Pos, Size, (uint32_t)(unsigned char)Value, &Count );
+                    }
+                    else if( LenMod == LEN_H )
+                    {
+                        unsigned int Value = va_arg( Args, unsigned int );
+                        Dmod_Print_Octal( BufPtr, &Pos, Size, (uint32_t)(unsigned short)Value, &Count );
+                    }
+                    else
+                    {
+                        uint32_t Value = va_arg( Args, uint32_t );
+                        Dmod_Print_Octal( BufPtr, &Pos, Size, Value, &Count );
                     }
                     break;
                 }
@@ -471,10 +661,27 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                         }
                     }
                     // Print length modifier if present
-                    if( IsLongLong )
+                    if( LenMod == LEN_HH )
+                    {
+                        Dmod_Print_Char( BufPtr, &Pos, Size, 'h', &Count );
+                        Dmod_Print_Char( BufPtr, &Pos, Size, 'h', &Count );
+                    }
+                    else if( LenMod == LEN_H )
+                    {
+                        Dmod_Print_Char( BufPtr, &Pos, Size, 'h', &Count );
+                    }
+                    else if( LenMod == LEN_L )
+                    {
+                        Dmod_Print_Char( BufPtr, &Pos, Size, 'l', &Count );
+                    }
+                    else if( LenMod == LEN_LL )
                     {
                         Dmod_Print_Char( BufPtr, &Pos, Size, 'l', &Count );
                         Dmod_Print_Char( BufPtr, &Pos, Size, 'l', &Count );
+                    }
+                    else if( LenMod == LEN_Z )
+                    {
+                        Dmod_Print_Char( BufPtr, &Pos, Size, 'z', &Count );
                     }
                     Dmod_Print_Char( BufPtr, &Pos, Size, *Format, &Count );
                     break;
