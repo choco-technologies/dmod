@@ -62,13 +62,18 @@ extern "C" {
  * - %u: unsigned integer
  * - %x: hexadecimal (lowercase)
  * - %X: hexadecimal (uppercase)
+ * - %o: octal
  * - %p: pointer
  * - %%: literal %
  * 
  * Supported format modifiers:
  * - Width: Minimum field width (e.g., %30s for 30 characters)
  * - Left-align: '-' flag for left-justification (e.g., %-30s)
- * - Length modifier 'll': long long (64-bit) for d, i, u, x, X (e.g., %lld, %llu, %llx, %llX)
+ * - Length modifier 'hh': char (8-bit) for d, i, u, x, X, o (e.g., %hhd, %hhu)
+ * - Length modifier 'h': short (16-bit) for d, i, u, x, X, o (e.g., %hd, %hu)
+ * - Length modifier 'l': long for d, i, u, x, X, o (e.g., %ld, %lu, %lx)
+ * - Length modifier 'll': long long (64-bit) for d, i, u, x, X, o (e.g., %lld, %llu, %llx, %llX)
+ * - Length modifier 'z': size_t for d, i, u, x, X, o (e.g., %zu, %zd, %zx)
  */
 extern int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list Args );
 

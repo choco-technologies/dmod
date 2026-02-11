@@ -363,4 +363,188 @@ TEST_F(DmodSnPrintfTest, SnPrintfSignedLongLongI)
     ASSERT_STREQ(buffer, "-1234567890123456789");
 }
 
+/**
+ * @brief Test for Dmod_SnPrintf with %lu (unsigned long)
+ * 
+ * The test checks if the function handles unsigned long format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfUnsignedLong)
+{
+    char buffer[64];
+    unsigned long value = 4294967295UL;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%lu", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "4294967295");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %ld (signed long)
+ * 
+ * The test checks if the function handles signed long format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfSignedLong)
+{
+    char buffer[64];
+    long value = -2147483648L;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%ld", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "-2147483648");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %lx (unsigned long hex)
+ * 
+ * The test checks if the function handles unsigned long hex format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfLongHex)
+{
+    char buffer[64];
+    unsigned long value = 0xFFFFFFFFUL;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%lx", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "ffffffff");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %zu (size_t)
+ * 
+ * The test checks if the function handles size_t format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfSizeT)
+{
+    char buffer[64];
+    size_t value = 12345;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%zu", value);
+    
+    ASSERT_EQ(result, 5);
+    ASSERT_STREQ(buffer, "12345");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %hd (short)
+ * 
+ * The test checks if the function handles short format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfShort)
+{
+    char buffer[64];
+    short value = -32768;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%hd", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "-32768");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %hu (unsigned short)
+ * 
+ * The test checks if the function handles unsigned short format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfUnsignedShort)
+{
+    char buffer[64];
+    unsigned short value = 65535;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%hu", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "65535");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %hhd (signed char)
+ * 
+ * The test checks if the function handles signed char format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfSignedChar)
+{
+    char buffer[64];
+    signed char value = -128;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%hhd", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "-128");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %hhu (unsigned char)
+ * 
+ * The test checks if the function handles unsigned char format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfUnsignedChar)
+{
+    char buffer[64];
+    unsigned char value = 255;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%hhu", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "255");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %o (octal)
+ * 
+ * The test checks if the function handles octal format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfOctal)
+{
+    char buffer[64];
+    unsigned int value = 0755;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%o", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "755");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %lo (long octal)
+ * 
+ * The test checks if the function handles long octal format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfLongOctal)
+{
+    char buffer[64];
+    unsigned long value = 0xFFFFFFFFUL;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%lo", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "37777777777");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %llo (long long octal)
+ * 
+ * The test checks if the function handles long long octal format specifier.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfLongLongOctal)
+{
+    char buffer[64];
+    uint64_t value = 0xFFFFFFFFFFFFFFFFULL;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%llo", value);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "1777777777777777777777");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with mixed new format specifiers
+ * 
+ * The test checks if the function handles multiple new format specifiers.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfMixedNewFormats)
+{
+    char buffer[128];
+    unsigned long ul = 4294967295UL;
+    short s = -32768;
+    unsigned char uc = 255;
+    unsigned int oct = 0755;
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), 
+                                "Mixed: %lu, %hd, %hhu, %o", ul, s, uc, oct);
+    
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "Mixed: 4294967295, -32768, 255, 755");
+}
+
 
