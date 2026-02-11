@@ -438,9 +438,6 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                 Format++;
             }
             
-            // For backward compatibility
-            bool IsLongLong = (LenMod == LEN_LL);
-            
             // Handle format specifiers
             switch( *Format )
             {

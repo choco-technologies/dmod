@@ -39,7 +39,8 @@ DMOD_SOURCES=private/dmod_vars.c\
 		if/dmod_if_str.c\
 		if/dmod_if_input.c\
 		if/dmod_if_proc.c\
-		Dmod.cpp
+		Dmod.cpp\
+		if/dmod_prf.c
 DMOD_INC_DIRS = $(DMOD_DIR)/src/system\
 		$(DMOD_DIR)/inc\
 		$(DMOD_BUILD_DIR)\
