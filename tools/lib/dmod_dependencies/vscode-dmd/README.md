@@ -9,6 +9,8 @@ This extension provides syntax highlighting for DMOD Dependencies (`.dmd`) files
 - Highlighting for:
   - Module entries with optional versions (`module@version`)
   - Version range constraints (`module@>=1.0`, `module@<=2.0`, `module@>=1.0<=2.0`)
+  - Configuration file paths (`module config/path.ini`)
+  - Custom destination names (`module config/path.ini custom_name.ini`)
   - Include directives (`$include`)
   - Source directives (`$from`)
 
@@ -49,6 +51,13 @@ spi@>=1.0         # Version 1.0 or newer
 uart@<=2.0        # Version 2.0 or older
 i2c@>=1.0<=2.0    # Version between 1.0 and 2.0
 
+# Module with configuration file
+dmclk board/stm32f746g-disco.ini
+uart@1.2.3 configs/uart_115200.ini
+
+# Module with configuration and custom destination name
+gpio configs/gpio_default.cfg custom_gpio.cfg
+
 # Include another dependencies file
 $include http://repo.com/other.dmd
 
@@ -69,6 +78,10 @@ can@>=1.5
   - `@>1.0` - Greater than 1.0
   - `@<2.0` - Less than 2.0
   - `@>=1.0<=2.0` - Combined range (1.0 to 2.0)
+- **Configuration paths**: Module entries can include configuration file paths
+  - Format: `module[@version] config_path [custom_dest_name]`
+  - Example: `dmclk@1.0 board/stm32f746g-disco.ini`
+  - Example with custom name: `gpio config/default.cfg my_gpio.cfg`
 - **Include directive**: `$include <url>` to include other `.dmd` files
 - **From directive**: `$from <manifest_url>` to change the manifest source
 
