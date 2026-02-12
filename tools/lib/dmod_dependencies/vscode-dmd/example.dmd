@@ -2,17 +2,21 @@
 # This file demonstrates the .dmd format
 
 # Simple module entries without versions
+dmell
 dmffs
+dmramfs
 driver
 make_dmffs
 
 # Module entries with specific versions
+dmdevfs@0.2
 spi@1.0
 i2c@2.5
 uart@1.2.3
 
 # Module entries with configuration files
 # Format: module[@version] config_path [custom_dest_name]
+dmclk board/stm32f746g-disco.ini
 dmclk@1.0 mcu/stm32f7.ini
 uart@1.2.3 configs/uart_115200.ini
 

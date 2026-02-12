@@ -2,6 +2,14 @@
 
 All notable changes to the "dmod-dependencies" extension will be documented in this file.
 
+## [1.2.0] - 2026-02-12
+
+### Added
+- Support for module configuration file paths
+- Syntax highlighting for configuration paths after module names
+- Support for custom destination names in module entries
+- Updated documentation with configuration path examples
+
 ## [1.1.0] - 2024-11-17
 
 ### Added
