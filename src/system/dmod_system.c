@@ -1757,7 +1757,7 @@ int Dmod_SpawnModule(const char* Module, int argc, char *argv[])
     {
         context = Dmod_LoadFile( Module );
     }
-    else 
+    else
     {
         context = Dmod_LoadModuleByName( Module );    
     }
@@ -1794,7 +1794,7 @@ int Dmod_RunModuleDetached(const char* Module, int argc, char *argv[])
     {
         context = Dmod_LoadFile( Module );
     }
-    else 
+    else
     {
         context = Dmod_LoadModuleByName( Module );    
     }

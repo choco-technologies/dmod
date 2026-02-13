@@ -31,7 +31,6 @@
  */
 
 #include "dmod_sal.h"
-#include "dmod_system.h"
 #if DMOD_USE_STDLIB
 #   include <stdlib.h>
 #endif
