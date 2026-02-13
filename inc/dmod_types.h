@@ -49,6 +49,16 @@ typedef enum
     Dmod_LogLevel_Count         //!< Number of log levels
 } Dmod_LogLevel_t;
 
+/**
+ * @brief Process ID type
+ * 
+ * This type represents a process ID. On POSIX systems, this is typically pid_t.
+ * A value of 0 indicates an error (failed to create process).
+ * A positive value indicates the process ID of the spawned process.
+ * A negative value indicates an error code.
+ */
+typedef int32_t Dmod_Pid_t;
+
 typedef struct 
 {
     uint32_t       Size;

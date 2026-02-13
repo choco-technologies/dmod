@@ -1742,7 +1742,7 @@ int Dmod_RunModule(const char* Module, int argc, char *argv[])
  * @param argc Number of arguments
  * @param argv Arguments
  * 
- * @return Return value of the main function
+ * @return Process ID on success, 0 or negative error code on failure
  */
 int Dmod_SpawnModule(const char* Module, int argc, char *argv[])
 {
@@ -1767,9 +1767,9 @@ int Dmod_SpawnModule(const char* Module, int argc, char *argv[])
         return -ENOENT;
     }
 
-    int result = Dmod_Spawn( context, argc, argv );
+    Dmod_Pid_t result = Dmod_Spawn( context, argc, argv );
     Dmod_Unload( context, false );
-    return result;
+    return (int)result;
 }
 
 /**
@@ -1779,7 +1779,7 @@ int Dmod_SpawnModule(const char* Module, int argc, char *argv[])
  * @param argc Number of arguments
  * @param argv Arguments
  * 
- * @return Return value of the main function
+ * @return Process ID on success, 0 or negative error code on failure
  */
 int Dmod_RunModuleDetached(const char* Module, int argc, char *argv[])
 {
@@ -1804,9 +1804,9 @@ int Dmod_RunModuleDetached(const char* Module, int argc, char *argv[])
         return -ENOENT;
     }
 
-    int result = Dmod_RunDetached( context, argc, argv );
+    Dmod_Pid_t result = Dmod_RunDetached( context, argc, argv );
     Dmod_Unload( context, false );
-    return result;
+    return (int)result;
 }
 
 /**
