@@ -66,8 +66,8 @@ extern "C" {
  * @{
  */
 #if defined(DMOD_MODULE_NAME)
-#   define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, Dmod_GetCurrentModuleName(DMOD_MODULE_NAME))
-#   define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, Dmod_GetCurrentModuleName(DMOD_MODULE_NAME))
+#   define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, Dmod_GetCurrentModuleName())
+#   define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, Dmod_GetCurrentModuleName())
 #   define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, Dmod_GetCurrentModuleName(DMOD_MODULE_NAME))
 #   define Dmod_Free(Ptr)                           Dmod_FreeEx(Ptr, false)
 #else 
@@ -369,6 +369,8 @@ DMOD_BUILTIN_API(Dmod, 1.0, int     , _Stdin_SetFlags, ( uint32_t Flags ) );
  */
 
 DMOD_BUILTIN_API(Dmod, 1.0, void, _Exit, ( int Status ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int, _Spawn, ( Dmod_Context_t* Context, int argc, char *argv[] ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int, _RunDetached, ( Dmod_Context_t* Context, int argc, char *argv[] ) );
 
 //! @}
 

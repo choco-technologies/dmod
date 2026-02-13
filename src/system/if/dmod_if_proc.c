@@ -57,3 +57,35 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Exit, ( int Status ))
     while(1) { /* Infinite loop as fallback */ }
 #endif
 }
+
+/**
+ * @brief Spawn a module in a new child process
+ * 
+ * This is a weak implementation that falls back to running the module in the current process.
+ * The real implementation should be provided by the dmosi layer.
+ * 
+ * @param Context Module context to spawn
+ * @param argc Number of arguments
+ * @param argv Argument array
+ * @return Return value of the module or error code
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Spawn, ( Dmod_Context_t* Context, int argc, char *argv[] ))
+{
+    return Dmod_Run(Context, argc, argv);
+}
+
+/**
+ * @brief Run a module in a detached process
+ * 
+ * This is a weak implementation that falls back to running the module in the current process.
+ * The real implementation should be provided by the dmosi layer.
+ * 
+ * @param Context Module context to run detached
+ * @param argc Number of arguments
+ * @param argv Argument array
+ * @return Return value of the module or error code
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _RunDetached, ( Dmod_Context_t* Context, int argc, char *argv[] ))
+{
+    return Dmod_Run(Context, argc, argv);
+}
