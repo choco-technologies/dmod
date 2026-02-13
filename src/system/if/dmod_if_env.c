@@ -232,3 +232,19 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetNextEnvName, ( const
     return NULL;
 #endif
 }
+
+
+/**
+ * @brief Get the current module name
+ * 
+ * Returns the name of the currently executing module. This is used for module-specific environment contexts.
+ * 
+ * @param Default The default name to return if the current module name cannot be determined
+ * 
+ * @return The current module name, or Default if it cannot be determined
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetCurrentModuleNameEx, ( const char* Default ))
+{
+    /* The default implementation simply returns the provided default name. */
+    return Default;
+}
