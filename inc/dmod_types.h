@@ -55,7 +55,10 @@ typedef enum
  * This type represents a process ID. On POSIX systems, this is typically pid_t.
  * A positive value indicates the process ID of the spawned process.
  * A negative value indicates an error code.
- * Note: The weak implementation uses DMOD_CURRENT_PROCESS_PID as a placeholder
+ * 
+ * Note: int32_t is used for cross-platform consistency. On most systems, PIDs
+ * fit comfortably within 32-bit signed integers (typical max PID is ~4 million).
+ * The weak implementation uses DMOD_CURRENT_PROCESS_PID as a placeholder
  * when running in the current process (no real process spawning available).
  */
 typedef int32_t Dmod_Pid_t;

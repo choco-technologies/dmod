@@ -31,6 +31,7 @@
  */
 
 #include "dmod_sal.h"
+#include <inttypes.h>
 #if DMOD_USE_STDLIB
 #   include <stdlib.h>
 #endif
@@ -118,6 +119,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _GetProcessResult, ( Dmod_Pid_t 
     {
         return 0;
     }
-    DMOD_LOG_ERROR("Dmod_GetProcessResult interface not implemented for PID %d\n", Pid);
+    DMOD_LOG_ERROR("Dmod_GetProcessResult interface not implemented for PID %" PRId32 "\n", Pid);
     return -1;
 }
