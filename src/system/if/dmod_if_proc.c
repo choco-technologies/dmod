@@ -31,6 +31,7 @@
  */
 
 #include "dmod_sal.h"
+#include <inttypes.h>
 #if DMOD_USE_STDLIB
 #   include <stdlib.h>
 #endif
@@ -67,11 +68,17 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Exit, ( int Status ))
  * @param Context Module context to spawn
  * @param argc Number of arguments
  * @param argv Argument array
- * @return Return value of the module or error code
+ * @return Process ID on success (weak implementation returns DMOD_CURRENT_PROCESS_PID as placeholder), 
+ *         negative error code on failure
  */
-DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Spawn, ( Dmod_Context_t* Context, int argc, char *argv[] ))
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Pid_t, _Spawn, ( Dmod_Context_t* Context, int argc, char *argv[] ))
 {
-    return Dmod_Run(Context, argc, argv);
+    int result = Dmod_Run(Context, argc, argv);
+    if(result < 0)
+    {
+        return (Dmod_Pid_t)result;
+    }
+    return DMOD_CURRENT_PROCESS_PID;
 }
 
 /**
@@ -83,9 +90,35 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Spawn, ( Dmod_Context_t* Contex
  * @param Context Module context to run detached
  * @param argc Number of arguments
  * @param argv Argument array
- * @return Return value of the module or error code
+ * @return Process ID on success (weak implementation returns DMOD_CURRENT_PROCESS_PID as placeholder), 
+ *         negative error code on failure
  */
-DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _RunDetached, ( Dmod_Context_t* Context, int argc, char *argv[] ))
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Pid_t, _RunDetached, ( Dmod_Context_t* Context, int argc, char *argv[] ))
 {
-    return Dmod_Run(Context, argc, argv);
+    int result = Dmod_Run(Context, argc, argv);
+    if(result < 0)
+    {
+        return (Dmod_Pid_t)result;
+    }
+    return DMOD_CURRENT_PROCESS_PID;
+}
+
+/**
+ * @brief Get the result of a process
+ * 
+ * This is a weak implementation that returns 0 (success) for the current process placeholder.
+ * The real implementation should be provided by the dmosi layer to wait for and
+ * retrieve the exit status of a spawned process.
+ * 
+ * @param Pid Process ID to get result for
+ * @return Exit status of the process, or negative error code
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _GetProcessResult, ( Dmod_Pid_t Pid ))
+{
+    if(Pid == DMOD_CURRENT_PROCESS_PID)
+    {
+        return 0;
+    }
+    DMOD_LOG_ERROR("Dmod_GetProcessResult interface not implemented for PID %" PRId32 "\n", Pid);
+    return -1;
 }

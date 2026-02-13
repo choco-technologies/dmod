@@ -49,6 +49,29 @@ typedef enum
     Dmod_LogLevel_Count         //!< Number of log levels
 } Dmod_LogLevel_t;
 
+/**
+ * @brief Process ID type
+ * 
+ * This type represents a process ID. On POSIX systems, this is typically pid_t.
+ * A positive value indicates the process ID of the spawned process.
+ * A negative value indicates an error code.
+ * 
+ * Note: int32_t is used for cross-platform consistency. On most systems, PIDs
+ * fit comfortably within 32-bit signed integers (typical max PID is ~4 million).
+ * The weak implementation uses DMOD_CURRENT_PROCESS_PID as a placeholder
+ * when running in the current process (no real process spawning available).
+ */
+typedef int32_t Dmod_Pid_t;
+
+/**
+ * @brief Placeholder PID for the current process
+ * 
+ * This value is returned by weak implementations of spawn functions when
+ * they run the module in the current process instead of spawning a new one.
+ * This is not meant to represent a real system PID.
+ */
+#define DMOD_CURRENT_PROCESS_PID ((Dmod_Pid_t)1)
+
 typedef struct 
 {
     uint32_t       Size;
