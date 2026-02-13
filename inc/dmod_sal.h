@@ -65,23 +65,11 @@ extern "C" {
  * @addtogroup DMOD_SAL_MEM
  * @{
  */
-#ifdef DMOD_MODULE_NAME
-#   define Dmod_GetCurrentModuleName()      Dmod_GetCurrentModuleNameEx(DMOD_MODULE_NAME)
-#else
-#   define Dmod_GetCurrentModuleName()      Dmod_GetCurrentModuleNameEx(NULL)
-#endif
+#define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, Dmod_GetCurrentModuleName())
+#define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, Dmod_GetCurrentModuleName())
+#define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, Dmod_GetCurrentModuleName())
+#define Dmod_Free(Ptr)                           Dmod_FreeEx(Ptr, false)
 
-#if defined(DMOD_MODULE_NAME)
-#   define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, Dmod_GetCurrentModuleName(DMOD_MODULE_NAME))
-#   define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, Dmod_GetCurrentModuleName(DMOD_MODULE_NAME))
-#   define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, Dmod_GetCurrentModuleName(DMOD_MODULE_NAME))
-#   define Dmod_Free(Ptr)                           Dmod_FreeEx(Ptr, false)
-#else 
-    DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Malloc ,           ( size_t Size )                     );
-    DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Realloc,           ( void* Ptr, size_t Size )          );
-    DMOD_BUILTIN_API(Dmod, 1.0, void ,  _Free   ,           ( void* Ptr )                       );
-    DMOD_BUILTIN_API(Dmod, 1.0, void*,  _AlignedMalloc,     ( size_t Size, size_t Alignment )   );
-#endif
 DMOD_BUILTIN_API(Dmod, 1.0, void*,  _MallocEx,          ( size_t Size, const char* ModuleName ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void*,  _ReallocEx,         ( void* Ptr, size_t Size, const char* ModuleName ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void ,  _FreeEx ,           ( void* Ptr, bool Concatenate ) );
@@ -155,6 +143,13 @@ DMOD_BUILTIN_API(Dmod, 1.0, int         , _FileRemove,  ( const char* Path ) );
  * @addtogroup DMOD_SAL_ENV
  * @{
  */
+
+#ifdef DMOD_MODULE_NAME
+#   define Dmod_GetCurrentModuleName()      Dmod_GetCurrentModuleNameEx(DMOD_MODULE_NAME)
+#else
+#   define Dmod_GetCurrentModuleName()      Dmod_GetCurrentModuleNameEx(NULL)
+#endif
+
 DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetEnv, ( const char* Name ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _SetEnv, ( const char* Name, const char* Value, int Overwrite ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _Unsetenv, ( const char* Name ) );
