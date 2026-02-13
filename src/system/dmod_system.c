@@ -1742,7 +1742,7 @@ int Dmod_RunModule(const char* Module, int argc, char *argv[])
  * @param argc Number of arguments
  * @param argv Arguments
  * 
- * @return Process ID on success, 0 or negative error code on failure
+ * @return Process ID on success (positive value), negative error code on failure
  */
 int Dmod_SpawnModule(const char* Module, int argc, char *argv[])
 {
@@ -1779,7 +1779,7 @@ int Dmod_SpawnModule(const char* Module, int argc, char *argv[])
  * @param argc Number of arguments
  * @param argv Arguments
  * 
- * @return Process ID on success, 0 or negative error code on failure
+ * @return Process ID on success (positive value), negative error code on failure
  */
 int Dmod_RunModuleDetached(const char* Module, int argc, char *argv[])
 {

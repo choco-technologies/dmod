@@ -67,7 +67,8 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Exit, ( int Status ))
  * @param Context Module context to spawn
  * @param argc Number of arguments
  * @param argv Argument array
- * @return Process ID on success, 0 or negative error code on failure
+ * @return Process ID on success (weak implementation returns 1 as placeholder), 
+ *         negative error code on failure
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Pid_t, _Spawn, ( Dmod_Context_t* Context, int argc, char *argv[] ))
 {
@@ -88,7 +89,8 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Pid_t, _Spawn, ( Dmod_Context_t*
  * @param Context Module context to run detached
  * @param argc Number of arguments
  * @param argv Argument array
- * @return Process ID on success, 0 or negative error code on failure
+ * @return Process ID on success (weak implementation returns 1 as placeholder), 
+ *         negative error code on failure
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Pid_t, _RunDetached, ( Dmod_Context_t* Context, int argc, char *argv[] ))
 {

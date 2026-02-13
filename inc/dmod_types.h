@@ -53,9 +53,9 @@ typedef enum
  * @brief Process ID type
  * 
  * This type represents a process ID. On POSIX systems, this is typically pid_t.
- * A value of 0 indicates an error (failed to create process).
  * A positive value indicates the process ID of the spawned process.
  * A negative value indicates an error code.
+ * Note: The weak implementation returns PID 1 as a placeholder when running in the current process.
  */
 typedef int32_t Dmod_Pid_t;
 
