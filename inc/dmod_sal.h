@@ -65,6 +65,12 @@ extern "C" {
  * @addtogroup DMOD_SAL_MEM
  * @{
  */
+#ifdef DMOD_MODULE_NAME
+#   define Dmod_GetCurrentModuleName()      Dmod_GetCurrentModuleNameEx(DMOD_MODULE_NAME)
+#else
+#   define Dmod_GetCurrentModuleName()      Dmod_GetCurrentModuleNameEx(NULL)
+#endif
+
 #if defined(DMOD_MODULE_NAME)
 #   define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, Dmod_GetCurrentModuleName(DMOD_MODULE_NAME))
 #   define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, Dmod_GetCurrentModuleName(DMOD_MODULE_NAME))
@@ -149,13 +155,6 @@ DMOD_BUILTIN_API(Dmod, 1.0, int         , _FileRemove,  ( const char* Path ) );
  * @addtogroup DMOD_SAL_ENV
  * @{
  */
-
-#ifdef DMOD_MODULE_NAME
-#   define Dmod_GetCurrentModuleName()      Dmod_GetCurrentModuleNameEx(DMOD_MODULE_NAME)
-#else
-#   define Dmod_GetCurrentModuleName()      Dmod_GetCurrentModuleNameEx(NULL)
-#endif
-
 DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetEnv, ( const char* Name ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _SetEnv, ( const char* Name, const char* Value, int Overwrite ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _Unsetenv, ( const char* Name ) );
