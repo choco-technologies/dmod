@@ -55,9 +55,19 @@ typedef enum
  * This type represents a process ID. On POSIX systems, this is typically pid_t.
  * A positive value indicates the process ID of the spawned process.
  * A negative value indicates an error code.
- * Note: The weak implementation returns PID 1 as a placeholder when running in the current process.
+ * Note: The weak implementation uses DMOD_CURRENT_PROCESS_PID as a placeholder
+ * when running in the current process (no real process spawning available).
  */
 typedef int32_t Dmod_Pid_t;
+
+/**
+ * @brief Placeholder PID for the current process
+ * 
+ * This value is returned by weak implementations of spawn functions when
+ * they run the module in the current process instead of spawning a new one.
+ * This is not meant to represent a real system PID.
+ */
+#define DMOD_CURRENT_PROCESS_PID ((Dmod_Pid_t)1)
 
 typedef struct 
 {
