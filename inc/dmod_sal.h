@@ -369,6 +369,8 @@ DMOD_BUILTIN_API(Dmod, 1.0, int     , _Stdin_SetFlags, ( uint32_t Flags ) );
  */
 
 DMOD_BUILTIN_API(Dmod, 1.0, void, _Exit, ( int Status ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int, _Spawn, ( Dmod_Context_t* Context, int argc, char *argv[] ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int, _RunDetached, ( Dmod_Context_t* Context, int argc, char *argv[] ) );
 
 //! @}
 

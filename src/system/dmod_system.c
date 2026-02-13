@@ -1736,6 +1736,80 @@ int Dmod_RunModule(const char* Module, int argc, char *argv[])
 }
 
 /**
+ * @brief Spawn application in a new child process
+ * 
+ * @param Module Name of the module or file path
+ * @param argc Number of arguments
+ * @param argv Arguments
+ * 
+ * @return Return value of the main function
+ */
+int Dmod_SpawnModule(const char* Module, int argc, char *argv[])
+{
+    if( Module == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot spawn module - missing module name to spawn\n");
+        return -EINVAL;
+    }
+
+    Dmod_Context_t* context = NULL;
+    if(Dmod_FileAvailable(Module))
+    {
+        context = Dmod_LoadFile( Module );
+    }
+    else 
+    {
+        context = Dmod_LoadModuleByName( Module );    
+    }
+    if( context == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot spawn module - cannot load module: %s\n", Module);
+        return -ENOENT;
+    }
+
+    int result = Dmod_Spawn( context, argc, argv );
+    Dmod_Unload( context, false );
+    return result;
+}
+
+/**
+ * @brief Run application in a detached process
+ * 
+ * @param Module Name of the module or file path
+ * @param argc Number of arguments
+ * @param argv Arguments
+ * 
+ * @return Return value of the main function
+ */
+int Dmod_RunModuleDetached(const char* Module, int argc, char *argv[])
+{
+    if( Module == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot run module detached - missing module name to run\n");
+        return -EINVAL;
+    }
+
+    Dmod_Context_t* context = NULL;
+    if(Dmod_FileAvailable(Module))
+    {
+        context = Dmod_LoadFile( Module );
+    }
+    else 
+    {
+        context = Dmod_LoadModuleByName( Module );    
+    }
+    if( context == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot run module detached - cannot load module: %s\n", Module);
+        return -ENOENT;
+    }
+
+    int result = Dmod_RunDetached( context, argc, argv );
+    Dmod_Unload( context, false );
+    return result;
+}
+
+/**
  * @brief Check if function is connected
  * 
  * @param FunctionPointer Function pointer to check
