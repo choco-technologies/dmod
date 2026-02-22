@@ -1087,6 +1087,15 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
         return -EINVAL;
     }
 
+    size_t leftStack = Dmod_GetLeftStackSize();
+    if( Context->Header->RequiredStackSize > 0 &&
+        leftStack != (size_t)-1 &&
+        (size_t)Context->Header->RequiredStackSize > leftStack )
+    {
+        DMOD_LOG_ERROR("Cannot run module - insufficient stack size\n");
+        return -ENOMEM;
+    }
+
     if( Dmod_Mutex_Lock(Context->Mutex) != 0 )
     {
         DMOD_LOG_ERROR("Cannot run module - cannot lock mutex\n");
@@ -1727,6 +1736,16 @@ int Dmod_RunModule(const char* Module, int argc, char *argv[])
     {
         DMOD_LOG_ERROR("Cannot run module - cannot load module: %s\n", Module);
         return -ENOENT;
+    }
+
+    size_t leftStack = Dmod_GetLeftStackSize();
+    if( Dmod_GetStackSize(context) > 0 &&
+        leftStack != (size_t)-1 &&
+        (size_t)Dmod_GetStackSize(context) > leftStack )
+    {
+        DMOD_LOG_ERROR("Cannot run module - insufficient stack size\n");
+        Dmod_Unload( context, false );
+        return -ENOMEM;
     }
 
     int result = Dmod_Run( context, argc, argv );

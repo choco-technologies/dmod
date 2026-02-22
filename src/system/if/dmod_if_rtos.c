@@ -31,6 +31,11 @@
 #if DMOD_USE_PTHREAD
 #   define __USE_UNIX98
 #   include <pthread.h>
+#   ifdef __linux__
+/* Forward declarations for Linux-specific thread attribute functions */
+extern int pthread_getattr_np(pthread_t th, pthread_attr_t *attr);
+extern int pthread_attr_getstack(const pthread_attr_t *attr, void **stackaddr, size_t *stacksize);
+#   endif
 #endif
 
 //==============================================================================
@@ -171,4 +176,53 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Mutex_Delete, ( void* Mutex ))
         DMOD_LOG_WARN("Dmod_Mutex_Delete interface not implemented\n");
     }
     #endif
+}
+
+/**
+ * @brief Get the remaining stack size in the current thread
+ * 
+ * Returns the number of bytes still available on the current thread's stack.
+ * On Linux with pthread support, this is calculated from the thread's stack
+ * bounds and the current stack pointer. On other platforms, SIZE_MAX is
+ * returned to indicate that the size is unknown (skip the check).
+ * 
+ * @return Remaining stack size in bytes, or SIZE_MAX if not available
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _GetLeftStackSize, ( void ))
+{
+#if DMOD_USE_PTHREAD && defined(__linux__)
+    pthread_attr_t attr;
+    void* stackAddr;
+    size_t stackSize;
+    volatile char stackVar;
+
+    if( pthread_getattr_np(pthread_self(), &attr) != 0 )
+    {
+        return (size_t)-1;
+    }
+
+    if( pthread_attr_getstack(&attr, &stackAddr, &stackSize) != 0 )
+    {
+        pthread_attr_destroy(&attr);
+        return (size_t)-1;
+    }
+
+    pthread_attr_destroy(&attr);
+
+    /* The stack grows downward: stackAddr is the lowest address of the stack
+     * region and (stackAddr + stackSize) is the highest (initial SP position).
+     * As functions are called the SP moves toward stackAddr.
+     * Remaining space before overflow = currentSp - stackBase. */
+    uintptr_t currentSp = (uintptr_t)&stackVar;
+    uintptr_t stackBase = (uintptr_t)stackAddr;
+
+    if( currentSp <= stackBase )
+    {
+        return 0;
+    }
+
+    return (size_t)(currentSp - stackBase);
+#else
+    return (size_t)-1;
+#endif
 }
