@@ -728,9 +728,8 @@ bool Dmod_Unload( Dmod_Context_t* Context, bool Force )
     {
         DMOD_LOG_WARN("Unloading module %s failed - not found\n", Dmod_Context_GetModuleName( Context ));
     }
-    Context->Signature = 0;
-    Dmod_ExitCritical();
     Dmod_Context_Delete( Context );    
+    Dmod_ExitCritical();
 
     return true;
 }
