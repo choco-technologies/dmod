@@ -98,6 +98,7 @@ void Dmod_Context_Delete( Dmod_Context_t* Context )
     {
         Dmod_Free( Context->Data );
     }
+    Context->Signature = 0;
     Dmod_Free( Context );
     Dmod_FreeModule( moduleName );
 }
