@@ -132,6 +132,181 @@ void WaitForDebugger( Dmod_Context_t* context, const char* elfPath )
 
 // -----------------------------------------
 //
+//      Returns module type as a string
+//
+// -----------------------------------------
+static const char* ModuleTypeToString( uint8_t moduleType )
+{
+    switch( (Dmod_ModuleType_t)moduleType )
+    {
+        case Dmod_ModuleType_Library:     return "Library";
+        case Dmod_ModuleType_Application: return "Application";
+        default:                          return "Unknown";
+    }
+}
+
+// -----------------------------------------
+//
+//      Prints DMF module header info
+//
+// -----------------------------------------
+static void PrintDmfInfo( const char* filePath )
+{
+    Dmod_ModuleHeader_t header;
+    if( !Dmod_ReadModuleHeader( filePath, &header ) )
+    {
+        printf("Error: Cannot read DMF header from '%s'\n", filePath);
+        return;
+    }
+
+    printf("DMF Module Information:\n");
+    printf("  Name:              %s\n",     header.Name);
+    printf("  Version:           %s\n",     header.Version);
+    printf("  Author:            %s\n",     header.Author);
+    printf("  Architecture:      %s\n",     header.Arch);
+    printf("  CPU:               %s\n",     header.CpuName);
+    printf("  Module Type:       %s\n",     ModuleTypeToString( header.ModuleType ));
+    printf("  DMOD Version:      0x%08X\n", header.DmodVersion);
+    printf("  Pointer Size:      %u bits\n", header.PointerSize * 8);
+    printf("  Header Size:       %u bytes\n", header.HeaderSize);
+    printf("  Stack Size:        %llu bytes\n", (unsigned long long)header.RequiredStackSize);
+    printf("  Priority:          %u\n",     header.Priority);
+    printf("  Manual Load:       %s\n",     header.ManualLoad ? "yes" : "no");
+}
+
+// -----------------------------------------
+//
+//      Prints DMFC header info
+//
+// -----------------------------------------
+static void PrintDmfcInfo( const char* filePath )
+{
+    void* file = Dmod_FileOpen( filePath, "rb" );
+    if( file == NULL )
+    {
+        printf("Error: Cannot open file '%s'\n", filePath);
+        return;
+    }
+
+    Dmod_DmfcHeader_t dmfcHeader;
+    if( Dmod_FileRead( &dmfcHeader, sizeof(dmfcHeader), 1, file ) != 1 )
+    {
+        printf("Error: Cannot read DMFC header from '%s'\n", filePath);
+        Dmod_FileClose( file );
+        return;
+    }
+    size_t fileSize = Dmod_FileSize( file );
+    Dmod_FileClose( file );
+
+    printf("DMFC Compressed Module Information:\n");
+    printf("  Name:              %s\n",     dmfcHeader.Name);
+    printf("  Compression:       %s\n",     dmfcHeader.Compression);
+    printf("  Original Size:     %u bytes\n", dmfcHeader.OriginalSize);
+    printf("  Compressed Size:   %zu bytes\n", fileSize);
+    printf("  Header Version:    0x%04X\n", dmfcHeader.HeaderVersion);
+    printf("  Header Size:       %u bytes\n", dmfcHeader.HeaderSize);
+    printf("\n");
+
+    printf("Inner DMF Module Information:\n");
+    // Dmod_ReadModuleHeader handles DMFC decompression internally
+    PrintDmfInfo( filePath );
+}
+
+// -----------------------------------------
+//
+//      Prints DMP package header info
+//
+// -----------------------------------------
+static void PrintDmpInfo( const char* filePath )
+{
+    void* file = Dmod_FileOpen( filePath, "rb" );
+    if( file == NULL )
+    {
+        printf("Error: Cannot open file '%s'\n", filePath);
+        return;
+    }
+
+    Dmod_DmpHeader_t dmpHeader;
+    if( Dmod_FileRead( &dmpHeader, sizeof(dmpHeader), 1, file ) != 1 )
+    {
+        printf("Error: Cannot read DMP header from '%s'\n", filePath);
+        Dmod_FileClose( file );
+        return;
+    }
+
+    printf("DMP Package Information:\n");
+    printf("  Name:              %s\n",     dmpHeader.Name);
+    printf("  Module Count:      %u\n",     dmpHeader.ModuleCount);
+    printf("  Main Module Index: %u\n",     dmpHeader.MainIndex);
+    printf("  Header Version:    0x%04X\n", dmpHeader.HeaderVersion);
+    printf("  Header Size:       %u bytes\n", dmpHeader.HeaderSize);
+
+    if( dmpHeader.ModuleCount == 0 )
+    {
+        printf("\nNo modules in package.\n");
+        Dmod_FileClose( file );
+        return;
+    }
+
+    Dmod_DmpModuleEntry_t* entries = (Dmod_DmpModuleEntry_t*)Dmod_Malloc(
+        dmpHeader.ModuleCount * sizeof(Dmod_DmpModuleEntry_t) );
+    if( entries == NULL )
+    {
+        printf("Error: Cannot allocate memory for module entries\n");
+        Dmod_FileClose( file );
+        return;
+    }
+
+    if( Dmod_FileRead( entries, sizeof(Dmod_DmpModuleEntry_t), dmpHeader.ModuleCount, file )
+        != dmpHeader.ModuleCount )
+    {
+        printf("Error: Cannot read module entries from '%s'\n", filePath);
+        Dmod_Free( entries );
+        Dmod_FileClose( file );
+        return;
+    }
+    Dmod_FileClose( file );
+
+    printf("\nModules:\n");
+    for( uint32_t i = 0; i < dmpHeader.ModuleCount; i++ )
+    {
+        printf("  [%u] %s\n", i, entries[i].ModuleName);
+        printf("      Offset: %u bytes\n",   entries[i].ModuleOffset);
+        printf("      Size:   %u bytes\n",   entries[i].FileSize);
+        if( i == dmpHeader.MainIndex )
+        {
+            printf("      [MAIN MODULE]\n");
+        }
+    }
+
+    Dmod_Free( entries );
+}
+
+// -----------------------------------------
+//
+//      Prints file header information
+//
+// -----------------------------------------
+static void PrintFileInfo( const char* filePath )
+{
+    printf("File: %s\n\n", filePath);
+
+    if( Dmod_IsDMPFile( filePath ) )
+    {
+        PrintDmpInfo( filePath );
+    }
+    else if( Dmod_IsDMFCFile( filePath ) )
+    {
+        PrintDmfcInfo( filePath );
+    }
+    else
+    {
+        PrintDmfInfo( filePath );
+    }
+}
+
+// -----------------------------------------
+//
 //      Check if string is a file path or module name
 //
 // -----------------------------------------
@@ -171,7 +346,7 @@ bool IsFilePath( const char* str )
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]]\n", AppName);
+    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]] [--info]\n", AppName);
 }
 
 // -----------------------------------------
@@ -184,10 +359,11 @@ void PrintHelp( const char* AppName )
     printf("-- Dynamic Module Loader ver. " DMOD_VERSION_STRING " --\n\n");
     printf("The DMOD is a dynamic module loader that allows to load and unload modules\n");
     printf("This is an example application that uses the DMOD system\n\n");
-    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]]\n", AppName);
+    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]] [--info]\n", AppName);
     printf("Options:\n");
     printf("  -h, --help                Print this help message\n");
     printf("  -v, --version             Print version information\n");
+    printf("  --info                    Print header information from a dmf/dmfc/dmp file without running it\n");
     printf("  --module <module_name>    Specify which module to load from a DMP package\n");
     printf("  --args <arguments>        Arguments to pass to the application module\n");
     printf("  --debug [elf_path]        Debug mode: pause after load, show addresses\n");
@@ -206,6 +382,8 @@ void PrintHelp( const char* AppName )
     printf("  %s my_module --args \"--verbose\"               # Load module by name with arguments\n", AppName);
     printf("  %s my-app.dmf --debug                         # Debug mode: shows base address\n", AppName);
     printf("  %s my-app.dmf --debug ./my-app                # Debug mode + generate scripts\n", AppName);
+    printf("  %s my-app.dmf --info                          # Print header info without running\n", AppName);
+    printf("  %s my-package.dmp --info                      # Print DMP package info\n", AppName);
 }
 
 // -----------------------------------------
@@ -247,8 +425,9 @@ int main( int argc, char *argv[] )
     int appArgc = 0;
     char** appArgv = NULL;
     bool debugMode = false;
+    bool infoMode = false;
 
-    // Look for --module, --args and --debug flags
+    // Look for --module, --args, --debug and --info flags
     int moduleIndex = -1;
     int argsIndex = -1;
     int debugIndex = -1;
@@ -268,6 +447,17 @@ int main( int argc, char *argv[] )
             debugMode = true;
             debugIndex = i;
         }
+        else if( strcmp( argv[i], "--info" ) == 0 )
+        {
+            infoMode = true;
+        }
+    }
+
+    // Handle --info: print header info and exit (no module loading)
+    if( infoMode )
+    {
+        PrintFileInfo( pathOrName );
+        return 0;
     }
 
     // Get ELF path if provided after --debug (optional)
