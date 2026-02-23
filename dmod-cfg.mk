@@ -35,6 +35,9 @@ DMOD_USE_REALLOC=ON
 # Use termios for terminal I/O control
 DMOD_USE_TERMIOS=ON
 
+# Use time.h for system time functions
+DMOD_USE_TIME_H=ON
+
 # Use FastLZ compression library
 DMOD_USE_FASTLZ=ON
 

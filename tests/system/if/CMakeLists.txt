@@ -10,5 +10,6 @@ set(TEST_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_rename.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_file_remove.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_stack.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_uptime.cpp
         PARENT_SCOPE
         )
