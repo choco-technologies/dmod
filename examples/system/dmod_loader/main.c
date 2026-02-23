@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <pthread.h>
 #include <time.h>
 #include <sys/stat.h>
