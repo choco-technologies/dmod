@@ -26,9 +26,9 @@
  * 
  */
 
+#define _POSIX_C_SOURCE 200809L
 #include "dmod.h"
 #if DMOD_USE_TIME_H
-#   define __USE_POSIX199309
 #   include <time.h>
 #endif
 
