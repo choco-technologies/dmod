@@ -1,11 +1,247 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <limits.h>
+#include <pthread.h>
+#include <time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include "dmod.h"
+
+// -----------------------------------------
+//
+//      Stack analysis constants
+//
+// -----------------------------------------
+#define STACK_SENTINEL_BYTE              ((uint8_t)0xAA)
+#define STACK_DEFAULT_SIZE               (1024 * 1024)    // 1 MB default
+#define STACK_USAGE_WARNING_THRESHOLD    90               // Warn if usage exceeds 90%
+
+// -----------------------------------------
+//
+//      Stack analysis thread argument
+//
+// -----------------------------------------
+typedef struct
+{
+    Dmod_Context_t* context;
+    int             appArgc;
+    char**          appArgv;
+    int             result;
+} StackAnalysisArgs_t;
+
+// -----------------------------------------
+//
+//      Thread function for stack analysis
+//
+// -----------------------------------------
+static void* StackAnalysisThread( void* arg )
+{
+    StackAnalysisArgs_t* args = (StackAnalysisArgs_t*)arg;
+    Dmod_ModuleType_t moduleType = Dmod_GetModuleType( args->context );
+
+    if( moduleType == Dmod_ModuleType_Application )
+    {
+        args->result = Dmod_Run( args->context, args->appArgc, args->appArgv );
+    }
+    else if( moduleType == Dmod_ModuleType_Library )
+    {
+        if( !Dmod_Enable( args->context, false, NULL ) )
+        {
+            args->result = -1;
+        }
+        else
+        {
+            Dmod_Disable( args->context, false );
+            args->result = 0;
+        }
+    }
+    else
+    {
+        printf( "Unknown module type: %d\n", (int)moduleType );
+        args->result = -1;
+    }
+    return NULL;
+}
+
+// -----------------------------------------
+//
+//      Parse a size string (optional k/M/G suffix)
+//
+// -----------------------------------------
+static size_t ParseStackSize( const char* str )
+{
+    char* end;
+    unsigned long long value = strtoull( str, &end, 0 );
+    if( *end == 'k' || *end == 'K' ) value *= 1024ULL;
+    else if( *end == 'm' || *end == 'M' ) value *= 1024ULL * 1024ULL;
+    else if( *end == 'g' || *end == 'G' ) value *= 1024ULL * 1024ULL * 1024ULL;
+    return (size_t)value;
+}
+
+// -----------------------------------------
+//
+//      Measure peak stack usage via sentinel scan
+//      (stack grows downward, scan from base upward)
+//
+// -----------------------------------------
+static size_t MeasureStackUsage( const uint8_t* stackBase, size_t stackSize )
+{
+    for( size_t i = 0; i < stackSize; i++ )
+    {
+        if( stackBase[i] != STACK_SENTINEL_BYTE )
+        {
+            return stackSize - i;
+        }
+    }
+    return 0;
+}
+
+// -----------------------------------------
+//
+//      Run module in a custom-painted stack thread
+//      and report peak stack usage
+//
+// -----------------------------------------
+static int RunWithStackAnalysis( Dmod_Context_t* context, int appArgc, char** appArgv,
+                                 size_t stackSize, unsigned int timeoutSeconds )
+{
+    printf( "\n" );
+    printf( "================================================================================\n" );
+    printf( "                         DMOD STACK ANALYSIS MODE                               \n" );
+    printf( "================================================================================\n" );
+    printf( "Stack size:    %zu bytes (%.2f KB)\n", stackSize, (double)stackSize / 1024.0 );
+    if( timeoutSeconds > 0 )
+    {
+        printf( "Timeout:       %u seconds\n", timeoutSeconds );
+    }
+    else
+    {
+        printf( "Timeout:       none\n" );
+    }
+    printf( "\n" );
+
+    // Align stack size up to DMOD_STACK_ALIGNMENT (16 bytes): round up to nearest multiple
+    stackSize = (stackSize + (DMOD_STACK_ALIGNMENT - 1)) & ~(size_t)(DMOD_STACK_ALIGNMENT - 1);
+
+    // Ensure minimum stack size required by pthread
+    if( stackSize < (size_t)PTHREAD_STACK_MIN )
+    {
+        printf( "Warning: Stack size increased to PTHREAD_STACK_MIN (%ld bytes)\n",
+                (long)PTHREAD_STACK_MIN );
+        stackSize = (size_t)PTHREAD_STACK_MIN;
+    }
+
+    // Allocate aligned stack buffer
+    uint8_t* stackBuffer = NULL;
+    if( posix_memalign( (void**)&stackBuffer, DMOD_STACK_ALIGNMENT, stackSize ) != 0 )
+    {
+        printf( "Error: Failed to allocate stack buffer (%zu bytes)\n", stackSize );
+        return -1;
+    }
+
+    // Paint the entire stack with the sentinel pattern
+    memset( stackBuffer, STACK_SENTINEL_BYTE, stackSize );
+
+    // Configure thread to use our custom stack
+    pthread_attr_t attr;
+    pthread_attr_init( &attr );
+    pthread_attr_setstack( &attr, stackBuffer, stackSize );
+
+    // Set up thread argument structure
+    StackAnalysisArgs_t args;
+    args.context = context;
+    args.appArgc = appArgc;
+    args.appArgv = appArgv;
+    args.result  = 0;
+
+    printf( "Running module in stack analysis thread...\n" );
+
+    pthread_t thread;
+    int rc = pthread_create( &thread, &attr, StackAnalysisThread, &args );
+    pthread_attr_destroy( &attr );
+
+    if( rc != 0 )
+    {
+        printf( "Error: Failed to create thread: %s\n", strerror( rc ) );
+        free( stackBuffer );
+        return -1;
+    }
+
+    bool threadTimedOut = false;
+    if( timeoutSeconds > 0 )
+    {
+        struct timespec ts;
+        clock_gettime( CLOCK_REALTIME, &ts );
+        ts.tv_sec += (time_t)timeoutSeconds;
+        rc = pthread_timedjoin_np( thread, NULL, &ts );
+        if( rc == ETIMEDOUT )
+        {
+            printf( "\nTimeout exceeded (%u seconds). Cancelling thread...\n", timeoutSeconds );
+            pthread_cancel( thread );
+            pthread_join( thread, NULL );
+            threadTimedOut = true;
+        }
+    }
+    else
+    {
+        pthread_join( thread, NULL );
+    }
+
+    // Scan for peak stack usage
+    size_t usedStack = MeasureStackUsage( stackBuffer, stackSize );
+
+    printf( "\n" );
+    printf( "================================================================================\n" );
+    printf( "                         STACK ANALYSIS RESULTS                                 \n" );
+    printf( "================================================================================\n" );
+    printf( "\n" );
+    printf( "Module:          %s\n", Dmod_GetName( context ) );
+    if( threadTimedOut )
+    {
+        printf( "Status:          TIMED OUT after %u seconds\n", timeoutSeconds );
+    }
+    else
+    {
+        printf( "Status:          Completed (exit code: %d)\n", args.result );
+    }
+    printf( "\n" );
+    printf( "Stack allocated: %zu bytes (%.2f KB)\n", stackSize, (double)stackSize / 1024.0 );
+    printf( "Stack used:      %zu bytes (%.2f KB)\n", usedStack, (double)usedStack / 1024.0 );
+    printf( "Stack free:      %zu bytes (%.2f KB)\n",
+            stackSize - usedStack, (double)(stackSize - usedStack) / 1024.0 );
+    printf( "Stack usage:     %.1f%%\n", (double)usedStack * 100.0 / (double)stackSize );
+
+    if( usedStack >= stackSize * STACK_USAGE_WARNING_THRESHOLD / 100 )
+    {
+        printf( "\n" );
+        printf( "WARNING: Stack usage exceeds 90%%! Stack may have overflowed.\n" );
+        printf( "         Consider re-running with a larger --stack size.\n" );
+    }
+
+    uint64_t declaredStackSize = Dmod_GetStackSize( context );
+    if( declaredStackSize > 0 )
+    {
+        printf( "\n" );
+        printf( "Declared stack requirement: %llu bytes (%.2f KB)\n",
+                (unsigned long long)declaredStackSize,
+                (double)declaredStackSize / 1024.0 );
+        if( usedStack > (size_t)declaredStackSize )
+        {
+            printf( "WARNING: Measured peak usage exceeds the declared stack requirement!\n" );
+        }
+    }
+
+    printf( "\n" );
+    printf( "================================================================================\n" );
+
+    free( stackBuffer );
+    return args.result;
+}
 
 // -----------------------------------------
 //
@@ -346,7 +582,7 @@ bool IsFilePath( const char* str )
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]] [--info]\n", AppName);
+    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]] [--info] [--stack [size]] [--stack-timeout <seconds>]\n", AppName);
 }
 
 // -----------------------------------------
@@ -359,7 +595,7 @@ void PrintHelp( const char* AppName )
     printf("-- Dynamic Module Loader ver. " DMOD_VERSION_STRING " --\n\n");
     printf("The DMOD is a dynamic module loader that allows to load and unload modules\n");
     printf("This is an example application that uses the DMOD system\n\n");
-    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]] [--info]\n", AppName);
+    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]] [--info] [--stack [size]] [--stack-timeout <seconds>]\n", AppName);
     printf("Options:\n");
     printf("  -h, --help                Print this help message\n");
     printf("  -v, --version             Print version information\n");
@@ -367,7 +603,13 @@ void PrintHelp( const char* AppName )
     printf("  --module <module_name>    Specify which module to load from a DMP package\n");
     printf("  --args <arguments>        Arguments to pass to the application module\n");
     printf("  --debug [elf_path]        Debug mode: pause after load, show addresses\n");
-    printf("                            If elf_path is provided, generates ready-to-use debug scripts\n\n");
+    printf("                            If elf_path is provided, generates ready-to-use debug scripts\n");
+    printf("  --stack [size]            Stack analysis mode: allocate a large painted stack, run the\n");
+    printf("                            module in a new thread and report peak stack usage.\n");
+    printf("                            Optional size can use k/M/G suffix (e.g. 512k, 2M).\n");
+    printf("                            Default size: 1 MB.\n");
+    printf("  --stack-timeout <secs>    Timeout in seconds for --stack mode. The thread is cancelled\n");
+    printf("                            after the timeout and stack usage is still reported.\n\n");
     printf("Module Types:\n");
     printf("  Application    Runs the module's main function\n");
     printf("  Library        Enables the module, then disables it\n\n");
@@ -384,6 +626,9 @@ void PrintHelp( const char* AppName )
     printf("  %s my-app.dmf --debug ./my-app                # Debug mode + generate scripts\n", AppName);
     printf("  %s my-app.dmf --info                          # Print header info without running\n", AppName);
     printf("  %s my-package.dmp --info                      # Print DMP package info\n", AppName);
+    printf("  %s my-app.dmf --stack                         # Stack analysis with default 1 MB stack\n", AppName);
+    printf("  %s my-app.dmf --stack 2M                      # Stack analysis with 2 MB stack\n", AppName);
+    printf("  %s my-app.dmf --stack 512k --stack-timeout 5  # Stack analysis, 512 KB, 5 s timeout\n", AppName);
 }
 
 // -----------------------------------------
@@ -426,11 +671,16 @@ int main( int argc, char *argv[] )
     char** appArgv = NULL;
     bool debugMode = false;
     bool infoMode = false;
+    bool stackMode = false;
+    size_t stackSize = STACK_DEFAULT_SIZE;
+    unsigned int stackTimeout = 0;
 
-    // Look for --module, --args, --debug and --info flags
+    // Look for --module, --args, --debug, --info, --stack and --stack-timeout flags
     int moduleIndex = -1;
     int argsIndex = -1;
     int debugIndex = -1;
+    int stackIndex = -1;
+    int stackTimeoutIndex = -1;
     for( int i = 2; i < argc; i++ )
     {
         if( strcmp( argv[i], "--module" ) == 0 )
@@ -451,6 +701,15 @@ int main( int argc, char *argv[] )
         {
             infoMode = true;
         }
+        else if( strcmp( argv[i], "--stack" ) == 0 )
+        {
+            stackMode = true;
+            stackIndex = i;
+        }
+        else if( strcmp( argv[i], "--stack-timeout" ) == 0 )
+        {
+            stackTimeoutIndex = i;
+        }
     }
 
     // Handle --info: print header info and exit (no module loading)
@@ -458,6 +717,35 @@ int main( int argc, char *argv[] )
     {
         PrintFileInfo( pathOrName );
         return 0;
+    }
+
+    // Get optional stack size if provided after --stack (e.g. --stack 2M)
+    if( stackIndex != -1 && stackIndex + 1 < argc )
+    {
+        const char* nextArg = argv[stackIndex + 1];
+        if( nextArg[0] != '-' )
+        {
+            size_t parsed = ParseStackSize( nextArg );
+            if( parsed == 0 )
+            {
+                printf("Error: Invalid stack size '%s'\n", nextArg);
+                PrintUsage( argv[0] );
+                return -1;
+            }
+            stackSize = parsed;
+        }
+    }
+
+    // Get timeout if --stack-timeout was provided
+    if( stackTimeoutIndex != -1 )
+    {
+        if( stackTimeoutIndex + 1 >= argc )
+        {
+            printf("Error: --stack-timeout requires a value in seconds\n");
+            PrintUsage( argv[0] );
+            return -1;
+        }
+        stackTimeout = (unsigned int)strtoul( argv[stackTimeoutIndex + 1], NULL, 10 );
     }
 
     // Get ELF path if provided after --debug (optional)
@@ -598,6 +886,15 @@ int main( int argc, char *argv[] )
     {
         DMOD_LOG_INFO("Module '%s' requires module '%s' version '%s'\n", Dmod_GetName(context), reqModule->Name, reqModule->Version );
         reqModule = Dmod_GetNextRequiredModule( context, reqModule );
+    }
+
+    // If stack analysis mode is enabled, run in a painted-stack thread and report usage
+    if( stackMode )
+    {
+        int result = RunWithStackAnalysis( context, appArgc, appArgv, stackSize, stackTimeout );
+        Dmod_Unload( context, false );
+        Dmod_Free( appArgv );
+        return result;
     }
 
     // Check module type and handle accordingly
