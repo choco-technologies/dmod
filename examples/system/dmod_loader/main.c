@@ -70,6 +70,17 @@ static void* StackAnalysisThread( void* arg )
 
 // -----------------------------------------
 //
+//      No-op thread used to measure pthread baseline overhead
+//
+// -----------------------------------------
+static void* StackOverheadThread( void* arg )
+{
+    (void)arg;
+    return NULL;
+}
+
+// -----------------------------------------
+//
 //      Parse a size string (optional k/M/G suffix)
 //
 // -----------------------------------------
@@ -99,6 +110,41 @@ static size_t MeasureStackUsage( const uint8_t* stackBase, size_t stackSize )
         }
     }
     return 0;
+}
+
+// -----------------------------------------
+//
+//      Measure the stack consumed by pthread itself (TLS, TCB,
+//      startup frames) by running an empty thread on a
+//      sentinel-painted buffer of the same size.
+//
+// -----------------------------------------
+static size_t MeasureThreadBaselineOverhead( size_t stackSize )
+{
+    uint8_t* stackBuffer = NULL;
+    if( posix_memalign( (void**)&stackBuffer, DMOD_STACK_ALIGNMENT, stackSize ) != 0 )
+        return 0;
+
+    memset( stackBuffer, STACK_SENTINEL_BYTE, stackSize );
+
+    pthread_attr_t attr;
+    pthread_attr_init( &attr );
+    pthread_attr_setstack( &attr, stackBuffer, stackSize );
+
+    pthread_t thread;
+    int rc = pthread_create( &thread, &attr, StackOverheadThread, NULL );
+    pthread_attr_destroy( &attr );
+    if( rc != 0 )
+    {
+        free( stackBuffer );
+        return 0;
+    }
+
+    pthread_join( thread, NULL );
+
+    size_t overhead = MeasureStackUsage( stackBuffer, stackSize );
+    free( stackBuffer );
+    return overhead;
 }
 
 // -----------------------------------------
@@ -193,7 +239,13 @@ static int RunWithStackAnalysis( Dmod_Context_t* context, int appArgc, char** ap
     }
 
     // Scan for peak stack usage
-    size_t usedStack = MeasureStackUsage( stackBuffer, stackSize );
+    size_t rawUsedStack = MeasureStackUsage( stackBuffer, stackSize );
+
+    // Subtract the pthread/TLS baseline overhead so that only the
+    // application's own stack consumption is reported (relevant for
+    // embedded targets where pthread overhead does not exist).
+    size_t pthreadOverhead = MeasureThreadBaselineOverhead( stackSize );
+    size_t usedStack = ( rawUsedStack > pthreadOverhead ) ? ( rawUsedStack - pthreadOverhead ) : 0;
 
     printf( "\n" );
     printf( "================================================================================\n" );
@@ -215,8 +267,9 @@ static int RunWithStackAnalysis( Dmod_Context_t* context, int appArgc, char** ap
     printf( "Stack free:      %zu bytes (%.2f KB)\n",
             stackSize - usedStack, (double)(stackSize - usedStack) / 1024.0 );
     printf( "Stack usage:     %.1f%%\n", (double)usedStack * 100.0 / (double)stackSize );
+    printf( "System overhead: %zu bytes (%.2f KB)\n", pthreadOverhead, (double)pthreadOverhead / 1024.0 );
 
-    if( usedStack >= stackSize * STACK_USAGE_WARNING_THRESHOLD / 100 )
+    if( rawUsedStack >= stackSize * STACK_USAGE_WARNING_THRESHOLD / 100 )
     {
         printf( "\n" );
         printf( "WARNING: Stack usage exceeds 90%%! Stack may have overflowed.\n" );
