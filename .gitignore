@@ -72,3 +72,4 @@ build_cmake/
 test_packages/
 dmf/
 dmfc/
+tools-cfg.cmake
