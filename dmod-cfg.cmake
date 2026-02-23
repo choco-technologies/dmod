@@ -31,6 +31,9 @@ set(DMOD_USE_REALLOC ON CACHE BOOL "Enable to use the realloc function")
 # Use termios for terminal I/O control
 set(DMOD_USE_TERMIOS ON CACHE BOOL "Enable to use termios for terminal I/O control (echo, canonical mode)")
 
+# Use time.h for system time functions
+set(DMOD_USE_TIME_H ON CACHE BOOL "Enable to use time.h for system time functions (clock_gettime)")
+
 # Use FastLZ compression library
 set(DMOD_USE_FASTLZ ON CACHE BOOL "Enable to use the FastLZ compression library")
 

@@ -26,15 +26,11 @@
  * 
  */
 
-/* Must be defined before any system headers are included */
-#if defined(__linux__) || defined(__unix__)
-#   ifndef _POSIX_C_SOURCE
-#       define _POSIX_C_SOURCE 199309L
-#   endif
+#include "dmod.h"
+#if DMOD_USE_TIME_H
+#   define __USE_POSIX199309
 #   include <time.h>
 #endif
-
-#include "dmod.h"
 
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
@@ -51,7 +47,7 @@
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Timestamp_t, _GetUptime, ( void ))
 {
-#if defined(__linux__) || defined(__unix__)
+#if DMOD_USE_TIME_H
     struct timespec ts;
 #   if defined(CLOCK_BOOTTIME)
     clockid_t clockId = CLOCK_BOOTTIME;
