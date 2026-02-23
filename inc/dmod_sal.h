@@ -376,6 +376,21 @@ DMOD_BUILTIN_API(Dmod, 1.0, int, _GetProcessResult, ( Dmod_Pid_t Pid ) );
 
 //! @}
 
+/**
+ * @defgroup DMOD_SAL_TIME Time Interface
+ * @ingroup DMOD_SAL
+ * 
+ * This interface is used to get time information from the system.
+ * The default implementation is provided in the DMOD system as weak symbols.
+ * 
+ * @addtogroup DMOD_SAL_TIME
+ * @{
+ */
+
+DMOD_BUILTIN_API(Dmod, 1.0, Dmod_Timestamp_t, _GetUptime, ( void ) );
+
+//! @}
+
 #ifdef __cplusplus
 }
 #endif

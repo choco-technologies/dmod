@@ -50,6 +50,14 @@ typedef enum
 } Dmod_LogLevel_t;
 
 /**
+ * @brief Timestamp type
+ * 
+ * This type represents a timestamp in milliseconds. It is used to store
+ * the time elapsed since the system started (uptime).
+ */
+typedef uint64_t Dmod_Timestamp_t;
+
+/**
  * @brief Process ID type
  * 
  * This type represents a process ID. On POSIX systems, this is typically pid_t.
