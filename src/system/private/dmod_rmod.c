@@ -6,6 +6,7 @@
 #include "private/dmod_ctx.h"
 
 #include <string.h>
+#include <stdint.h>
 
 
 /**
@@ -151,7 +152,7 @@ static bool ReadRequiredModules_Crossplatform( Dmod_Context_t* Context )
     for(size_t outputIndex = 0; outputIndex < numberOfOuptuts; outputIndex++)
     {
         Dmod_CrossPtr_t entryPtr = Context->Outputs.OutputSectionCross->Entries[outputIndex];
-        const char* apiSignature = (const char*)entryPtr;
+        const char* apiSignature = (const char*)(uintptr_t)entryPtr;
         if(apiSignature == NULL)
         {
             continue;

@@ -570,7 +570,7 @@ bool Dmod_FindMatch(const char* PartialName, char* outModuleName, size_t MaxLeng
             for( uint32_t j = 0; j < slot->DmpHeader->ModuleCount; j++ )
             {
                 Dmod_DmpModuleEntry_t* entry = &slot->ModuleEntries[j];
-                if( entry->ModuleName != NULL )
+                if( entry->ModuleName[0] != '\0' )
                 {
                     size_t moduleNameLen = strlen(entry->ModuleName);
                     if( moduleNameLen >= partialLen && strncmp(entry->ModuleName, PartialName, partialLen) == 0 )
