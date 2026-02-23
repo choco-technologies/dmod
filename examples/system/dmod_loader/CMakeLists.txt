@@ -14,7 +14,7 @@ add_executable(${PROJECT_NAME} main.c)
 include_directories(${PROJECT_SOURCE_DIR})
 
 # Link libraries (if any)
-target_link_libraries(${PROJECT_NAME} dmod)
+target_link_libraries(${PROJECT_NAME} dmod pthread)
 
 target_link_options(${PROJECT_NAME} PRIVATE -L ${DMOD_DIR}/scripts)
 target_link_options(${PROJECT_NAME} PRIVATE -T ${CMAKE_CURRENT_SOURCE_DIR}/main.ld)
