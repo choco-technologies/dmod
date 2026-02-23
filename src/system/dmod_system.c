@@ -1092,7 +1092,7 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
         leftStack != (size_t)-1 &&
         (size_t)Context->Header->RequiredStackSize > leftStack )
     {
-        DMOD_LOG_ERROR("Cannot run module - insufficient stack size\n");
+        DMOD_LOG_ERROR("Cannot run module - insufficient stack size: %lu > %lu\n", (size_t)Context->Header->RequiredStackSize, leftStack);
         return -ENOMEM;
     }
 
@@ -1743,7 +1743,7 @@ int Dmod_RunModule(const char* Module, int argc, char *argv[])
         leftStack != (size_t)-1 &&
         (size_t)Dmod_GetStackSize(context) > leftStack )
     {
-        DMOD_LOG_ERROR("Cannot run module - insufficient stack size\n");
+        DMOD_LOG_ERROR("Cannot run module - insufficient stack size: %lu > %lu\n", (size_t)Dmod_GetStackSize(context), leftStack);
         Dmod_Unload( context, false );
         return -ENOMEM;
     }
