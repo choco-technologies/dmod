@@ -433,7 +433,7 @@ static void ProcessInlineFormatting(const char* line, char* output, size_t outpu
         }
         
         // Handle bold **text** or __text__
-        if (!in_code && (line[i] == '*' && line[i+1] == '*') || (line[i] == '_' && line[i+1] == '_')) {
+        if (!in_code && ((line[i] == '*' && line[i+1] == '*') || (line[i] == '_' && line[i+1] == '_'))) {
             if (!in_bold) {
                 in_bold = true;
                 j += snprintf(output + j, output_size - j, "%s", VT100_BOLD);
@@ -446,7 +446,7 @@ static void ProcessInlineFormatting(const char* line, char* output, size_t outpu
         }
         
         // Handle italic *text* or _text_ (but not ** or __)
-        if (!in_code && (line[i] == '*' && line[i+1] != '*') || (line[i] == '_' && line[i+1] != '_')) {
+        if (!in_code && ((line[i] == '*' && line[i+1] != '*') || (line[i] == '_' && line[i+1] != '_'))) {
             // Check if it's not at word boundary for underscore
             if (line[i] == '_' && i > 0 && isalnum(line[i-1])) {
                 if (j < output_size - 1) {
@@ -518,8 +518,6 @@ static bool RenderMarkdown(const char* file_path, bool paged) {
     char formatted[8192];
     char output_line[8192];
     bool in_code_block = false;
-    bool in_list = false;
-    int list_indent = 0;
     
     while (fgets(line, sizeof(line), file)) {
         TrimTrailing(line);
@@ -624,7 +622,6 @@ static bool RenderMarkdown(const char* file_path, bool paged) {
         
         // Handle bullet lists
         if (StartsWith(line, "- ") || StartsWith(line, "* ") || StartsWith(line, "+ ")) {
-            in_list = true;
             const char* text = line + 2;
             ProcessInlineFormatting(text, formatted, sizeof(formatted));
             Dmod_SnPrintf(output_line, sizeof(output_line), "  %s•%s %s", VT100_YELLOW, VT100_RESET, formatted);
@@ -636,7 +633,6 @@ static bool RenderMarkdown(const char* file_path, bool paged) {
         if (isdigit(line[0])) {
             const char* dot = strchr(line, '.');
             if (dot && dot[1] == ' ') {
-                in_list = true;
                 char num[16];
                 size_t num_len = dot - line;
                 if (num_len < sizeof(num)) {
@@ -660,7 +656,6 @@ static bool RenderMarkdown(const char* file_path, bool paged) {
         
         // Empty line - reset list mode
         if (strlen(line) == 0) {
-            in_list = false;
             if (paged) PageBuffer_AddLine(&page_buffer, ""); else Dmod_Printf("\n");
             continue;
         }

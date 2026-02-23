@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -166,18 +167,15 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
     }
     
     // Verify all modules exist and create a temporary directory with only the needed modules
-    char tempDir[DMOD_MAX_PATH_LENGTH];
-    char tempTemplate[] = "/tmp/todmp_XXXXXX";
+    char tempDir[] = "/tmp/todmp_XXXXXX";
     
     // Create secure temporary directory using mkdtemp
-    if( mkdtemp(tempTemplate) == NULL )
+    if( mkdtemp(tempDir) == NULL )
     {
         printf("Error: Cannot create temporary directory\n");
         Dmod_Dependencies_Free(dep_ctx);
         return -1;
     }
-    
-    snprintf(tempDir, sizeof(tempDir), "%s", tempTemplate);
     
     // Copy only the modules specified in .dmd file to temp directory
     for( size_t i = 0; i < dep_count; i++ )
