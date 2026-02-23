@@ -29,10 +29,12 @@
  * @file dmod_if_env.c
  * @version 0.1
  */
+#ifndef _POSIX_C_SOURCE
+#   define _POSIX_C_SOURCE 200112L
+#endif
 #include <string.h>
 #include "dmod.h"
 #if DMOD_USE_STDLIB
-#   define _POSIX_C_SOURCE=200112L
 #   include <stdlib.h>
 #endif
 
