@@ -221,7 +221,11 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
         return NULL;
     }
 
-    Dmod_Irq_RegisterModule( context );
+    if( !Dmod_Irq_RegisterModule( context ) )
+    {
+        Dmod_Unload( context, true );
+        return NULL;
+    }
     Dmod_PrintAllApis( context );
     Dmod_Event_ModuleLoadingInProgress( Path, 100 );
 
@@ -309,7 +313,11 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
         return NULL;
     }
 
-    Dmod_Irq_RegisterModule( context );
+    if( !Dmod_Irq_RegisterModule( context ) )
+    {
+        Dmod_Unload( context, true );
+        return NULL;
+    }
     Dmod_PrintAllApis( context );
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(context), 100 );
 
@@ -423,7 +431,11 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
     }
     context->PackageName = PackageName;
 
-    Dmod_Irq_RegisterModule( context );
+    if( !Dmod_Irq_RegisterModule( context ) )
+    {
+        Dmod_Unload( context, true );
+        return NULL;
+    }
     Dmod_PrintAllApis( context );
     Dmod_Event_ModuleLoadingInProgress( slot->FilePath, 100 );
 

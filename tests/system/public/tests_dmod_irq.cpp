@@ -142,7 +142,7 @@ TEST_F(DmodIrqTest, RegisterModuleAddsHandlerToTable)
     AttachInputSection(ctx, &section, 1);
 
     ASSERT_TRUE(Dmod_Irq_Init(8, 4));
-    Dmod_Irq_RegisterModule(ctx);
+    EXPECT_TRUE(Dmod_Irq_RegisterModule(ctx));
 
     callCount = 0;
     Dmod_IrqAll(3);
@@ -169,7 +169,7 @@ TEST_F(DmodIrqTest, RegisterModuleIgnoresNonIrqEntries)
     AttachInputSection(ctx, &section, 1);
 
     ASSERT_TRUE(Dmod_Irq_Init(8, 4));
-    Dmod_Irq_RegisterModule(ctx);
+    EXPECT_TRUE(Dmod_Irq_RegisterModule(ctx));
 
     callCount = 0;
     Dmod_IrqAll(0); // should not call the non-IRQ handler
@@ -198,11 +198,44 @@ TEST_F(DmodIrqTest, RegisterModuleIrqNumberOutOfRange)
     AttachInputSection(ctx, &section, 1);
 
     ASSERT_TRUE(Dmod_Irq_Init(4, 2)); // table only has IRQs 0..3
-    // IRQ 99 is out of range - should be silently skipped
-    EXPECT_NO_FATAL_FAILURE(Dmod_Irq_RegisterModule(ctx));
+    // IRQ 99 is out of range - should be silently skipped (returns true, not an error)
+    EXPECT_TRUE(Dmod_Irq_RegisterModule(ctx));
 
     DetachInputSection(ctx);
     Dmod_Context_Delete(ctx);
+}
+
+TEST_F(DmodIrqTest, RegisterModuleReturnsFalseWhenNoFreeSlots)
+{
+    static void (*h1)(void) = [](){};
+    static void (*h2)(void) = [](){};
+
+    char sigBuf[DMOD_IRQ_SIGNATURE_BUFFER_SIZE];
+    Dmod_SnPrintf(sigBuf, sizeof(sigBuf), DMOD_IRQ_SIGNATURE_PREFIX "%d", 0);
+
+    // Table has only 1 slot per IRQ
+    ASSERT_TRUE(Dmod_Irq_Init(4, 1));
+
+    static Dmod_InputsSection_t sec1, sec2;
+    sec1.Entries[0] = { (void*)h1, sigBuf };
+    sec1.Entries[1] = { NULL, NULL };
+    sec2.Entries[0] = { (void*)h2, sigBuf };
+    sec2.Entries[1] = { NULL, NULL };
+
+    Dmod_Context_t* ctx1 = MakeContext();
+    Dmod_Context_t* ctx2 = MakeContext();
+    ASSERT_NE(ctx1, nullptr);
+    ASSERT_NE(ctx2, nullptr);
+    AttachInputSection(ctx1, &sec1, 1);
+    AttachInputSection(ctx2, &sec2, 1);
+
+    EXPECT_TRUE(Dmod_Irq_RegisterModule(ctx1));   // first registration succeeds
+    EXPECT_FALSE(Dmod_Irq_RegisterModule(ctx2));  // second fails - no free slot
+
+    DetachInputSection(ctx1);
+    DetachInputSection(ctx2);
+    Dmod_Context_Delete(ctx1);
+    Dmod_Context_Delete(ctx2);
 }
 
 // ===============================================================
@@ -228,7 +261,7 @@ TEST_F(DmodIrqTest, UnregisterModuleRemovesHandlerFromTable)
     AttachInputSection(ctx, &section, 1);
 
     ASSERT_TRUE(Dmod_Irq_Init(8, 4));
-    Dmod_Irq_RegisterModule(ctx);
+    EXPECT_TRUE(Dmod_Irq_RegisterModule(ctx));
 
     // Verify it fires
     callCount = 0;
@@ -285,8 +318,8 @@ TEST_F(DmodIrqTest, IrqAllCallsMultipleHandlersFromMultipleModules)
     AttachInputSection(ctx2, &sec2, 1);
 
     ASSERT_TRUE(Dmod_Irq_Init(8, 4));
-    Dmod_Irq_RegisterModule(ctx1);
-    Dmod_Irq_RegisterModule(ctx2);
+    EXPECT_TRUE(Dmod_Irq_RegisterModule(ctx1));
+    EXPECT_TRUE(Dmod_Irq_RegisterModule(ctx2));
 
     count = 0;
     Dmod_IrqAll(5);

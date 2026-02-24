@@ -62,8 +62,11 @@ extern void Dmod_Irq_Deinit( void );
  * parses the IRQ number from the signature and inserts the handler into the table.
  * 
  * @param Context Loaded module context (Inputs must already be populated)
+ * 
+ * @return true on success or when the IRQ table is not active,
+ *         false if an IRQ handler could not be registered (no free slot)
  */
-extern void Dmod_Irq_RegisterModule( Dmod_Context_t* Context );
+extern bool Dmod_Irq_RegisterModule( Dmod_Context_t* Context );
 
 /**
  * @brief Unregister all IRQ handlers that belong to a module

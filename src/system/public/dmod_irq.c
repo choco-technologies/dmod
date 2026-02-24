@@ -146,16 +146,16 @@ void Dmod_Irq_Deinit( void )
     Dmod_IrqMaxHandlers = 0;
 }
 
-void Dmod_Irq_RegisterModule( Dmod_Context_t* Context )
+bool Dmod_Irq_RegisterModule( Dmod_Context_t* Context )
 {
     if( Dmod_IrqTable == NULL || !Dmod_Context_IsValid( Context ) )
     {
-        return;
+        return true;
     }
 
     if( Context->Inputs.InputSection == NULL || Context->Inputs.SectionSize == 0 )
     {
-        return;
+        return true;
     }
 
     size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
@@ -177,8 +177,10 @@ void Dmod_Irq_RegisterModule( Dmod_Context_t* Context )
             continue;
         }
 
+        Dmod_EnterCritical();
         Dmod_IrqEntry_t* row = &Dmod_IrqTable[irqNum * Dmod_IrqMaxHandlers];
         bool registered = false;
+        size_t registeredSlot = 0;
         for( size_t slot = 0; slot < Dmod_IrqMaxHandlers; slot++ )
         {
             if( row[slot].Handler == NULL )
@@ -186,18 +188,25 @@ void Dmod_Irq_RegisterModule( Dmod_Context_t* Context )
                 row[slot].Handler = (void (*)(void))fn;
                 row[slot].Owner   = Context;
                 registered = true;
-                DMOD_LOG_INFO("Registered IRQ %d handler for module %s (slot %zu)\n",
-                              irqNum, Dmod_Context_GetModuleName( Context ), slot);
+                registeredSlot = slot;
                 break;
             }
         }
+        Dmod_ExitCritical();
 
-        if( !registered )
+        if( registered )
         {
-            DMOD_LOG_WARN("No free slot for IRQ %d in module %s - increase MaxHandlersPerIrq\n",
-                          irqNum, Dmod_Context_GetModuleName( Context ));
+            DMOD_LOG_VERBOSE("Registered IRQ %d handler for module %s (slot %zu)\n",
+                             irqNum, Dmod_Context_GetModuleName( Context ), registeredSlot);
+        }
+        else
+        {
+            DMOD_LOG_ERROR("No free slot for IRQ %d in module %s - increase MaxHandlersPerIrq\n",
+                           irqNum, Dmod_Context_GetModuleName( Context ));
+            return false;
         }
     }
+    return true;
 }
 
 void Dmod_Irq_UnregisterModule( Dmod_Context_t* Context )
