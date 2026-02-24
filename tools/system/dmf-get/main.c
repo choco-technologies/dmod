@@ -1792,7 +1792,7 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
         // Initialize Dmod system if not already initialized
         static bool dmod_initialized = false;
         if (!dmod_initialized) {
-            if (!Dmod_Initialize()) {
+            if (!Dmod_Initialize(0, 0)) {
                 DMOD_LOG_ERROR("Failed to initialize Dmod system\n");
                 return 1;
             }

@@ -54,7 +54,7 @@ extern "C" {
  * @addtogroup DMOD-System
  * @{
  */
-extern bool             Dmod_Initialize         ( void );
+extern bool             Dmod_Initialize         ( size_t NumIrqs, size_t MaxHandlersPerIrq );
 extern bool             Dmod_Deinitialize       ( void );
 extern Dmod_Context_t*  Dmod_LoadFile           ( const char* Path );
 extern Dmod_Context_t*  Dmod_Load               ( const void* Data, size_t Size );
@@ -87,7 +87,8 @@ extern int              Dmod_Init               ( Dmod_Context_t* Context, const
 extern int              Dmod_Main               ( Dmod_Context_t* Context, int argc, char *argv[] );
 extern int              Dmod_Deinit             ( Dmod_Context_t* Context );
 extern int              Dmod_Signal             ( Dmod_Context_t* Context, int SignalNumber );
-extern int              Dmod_Irq                ( Dmod_Context_t* Context, const char* Signature );
+extern int              Dmod_Irq                ( Dmod_Context_t* Context, int IrqNumber );
+extern void             Dmod_IrqAll             ( int IrqNumber );
 
 // DMF Getters
 extern uint64_t         Dmod_GetStackSize       ( Dmod_Context_t* Context );

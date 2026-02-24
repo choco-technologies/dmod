@@ -16,7 +16,7 @@ class DmodLoadFilePackagePathTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        Dmod_Initialize();
+        Dmod_Initialize(0, 0);
     }
 
     void TearDown() override

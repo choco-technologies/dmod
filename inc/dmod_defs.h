@@ -228,8 +228,9 @@ extern "C" {
 #define DMOD_DIF_API_DECLARATION( DIF_MODULE, IMPL_MODULE, VERSION, RET, NAME, PARAMS )       \
         RET DMOD_MAKE_DIF_API_FUNCTION_NAME(DIF_MODULE,IMPL_MODULE,NAME) PARAMS
 
-#define DMOD_IRQ_MAKE_HANDLER_NAME(NAME)                __irq_##NAME
-#define DMOD_IRQ_MAKE_REG_NAME(NAME)                    __irq_##NAME##_registration
+#define DMOD_IRQ_MAKE_HANDLER_NAME(IRQ_NUMBER)          __irq_##IRQ_NUMBER
+#define DMOD_IRQ_MAKE_REG_NAME(IRQ_NUMBER)              __irq_##IRQ_NUMBER##_registration
+#define DMOD_IRQ_SIGNATURE_BUFFER_SIZE                  ( sizeof(DMOD_IRQ_SIGNATURE_PREFIX) + 20 )
 
 #define DMOD_MAL_CONNECT( MODULE, NAME, FUNCTION_NAME )   \
                         DMOD_FUNCTION_REDEFINITION( DMOD_MAKE_MAL_API_FUNCTION_NAME(MODULE,NAME), FUNCTION_NAME )
@@ -245,18 +246,19 @@ extern "C" {
 /**
  * @brief Macro for IRQ handling
  * 
- * @param NAME Name of the IRQ handler
+ * @param IRQ_NUMBER Number of the IRQ to handle
  * 
  * @note This macro defines the IRQ handler function and registers it in the DMOD
+ *       using the IRQ number as the identifier.
  */
-#define DMOD_IRQ_HANDLER( NAME )        \
-        static void DMOD_IRQ_MAKE_HANDLER_NAME(NAME)(void);\
-        static Dmod_ApiRegistration_t DMOD_IRQ_MAKE_REG_NAME(NAME) DMOD_SECTION(.inputs) = \
+#define DMOD_IRQ_HANDLER( IRQ_NUMBER )        \
+        static void DMOD_IRQ_MAKE_HANDLER_NAME(IRQ_NUMBER)(void);\
+        static Dmod_ApiRegistration_t DMOD_IRQ_MAKE_REG_NAME(IRQ_NUMBER) DMOD_SECTION(.inputs) = \
         { \
-            .Function = (void*)DMOD_IRQ_MAKE_HANDLER_NAME(NAME), \
-            .Signature = DMOD_MAKE_IRQ_SIGNATURE(NAME) \
+            .Function = (void*)DMOD_IRQ_MAKE_HANDLER_NAME(IRQ_NUMBER), \
+            .Signature = DMOD_MAKE_IRQ_SIGNATURE(IRQ_NUMBER) \
         };\
-        static void DMOD_IRQ_MAKE_HANDLER_NAME(NAME)(void)
+        static void DMOD_IRQ_MAKE_HANDLER_NAME(IRQ_NUMBER)(void)
 
 #ifdef DOXYGEN
 /**

@@ -26,6 +26,7 @@ DMOD_SOURCES=private/dmod_vars.c\
 		public/dmod_dmf_api.c\
 		public/dmod_dmfc_api.c\
 		public/dmod_dmp_api.c\
+		public/dmod_irq.c\
 		dmod_system.c\
 		if/dmod_if_file.c\
 		if/dmod_if_mem.c\

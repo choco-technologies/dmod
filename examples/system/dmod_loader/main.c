@@ -692,7 +692,7 @@ void PrintHelp( const char* AppName )
 int main( int argc, char *argv[] )
 {
     // Initialize Dmod system
-    if (!Dmod_Initialize())
+    if (!Dmod_Initialize(0, 0))
     {
         printf("Error: Failed to initialize Dmod system\n");
         return -1;

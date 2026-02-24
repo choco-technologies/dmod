@@ -14,7 +14,7 @@ int main(void)
     printf("=== Module Listing Example ===\n\n");
     
     // Initialize DMOD system
-    if (!Dmod_Initialize())
+    if (!Dmod_Initialize(0, 0))
     {
         fprintf(stderr, "Failed to initialize DMOD system\n");
         return 1;

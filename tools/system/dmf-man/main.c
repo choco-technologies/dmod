@@ -728,7 +728,7 @@ int main(int argc, char* argv[]) {
     }
     
     // Initialize DMOD system
-    if (!Dmod_Initialize()) {
+    if (!Dmod_Initialize(0, 0)) {
         DMOD_LOG_ERROR("Failed to initialize DMOD system\n");
         return 1;
     }
