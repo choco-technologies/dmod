@@ -1,7 +1,9 @@
 #define DMOD_PRIVATE
 #include "dmod.h"
 #include "private/dmod_ctx.h"
+#include "private/dmod_vars.h"
 #include <errno.h>
+#include <string.h>
 
 /**
  * @brief Preinitialize module
@@ -136,23 +138,58 @@ int Dmod_Signal( Dmod_Context_t* Context, int SignalNumber )
 /**
  * @brief Call IRQ handler
  * 
- * @param Context Context to IRQ
+ * @param Context Context to call IRQ handler for
  * @param IrqNumber IRQ number
  * 
  * @return 0 on success, errno on error
  */
-int Dmod_Irq( Dmod_Context_t* Context, const char* Signature )
+int Dmod_Irq( Dmod_Context_t* Context, int IrqNumber )
 {
-    int result = -EINVAL;
-    if( Dmod_Context_IsValid( Context ) )
+    if( !Dmod_Context_IsValid( Context ) )
     {
-        void (*function)() = Dmod_GetFunction( Context, Signature );
-        if( function != NULL )
-        {
-            DMOD_LOG_VERBOSE("Calling IRQ %s for %s\n", Signature, Dmod_Context_GetModuleName( Context ));
-            function();
-        }
-        result = 0;
+        return -EINVAL;
     }
-    return result;
+
+    if( Context->Inputs.InputSection == NULL )
+    {
+        return -EINVAL;
+    }
+
+    char signature[DMOD_IRQ_SIGNATURE_BUFFER_SIZE];
+    Dmod_SnPrintf( signature, sizeof(signature), DMOD_IRQ_SIGNATURE_PREFIX "%d", IrqNumber );
+
+    size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
+    for( size_t i = 0; i < numberOfEntries; i++ )
+    {
+        const char* entrySig = Context->Inputs.InputSection->Entries[i].Signature;
+        if( entrySig != NULL && strcmp( entrySig, signature ) == 0 )
+        {
+            void (*function)(void) = Context->Inputs.InputSection->Entries[i].Function;
+            if( function != NULL )
+            {
+                DMOD_LOG_VERBOSE("Calling IRQ %d for %s\n", IrqNumber, Dmod_Context_GetModuleName( Context ));
+                function();
+            }
+        }
+    }
+    return 0;
+}
+
+/**
+ * @brief Call IRQ handler for all loaded modules
+ * 
+ * @param IrqNumber IRQ number
+ * 
+ * @note This function calls the IRQ handler for all loaded modules that have
+ *       registered a handler for the given IRQ number.
+ */
+void Dmod_IrqAll( int IrqNumber )
+{
+    for( size_t i = 0; i < DMOD_MAX_MODULES; i++ )
+    {
+        if( Dmod_Contexts[i] != NULL )
+        {
+            Dmod_Irq( Dmod_Contexts[i], IrqNumber );
+        }
+    }
 }

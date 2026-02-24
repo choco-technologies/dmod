@@ -36,7 +36,8 @@ public:
     int Main(Dmod_Context_t* Context, int argc, char *argv[]);
     int Deinit(Dmod_Context_t* Context);
     int Signal(Dmod_Context_t* Context, int SignalNumber);
-    int Irq(Dmod_Context_t* Context, const char* Signature);
+    int Irq(Dmod_Context_t* Context, int IrqNumber);
+    void IrqAll(int IrqNumber);
     uint64_t GetStackSize(Dmod_Context_t* Context);
     Dmod_ModuleType_t GetModuleType(Dmod_Context_t* Context);
     bool Enable(Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Config);

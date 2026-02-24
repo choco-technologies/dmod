@@ -85,9 +85,14 @@ int Dmod::Signal(Dmod_Context_t* Context, int SignalNumber)
     return Dmod_Signal(Context, SignalNumber);
 }
 
-int Dmod::Irq(Dmod_Context_t* Context, const char* Signature)
+int Dmod::Irq(Dmod_Context_t* Context, int IrqNumber)
 {
-    return Dmod_Irq(Context, Signature);
+    return Dmod_Irq(Context, IrqNumber);
+}
+
+void Dmod::IrqAll(int IrqNumber)
+{
+    Dmod_IrqAll(IrqNumber);
 }
 
 uint64_t Dmod::GetStackSize(Dmod_Context_t* Context)
