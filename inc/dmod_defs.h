@@ -253,7 +253,7 @@ extern "C" {
  */
 #define DMOD_IRQ_HANDLER( IRQ_NUMBER )        \
         static void DMOD_IRQ_MAKE_HANDLER_NAME(IRQ_NUMBER)(void);\
-        static Dmod_ApiRegistration_t DMOD_IRQ_MAKE_REG_NAME(IRQ_NUMBER) DMOD_SECTION(.inputs) = \
+        static Dmod_ApiRegistration_t DMOD_IRQ_MAKE_REG_NAME(IRQ_NUMBER) DMOD_SECTION(".inputs") = \
         { \
             .Function = (void*)DMOD_IRQ_MAKE_HANDLER_NAME(IRQ_NUMBER), \
             .Signature = DMOD_MAKE_IRQ_SIGNATURE(IRQ_NUMBER) \
