@@ -90,7 +90,7 @@ int main( int argc, char *argv[] )
     Dmod_SetLogLevel( Dmod_LogLevel_Error );
 
     // Initialize Dmod system
-    if (!Dmod_Initialize())
+    if (!Dmod_Initialize(0, 0))
     {
         DMOD_LOG_ERROR("Failed to initialize Dmod system\n");
         return 1;

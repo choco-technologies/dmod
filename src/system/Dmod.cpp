@@ -15,6 +15,11 @@ bool Dmod::Unload(Dmod_Context_t* Context, bool Force)
     return Dmod_Unload(Context, Force);
 }
 
+bool Dmod::Initialize(size_t NumIrqs, size_t MaxHandlersPerIrq)
+{
+    return Dmod_Initialize(NumIrqs, MaxHandlersPerIrq);
+}
+
 bool Dmod::ConnectApi(Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi)
 {
     return Dmod_ConnectApi(OutputsApi, InputsApi);

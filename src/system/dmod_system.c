@@ -10,6 +10,7 @@
 #include "private/dmod_mgr.h"
 #include "private/dmod_rmod.h"
 #include "private/dmod_pck.h"
+#include "private/dmod_irq.h"
 #include "dmod_system.h"
 #include <stdbool.h>
 #include <string.h>
@@ -47,7 +48,7 @@ static bool CheckModuleArchitecture( const char* FilePath, const char* ExpectedA
  * 
  * @return True if initialization was successful, false otherwise
  */
-bool Dmod_Initialize(void)
+bool Dmod_Initialize( size_t NumIrqs, size_t MaxHandlersPerIrq )
 {
     DMOD_LOG_INFO("== dmod ver. " DMOD_VERSION_STRING " ==\n");
     
@@ -63,6 +64,10 @@ bool Dmod_Initialize(void)
         Dmod_BuiltinOutputApi.ApiType = Dmod_ApiType_Output;
         Dmod_BuiltinOutputApi.OutputSection = (Dmod_OutputsSection_t*)&__dmod_outputs_start;
     }
+    if( !Dmod_Irq_Init( NumIrqs, MaxHandlersPerIrq ) )
+    {
+        return false;
+    }
     return Dmod_BuiltinInputApi.InputSection != NULL && Dmod_BuiltinOutputApi.OutputSection != NULL;
 }
 
@@ -73,6 +78,7 @@ bool Dmod_Initialize(void)
  */
 bool Dmod_Deinitialize(void)
 {
+    Dmod_Irq_Deinit();
     return true;
 }
 
@@ -215,6 +221,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
         return NULL;
     }
 
+    Dmod_Irq_RegisterModule( context );
     Dmod_PrintAllApis( context );
     Dmod_Event_ModuleLoadingInProgress( Path, 100 );
 
@@ -301,7 +308,8 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
         Dmod_Context_Delete( context );
         return NULL;
     }
-    
+
+    Dmod_Irq_RegisterModule( context );
     Dmod_PrintAllApis( context );
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(context), 100 );
 
@@ -415,6 +423,7 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
     }
     context->PackageName = PackageName;
 
+    Dmod_Irq_RegisterModule( context );
     Dmod_PrintAllApis( context );
     Dmod_Event_ModuleLoadingInProgress( slot->FilePath, 100 );
 
@@ -724,6 +733,7 @@ bool Dmod_Unload( Dmod_Context_t* Context, bool Force )
 
     Dmod_Event_ModuleUnloaded( Context );
 
+    Dmod_Irq_UnregisterModule( Context );
     if( !Dmod_Context_Remove( Context ) )
     {
         DMOD_LOG_WARN("Unloading module %s failed - not found\n", Dmod_Context_GetModuleName( Context ));

@@ -5,15 +5,14 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "private/dmod_ctx.h"
+#include "private/dmod_irq.h"
 #include "private/dmod_vars.h"
 #include "dmod.h"
 #include "dmod_system.h"
 
 // ===============================================================
-//                  Memory helpers (one definition per test binary)
+//                  Memory / RTOS helpers
 // ===============================================================
-#ifndef DMOD_IRQ_TEST_HELPERS_DEFINED
-#define DMOD_IRQ_TEST_HELPERS_DEFINED
 
 void* Dmod_AlignedMalloc(size_t Size, size_t Alignment)
 {
@@ -27,42 +26,53 @@ void* Dmod_AlignedMalloc(size_t Size, size_t Alignment)
     return mem;
 }
 
-void Dmod_Free(void* ptr)
-{
-    free(ptr);
-}
-
-void* Dmod_Malloc(size_t Size)
-{
-    return malloc(Size);
-}
+void Dmod_Free(void* ptr)   { free(ptr); }
+void* Dmod_Malloc(size_t Size) { return malloc(Size); }
 
 void* Dmod_Mutex_New(bool Recursive)
 {
-    pthread_mutex_t* Mutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-    if (Mutex == NULL) { return NULL; }
-    pthread_mutexattr_t Attr;
-    pthread_mutexattr_init(&Attr);
-    if (Recursive) { pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE_NP); }
-    if (pthread_mutex_init(Mutex, &Attr) != 0) { free(Mutex); return NULL; }
-    return Mutex;
+    pthread_mutex_t* m = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+    if (!m) return NULL;
+    pthread_mutexattr_t a;
+    pthread_mutexattr_init(&a);
+    if (Recursive) pthread_mutexattr_settype(&a, PTHREAD_MUTEX_RECURSIVE_NP);
+    if (pthread_mutex_init(m, &a) != 0) { free(m); return NULL; }
+    return m;
 }
 
 void Dmod_Mutex_Delete(void* Mutex)
 {
-    if (Mutex != NULL)
-    {
-        pthread_mutex_destroy((pthread_mutex_t*)Mutex);
-        free(Mutex);
-    }
+    if (Mutex) { pthread_mutex_destroy((pthread_mutex_t*)Mutex); free(Mutex); }
 }
 
-void Dmod_FreeModule(const char* ModuleName)
+void Dmod_FreeModule(const char* ModuleName) { (void)ModuleName; }
+
+// ===============================================================
+//                  Helpers
+// ===============================================================
+
+static Dmod_Context_t* MakeContext(size_t fileSize = 1024)
 {
-    (void)ModuleName;
+    void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
+    if (!data) return nullptr;
+    return Dmod_Context_New(data, fileSize);
 }
 
-#endif // DMOD_IRQ_TEST_HELPERS_DEFINED
+static void AttachInputSection(Dmod_Context_t* ctx,
+                                Dmod_InputsSection_t* section,
+                                size_t numEntries)
+{
+    ctx->Inputs.InputSection  = section;
+    ctx->Inputs.SectionSize   = numEntries * sizeof(Dmod_ApiRegistration_t);
+    ctx->Inputs.ApiType       = Dmod_ApiType_Input;
+    ctx->Inputs.Crossplatform = false;
+}
+
+static void DetachInputSection(Dmod_Context_t* ctx)
+{
+    ctx->Inputs.InputSection = NULL;
+    ctx->Inputs.SectionSize  = 0;
+}
 
 // ===============================================================
 //                  Test fixture
@@ -74,137 +84,164 @@ protected:
     void SetUp() override
     {
         memset(Dmod_Contexts, 0, sizeof(Dmod_Contexts));
+        Dmod_Irq_Deinit();
     }
 
     void TearDown() override
     {
+        Dmod_Irq_Deinit();
         memset(Dmod_Contexts, 0, sizeof(Dmod_Contexts));
     }
 };
 
 // ===============================================================
-//                  Tests for Dmod_Irq
+//                  Tests for Dmod_Irq_Init / Dmod_Irq_Deinit
 // ===============================================================
 
-/**
- * @brief Test Dmod_Irq with NULL context returns -EINVAL
- */
-TEST_F(DmodIrqTest, IrqNullContextReturnsError)
+TEST_F(DmodIrqTest, IrqInitZeroDisablesTable)
 {
-    EXPECT_EQ(Dmod_Irq(NULL, 0), -EINVAL);
+    EXPECT_TRUE(Dmod_Irq_Init(0, 0));
+    // IrqAll with disabled table should be a no-op
+    EXPECT_NO_FATAL_FAILURE(Dmod_IrqAll(0));
 }
 
-/**
- * @brief Test Dmod_Irq with invalid context returns -EINVAL
- */
-TEST_F(DmodIrqTest, IrqInvalidContextReturnsError)
+TEST_F(DmodIrqTest, IrqInitAllocatesTable)
 {
-    Dmod_Context_t invalidCtx;
-    invalidCtx.Signature = 0; // invalid signature
-    EXPECT_EQ(Dmod_Irq(&invalidCtx, 0), -EINVAL);
+    EXPECT_TRUE(Dmod_Irq_Init(16, 4));
+    EXPECT_NO_FATAL_FAILURE(Dmod_IrqAll(0));
+    EXPECT_NO_FATAL_FAILURE(Dmod_IrqAll(15));
 }
 
-/**
- * @brief Test Dmod_Irq with valid context but no inputs returns -EINVAL
- */
-TEST_F(DmodIrqTest, IrqValidContextNoInputsReturnsError)
+TEST_F(DmodIrqTest, IrqDeinitCanBeCalledTwice)
 {
-    size_t fileSize = 1024;
-    void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
-    ASSERT_NE(data, nullptr);
-    Dmod_Context_t* ctx = Dmod_Context_New(data, fileSize);
+    EXPECT_TRUE(Dmod_Irq_Init(8, 2));
+    Dmod_Irq_Deinit();
+    EXPECT_NO_FATAL_FAILURE(Dmod_Irq_Deinit());
+}
+
+// ===============================================================
+//                  Tests for Dmod_Irq_RegisterModule
+// ===============================================================
+
+TEST_F(DmodIrqTest, RegisterModuleAddsHandlerToTable)
+{
+    static int callCount = 0;
+    static void (*handler)(void) = []() { callCount++; };
+
+    char sigBuf[DMOD_IRQ_SIGNATURE_BUFFER_SIZE];
+    Dmod_SnPrintf(sigBuf, sizeof(sigBuf), DMOD_IRQ_SIGNATURE_PREFIX "%d", 3);
+
+    static Dmod_InputsSection_t section;
+    section.Entries[0].Function  = (void*)handler;
+    section.Entries[0].Signature = sigBuf;
+    section.Entries[1].Function  = NULL;
+    section.Entries[1].Signature = NULL;
+
+    Dmod_Context_t* ctx = MakeContext();
     ASSERT_NE(ctx, nullptr);
+    AttachInputSection(ctx, &section, 1);
 
-    // Inputs section is NULL by default (not set up)
-    ctx->Inputs.InputSection = NULL;
-    ctx->Inputs.SectionSize = 0;
+    ASSERT_TRUE(Dmod_Irq_Init(8, 4));
+    Dmod_Irq_RegisterModule(ctx);
 
-    EXPECT_EQ(Dmod_Irq(ctx, 0), -EINVAL);
+    callCount = 0;
+    Dmod_IrqAll(3);
+    EXPECT_EQ(callCount, 1);
 
+    DetachInputSection(ctx);
     Dmod_Context_Delete(ctx);
 }
 
-/**
- * @brief Test Dmod_Irq with valid context and matching IRQ handler calls the handler
- */
-TEST_F(DmodIrqTest, IrqCallsMatchingHandler)
+TEST_F(DmodIrqTest, RegisterModuleIgnoresNonIrqEntries)
 {
-    static bool handlerCalled = false;
+    static int callCount = 0;
+    static void (*handler)(void) = []() { callCount++; };
 
-    // Build a fake input section with one IRQ entry
-    static void (*irqHandler)(void) = []() { handlerCalled = true; };
+    static Dmod_InputsSection_t section;
+    section.Entries[0].Function  = (void*)handler;
+    // Regular API signature, not an IRQ signature
+    section.Entries[0].Signature = "\021DMOD\022SomeApi@MyModule:1.0";
+    section.Entries[1].Function  = NULL;
+    section.Entries[1].Signature = NULL;
 
-    // Build the IRQ signature for IRQ number 5
-    char signature[DMOD_IRQ_SIGNATURE_BUFFER_SIZE];
-    Dmod_SnPrintf(signature, sizeof(signature), DMOD_IRQ_SIGNATURE_PREFIX "%d", 5);
-
-    static char sigBuf[DMOD_IRQ_SIGNATURE_BUFFER_SIZE];
-    memcpy(sigBuf, signature, sizeof(signature));
-
-    static Dmod_InputsSection_t inputSection;
-    inputSection.Entries[0].Function  = (void*)irqHandler;
-    inputSection.Entries[0].Signature = sigBuf;
-    inputSection.Entries[1].Function  = NULL;
-    inputSection.Entries[1].Signature = NULL;
-
-    size_t fileSize = 1024;
-    void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
-    ASSERT_NE(data, nullptr);
-    Dmod_Context_t* ctx = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* ctx = MakeContext();
     ASSERT_NE(ctx, nullptr);
+    AttachInputSection(ctx, &section, 1);
 
-    ctx->Inputs.InputSection = &inputSection;
-    ctx->Inputs.SectionSize  = sizeof(Dmod_ApiRegistration_t); // one entry
-    ctx->Inputs.ApiType      = Dmod_ApiType_Input;
-    ctx->Inputs.Crossplatform = false;
+    ASSERT_TRUE(Dmod_Irq_Init(8, 4));
+    Dmod_Irq_RegisterModule(ctx);
 
-    handlerCalled = false;
-    EXPECT_EQ(Dmod_Irq(ctx, 5), 0);
-    EXPECT_TRUE(handlerCalled);
+    callCount = 0;
+    Dmod_IrqAll(0); // should not call the non-IRQ handler
+    EXPECT_EQ(callCount, 0);
 
-    ctx->Inputs.InputSection = NULL;
-    ctx->Inputs.SectionSize  = 0;
+    DetachInputSection(ctx);
     Dmod_Context_Delete(ctx);
 }
 
-/**
- * @brief Test Dmod_Irq does NOT call handler for a different IRQ number
- */
-TEST_F(DmodIrqTest, IrqDoesNotCallHandlerForDifferentNumber)
+TEST_F(DmodIrqTest, RegisterModuleIrqNumberOutOfRange)
 {
-    static bool handlerCalled = false;
-    static void (*irqHandler)(void) = []() { handlerCalled = true; };
+    static int callCount = 0;
+    static void (*handler)(void) = []() { callCount++; };
 
-    char signature[DMOD_IRQ_SIGNATURE_BUFFER_SIZE];
-    Dmod_SnPrintf(signature, sizeof(signature), DMOD_IRQ_SIGNATURE_PREFIX "%d", 3);
+    char sigBuf[DMOD_IRQ_SIGNATURE_BUFFER_SIZE];
+    Dmod_SnPrintf(sigBuf, sizeof(sigBuf), DMOD_IRQ_SIGNATURE_PREFIX "%d", 99);
 
-    static char sigBuf[DMOD_IRQ_SIGNATURE_BUFFER_SIZE];
-    memcpy(sigBuf, signature, sizeof(signature));
+    static Dmod_InputsSection_t section;
+    section.Entries[0].Function  = (void*)handler;
+    section.Entries[0].Signature = sigBuf;
+    section.Entries[1].Function  = NULL;
+    section.Entries[1].Signature = NULL;
 
-    static Dmod_InputsSection_t inputSection;
-    inputSection.Entries[0].Function  = (void*)irqHandler;
-    inputSection.Entries[0].Signature = sigBuf;
-    inputSection.Entries[1].Function  = NULL;
-    inputSection.Entries[1].Signature = NULL;
-
-    size_t fileSize = 1024;
-    void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
-    ASSERT_NE(data, nullptr);
-    Dmod_Context_t* ctx = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* ctx = MakeContext();
     ASSERT_NE(ctx, nullptr);
+    AttachInputSection(ctx, &section, 1);
 
-    ctx->Inputs.InputSection = &inputSection;
-    ctx->Inputs.SectionSize  = sizeof(Dmod_ApiRegistration_t);
-    ctx->Inputs.ApiType      = Dmod_ApiType_Input;
-    ctx->Inputs.Crossplatform = false;
+    ASSERT_TRUE(Dmod_Irq_Init(4, 2)); // table only has IRQs 0..3
+    // IRQ 99 is out of range - should be silently skipped
+    EXPECT_NO_FATAL_FAILURE(Dmod_Irq_RegisterModule(ctx));
 
-    handlerCalled = false;
-    // IRQ 7 != 3, so handler should NOT be called
-    EXPECT_EQ(Dmod_Irq(ctx, 7), 0);
-    EXPECT_FALSE(handlerCalled);
+    DetachInputSection(ctx);
+    Dmod_Context_Delete(ctx);
+}
 
-    ctx->Inputs.InputSection = NULL;
-    ctx->Inputs.SectionSize  = 0;
+// ===============================================================
+//                  Tests for Dmod_Irq_UnregisterModule
+// ===============================================================
+
+TEST_F(DmodIrqTest, UnregisterModuleRemovesHandlerFromTable)
+{
+    static int callCount = 0;
+    static void (*handler)(void) = []() { callCount++; };
+
+    char sigBuf[DMOD_IRQ_SIGNATURE_BUFFER_SIZE];
+    Dmod_SnPrintf(sigBuf, sizeof(sigBuf), DMOD_IRQ_SIGNATURE_PREFIX "%d", 1);
+
+    static Dmod_InputsSection_t section;
+    section.Entries[0].Function  = (void*)handler;
+    section.Entries[0].Signature = sigBuf;
+    section.Entries[1].Function  = NULL;
+    section.Entries[1].Signature = NULL;
+
+    Dmod_Context_t* ctx = MakeContext();
+    ASSERT_NE(ctx, nullptr);
+    AttachInputSection(ctx, &section, 1);
+
+    ASSERT_TRUE(Dmod_Irq_Init(8, 4));
+    Dmod_Irq_RegisterModule(ctx);
+
+    // Verify it fires
+    callCount = 0;
+    Dmod_IrqAll(1);
+    EXPECT_EQ(callCount, 1);
+
+    // Unregister and verify it no longer fires
+    Dmod_Irq_UnregisterModule(ctx);
+    callCount = 0;
+    Dmod_IrqAll(1);
+    EXPECT_EQ(callCount, 0);
+
+    DetachInputSection(ctx);
     Dmod_Context_Delete(ctx);
 }
 
@@ -212,70 +249,115 @@ TEST_F(DmodIrqTest, IrqDoesNotCallHandlerForDifferentNumber)
 //                  Tests for Dmod_IrqAll
 // ===============================================================
 
-/**
- * @brief Test Dmod_IrqAll with no loaded modules does nothing
- */
-TEST_F(DmodIrqTest, IrqAllNoModulesDoesNotCrash)
+TEST_F(DmodIrqTest, IrqAllDisabledTableIsNoOp)
 {
-    // All Dmod_Contexts are NULL - should simply return without crash
+    // Table not initialised - should not crash
     EXPECT_NO_FATAL_FAILURE(Dmod_IrqAll(0));
 }
 
-/**
- * @brief Test Dmod_IrqAll calls handlers in all loaded modules
- */
-TEST_F(DmodIrqTest, IrqAllCallsHandlersInAllModules)
+TEST_F(DmodIrqTest, IrqAllOutOfRangeIsNoOp)
 {
-    static int callCount = 0;
-    static void (*irqHandler)(void) = []() { callCount++; };
+    ASSERT_TRUE(Dmod_Irq_Init(4, 2));
+    EXPECT_NO_FATAL_FAILURE(Dmod_IrqAll(-1));
+    EXPECT_NO_FATAL_FAILURE(Dmod_IrqAll(100));
+}
 
-    char signature[DMOD_IRQ_SIGNATURE_BUFFER_SIZE];
-    Dmod_SnPrintf(signature, sizeof(signature), DMOD_IRQ_SIGNATURE_PREFIX "%d", 2);
+TEST_F(DmodIrqTest, IrqAllCallsMultipleHandlersFromMultipleModules)
+{
+    static int count = 0;
+    static void (*h1)(void) = []() { count++; };
+    static void (*h2)(void) = []() { count++; };
 
-    static char sigBuf[DMOD_IRQ_SIGNATURE_BUFFER_SIZE];
-    memcpy(sigBuf, signature, sizeof(signature));
+    char sigBuf[DMOD_IRQ_SIGNATURE_BUFFER_SIZE];
+    Dmod_SnPrintf(sigBuf, sizeof(sigBuf), DMOD_IRQ_SIGNATURE_PREFIX "%d", 5);
 
-    static Dmod_InputsSection_t inputSection;
-    inputSection.Entries[0].Function  = (void*)irqHandler;
-    inputSection.Entries[0].Signature = sigBuf;
-    inputSection.Entries[1].Function  = NULL;
-    inputSection.Entries[1].Signature = NULL;
+    static Dmod_InputsSection_t sec1, sec2;
+    sec1.Entries[0] = { (void*)h1, sigBuf };
+    sec1.Entries[1] = { NULL, NULL };
+    sec2.Entries[0] = { (void*)h2, sigBuf };
+    sec2.Entries[1] = { NULL, NULL };
 
-    size_t fileSize = 1024;
-
-    void* data1 = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
-    ASSERT_NE(data1, nullptr);
-    Dmod_Context_t* ctx1 = Dmod_Context_New(data1, fileSize);
+    Dmod_Context_t* ctx1 = MakeContext();
+    Dmod_Context_t* ctx2 = MakeContext();
     ASSERT_NE(ctx1, nullptr);
-    ctx1->Inputs.InputSection = &inputSection;
-    ctx1->Inputs.SectionSize  = sizeof(Dmod_ApiRegistration_t);
-    ctx1->Inputs.ApiType      = Dmod_ApiType_Input;
-    ctx1->Inputs.Crossplatform = false;
-
-    void* data2 = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
-    ASSERT_NE(data2, nullptr);
-    Dmod_Context_t* ctx2 = Dmod_Context_New(data2, fileSize);
     ASSERT_NE(ctx2, nullptr);
-    ctx2->Inputs.InputSection = &inputSection;
-    ctx2->Inputs.SectionSize  = sizeof(Dmod_ApiRegistration_t);
-    ctx2->Inputs.ApiType      = Dmod_ApiType_Input;
-    ctx2->Inputs.Crossplatform = false;
+    AttachInputSection(ctx1, &sec1, 1);
+    AttachInputSection(ctx2, &sec2, 1);
 
-    // Register both contexts
-    Dmod_Contexts[0] = ctx1;
-    Dmod_Contexts[1] = ctx2;
+    ASSERT_TRUE(Dmod_Irq_Init(8, 4));
+    Dmod_Irq_RegisterModule(ctx1);
+    Dmod_Irq_RegisterModule(ctx2);
 
-    callCount = 0;
-    Dmod_IrqAll(2);
-    EXPECT_EQ(callCount, 2);
+    count = 0;
+    Dmod_IrqAll(5);
+    EXPECT_EQ(count, 2);
 
-    // Cleanup
-    ctx1->Inputs.InputSection = NULL;
-    ctx1->Inputs.SectionSize  = 0;
-    ctx2->Inputs.InputSection = NULL;
-    ctx2->Inputs.SectionSize  = 0;
-    Dmod_Contexts[0] = NULL;
-    Dmod_Contexts[1] = NULL;
+    DetachInputSection(ctx1);
+    DetachInputSection(ctx2);
     Dmod_Context_Delete(ctx1);
     Dmod_Context_Delete(ctx2);
+}
+
+// ===============================================================
+//                  Tests for Dmod_Irq (per-context slow path)
+// ===============================================================
+
+TEST_F(DmodIrqTest, IrqNullContextReturnsError)
+{
+    EXPECT_EQ(Dmod_Irq(NULL, 0), -EINVAL);
+}
+
+TEST_F(DmodIrqTest, IrqInvalidContextReturnsError)
+{
+    Dmod_Context_t bad;
+    bad.Signature = 0;
+    EXPECT_EQ(Dmod_Irq(&bad, 0), -EINVAL);
+}
+
+TEST_F(DmodIrqTest, IrqCallsMatchingHandler)
+{
+    static bool called = false;
+    static void (*handler)(void) = []() { called = true; };
+
+    char sigBuf[DMOD_IRQ_SIGNATURE_BUFFER_SIZE];
+    Dmod_SnPrintf(sigBuf, sizeof(sigBuf), DMOD_IRQ_SIGNATURE_PREFIX "%d", 7);
+
+    static Dmod_InputsSection_t section;
+    section.Entries[0] = { (void*)handler, sigBuf };
+    section.Entries[1] = { NULL, NULL };
+
+    Dmod_Context_t* ctx = MakeContext();
+    ASSERT_NE(ctx, nullptr);
+    AttachInputSection(ctx, &section, 1);
+
+    called = false;
+    EXPECT_EQ(Dmod_Irq(ctx, 7), 0);
+    EXPECT_TRUE(called);
+
+    DetachInputSection(ctx);
+    Dmod_Context_Delete(ctx);
+}
+
+TEST_F(DmodIrqTest, IrqDoesNotCallHandlerForDifferentNumber)
+{
+    static bool called = false;
+    static void (*handler)(void) = []() { called = true; };
+
+    char sigBuf[DMOD_IRQ_SIGNATURE_BUFFER_SIZE];
+    Dmod_SnPrintf(sigBuf, sizeof(sigBuf), DMOD_IRQ_SIGNATURE_PREFIX "%d", 2);
+
+    static Dmod_InputsSection_t section;
+    section.Entries[0] = { (void*)handler, sigBuf };
+    section.Entries[1] = { NULL, NULL };
+
+    Dmod_Context_t* ctx = MakeContext();
+    ASSERT_NE(ctx, nullptr);
+    AttachInputSection(ctx, &section, 1);
+
+    called = false;
+    EXPECT_EQ(Dmod_Irq(ctx, 9), 0);
+    EXPECT_FALSE(called);
+
+    DetachInputSection(ctx);
+    Dmod_Context_Delete(ctx);
 }

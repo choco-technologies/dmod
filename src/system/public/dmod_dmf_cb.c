@@ -1,7 +1,6 @@
 #define DMOD_PRIVATE
 #include "dmod.h"
 #include "private/dmod_ctx.h"
-#include "private/dmod_vars.h"
 #include <errno.h>
 #include <string.h>
 
@@ -136,12 +135,15 @@ int Dmod_Signal( Dmod_Context_t* Context, int SignalNumber )
 }
 
 /**
- * @brief Call IRQ handler
+ * @brief Call IRQ handler for a specific module
  * 
- * @param Context Context to call IRQ handler for
+ * @param Context   Context to call IRQ handler for
  * @param IrqNumber IRQ number
  * 
  * @return 0 on success, errno on error
+ * 
+ * @note This is the slow per-module path. For dispatching to all modules use
+ *       Dmod_IrqAll() which uses the pre-built handler table.
  */
 int Dmod_Irq( Dmod_Context_t* Context, int IrqNumber )
 {
@@ -173,23 +175,4 @@ int Dmod_Irq( Dmod_Context_t* Context, int IrqNumber )
         }
     }
     return 0;
-}
-
-/**
- * @brief Call IRQ handler for all loaded modules
- * 
- * @param IrqNumber IRQ number
- * 
- * @note This function calls the IRQ handler for all loaded modules that have
- *       registered a handler for the given IRQ number.
- */
-void Dmod_IrqAll( int IrqNumber )
-{
-    for( size_t i = 0; i < DMOD_MAX_MODULES; i++ )
-    {
-        if( Dmod_Contexts[i] != NULL )
-        {
-            Dmod_Irq( Dmod_Contexts[i], IrqNumber );
-        }
-    }
 }

@@ -22,6 +22,7 @@ public:
     Dmod_Context_t* LoadFile(const char* Path);
     Dmod_Context_t* Load(const void* Data, size_t Size);
     bool Unload(Dmod_Context_t* Context, bool Force);
+    bool Initialize(size_t NumIrqs, size_t MaxHandlersPerIrq);
     bool ConnectApi(Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi);
     bool DisconnectApi(Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi);
     bool ConnectOutputApis(Dmod_Context_t* Context);

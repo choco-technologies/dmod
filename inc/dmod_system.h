@@ -54,7 +54,7 @@ extern "C" {
  * @addtogroup DMOD-System
  * @{
  */
-extern bool             Dmod_Initialize         ( void );
+extern bool             Dmod_Initialize         ( size_t NumIrqs, size_t MaxHandlersPerIrq );
 extern bool             Dmod_Deinitialize       ( void );
 extern Dmod_Context_t*  Dmod_LoadFile           ( const char* Path );
 extern Dmod_Context_t*  Dmod_Load               ( const void* Data, size_t Size );
