@@ -2,6 +2,7 @@
 #define DMOD_MOD_DEFS_H_@DMOD_MODULE_NAME@
 
 #include "dmod_defs.h"
+#include "dmod_types.h"
 
 #ifndef dmod_@DMOD_MODULE_NAME_SNAKE_CASE@_version
 #  define dmod_@DMOD_MODULE_NAME_SNAKE_CASE@_version "@DMOD_MODULE_VERSION@"
