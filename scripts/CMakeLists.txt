@@ -201,7 +201,7 @@ function(dmod_create_module moduleName version moduleType)
         ERROR_QUIET
     )
 
-    configure_file(${DMOD_VERSION_IN_FILE_PATH} ${DMOD_DMF_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_version.txt @ONLY)
+    configure_file(${DMOD_VERSION_IN_FILE_PATH} ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_version.txt @ONLY)
     configure_file(${DMOD_SCRIPTS_DIR}/api.h.in ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_defs.h)
     configure_file(${DMOD_MODULE_HEADER_SOURCE_IN_FILE_PATH} ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_header.c)
     
@@ -291,9 +291,20 @@ function(dmod_create_module moduleName version moduleType)
     set(ELF_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${moduleName}")
     set(DMF_OUTPUT "${DMOD_DMF_DIR}/${moduleName}.dmf")
     set(DMFC_OUTPUT "${DMOD_DMFC_DIR}/${moduleName}.dmfc")
+    set(VERSION_OUTPUT "${DMOD_DMF_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_version.txt")
     
     file(MAKE_DIRECTORY ${DMOD_DMF_DIR})
     file(MAKE_DIRECTORY ${DMOD_DMFC_DIR})
+
+    # Copy version file to DMOD_DMF_DIR at build time (not configure time) so that
+    # disabling a module (e.g. DMOD_BUILD_EXAMPLES=OFF) leaves no stale files behind.
+    add_custom_command(
+        TARGET ${moduleName} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_version.txt
+            ${VERSION_OUTPUT}
+        COMMENT "Copying version file for ${moduleName}"
+    )
 
     add_custom_command(
         TARGET ${moduleName} POST_BUILD
@@ -301,11 +312,21 @@ function(dmod_create_module moduleName version moduleType)
         COMMENT "Converting ELF to binary"
     )
 
+    # Register all module output files so they are removed by cmake --build . --target clean
+    set_property(TARGET ${moduleName} APPEND PROPERTY
+        ADDITIONAL_CLEAN_FILES
+            "${DMF_OUTPUT}"
+            "${VERSION_OUTPUT}"
+    )
+
     if(TODMFC)
         add_custom_command(
             TARGET ${moduleName} POST_BUILD
             COMMAND ${TODMFC} ${DMF_OUTPUT} ${DMFC_OUTPUT} ${DMOD_COMPRESSION_METHOD}
             COMMENT "Compressing the binary"
+        )
+        set_property(TARGET ${moduleName} APPEND PROPERTY
+            ADDITIONAL_CLEAN_FILES "${DMFC_OUTPUT}"
         )
     endif()
 
@@ -329,6 +350,9 @@ function(dmod_create_module moduleName version moduleType)
                 COMMENT "Generating dependencies file"
             )
         endif()
+        set_property(TARGET ${moduleName} APPEND PROPERTY
+            ADDITIONAL_CLEAN_FILES "${DMD_OUTPUT}"
+        )
     endif()
 
     # Print the source files
