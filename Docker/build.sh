@@ -10,6 +10,7 @@ THIS_SCRIPT_PATH="${BASH_SOURCE[0]}"
 THIS_DIR="$( cd "$( dirname "$THIS_SCRIPT_PATH" )" >/dev/null && pwd )"
 ROOT_DIR="$THIS_DIR/.."
 DOCKERFILE_PATH="$THIS_DIR/Dockerfile"
+DOCKERFILE_ENV_PATH="$THIS_DIR/Dockerfile.env"
 
 #
 #   Path to the configuration file
@@ -73,10 +74,23 @@ function prepareScript()
     
     addCommandLineOptionalArgument 'IMAGE_NAME' '--image-name' not_empty_string 'Name of the image to build' 'chocotechnologies/dmod' ''
     addCommandLineOptionalArgument 'IMAGE_VERSION' '--image-version' not_empty_string 'Version of the image to build' 'latest' ''
+    addCommandLineOptionalArgument 'ENV_IMAGE_NAME' '--env-image-name' not_empty_string 'Name of the environment image to build' 'chocotechnologies/dmod-env' ''
+    addCommandLineOptionalArgument 'ENV_IMAGE_VERSION' '--env-image-version' not_empty_string 'Version of the environment image to build' 'latest' ''
 
     
     disableConfigurationPrinting
     parseCommandLineArguments "$@"
+}
+
+#
+#   Builds the environment image
+#   
+function buildEnv()
+{
+    local old_pwd=$(pwd)
+    cd "$THIS_DIR/.."
+    doCommandAsStepWithSpinner "Building the environment image $ENV_IMAGE_NAME:$ENV_IMAGE_VERSION" docker build --squash -t "$ENV_IMAGE_NAME:$ENV_IMAGE_VERSION" -f "$DOCKERFILE_ENV_PATH" "$ROOT_DIR"
+    cd "$old_pwd"
 }
 
 #
@@ -95,4 +109,5 @@ function build()
 #   MAIN
 #
 prepareScript "$@"
+buildEnv
 build 
