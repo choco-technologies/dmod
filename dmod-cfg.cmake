@@ -52,17 +52,25 @@ set(DMOD_SYSTEM_VERSION_MAJOR 0 CACHE STRING "Major version of your system")
 # Minor version of your system
 set(DMOD_SYSTEM_VERSION_MINOR 1 CACHE STRING "Minor version of your system")
 
+# When dmod is used as a dependency (not the top-level project), disable
+# building tests, examples, tools and templates by default.
+if(DEFINED DMOD_DIR AND NOT CMAKE_SOURCE_DIR STREQUAL DMOD_DIR)
+    set(_DMOD_BUILD_EXTRAS_DEFAULT OFF)
+else()
+    set(_DMOD_BUILD_EXTRAS_DEFAULT ON)
+endif()
+
 # Build tests
-set(DMOD_BUILD_TESTS ON CACHE BOOL "Enable to build tests")
+set(DMOD_BUILD_TESTS ${_DMOD_BUILD_EXTRAS_DEFAULT} CACHE BOOL "Enable to build tests")
 
 # Build examples
-set(DMOD_BUILD_EXAMPLES ON CACHE BOOL "Enable to build examples")
+set(DMOD_BUILD_EXAMPLES ${_DMOD_BUILD_EXTRAS_DEFAULT} CACHE BOOL "Enable to build examples")
 
 # Build tools
-set(DMOD_BUILD_TOOLS ON CACHE BOOL "Enable to build tools")
+set(DMOD_BUILD_TOOLS ${_DMOD_BUILD_EXTRAS_DEFAULT} CACHE BOOL "Enable to build tools")
 
 # Build templates
-set(DMOD_BUILD_TEMPLATES ON CACHE BOOL "Enable to build templates")
+set(DMOD_BUILD_TEMPLATES ${_DMOD_BUILD_EXTRAS_DEFAULT} CACHE BOOL "Enable to build templates")
 
 # Use exceptions
 set(DMOD_USE_EXCEPTIONS OFF CACHE BOOL "Enable to use exceptions")
