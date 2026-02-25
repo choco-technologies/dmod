@@ -304,7 +304,7 @@ int main( int argc, char *argv[] )
             
             // Determine which version to use:
             // 1. If both DMF and requirements file specify a version, use the requirements file version (developer's explicit choice)
-            // 2. If only DMF has version, use soft constraint (>=version) since the version is auto-discovered
+            // 2. If only DMF has version, use soft range constraint (>=version<(major+1).0) since the version is auto-discovered
             // 3. If only requirements file has version, use requirements file version
             // 4. If neither has version, write module without version
             
@@ -325,8 +325,10 @@ int main( int argc, char *argv[] )
             else if( hasVersionInDmf )
             {
                 // Only DMF has version (auto-discovered, not user-specified)
-                // Use soft minimum constraint (>=) to allow newer compatible versions,
-                // unless the version already contains a constraint operator
+                // Use a soft range constraint >=version<(major+1).0 so that
+                // newer patch/minor versions are accepted but a different major
+                // version (which dmod treats as ABI-incompatible) is rejected.
+                // Versions that already carry an operator are used as-is.
                 const char* v = reqModule->Version;
                 if( v[0] == '>' || v[0] == '<' || v[0] == '=' )
                 {
@@ -335,8 +337,11 @@ int main( int argc, char *argv[] )
                 }
                 else
                 {
-                    // Plain version number - convert to soft minimum constraint
-                    snprintf( softVersionBuf, sizeof(softVersionBuf), ">=%s", v );
+                    // Plain version number - convert to soft range constraint:
+                    // >=version<(major+1).0 so that only the same major version
+                    // series is accepted (dmod refuses cross-major-version APIs)
+                    long major = strtol( v, NULL, 10 );
+                    snprintf( softVersionBuf, sizeof(softVersionBuf), ">=%s<%ld.0", v, major + 1 );
                     versionToUse = softVersionBuf;
                 }
             }
