@@ -10,19 +10,19 @@ directory of modules to a remote registry.
 ## Usage
 
 ```bash
-todmm <folder> <base_url> [output.dmm]
+todmm <folder> <base_url> [-o output.dmm]
 ```
 
 ### Arguments
 
 - `<folder>` - Path to the folder containing `.dmf` / `.dmfc` module files (required)
 - `<base_url>` - Base URL or path prepended to each module entry (required)
-- `[output.dmm]` - Output manifest file path (optional, defaults to `manifest.dmm`)
 
 ### Options
 
 - `-h, --help` - Print help message
 - `-v, --version` - Print version information
+- `-o <file>` - Output manifest file path (optional, defaults to `manifest.dmm`)
 
 ## Examples
 
@@ -31,10 +31,10 @@ todmm <folder> <base_url> [output.dmm]
 todmm ./dmf https://registry.example.com/modules
 
 # Specify a custom output file
-todmm ./dmf https://registry.example.com/modules output.dmm
+todmm ./dmf https://registry.example.com/modules -o output.dmm
 
 # Base URL ending with '/' - no extra separator is added
-todmm ./dmf https://registry.example.com/modules/ manifest.dmm
+todmm ./dmf https://registry.example.com/modules/ -o manifest.dmm
 ```
 
 ## Generated File Format

@@ -311,6 +311,7 @@ If a module download fails:
 
 - [DMD File Format](dmd-file-format.md) - Dependencies file format
 - [dmf-get Tool](dmf-get-tool.md) - Package manager documentation
+- [todmm Tool](todmm-tool.md) - Generate manifests from a folder of DMF files
 - [DMOD Architecture](../README.md) - Overview of DMOD system
 
 ## Compatibility

@@ -32,7 +32,7 @@ static bool IsDmfFile( const char* fileName )
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s <folder> <base_url> [output.dmm]\n", AppName);
+    printf("Usage: %s <folder> <base_url> [-o output.dmm]\n", AppName);
 }
 
 // -----------------------------------------
@@ -49,13 +49,13 @@ void PrintHelp( const char* AppName )
     printf("\nArguments:\n");
     printf("  <folder>       Path to the folder containing .dmf / .dmfc files\n");
     printf("  <base_url>     Base URL or path prepended to each module file entry\n");
-    printf("  [output.dmm]   (optional) Output manifest file path (default: manifest.dmm)\n");
     printf("\nOptions:\n");
     printf("  -h, --help     Print this help message\n");
     printf("  -v, --version  Print version information\n");
+    printf("  -o <file>      Output manifest file path (default: manifest.dmm)\n");
     printf("\nExamples:\n");
     printf("  %s ./dmf https://registry.example.com/modules\n", AppName);
-    printf("  %s ./dmf https://registry.example.com/modules/ output.dmm\n", AppName);
+    printf("  %s ./dmf https://registry.example.com/modules/ -o output.dmm\n", AppName);
     printf("\nDescription:\n");
     printf("  The tool scans the given folder for .dmf and .dmfc files, reads\n");
     printf("  the module name and version from each file header, and writes a\n");
@@ -98,7 +98,32 @@ int main( int argc, char *argv[] )
 
     const char* folderPath = argv[1];
     const char* baseUrl    = argv[2];
-    const char* outputPath = (argc >= 4) ? argv[3] : "manifest.dmm";
+    const char* outputPath = "manifest.dmm";
+
+    // Parse optional arguments
+    for( int i = 3; i < argc; i++ )
+    {
+        if( strcmp( argv[i], "-o" ) == 0 )
+        {
+            if( i + 1 < argc )
+            {
+                outputPath = argv[i + 1];
+                i++; // Skip next argument
+            }
+            else
+            {
+                printf("Error: -o option requires a file path\n");
+                PrintUsage( argv[0] );
+                return -1;
+            }
+        }
+        else
+        {
+            printf("Error: Unknown argument: %s\n", argv[i]);
+            PrintUsage( argv[0] );
+            return -1;
+        }
+    }
 
     // Initialize Dmod system
     if( !Dmod_Initialize(0, 0) )
