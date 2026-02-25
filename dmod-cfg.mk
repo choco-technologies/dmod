@@ -36,7 +36,7 @@ DMOD_USE_REALLOC=ON
 DMOD_USE_TERMIOS=ON
 
 # Use time.h for system time functions
-DMOD_USE_TIME_H=ON
+DMOD_USE_TIME=ON
 
 # Use FastLZ compression library
 DMOD_USE_FASTLZ=ON

@@ -28,7 +28,7 @@
 
 #define _POSIX_C_SOURCE 200809L
 #include "dmod.h"
-#if DMOD_USE_TIME_H
+#if DMOD_USE_TIME
 #   include <time.h>
 #endif
 
@@ -47,7 +47,7 @@
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Timestamp_t, _GetUptime, ( void ))
 {
-#if DMOD_USE_TIME_H
+#if DMOD_USE_TIME
     struct timespec ts;
 #   if defined(CLOCK_BOOTTIME)
     clockid_t clockId = CLOCK_BOOTTIME;

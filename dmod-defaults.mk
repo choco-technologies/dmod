@@ -65,8 +65,8 @@ ifndef DMOD_USE_TERMIOS
     DMOD_USE_TERMIOS = ON
 endif
 
-ifndef DMOD_USE_TIME_H
-    DMOD_USE_TIME_H = ON
+ifndef DMOD_USE_TIME
+    DMOD_USE_TIME = ON
 endif
 
 ifndef DMOD_USE_FASTLZ
