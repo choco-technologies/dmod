@@ -9,6 +9,7 @@ The **DMOD (Dynamic Modules)** framework ships with a set of command-line tools 
 | Tool | Description | Documentation |
 |------|-------------|---------------|
 | **dmf-get** | DMOD package manager for downloading and managing modules from manifest files | [dmf-get-tool.md](dmf-get-tool.md) |
+| **todmm** | Manifest generator - creates a manifest.dmm from a folder of DMF files | [todmm-tool.md](todmm-tool.md) |
 | **todmfc** | Tool for compressing DMF files to DMFC format | [todmfc/README.md](../tools/system/todmfc/README.md) |
 | **todmp** | DMP package creator - creates packages containing multiple modules | [todmp/README.md](../tools/system/todmp/README.md) |
 | **todmd** | DMD dependencies file generator - extracts dependencies from modules | [todmd/README.md](../tools/system/todmd/README.md) |
@@ -94,6 +95,7 @@ make
 Or build all tools from the main directory:
 ```bash
 make -C tools/system/dmf-get
+make -C tools/system/todmm
 make -C tools/system/todmfc
 make -C tools/system/todmp
 make -C tools/system/todmd
@@ -152,6 +154,7 @@ For tools installed with CMake, remove files manually:
 
 ```bash
 sudo rm /usr/local/bin/dmf-get
+sudo rm /usr/local/bin/todmm
 sudo rm /usr/local/bin/todmfc
 sudo rm /usr/local/bin/todmp
 sudo rm /usr/local/bin/todmd
@@ -183,6 +186,26 @@ dmf-get -m http://example.com/manifest.dmm mymodule
 ```
 
 Full documentation: [dmf-get-tool.md](dmf-get-tool.md)
+
+### todmm
+
+**todmm** scans a folder of DMF/DMFC module files and generates a `.dmm` manifest file, with a configurable base URL prepended to each entry.
+
+**Basic usage:**
+```bash
+# Generate manifest.dmm from all modules in a folder
+todmm ./dmf https://registry.example.com/modules
+
+# Specify a custom output file with -o
+todmm ./dmf https://registry.example.com/modules -o custom.dmm
+```
+
+**Parameters:**
+- `<folder>` - Folder containing `.dmf` / `.dmfc` module files
+- `<base_url>` - Base URL prepended to each module file entry
+- `-o <file>` - Optional output path (default: `manifest.dmm`)
+
+Full documentation: [todmm-tool.md](todmm-tool.md)
 
 ### todmfc
 
@@ -286,7 +309,7 @@ The DMOD framework is available as a ready-to-use Docker image that contains all
 
 The Docker image contains:
 
-- **DMOD Tools:** dmf-get, todmfc, todmp, todmd, whereisdmf
+- **DMOD Tools:** dmf-get, todmm, todmfc, todmp, todmd, whereisdmf
 - **Compiler:** GCC arm-none-eabi (version 10.3-2021.10)
 - **Build system:** CMake (version 3.31.3), Make
 - **Development tools:** OpenOCD, gcovr, git, jq, zip/unzip

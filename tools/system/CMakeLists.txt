@@ -1,6 +1,7 @@
 add_subdirectory(todmfc)
 add_subdirectory(todmp)
 add_subdirectory(todmd)
+add_subdirectory(todmm)
 add_subdirectory(dmf-get)
 add_subdirectory(dmf-man)
 add_subdirectory(whereisdmf)
