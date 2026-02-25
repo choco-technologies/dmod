@@ -438,7 +438,7 @@ function(dmod_create_module moduleName version moduleType)
                 TARGET ${moduleName} POST_BUILD
                 COMMAND ${MKDMRPKG} "${DMOD_DMR_ABS_PATH}"
                     -m "${moduleName}"
-                    -r "${DMOD_DIR}"
+                    -r "${CMAKE_SOURCE_DIR}"
                     -b "${CMAKE_BINARY_DIR}"
                     --dmf-dir "${DMOD_DMF_DIR}"
                     -o "${DMOD_PKG_OUT_DIR}"
