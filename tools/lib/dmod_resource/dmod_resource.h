@@ -8,9 +8,10 @@
  * 
  * Resource format supports:
  * - Comments (lines starting with #)
- * - Resource entries: key=source_path => destination_path
+ * - Resource entries: key=source_path => destination_path [origin=path] ...
  * - Environment variable substitution: ${VAR_NAME}
- * - Special variables: ${destination}, ${module}
+ * - Special variables: ${destination}, ${module}, ${repo_dir}, ${dmf_dir}, ${build_dir}
+ * - Origin directives: [origin=path] specifying where files come from for package creation
  */
 
 #ifndef DMOD_RESOURCE_H
@@ -34,6 +35,11 @@ extern "C" {
 #define DMOD_RESOURCE_MAX_PATH_LEN 512
 
 /**
+ * @brief Maximum number of [origin] directives per resource entry
+ */
+#define DMOD_RESOURCE_MAX_ORIGINS 8
+
+/**
  * @brief Represents a single resource entry
  */
 typedef struct {
@@ -41,6 +47,8 @@ typedef struct {
     char source[DMOD_RESOURCE_MAX_PATH_LEN];       /**< Source path in zip */
     char destination[DMOD_RESOURCE_MAX_PATH_LEN];  /**< Destination path after substitution */
     bool is_dmf_dmfc;                               /**< True if this is a dmf or dmfc resource */
+    size_t origin_count;                            /**< Number of [origin] directives */
+    char origins[DMOD_RESOURCE_MAX_ORIGINS][DMOD_RESOURCE_MAX_PATH_LEN]; /**< Origin paths after substitution */
 } Dmod_ResourceEntry_t;
 
 /**
@@ -53,11 +61,17 @@ typedef struct Dmod_ResourceContext Dmod_ResourceContext_t;
  * 
  * @param destination_path The destination path for ${destination} substitution
  * @param module_name The module name for ${module} substitution
+ * @param repo_dir The repository root path for ${repo_dir} substitution (may be NULL)
+ * @param dmf_dir The DMF files directory path for ${dmf_dir} substitution (may be NULL)
+ * @param build_dir The build directory path for ${build_dir} substitution (may be NULL)
  * @return Pointer to resource context, or NULL on failure
  */
 Dmod_ResourceContext_t* Dmod_Resource_Init(
     const char* destination_path,
-    const char* module_name
+    const char* module_name,
+    const char* repo_dir,
+    const char* dmf_dir,
+    const char* build_dir
 );
 
 /**

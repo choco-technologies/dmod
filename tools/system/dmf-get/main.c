@@ -875,7 +875,7 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
     // Try to get resource path from .dmr file
     if (dmr_file[0] != '\0') {
         DMOD_LOG_INFO("Reading resource path from .dmr file\n");
-        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name);
+        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name, NULL, NULL, NULL);
         if (res_ctx) {
             if (Dmod_Resource_ParseFile(res_ctx, dmr_file)) {
                 size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
@@ -1018,7 +1018,7 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
     
     // Try to find config directory path from .dmr file
     if (Dmod_Access(dmr_path, DMOD_R_OK) == 0) {
-        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name);
+        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name, NULL, NULL, NULL);
         if (res_ctx) {
             if (Dmod_Resource_ParseFile(res_ctx, dmr_path)) {
                 size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
@@ -1252,7 +1252,7 @@ static bool CheckLicenseAcceptance(const char* extract_dir, const char* module_n
     
     // Parse .dmr file to find license resource
     char license_source[1024] = "";
-    Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name);
+    Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name, NULL, NULL, NULL);
     if (res_ctx) {
         if (Dmod_Resource_ParseFile(res_ctx, dmr_file)) {
             size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
@@ -1530,7 +1530,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
         DMOD_LOG_INFO("Processing resource file: %s\n", dmr_file);
         
         // Initialize resource parser
-        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name);
+        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name, NULL, NULL, NULL);
         if (!res_ctx) {
             DMOD_LOG_ERROR("Failed to initialize resource parser\n");
         } else {
