@@ -48,6 +48,17 @@ dmod_add_library(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
 )
 ```
 
+If `DMOD_DMR_PATH` is set before calling `dmod_add_library`, a release package will be created in `build/packages/` after the build completes:
+
+```
+build/
+└── packages/
+      ├── my_lib/
+      │     ├── my_lib.dmf
+      │     └── LICENSE.md
+      └── my_lib.zip
+```
+
 ## Dependency Management Functions
 
 ### `dmod_link_modules(targetName [PRIVATE|PUBLIC|INTERFACE] modules...)`
@@ -205,6 +216,7 @@ The following variables should be set before calling `dmod_add_executable` or `d
 - `DMOD_MAL_IMPLS` - List of MAL (Module Abstraction Layer) interfaces implemented
 - `DMOD_DIF_IMPLS` - List of DIF (Device Interface) implementations
 - `DMOD_COMPRESSION_METHOD` - Compression method for DMFC files (default: "fastlz")
+- `DMOD_DMR_PATH` - Path to the `.dmr` resource file. When set, a release package is created in `build/packages/<moduleName>/` and zipped to `build/packages/<moduleName>.zip` after the build. Requires the `mkdmrpkg` tool (build with `-DDMOD_BUILD_TOOLS=ON`).
 
 ## See Also
 
