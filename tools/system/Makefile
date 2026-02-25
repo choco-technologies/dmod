@@ -7,7 +7,7 @@ DMOD_DIR=../..
 #   Subdirectories
 # -----------------------------------------------------------------------------
 SUBDIRS = 
-SYSTEM_SUBDIRS = todmfc todmp todmd todmm whereisdmf mkdmrpkg
+SYSTEM_SUBDIRS = todmfc todmp todmd todmm whereisdmf
 MODULE_SUBDIRS = 
 
 # -----------------------------------------------------------------------------

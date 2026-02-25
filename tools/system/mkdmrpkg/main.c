@@ -12,8 +12,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sys/stat.h>
-#include <errno.h>
 #include "dmod.h"
 #include "dmod_resource.h"
 
@@ -30,12 +28,13 @@
 // -----------------------------------------
 static bool IsDirectory( const char* path )
 {
-    struct stat st;
-    if( stat( path, &st ) != 0 )
+    void* dir = Dmod_OpenDir( path );
+    if( dir == NULL )
     {
         return false;
     }
-    return S_ISDIR( st.st_mode );
+    Dmod_CloseDir( dir );
+    return true;
 }
 
 // -----------------------------------------
@@ -45,12 +44,18 @@ static bool IsDirectory( const char* path )
 // -----------------------------------------
 static bool IsFile( const char* path )
 {
-    struct stat st;
-    if( stat( path, &st ) != 0 )
+    if( Dmod_Access( path, DMOD_F_OK ) != 0 )
     {
         return false;
     }
-    return S_ISREG( st.st_mode );
+    // If it can also be opened as a directory, it is not a file
+    void* dir = Dmod_OpenDir( path );
+    if( dir != NULL )
+    {
+        Dmod_CloseDir( dir );
+        return false;
+    }
+    return true;
 }
 
 // -----------------------------------------
@@ -80,13 +85,16 @@ static bool MakeDirs( const char* path )
             char saved = tmp[i];
             tmp[i] = '\0';
 
-            struct stat st;
-            if( stat( tmp, &st ) != 0 )
+            if( Dmod_Access( tmp, DMOD_F_OK ) != 0 )
             {
-                if( Dmod_MakeDir( tmp, 0755 ) != 0 && errno != EEXIST )
+                if( Dmod_MakeDir( tmp, 0755 ) != 0 )
                 {
-                    printf("Error: Cannot create directory: %s (%s)\n", tmp, strerror(errno));
-                    return false;
+                    // Directory might have been created concurrently; verify
+                    if( Dmod_Access( tmp, DMOD_F_OK ) != 0 )
+                    {
+                        DMOD_LOG_ERROR("Cannot create directory: %s\n", tmp);
+                        return false;
+                    }
                 }
             }
 
@@ -106,7 +114,7 @@ static bool CopyFile( const char* src, const char* dst )
     void* srcFile = Dmod_FileOpen( src, "rb" );
     if( !srcFile )
     {
-        printf("Error: Cannot open source file: %s\n", src);
+        DMOD_LOG_ERROR("Cannot open source file: %s\n", src);
         return false;
     }
 
@@ -129,7 +137,7 @@ static bool CopyFile( const char* src, const char* dst )
     void* dstFile = Dmod_FileOpen( dst, "wb" );
     if( !dstFile )
     {
-        printf("Error: Cannot create destination file: %s\n", dst);
+        DMOD_LOG_ERROR("Cannot create destination file: %s\n", dst);
         Dmod_FileClose( srcFile );
         return false;
     }
@@ -137,7 +145,7 @@ static bool CopyFile( const char* src, const char* dst )
     char* buf = (char*)Dmod_Malloc( MKDMRPKG_COPY_BUF_SIZE );
     if( !buf )
     {
-        printf("Error: Out of memory\n");
+        DMOD_LOG_ERROR("Out of memory\n");
         Dmod_FileClose( srcFile );
         Dmod_FileClose( dstFile );
         return false;
@@ -150,7 +158,7 @@ static bool CopyFile( const char* src, const char* dst )
         size_t bytesWritten = Dmod_FileWrite( buf, 1, bytesRead, dstFile );
         if( bytesWritten != bytesRead )
         {
-            printf("Error: Write failed for: %s\n", dst);
+            DMOD_LOG_ERROR("Write failed for: %s\n", dst);
             ok = false;
             break;
         }
@@ -177,7 +185,7 @@ static bool CopyDirRecursive( const char* srcDir, const char* dstDir )
     void* dir = Dmod_OpenDir( srcDir );
     if( !dir )
     {
-        printf("Error: Cannot open directory: %s\n", srcDir);
+        DMOD_LOG_ERROR("Cannot open directory: %s\n", srcDir);
         return false;
     }
 
@@ -234,8 +242,7 @@ static bool CopyOrigin( const char* origin, const char* dst )
         // Check whether dst itself is (or should be) a file
         // We treat dst as a file when it already exists as one, or when
         // it has the same basename as origin (e.g. source=./module.dmf)
-        struct stat dstStat;
-        bool dstIsDir = (stat( dst, &dstStat ) == 0 && S_ISDIR( dstStat.st_mode ));
+        bool dstIsDir = IsDirectory( dst );
 
         if( dstIsDir )
         {
@@ -261,7 +268,7 @@ static bool CopyOrigin( const char* origin, const char* dst )
     }
     else
     {
-        printf("Warning: Origin path does not exist or is not accessible: %s\n", origin);
+        DMOD_LOG_WARN("Origin path does not exist or is not accessible: %s\n", origin);
         return true; // Non-fatal: skip missing origins
     }
 }
@@ -291,6 +298,7 @@ static void PrintHelp( const char* AppName )
     printf("\nOptions:\n");
     printf("  -h, --help            Print this help message\n");
     printf("  -v, --version         Print version information\n");
+    printf("  --verbose             Enable verbose output\n");
     printf("  -o <dir>              Output directory (default: ./package)\n");
     printf("  -d <destination>      Value for ${destination} variable substitution\n");
     printf("  -m <module>           Value for ${module} variable substitution\n");
@@ -316,6 +324,9 @@ static void PrintHelp( const char* AppName )
 // -----------------------------------------
 int main( int argc, char *argv[] )
 {
+    // Set default log level to Warning
+    Dmod_SetLogLevel( Dmod_LogLevel_Warn );
+
     if( argc < 2 )
     {
         PrintUsage( argv[0] );
@@ -345,7 +356,11 @@ int main( int argc, char *argv[] )
     // Parse optional arguments
     for( int i = 2; i < argc; i++ )
     {
-        if( strcmp( argv[i], "-o" ) == 0 )
+        if( strcmp( argv[i], "--verbose" ) == 0 )
+        {
+            Dmod_SetLogLevel( Dmod_LogLevel_Verbose );
+        }
+        else if( strcmp( argv[i], "-o" ) == 0 )
         {
             if( i + 1 < argc )
             {
@@ -431,12 +446,12 @@ int main( int argc, char *argv[] )
         }
     }
 
-    printf("Parsing resource file: %s\n", dmrPath);
+    Dmod_Printf("Parsing resource file: %s\n", dmrPath);
 
     // Initialize Dmod system
     if( !Dmod_Initialize( 0, 0 ) )
     {
-        printf("Error: Failed to initialize Dmod system\n");
+        DMOD_LOG_ERROR("Failed to initialize Dmod system\n");
         return -1;
     }
 
@@ -446,7 +461,7 @@ int main( int argc, char *argv[] )
 
     if( !ctx )
     {
-        printf("Error: Failed to initialize resource context\n");
+        DMOD_LOG_ERROR("Failed to initialize resource context\n");
         Dmod_Deinitialize();
         return -1;
     }
@@ -455,15 +470,15 @@ int main( int argc, char *argv[] )
     if( !Dmod_Resource_ParseFile( ctx, dmrPath ) )
     {
         const char* err = Dmod_Resource_GetError( ctx );
-        printf("Error: Failed to parse resource file: %s\n", err ? err : "<unknown>");
+        DMOD_LOG_ERROR("Failed to parse resource file: %s\n", err ? err : "<unknown>");
         Dmod_Resource_Free( ctx );
         Dmod_Deinitialize();
         return -1;
     }
 
     size_t entryCount = Dmod_Resource_GetEntryCount( ctx );
-    printf("Found %zu resource entr%s in: %s\n", entryCount,
-           entryCount == 1 ? "y" : "ies", dmrPath);
+    Dmod_Printf("Found %zu resource entr%s in: %s\n", entryCount,
+                entryCount == 1 ? "y" : "ies", dmrPath);
 
     // Create the output directory
     if( !MakeDirs( outputDir ) )
@@ -503,12 +518,12 @@ int main( int argc, char *argv[] )
         char destPath[MKDMRPKG_MAX_PATH_LEN];
         Dmod_SnPrintf( destPath, sizeof(destPath), "%s/%s", outputDir, sourcePath );
 
-        printf("  [%s] %s\n", entry.key, destPath);
+        Dmod_Printf("  [%s] %s\n", entry.key, destPath);
 
         bool entryOk = true;
         for( size_t j = 0; j < entry.origin_count; j++ )
         {
-            printf("    <- %s\n", entry.origins[j]);
+            Dmod_Printf("    <- %s\n", entry.origins[j]);
             if( !CopyOrigin( entry.origins[j], destPath ) )
             {
                 errorCount++;
@@ -526,21 +541,21 @@ int main( int argc, char *argv[] )
     Dmod_Deinitialize();
 
     // Print summary
-    printf("\nSummary:\n");
-    printf("  Entries copied:  %d\n", copiedEntries);
-    printf("  Entries skipped: %d (no [origin] directive)\n", skippedEntries);
+    Dmod_Printf("\nSummary:\n");
+    Dmod_Printf("  Entries copied:  %d\n", copiedEntries);
+    Dmod_Printf("  Entries skipped: %d (no [origin] directive)\n", skippedEntries);
     if( errorCount > 0 )
     {
-        printf("  Errors:          %d\n", errorCount);
+        Dmod_Printf("  Errors:          %d\n", errorCount);
     }
-    printf("  Output directory: %s\n", outputDir);
+    Dmod_Printf("  Output directory: %s\n", outputDir);
 
     if( errorCount > 0 )
     {
-        printf("\nWarning: Package creation finished with errors.\n");
+        DMOD_LOG_WARN("Package creation finished with errors.\n");
         return -1;
     }
 
-    printf("\nSuccess! Package directory created successfully.\n");
+    Dmod_Printf("\nSuccess! Package directory created successfully.\n");
     return 0;
 }
