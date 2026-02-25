@@ -10,6 +10,9 @@ set(DMOD_AUTHOR_NAME        @DMOD_AUTHOR_NAME@)
 # Stack size for the module (should be integer)
 set(DMOD_STACK_SIZE         @DMOD_STACK_SIZE@)
 
+# Path to the .dmr file (optional - enables release package creation in build/packages/)
+# set(DMOD_DMR_PATH          ./@DMOD_MODULE_NAME@.dmr)
+
 #
 #   dmod_add_library - create a library module
 #   it has the same signature as add_library

@@ -407,6 +407,49 @@ function(dmod_create_module moduleName version moduleType)
             OPTIONAL
         )
     endif()
+
+    # ===========================================================================
+    # Release package creation from .dmr file
+    # ===========================================================================
+    if(DEFINED DMOD_DMR_PATH)
+        # Resolve the dmr path relative to the caller's source directory
+        if(NOT IS_ABSOLUTE "${DMOD_DMR_PATH}")
+            set(DMOD_DMR_ABS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${DMOD_DMR_PATH}")
+        else()
+            set(DMOD_DMR_ABS_PATH "${DMOD_DMR_PATH}")
+        endif()
+
+        # Find mkdmrpkg tool
+        find_program(MKDMRPKG
+            mkdmrpkg
+            HINTS ${DMOD_TOOLS_BIN_DIR}
+        )
+
+        if(MKDMRPKG)
+            set(DMOD_PACKAGES_DIR "${CMAKE_BINARY_DIR}/packages")
+            set(DMOD_PKG_OUT_DIR "${DMOD_PACKAGES_DIR}/${moduleName}")
+            set(DMOD_PKG_ZIP_PATH "${DMOD_PACKAGES_DIR}/${moduleName}.zip")
+
+            # Create the packages directory
+            file(MAKE_DIRECTORY "${DMOD_PACKAGES_DIR}")
+
+            # Run mkdmrpkg to populate the package directory, then create zip archive
+            add_custom_command(
+                TARGET ${moduleName} POST_BUILD
+                COMMAND ${MKDMRPKG} "${DMOD_DMR_ABS_PATH}"
+                    -m "${moduleName}"
+                    -r "${DMOD_DIR}"
+                    -b "${CMAKE_BINARY_DIR}"
+                    --dmf-dir "${DMOD_DMF_DIR}"
+                    -o "${DMOD_PKG_OUT_DIR}"
+                COMMAND ${CMAKE_COMMAND} -E tar "cf" "${DMOD_PKG_ZIP_PATH}" --format=zip -- "${moduleName}"
+                WORKING_DIRECTORY "${DMOD_PACKAGES_DIR}"
+                COMMENT "Creating release package and zip archive for ${moduleName}"
+            )
+        else()
+            message(WARNING "mkdmrpkg not found - release package for ${moduleName} will not be created. Build the tools first with -DDMOD_BUILD_TOOLS=ON")
+        endif()
+    endif()
 endfunction()
 
 #
