@@ -252,7 +252,11 @@ static void DisplayPaged(const PageBuffer_t* buffer) {
  * @brief Print usage message
  */
 static void PrintUsage(const char* app_name) {
-    Dmod_Printf("Usage: %s [OPTIONS] <module_name>\n", app_name);
+    Dmod_Printf("Usage: %s [OPTIONS] <module_name> [doc_name]\n", app_name);
+    Dmod_Printf("\n");
+    Dmod_Printf("Arguments:\n");
+    Dmod_Printf("  <module_name>         Name of the module to view documentation for\n");
+    Dmod_Printf("  [doc_name]            Optional documentation page name (e.g. api, config)\n");
     Dmod_Printf("\n");
     Dmod_Printf("Options:\n");
     Dmod_Printf("  -d, --doc-dir <path>  Path to documentation directory\n");
@@ -266,7 +270,9 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s        DMF directory (used as fallback: <dir>/<module>/docs)\n", ENV_DMF_DIR);
     Dmod_Printf("\n");
     Dmod_Printf("Examples:\n");
-    Dmod_Printf("  %s mymodule                    # Search in default locations\n", app_name);
+    Dmod_Printf("  %s mymodule                    # Main documentation\n", app_name);
+    Dmod_Printf("  %s mymodule api                # API reference (api.md)\n", app_name);
+    Dmod_Printf("  %s mymodule config             # Configuration guide (config.md)\n", app_name);
     Dmod_Printf("  %s -d /path/to/docs mymodule   # Use custom documentation directory\n", app_name);
     Dmod_Printf("  %s -a mymodule                 # Show all at once without paging\n", app_name);
     Dmod_Printf("\n");
@@ -297,15 +303,73 @@ static bool FileExists(const char* path) {
 /**
  * @brief Find documentation file for a module
  * 
- * Search order:
+ * Search order (when doc_name is NULL):
  * 1. DMOD_DOC_DIR/<module>.md
  * 2. DMOD_DOC_DIR/<module>/README.md
  * 3. DMOD_DMF_DIR/<module>/docs/<module>.md
  * 4. DMOD_DMF_DIR/<module>/docs/README.md
  * 5. Custom doc_dir if provided
+ *
+ * Search order (when doc_name is provided, e.g. "api"):
+ * 1. <custom_doc_dir>/<module>/<doc_name>.md
+ * 2. <custom_doc_dir>/<doc_name>.md
+ * 3. DMOD_DOC_DIR/<module>/<doc_name>.md
+ * 4. DMOD_DOC_DIR/<doc_name>.md
+ * 5. DMOD_DMF_DIR/<module>/docs/<doc_name>.md
  */
-static char* FindDocumentation(const char* module_name, const char* custom_doc_dir) {
+static char* FindDocumentation(const char* module_name, const char* custom_doc_dir, const char* doc_name) {
     char path[1024];
+    
+    if (doc_name) {
+        // Named documentation page search
+        
+        // Try custom doc directory first
+        if (custom_doc_dir) {
+            // Try <custom_doc_dir>/<module>/<doc_name>.md
+            Dmod_SnPrintf(path, sizeof(path), "%s/%s/%s.md", custom_doc_dir, module_name, doc_name);
+            if (FileExists(path)) {
+                return Dmod_StrDup(path);
+            }
+            
+            // Try <custom_doc_dir>/<doc_name>.md
+            Dmod_SnPrintf(path, sizeof(path), "%s/%s.md", custom_doc_dir, doc_name);
+            if (FileExists(path)) {
+                return Dmod_StrDup(path);
+            }
+        }
+        
+        // Try DMOD_DOC_DIR
+        const char* doc_dir = Dmod_GetEnv(ENV_DOC_DIR);
+        if (doc_dir) {
+            // Try <doc_dir>/<module>/<doc_name>.md
+            Dmod_SnPrintf(path, sizeof(path), "%s/%s/%s.md", doc_dir, module_name, doc_name);
+            if (FileExists(path)) {
+                return Dmod_StrDup(path);
+            }
+            
+            // Try <doc_dir>/<doc_name>.md
+            Dmod_SnPrintf(path, sizeof(path), "%s/%s.md", doc_dir, doc_name);
+            if (FileExists(path)) {
+                return Dmod_StrDup(path);
+            }
+        }
+        
+        // Try DMOD_DMF_DIR
+        const char* dmf_dir = Dmod_GetEnv(ENV_DMF_DIR);
+        if (!dmf_dir) {
+            dmf_dir = DEFAULT_DMF_DIR;
+        }
+        
+        // Try <dmf_dir>/<module>/docs/<doc_name>.md
+        Dmod_SnPrintf(path, sizeof(path), "%s/%s/docs/%s.md", dmf_dir, module_name, doc_name);
+        if (FileExists(path)) {
+            return Dmod_StrDup(path);
+        }
+        
+        return NULL;
+    }
+    
+    // Default (no doc_name): search for main documentation
     
     // Try custom doc directory first
     if (custom_doc_dir) {
@@ -685,6 +749,7 @@ static bool RenderMarkdown(const char* file_path, bool paged) {
  */
 int main(int argc, char* argv[]) {
     const char* module_name = NULL;
+    const char* doc_name = NULL;
     const char* custom_doc_dir = NULL;
     bool paged = true;  // Paging enabled by default
     
@@ -712,12 +777,15 @@ int main(int argc, char* argv[]) {
             PrintUsage(argv[0]);
             return 1;
         } else {
-            if (module_name) {
-                DMOD_LOG_ERROR("Error: Multiple module names specified\n");
+            if (!module_name) {
+                module_name = argv[i];
+            } else if (!doc_name) {
+                doc_name = argv[i];
+            } else {
+                DMOD_LOG_ERROR("Error: Too many arguments specified\n");
                 PrintUsage(argv[0]);
                 return 1;
             }
-            module_name = argv[i];
         }
     }
     
@@ -734,30 +802,48 @@ int main(int argc, char* argv[]) {
     }
     
     // Find documentation
-    char* doc_path = FindDocumentation(module_name, custom_doc_dir);
+    char* doc_path = FindDocumentation(module_name, custom_doc_dir, doc_name);
     if (!doc_path) {
-        DMOD_LOG_ERROR("Error: No documentation found for module: %s\n", module_name);
+        if (doc_name) {
+            DMOD_LOG_ERROR("Error: No documentation '%s' found for module: %s\n", doc_name, module_name);
+        } else {
+            DMOD_LOG_ERROR("Error: No documentation found for module: %s\n", module_name);
+        }
         DMOD_LOG_ERROR("\nSearched in:\n");
         
         if (custom_doc_dir) {
-            DMOD_LOG_ERROR("  - %s/%s.md\n", custom_doc_dir, module_name);
-            DMOD_LOG_ERROR("  - %s/%s/README.md\n", custom_doc_dir, module_name);
-            DMOD_LOG_ERROR("  - %s/README.md\n", custom_doc_dir);
+            if (doc_name) {
+                DMOD_LOG_ERROR("  - %s/%s/%s.md\n", custom_doc_dir, module_name, doc_name);
+                DMOD_LOG_ERROR("  - %s/%s.md\n", custom_doc_dir, doc_name);
+            } else {
+                DMOD_LOG_ERROR("  - %s/%s.md\n", custom_doc_dir, module_name);
+                DMOD_LOG_ERROR("  - %s/%s/README.md\n", custom_doc_dir, module_name);
+                DMOD_LOG_ERROR("  - %s/README.md\n", custom_doc_dir);
+            }
         }
         
         const char* doc_dir = Dmod_GetEnv(ENV_DOC_DIR);
         if (doc_dir) {
-            DMOD_LOG_ERROR("  - %s/%s.md\n", doc_dir, module_name);
-            DMOD_LOG_ERROR("  - %s/%s/README.md\n", doc_dir, module_name);
+            if (doc_name) {
+                DMOD_LOG_ERROR("  - %s/%s/%s.md\n", doc_dir, module_name, doc_name);
+                DMOD_LOG_ERROR("  - %s/%s.md\n", doc_dir, doc_name);
+            } else {
+                DMOD_LOG_ERROR("  - %s/%s.md\n", doc_dir, module_name);
+                DMOD_LOG_ERROR("  - %s/%s/README.md\n", doc_dir, module_name);
+            }
         }
         
         const char* dmf_dir = Dmod_GetEnv(ENV_DMF_DIR);
         if (!dmf_dir) {
             dmf_dir = DEFAULT_DMF_DIR;
         }
-        DMOD_LOG_ERROR("  - %s/%s/docs/%s.md\n", dmf_dir, module_name, module_name);
-        DMOD_LOG_ERROR("  - %s/%s/docs/README.md\n", dmf_dir, module_name);
-        DMOD_LOG_ERROR("  - %s/%s/README.md\n", dmf_dir, module_name);
+        if (doc_name) {
+            DMOD_LOG_ERROR("  - %s/%s/docs/%s.md\n", dmf_dir, module_name, doc_name);
+        } else {
+            DMOD_LOG_ERROR("  - %s/%s/docs/%s.md\n", dmf_dir, module_name, module_name);
+            DMOD_LOG_ERROR("  - %s/%s/docs/README.md\n", dmf_dir, module_name);
+            DMOD_LOG_ERROR("  - %s/%s/README.md\n", dmf_dir, module_name);
+        }
         
         DMOD_LOG_ERROR("\nTip: You can try to install documentation with:\n");
         DMOD_LOG_ERROR("  dmf-get docs %s\n", module_name);
@@ -767,7 +853,11 @@ int main(int argc, char* argv[]) {
     }
     
     // Render the documentation
-    Dmod_Printf("%s=== Documentation for %s ===%s\n", VT100_BOLD, module_name, VT100_RESET);
+    if (doc_name) {
+        Dmod_Printf("%s=== Documentation for %s (%s) ===%s\n", VT100_BOLD, module_name, doc_name, VT100_RESET);
+    } else {
+        Dmod_Printf("%s=== Documentation for %s ===%s\n", VT100_BOLD, module_name, VT100_RESET);
+    }
     Dmod_Printf("%sFile: %s%s\n\n", VT100_DIM, doc_path, VT100_RESET);
     
     bool success = RenderMarkdown(doc_path, paged);

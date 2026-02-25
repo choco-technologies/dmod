@@ -26,8 +26,13 @@ The tool will be available at `build/bin/tools/dmf-man`.
 ### Basic Usage
 
 ```bash
-# View documentation for a module
+# View main documentation for a module
 dmf-man mymodule
+
+# View a named documentation page
+dmf-man mymodule api      # API reference (api.md)
+dmf-man mymodule config   # Configuration guide (config.md)
+dmf-man mymodule port     # Port implementation guide (port.md)
 
 # Use custom documentation directory
 dmf-man -d /path/to/docs mymodule
@@ -45,6 +50,11 @@ dmf-man --version
 - `-h, --help` - Show help message
 - `-v, --version` - Show version information
 
+### Arguments
+
+- `<module_name>` - Name of the module to view documentation for
+- `[doc_name]` - Optional documentation page name (e.g. `api`, `config`). When provided, `dmf-man` searches for `<doc_name>.md` instead of the main documentation file.
+
 ### Environment Variables
 
 `dmf-man` respects the following environment variables:
@@ -53,6 +63,8 @@ dmf-man --version
 - `DMOD_DMF_DIR` - DMF directory (used as fallback: `<dir>/<module>/docs`)
 
 ### Documentation Search Order
+
+#### Without `doc_name` (main documentation)
 
 `dmf-man` searches for documentation in the following order:
 
@@ -71,11 +83,31 @@ dmf-man --version
    - `$DMOD_DMF_DIR/<module>/docs/README.md`
    - `$DMOD_DMF_DIR/<module>/README.md`
 
+#### With `doc_name` (named documentation page)
+
+When a `doc_name` is provided (e.g. `dmf-man mymodule api`), `dmf-man` searches for `<doc_name>.md`:
+
+1. **Custom directory** (if specified with `-d`):
+   - `<custom_doc_dir>/<module>/<doc_name>.md`
+   - `<custom_doc_dir>/<doc_name>.md`
+
+2. **DMOD_DOC_DIR** (if set):
+   - `$DMOD_DOC_DIR/<module>/<doc_name>.md`
+   - `$DMOD_DOC_DIR/<doc_name>.md`
+
+3. **DMOD_DMF_DIR** (or `./dmf` as default):
+   - `$DMOD_DMF_DIR/<module>/docs/<doc_name>.md`
+
 ### Examples
 
 ```bash
-# View documentation using default search paths
+# View main documentation using default search paths
 dmf-man mymodule
+
+# View named documentation pages
+dmf-man mymodule api      # API reference
+dmf-man mymodule config   # Configuration guide
+dmf-man mymodule port     # Port implementation guide
 
 # Set documentation directory via environment variable
 export DMOD_DOC_DIR=/opt/dmod/docs
@@ -87,6 +119,7 @@ dmf-man -d /home/user/projects/dmod-docs mymodule
 # Documentation installed by dmf-get
 dmf-get docs mymodule  # Downloads docs to $DMOD_DMF_DIR/<module>/docs
 dmf-man mymodule       # Will automatically find and display them
+dmf-man mymodule api   # View the api.md page
 ```
 
 ## Markdown Formatting Support
@@ -170,7 +203,9 @@ Documentation should be provided as Markdown (`.md`) files. The recommended stru
   docs/
     <module_name>.md   # Main documentation
     README.md          # Alternative main documentation
-    *.md               # Additional documentation files
+    api.md             # API reference (dmf-man <module> api)
+    config.md          # Configuration guide (dmf-man <module> config)
+    *.md               # Any additional named documentation pages
 ```
 
 For more details on packaging documentation with modules, see the [DMR File Format Documentation](../../../docs/dmr-file-format.md).
