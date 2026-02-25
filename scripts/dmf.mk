@@ -106,6 +106,7 @@ CFLAGS             += -fPIC -fPIE -ffunction-sections -fno-stack-protector -fno-
 CFLAGS             += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 CXXFLAGS           += $(CFLAGS)
 LFLAGS 			   += -L $(DMOD_SCRIPTS_DIR) -T $(DMOD_MODULE_LD_FILE_NAME) -pie -nostartfiles -nostdlib -Xlinker --discard-all -static -Wl,--gc-sections,--undefined=ModuleHeader
+LIBGCC             := $(shell $(CC) $(CPUCONFIG_CFLAGS) -print-libgcc-file-name 2>/dev/null)
 ifeq ($(DMOD_DEBUG),ON)
 	CFLAGS += -g
 endif
@@ -152,7 +153,7 @@ generate_headers: $(DMOD_GEN_HEADERS)
 
 $(DMOD_MODULE_DMF_FILE_PATH): $(DMOD_OBJECTS)
 	@echo "Linking $(DMOD_LIB_NAME)"
-	$(CC) -o $(DMOD_MODULE_FILE_PATH) $(LFLAGS) $(DMOD_OBJECTS)
+	$(CC) -o $(DMOD_MODULE_FILE_PATH) $(LFLAGS) $(DMOD_OBJECTS) $(LIBGCC)
 	@$(OBJCOPY) $(DMOD_MODULE_FILE_PATH) -O binary $(DMOD_MODULE_DMF_FILE_PATH) 
 ifneq ($(TODMFC),)
 	@echo "Compression of $(DMOD_MODULE_DMF_FILE_PATH)"

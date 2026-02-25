@@ -255,7 +255,21 @@ function(dmod_create_module moduleName version moduleType)
 
     
     target_link_libraries(${moduleName} dmod ${moduleName}_if)
-    
+
+    # Link against libgcc explicitly since -nostdlib is used.
+    # This provides ARM runtime helpers like __aeabi_uldivmod (64-bit division),
+    # __aeabi_fadd, __aeabi_f2iz (float operations), etc.
+    separate_arguments(LIBGCC_QUERY_FLAGS UNIX_COMMAND "${CMAKE_C_FLAGS}")
+    execute_process(
+        COMMAND ${CMAKE_C_COMPILER} ${LIBGCC_QUERY_FLAGS} -print-libgcc-file-name
+        OUTPUT_VARIABLE LIBGCC_PATH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(LIBGCC_PATH AND EXISTS "${LIBGCC_PATH}")
+        target_link_libraries(${moduleName} ${LIBGCC_PATH})
+    endif()
+
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         set(OPTIMIZATION "-Og")
     else()
