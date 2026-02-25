@@ -6,11 +6,20 @@
 // Maximum number of version requirements
 #define MAX_VERSION_REQUIREMENTS 64
 
+// Maximum number of per-module manifest mappings
+#define MAX_MODULE_MANIFESTS 64
+
 // Structure to hold a version requirement
 typedef struct {
     char moduleName[64];
     char version[32];
 } VersionRequirement_t;
+
+// Structure to hold a per-module manifest mapping
+typedef struct {
+    char moduleName[64];
+    char manifestPath[512];
+} ModuleManifest_t;
 
 // -----------------------------------------
 //
@@ -98,12 +107,29 @@ const char* FindVersionRequirement( const VersionRequirement_t* requirements, in
 
 // -----------------------------------------
 //
+//      Find manifest path for a module
+//
+// -----------------------------------------
+const char* FindModuleManifest( const ModuleManifest_t* manifests, int manifestCount, const char* moduleName )
+{
+    for( int i = 0; i < manifestCount; i++ )
+    {
+        if( strcmp( manifests[i].moduleName, moduleName ) == 0 )
+        {
+            return manifests[i].manifestPath;
+        }
+    }
+    return NULL;
+}
+
+// -----------------------------------------
+//
 //      Prints usage message
 //
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s path/to/file.dmf [output.dmd] [-r version_requirements.txt]\n", AppName);
+    printf("Usage: %s path/to/file.dmf [output.dmd] [-r version_requirements.txt] [--from manifest_or_mapping ...]\n", AppName);
 }
 
 // -----------------------------------------
@@ -121,6 +147,9 @@ void PrintHelp( const char* AppName )
     printf("  -h, --help            Print this help message\n");
     printf("  -v, --version         Print version information\n");
     printf("  -r <file>             Version requirements file from dmod_link_modules\n");
+    printf("  --from <manifest>     Global manifest file/URL added as $from at the top of the .dmd\n");
+    printf("  --from <mod>=<manifest>  Per-module manifest: adds inline $from for the named module\n");
+    printf("                        Option can be repeated to set manifests for multiple modules\n");
     printf("\nArguments:\n");
     printf("  path/to/file.dmf      Path to the DMF module file\n");
     printf("  [output.dmd]          (optional) Output .dmd file path (default: module_name.dmd)\n");
@@ -131,10 +160,18 @@ void PrintHelp( const char* AppName )
     printf("\n");
     printf("  If a version requirements file is provided with -r, the tool will merge\n");
     printf("  version information from that file with the dependencies found in the DMF.\n");
+    printf("\n");
+    printf("  If --from is provided without '=', a global $from directive is written at\n");
+    printf("  the top of the .dmd file so all modules are fetched from that manifest.\n");
+    printf("  If --from is provided with 'module=manifest', the manifest is added inline\n");
+    printf("  only for that specific module using the $from syntax.\n");
     printf("\nExamples:\n");
-    printf("  %s myapp.dmf                    # Creates myapp.dmd\n", AppName);
-    printf("  %s myapp.dmf dependencies.dmd   # Creates dependencies.dmd\n", AppName);
-    printf("  %s myapp.dmf -r versions.txt    # Creates myapp.dmd with versions from versions.txt\n", AppName);
+    printf("  %s myapp.dmf                                        # Creates myapp.dmd\n", AppName);
+    printf("  %s myapp.dmf dependencies.dmd                       # Creates dependencies.dmd\n", AppName);
+    printf("  %s myapp.dmf -r versions.txt                        # Creates myapp.dmd with versions from versions.txt\n", AppName);
+    printf("  %s myapp.dmf --from build/manifest.dmm              # Global manifest for all modules\n", AppName);
+    printf("  %s myapp.dmf --from dmgpio=build/manifest.dmm \\\n", AppName);
+    printf("             --from dmclk=build/manifest2.dmm         # Per-module manifests\n");
 }
 
 // -----------------------------------------
@@ -166,6 +203,9 @@ int main( int argc, char *argv[] )
     const char* dmfPath = NULL;
     const char* outputPath = NULL;
     const char* versionReqsPath = NULL;
+    const char* globalManifest = NULL;
+    ModuleManifest_t moduleManifests[MAX_MODULE_MANIFESTS];
+    int moduleManifestCount = 0;
     
     // First argument is always the DMF path
     dmfPath = argv[1];
@@ -184,6 +224,47 @@ int main( int argc, char *argv[] )
             else
             {
                 printf("Error: -r option requires a file path\n");
+                PrintUsage( argv[0] );
+                return -1;
+            }
+        }
+        else if( strcmp( argv[i], "--from" ) == 0 )
+        {
+            if( i + 1 < argc )
+            {
+                const char* fromArg = argv[i + 1];
+                i++; // Skip next argument
+                // Check if this is a per-module mapping: module=manifest
+                const char* eqSign = strchr( fromArg, '=' );
+                if( eqSign != NULL )
+                {
+                    // Per-module manifest mapping
+                    if( moduleManifestCount >= MAX_MODULE_MANIFESTS )
+                    {
+                        printf("Error: Too many --from module mappings (max %d)\n", MAX_MODULE_MANIFESTS);
+                        return -1;
+                    }
+                    size_t nameLen = (size_t)(eqSign - fromArg);
+                    if( nameLen >= sizeof(moduleManifests[moduleManifestCount].moduleName) )
+                    {
+                        nameLen = sizeof(moduleManifests[moduleManifestCount].moduleName) - 1;
+                    }
+                    strncpy( moduleManifests[moduleManifestCount].moduleName, fromArg, nameLen );
+                    moduleManifests[moduleManifestCount].moduleName[nameLen] = '\0';
+                    strncpy( moduleManifests[moduleManifestCount].manifestPath, eqSign + 1,
+                             sizeof(moduleManifests[moduleManifestCount].manifestPath) - 1 );
+                    moduleManifests[moduleManifestCount].manifestPath[sizeof(moduleManifests[moduleManifestCount].manifestPath) - 1] = '\0';
+                    moduleManifestCount++;
+                }
+                else
+                {
+                    // Global manifest
+                    globalManifest = fromArg;
+                }
+            }
+            else
+            {
+                printf("Error: --from option requires a manifest path or module=manifest mapping\n");
                 PrintUsage( argv[0] );
                 return -1;
             }
@@ -280,6 +361,13 @@ int main( int argc, char *argv[] )
     Dmod_FPrintf( outputFile, "# Use with dmf-get: dmf-get -d %s\n", outputPath );
     Dmod_FPrintf( outputFile, "\n" );
 
+    // Write global $from directive if provided
+    if( globalManifest != NULL )
+    {
+        Dmod_FPrintf( outputFile, "$from %s\n\n", globalManifest );
+        Dmod_Printf("Using global manifest: %s\n", globalManifest);
+    }
+
     // Iterate through required modules
     int moduleCount = 0;
     int systemModuleCount = 0;
@@ -346,16 +434,35 @@ int main( int argc, char *argv[] )
                 }
             }
             
+            // Check if there's a per-module manifest for this module
+            const char* moduleManifest = FindModuleManifest( moduleManifests, moduleManifestCount, reqModule->Name );
+
             // Write module to .dmd file
             if( versionToUse != NULL )
             {
-                Dmod_FPrintf( outputFile, "%s@%s\n", reqModule->Name, versionToUse );
-                Dmod_Printf("  + %s@%s\n", reqModule->Name, versionToUse);
+                if( moduleManifest != NULL )
+                {
+                    Dmod_FPrintf( outputFile, "%s@%s $from %s\n", reqModule->Name, versionToUse, moduleManifest );
+                    Dmod_Printf("  + %s@%s $from %s\n", reqModule->Name, versionToUse, moduleManifest);
+                }
+                else
+                {
+                    Dmod_FPrintf( outputFile, "%s@%s\n", reqModule->Name, versionToUse );
+                    Dmod_Printf("  + %s@%s\n", reqModule->Name, versionToUse);
+                }
             }
             else
             {
-                Dmod_FPrintf( outputFile, "%s\n", reqModule->Name );
-                Dmod_Printf("  + %s\n", reqModule->Name);
+                if( moduleManifest != NULL )
+                {
+                    Dmod_FPrintf( outputFile, "%s $from %s\n", reqModule->Name, moduleManifest );
+                    Dmod_Printf("  + %s $from %s\n", reqModule->Name, moduleManifest);
+                }
+                else
+                {
+                    Dmod_FPrintf( outputFile, "%s\n", reqModule->Name );
+                    Dmod_Printf("  + %s\n", reqModule->Name);
+                }
             }
             moduleCount++;
         }
@@ -377,6 +484,14 @@ int main( int argc, char *argv[] )
     if( versionRequirementCount > 0 )
     {
         Dmod_Printf("  Version requirements applied: %d\n", versionRequirementCount);
+    }
+    if( globalManifest != NULL )
+    {
+        Dmod_Printf("  Global manifest: %s\n", globalManifest);
+    }
+    if( moduleManifestCount > 0 )
+    {
+        Dmod_Printf("  Per-module manifest mappings: %d\n", moduleManifestCount);
     }
     Dmod_Printf("  Output file: %s\n", outputPath);
     

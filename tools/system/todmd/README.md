@@ -15,7 +15,7 @@ The `todmd` tool reads a module's required dependencies and generates a `.dmd` f
 ## Usage
 
 ```bash
-todmd path/to/file.dmf [output.dmd] [-r version_requirements.txt]
+todmd path/to/file.dmf [output.dmd] [-r version_requirements.txt] [--from manifest_or_mapping ...]
 ```
 
 ### Arguments
@@ -28,6 +28,8 @@ todmd path/to/file.dmf [output.dmd] [-r version_requirements.txt]
 - `-h, --help` - Print help message
 - `-v, --version` - Print version information
 - `-r <file>` - Version requirements file from `dmod_link_modules` (optional)
+- `--from <manifest>` - Global manifest file/URL; adds a `$from` directive at the top of the generated `.dmd` so all modules are fetched from that manifest (optional)
+- `--from <module>=<manifest>` - Per-module manifest mapping; adds an inline `$from <manifest>` only for the named module (optional, repeatable)
 
 ## Examples
 
@@ -43,6 +45,18 @@ todmd myapp.dmf dependencies.dmd
 # Generate dependencies file with version requirements
 todmd myapp.dmf -r version_requirements.txt
 # Creates: myapp.dmd with versions from version_requirements.txt
+
+# Use a global manifest for all modules
+todmd myapp.dmf --from build/manifest.dmm
+# Creates: myapp.dmd with "$from build/manifest.dmm" at the top
+
+# Use a global manifest URL for all modules
+todmd myapp.dmf --from https://registry.example.com/manifest.dmm
+# Creates: myapp.dmd with "$from https://registry.example.com/manifest.dmm" at the top
+
+# Use different manifests for specific modules
+todmd myapp.dmf --from dmgpio=build/manifest.dmm --from dmclk=build/manifest2.dmm
+# Creates: myapp.dmd with inline "$from" directives for dmgpio and dmclk
 ```
 
 ## Generated File Format
@@ -60,6 +74,30 @@ The tool generates a `.dmd` file with the following format:
 dmodex@>=0.1<1.0
 other_module@>=1.2.3<2.0
 another_module
+```
+
+When a global manifest is provided via `--from`:
+
+```dmd
+# DMOD Dependencies File
+# ...
+
+$from build/manifest.dmm
+
+dmodex@>=0.1<1.0
+other_module@>=1.2.3<2.0
+another_module
+```
+
+When per-module manifests are provided via `--from module=manifest`:
+
+```dmd
+# DMOD Dependencies File
+# ...
+
+dmodex@>=0.1<1.0 $from build/manifest.dmm
+other_module@>=1.2.3<2.0
+another_module $from build/manifest2.dmm
 ```
 
 > **Note:** When a dependency version is auto-discovered from the DMF (i.e., not explicitly specified
