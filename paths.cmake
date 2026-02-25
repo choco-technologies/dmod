@@ -133,6 +133,9 @@ macro(dmod_setup_external_module)
 	# Check if we're in an external module context by checking if the dmod 
 	# target doesn't exist yet.
 	if(NOT TARGET dmod)
+		# Disable building examples by default in external module context
+		set(DMOD_BUILD_EXAMPLES OFF)
+
 		# Generate configuration header
 		configure_file(${DMOD_DIR}/dmod-config.h.in ${CMAKE_CURRENT_BINARY_DIR}/dmod-config.h)
 

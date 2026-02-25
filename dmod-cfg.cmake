@@ -55,8 +55,12 @@ set(DMOD_SYSTEM_VERSION_MINOR 1 CACHE STRING "Minor version of your system")
 # Build tests
 set(DMOD_BUILD_TESTS ON CACHE BOOL "Enable to build tests")
 
-# Build examples
-set(DMOD_BUILD_EXAMPLES ON CACHE BOOL "Enable to build examples")
+# Build examples - default to OFF in MODULE mode (external module context)
+if(DMOD_MODE STREQUAL "DMOD_MODULE")
+    set(DMOD_BUILD_EXAMPLES OFF CACHE BOOL "Enable to build examples")
+else()
+    set(DMOD_BUILD_EXAMPLES ON CACHE BOOL "Enable to build examples")
+endif()
 
 # Build tools
 set(DMOD_BUILD_TOOLS ON CACHE BOOL "Enable to build tools")
