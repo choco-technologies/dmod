@@ -3,8 +3,6 @@ cmake_minimum_required(VERSION 3.18)
 # ===========================================================================
 # 						Paths and directories
 # ===========================================================================
-message(STATUS "DMOD_BUILD_EXAMPLES is ${DMOD_BUILD_EXAMPLES}")
-
 if (NOT DEFINED DMOD_DIR)
 	set(DMOD_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
@@ -22,6 +20,7 @@ set(DMOD_PATHS "${DMOD_DIR}/paths.cmake")
 # 						Include the configurations
 # ===========================================================================
 include(${DMOD_PATHS})
+message(STATUS "DMOD_BUILD_EXAMPLES is ${DMOD_BUILD_EXAMPLES}")
 message(STATUS "Using DMOD_TOOLS: ${DMOD_TOOLS}")
 if (DEFINED DMOD_TOOLS)
 	include(${DMOD_TOOLS})
