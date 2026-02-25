@@ -23,7 +23,7 @@
       "patterns": [
         {
           "name": "meta.resource-entry.dmr",
-          "match": "^\\s*([a-zA-Z0-9_.-]+)\\s*=\\s*(.+?)\\s*=>\\s*(.+)$",
+          "match": "^\\s*([a-zA-Z0-9_.-]+)\\s*=\\s*(.+?)\\s*=>\\s*([^\\[]+?)((?:\\s*\\[origin=[^\\]]*\\])*)?$",
           "captures": {
             "1": {
               "name": "entity.name.function.resource-key.dmr"
@@ -38,6 +38,35 @@
             },
             "3": {
               "name": "string.unquoted.destination-path.dmr",
+              "patterns": [
+                {
+                  "include": "#path-content"
+                }
+              ]
+            },
+            "4": {
+              "name": "meta.origin-directives.dmr",
+              "patterns": [
+                {
+                  "include": "#origin-directive"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "origin-directive": {
+      "patterns": [
+        {
+          "name": "meta.origin.dmr",
+          "match": "\\[origin=([^\\]]*)\\]",
+          "captures": {
+            "0": {
+              "name": "keyword.other.origin-directive.dmr"
+            },
+            "1": {
+              "name": "string.unquoted.origin-path.dmr",
               "patterns": [
                 {
                   "include": "#path-content"
@@ -61,7 +90,7 @@
         },
         {
           "name": "string.other.path.dmr",
-          "match": "[^\\s$]+"
+          "match": "[^\\s$\\[\\]]+"
         }
       ]
     }

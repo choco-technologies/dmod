@@ -2,7 +2,7 @@
 # This file demonstrates the .dmr format
 
 # Install the main module file
-dmf=./module.dmf => ${DMOD_DMF_DIR}/${module}.dmf
+dmf=./module.dmf => ${DMOD_DMF_DIR}/${module}.dmf [origin=${dmf_dir}/module.dmf]
 
 # Install dependencies file
 dmd=./module.dmd => ${destination}/${module}.dmd
@@ -16,7 +16,8 @@ configs=./configs => ${destination}/${module}/configs
 docs=./module/docs => ${destination}/${module}/docs
 
 # Install header files
-inc=./module/inc => ${destination}/${module}/inc
+# Headers come from the repo include directory and a generated file in the build directory
+inc=./module/inc => ${destination}/${module}/inc [origin=${repo_dir}/include] [origin=${build_dir}/${module}_defs.h]
 
 # Install license file
 license=./LICENSE => ${destination}/${module}/LICENSE

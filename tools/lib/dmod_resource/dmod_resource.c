@@ -19,6 +19,9 @@
 struct Dmod_ResourceContext {
     char destination_path[DMOD_RESOURCE_MAX_PATH_LEN];
     char module_name[DMOD_RESOURCE_MAX_KEY_LEN];
+    char repo_dir[DMOD_RESOURCE_MAX_PATH_LEN];
+    char dmf_dir[DMOD_RESOURCE_MAX_PATH_LEN];
+    char build_dir[DMOD_RESOURCE_MAX_PATH_LEN];
     Dmod_ResourceEntry_t entries[MAX_ENTRIES];
     size_t entry_count;
     char error[MAX_ERROR_LEN];
@@ -92,6 +95,12 @@ static bool SubstituteVariables(Dmod_ResourceContext_t* ctx, const char* input,
                 value = ctx->destination_path;
             } else if (strcmp(var_name, "module") == 0) {
                 value = ctx->module_name;
+            } else if (strcmp(var_name, "repo_dir") == 0) {
+                value = ctx->repo_dir[0] != '\0' ? ctx->repo_dir : NULL;
+            } else if (strcmp(var_name, "dmf_dir") == 0) {
+                value = ctx->dmf_dir[0] != '\0' ? ctx->dmf_dir : NULL;
+            } else if (strcmp(var_name, "build_dir") == 0) {
+                value = ctx->build_dir[0] != '\0' ? ctx->build_dir : NULL;
             } else {
                 // Try environment variable
                 value = Dmod_GetEnv(var_name);
@@ -133,7 +142,7 @@ static bool SubstituteVariables(Dmod_ResourceContext_t* ctx, const char* input,
 /**
  * @brief Parse a single resource line
  * 
- * Format: key=source_path => destination_path
+ * Format: key=source_path => destination_path [origin=path] ...
  * 
  * @param ctx Resource context
  * @param line Line to parse
@@ -166,7 +175,24 @@ static bool ParseLine(Dmod_ResourceContext_t* ctx, const char* line) {
     
     *arrow = '\0';
     char* source = Trim(rest);
-    char* dest = Trim(arrow + 2);
+    char* dest_and_origins = Trim(arrow + 2);
+    
+    // Separate destination from optional [origin=...] directives
+    char* origins_start = NULL;
+    
+    // Find the first '[' that is not inside a variable substitution
+    char* bracket = strchr(dest_and_origins, '[');
+    if (bracket) {
+        origins_start = bracket;
+        // Trim the destination part (everything before '[')
+        char* dest_trim_end = bracket - 1;
+        while (dest_trim_end > dest_and_origins && isspace((unsigned char)*dest_trim_end)) {
+            dest_trim_end--;
+        }
+        dest_trim_end[1] = '\0';
+    }
+    
+    char* dest = Trim(dest_and_origins);
     
     if (strlen(key) == 0 || strlen(source) == 0 || strlen(dest) == 0) {
         Dmod_SnPrintf(ctx->error, sizeof(ctx->error), 
@@ -201,12 +227,75 @@ static bool ParseLine(Dmod_ResourceContext_t* ctx, const char* line) {
     // Check if this is a dmf or dmfc resource
     entry->is_dmf_dmfc = (strcmp(key, "dmf") == 0 || strcmp(key, "dmfc") == 0);
     
+    // Parse [origin=...] directives
+    entry->origin_count = 0;
+    if (origins_start) {
+        char* p = origins_start;
+        while (*p && entry->origin_count < DMOD_RESOURCE_MAX_ORIGINS) {
+            // Skip whitespace
+            while (isspace((unsigned char)*p)) p++;
+            if (*p != '[') break;
+            p++; // skip '['
+            
+            // Check for "origin="
+            if (strncmp(p, "origin=", 7) != 0) {
+                // Unknown directive, skip to closing ']'
+                char* close = strchr(p, ']');
+                if (!close) break;
+                p = close + 1;
+                continue;
+            }
+            p += 7; // skip "origin="
+            
+            // Find closing ']'
+            char* close = strchr(p, ']');
+            if (!close) {
+                Dmod_SnPrintf(ctx->error, sizeof(ctx->error),
+                             "Invalid [origin] directive: missing ']'");
+                return false;
+            }
+            
+            // Extract origin path
+            size_t origin_len = (size_t)(close - p);
+            char origin_raw[DMOD_RESOURCE_MAX_PATH_LEN];
+            if (origin_len >= sizeof(origin_raw)) {
+                Dmod_SnPrintf(ctx->error, sizeof(ctx->error),
+                             "Origin path too long");
+                return false;
+            }
+            strncpy(origin_raw, p, origin_len);
+            origin_raw[origin_len] = '\0';
+            
+            char* trimmed_origin = Trim(origin_raw);
+            if (strlen(trimmed_origin) == 0) {
+                Dmod_SnPrintf(ctx->error, sizeof(ctx->error),
+                             "Empty [origin] path");
+                return false;
+            }
+            
+            // Substitute variables in origin path
+            if (!SubstituteVariables(ctx, trimmed_origin,
+                                     entry->origins[entry->origin_count],
+                                     sizeof(entry->origins[entry->origin_count]))) {
+                Dmod_SnPrintf(ctx->error, sizeof(ctx->error),
+                             "Origin path too long after variable substitution");
+                return false;
+            }
+            
+            entry->origin_count++;
+            p = close + 1;
+        }
+    }
+    
     ctx->entry_count++;
     return true;
 }
 
 Dmod_ResourceContext_t* Dmod_Resource_Init(const char* destination_path, 
-                                            const char* module_name) {
+                                            const char* module_name,
+                                            const char* repo_dir,
+                                            const char* dmf_dir,
+                                            const char* build_dir) {
     if (!destination_path || !module_name) {
         return NULL;
     }
@@ -223,6 +312,21 @@ Dmod_ResourceContext_t* Dmod_Resource_Init(const char* destination_path,
     
     strncpy(ctx->module_name, module_name, sizeof(ctx->module_name) - 1);
     ctx->module_name[sizeof(ctx->module_name) - 1] = '\0';
+    
+    if (repo_dir) {
+        strncpy(ctx->repo_dir, repo_dir, sizeof(ctx->repo_dir) - 1);
+        ctx->repo_dir[sizeof(ctx->repo_dir) - 1] = '\0';
+    }
+    
+    if (dmf_dir) {
+        strncpy(ctx->dmf_dir, dmf_dir, sizeof(ctx->dmf_dir) - 1);
+        ctx->dmf_dir[sizeof(ctx->dmf_dir) - 1] = '\0';
+    }
+    
+    if (build_dir) {
+        strncpy(ctx->build_dir, build_dir, sizeof(ctx->build_dir) - 1);
+        ctx->build_dir[sizeof(ctx->build_dir) - 1] = '\0';
+    }
     
     return ctx;
 }

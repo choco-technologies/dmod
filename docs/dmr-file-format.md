@@ -2,12 +2,13 @@
 
 ## Overview
 
-The `.dmr` (DMOD Resource File) file format provides a declarative way to specify resource installation mappings for module packages. It defines which files and directories from a zip package should be installed and where they should be placed, with support for environment variable substitution.
+The `.dmr` (DMOD Resource File) file format provides a declarative way to specify resource installation mappings for module packages. It defines which files and directories from a zip package should be installed and where they should be placed, with support for environment variable substitution. It can also specify the **origin** of each resource — i.e. where files come from when building a release package.
 
 ## File Format
 
 A `.dmr` file is a plain text file that contains:
 - Resource entries mapping source paths to destination paths
+- Optional `[origin=...]` directives declaring where files originate from (for package creation)
 - Comments for documentation
 - Environment variable substitution using `${VAR}` syntax
 - Special variables for dynamic path resolution
@@ -27,6 +28,8 @@ Lines starting with `#` are treated as comments and ignored:
 
 Resource entries follow the format: `key=source_path => destination_path`
 
+Optionally, one or more `[origin=path]` directives may follow the destination path to declare the origin of the files when building a release package:
+
 ```dmr
 # Basic format
 dmf=./module.dmf => ${DMOD_DMF_DIR}/module.dmf
@@ -39,6 +42,9 @@ inc=./include => ${destination}/include
 
 # License file
 license=./LICENSE => ${destination}/LICENSE
+
+# Include directory with origin directives (for package creation)
+inc=./include => ${destination}/${module}/include [origin=${repo_dir}/include] [origin=${build_dir}/${module}_defs.h]
 ```
 
 #### Resource Entry Components
@@ -46,6 +52,7 @@ license=./LICENSE => ${destination}/LICENSE
 - **key**: A descriptive identifier for the resource (e.g., `dmf`, `docs`, `inc`, `license`)
 - **source_path**: Path to the resource within the zip package (relative to zip root)
 - **destination_path**: Target installation path (can include variable substitutions)
+- **[origin=path]** *(optional, repeatable)*: Origin path of the file or directory when building the release package (can include variable substitutions)
 
 ### Environment Variable Substitution
 
@@ -53,11 +60,14 @@ The DMR parser supports variable substitution using `${VAR_NAME}` syntax:
 
 #### Special Variables
 
-Three special variables are automatically set by `dmf-get`:
+Five special variables are automatically set by `dmf-get` (or the tool initializing the resource context):
 
 - **`${destination}`**: The installation destination path (from `-o` flag or `DMOD_DMF_DIR`)
 - **`${module}`**: The name of the module being installed
 - **`${DMOD_DMF_DIR}`**: DMF directory from environment variable
+- **`${repo_dir}`**: Path to the repository root (for package creation workflows)
+- **`${dmf_dir}`**: Path to the directory containing built DMF files (for package creation workflows)
+- **`${build_dir}`**: Path to the build output directory (for package creation workflows)
 
 #### Environment Variables
 
@@ -82,6 +92,22 @@ docs=./documentation => ${destination}/${module}/docs
 # Combine multiple variables
 headers=./inc => ${destination}/${module}/include
 ```
+
+### Origin Directives
+
+The `[origin=path]` directive specifies where a file or directory comes from when building a release package. This allows tooling to know which source files to include in the zip archive.
+
+Multiple `[origin=...]` entries can be provided for a single resource when the destination is assembled from more than one source location:
+
+```dmr
+# Include directory with all headers (e.g. api.h and module_defs.h from the build directory)
+inc=./include => ${destination}/${module}/include [origin=${repo_dir}/include] [origin=${build_dir}/${module}_defs.h]
+
+# Single origin
+dmf=./module.dmf => ${DMOD_DMF_DIR}/${module}.dmf [origin=${dmf_dir}/module.dmf]
+```
+
+Origin paths support full variable substitution, including the new predefined variables `${repo_dir}`, `${dmf_dir}`, and `${build_dir}`.
 
 ### Resource Types
 
