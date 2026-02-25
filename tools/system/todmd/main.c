@@ -304,12 +304,13 @@ int main( int argc, char *argv[] )
             
             // Determine which version to use:
             // 1. If both DMF and requirements file specify a version, use the requirements file version (developer's explicit choice)
-            // 2. If only DMF has version, use DMF version
+            // 2. If only DMF has version, use soft constraint (>=version) since the version is auto-discovered
             // 3. If only requirements file has version, use requirements file version
             // 4. If neither has version, write module without version
             
             const char* versionToUse = NULL;
             bool hasVersionInDmf = (reqModule->Version[0] != '\0');
+            char softVersionBuf[64];
             
             if( requiredVersion != NULL )
             {
@@ -323,8 +324,21 @@ int main( int argc, char *argv[] )
             }
             else if( hasVersionInDmf )
             {
-                // Only DMF has version
-                versionToUse = reqModule->Version;
+                // Only DMF has version (auto-discovered, not user-specified)
+                // Use soft minimum constraint (>=) to allow newer compatible versions,
+                // unless the version already contains a constraint operator
+                const char* v = reqModule->Version;
+                if( v[0] == '>' || v[0] == '<' || v[0] == '=' )
+                {
+                    // Already has a constraint operator, use as-is
+                    versionToUse = v;
+                }
+                else
+                {
+                    // Plain version number - convert to soft minimum constraint
+                    snprintf( softVersionBuf, sizeof(softVersionBuf), ">=%s", v );
+                    versionToUse = softVersionBuf;
+                }
             }
             
             // Write module to .dmd file

@@ -180,17 +180,25 @@ if [ -n "$MODULE_BUILD_DIR" ] && [ -d "$MODULE_BUILD_DIR/dmf" ]; then
     fi
     
     echo ""
-    echo "Test 9: Verify module versions are preserved"
+    echo "Test 9: Verify module versions use soft constraints"
     
     if [ -f "test_output.dmd" ]; then
-        # Look for any dependency with version notation
-        if grep -v '^#' test_output.dmd | grep -E '^[a-zA-Z_][a-zA-Z0-9_]*@' > /dev/null 2>&1 || \
-           grep -v '^#' test_output.dmd | grep -E '^[a-zA-Z_][a-zA-Z0-9_]*$' > /dev/null 2>&1; then
-            echo "✓ Dependencies with/without versions are properly formatted"
+        # Check that any auto-discovered versions use soft constraints (>=version)
+        # Hard exact versions (e.g., module@0.1) should not appear for DMF-sourced versions
+        if grep -v '^#' test_output.dmd | grep -E '^[a-zA-Z_][a-zA-Z0-9_]*@' > /dev/null 2>&1; then
+            # There are versioned dependencies - verify they use >= soft constraint
+            if grep -v '^#' test_output.dmd | grep -E '^[a-zA-Z_][a-zA-Z0-9_]*@[0-9]' > /dev/null 2>&1; then
+                echo "✗ Found hard version constraint in output (expected >=version soft constraint)"
+                exit 1
+            else
+                echo "✓ Versioned dependencies use soft constraints (>= prefix)"
+            fi
         else
-            # If no dependencies, that's also valid
+            # No versioned dependencies or only unversioned - also valid
             if [ "$DEP_COUNT" -eq 0 ]; then
                 echo "✓ No dependencies to check (module has no non-system deps)"
+            else
+                echo "✓ Dependencies are unversioned (no version constraints to check)"
             fi
         fi
     else

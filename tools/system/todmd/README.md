@@ -57,10 +57,16 @@ The tool generates a `.dmd` file with the following format:
 # This file lists all non-system modules required by the module.
 # Use with dmf-get: dmf-get -d example_app.dmd
 
-dmodex@0.1
-other_module@1.2.3
+dmodex@>=0.1
+other_module@>=1.2.3
 another_module
 ```
+
+> **Note:** When a dependency version is auto-discovered from the DMF (i.e., not explicitly specified
+> by the user via `dmod_link_modules`), a soft minimum constraint (`>=version`) is generated instead
+> of a hard exact constraint. This allows the module to work with any newer compatible version.
+> If the user explicitly specifies a version in `dmod_link_modules` (e.g., `dmodex@0.1`), the exact
+> version is preserved as-is in the generated `.dmd` file.
 
 ## How It Works
 
