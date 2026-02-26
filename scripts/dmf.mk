@@ -164,6 +164,10 @@ endif
 ifneq ($(TODMD),)
 	@echo "Generating dependencies file for $(DMOD_MODULE_DMF_FILE_PATH)"
 	@$(TODMD) $(DMOD_MODULE_DMF_FILE_PATH) $(DMOD_DMF_DIR)/$(DMOD_MODULE_NAME).dmd
+ifneq ($(DMOD_LOCAL_MANIFEST),)
+	@echo "Generating local dependencies file for $(DMOD_MODULE_DMF_FILE_PATH)"
+	@$(TODMD) $(DMOD_MODULE_DMF_FILE_PATH) $(DMOD_DMF_DIR)/$(DMOD_MODULE_NAME).dmd --local-manifest $(DMOD_LOCAL_MANIFEST)
+endif
 else
 	@echo "todmd is not found. Skipping dependencies file generation..."
 endif

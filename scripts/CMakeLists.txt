@@ -462,6 +462,25 @@ function(dmod_create_module moduleName version moduleType)
                     COMMAND ${TODMM} "${DMOD_PACKAGES_DIR}" "${DMOD_PACKAGES_DIR}" --zip -o "${DMOD_LOCAL_MANIFEST_PATH}"
                     COMMENT "Generating local manifest for packages: ${DMOD_LOCAL_MANIFEST_PATH}"
                 )
+
+                # Generate <module_name>-local.dmd using todmd with the local manifest
+                if(TODMD)
+                    set(LOCAL_DMD_OUTPUT "${DMOD_DMF_DIR}/${moduleName}-local.dmd")
+                    get_target_property(VERSION_REQS_FILE ${moduleName} DMOD_VERSION_REQUIREMENTS_FILE)
+                    if(VERSION_REQS_FILE AND EXISTS "${VERSION_REQS_FILE}")
+                        add_custom_command(
+                            TARGET ${moduleName} POST_BUILD
+                            COMMAND ${TODMD} ${DMF_OUTPUT} ${DMD_OUTPUT} -r ${VERSION_REQS_FILE} --local-manifest "${DMOD_LOCAL_MANIFEST_PATH}"
+                            COMMENT "Generating local dependencies file: ${LOCAL_DMD_OUTPUT}"
+                        )
+                    else()
+                        add_custom_command(
+                            TARGET ${moduleName} POST_BUILD
+                            COMMAND ${TODMD} ${DMF_OUTPUT} ${DMD_OUTPUT} --local-manifest "${DMOD_LOCAL_MANIFEST_PATH}"
+                            COMMENT "Generating local dependencies file: ${LOCAL_DMD_OUTPUT}"
+                        )
+                    endif()
+                endif()
             else()
                 message(WARNING "todmm not found - local manifest for packages will not be generated. Build the tools first with -DDMOD_BUILD_TOOLS=ON")
             endif()
