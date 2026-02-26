@@ -228,8 +228,8 @@ void PrintHelp( const char* AppName )
     printf("  --from <mod>=<manifest>  Per-module manifest: adds inline $from for the named module\n");
     printf("                        Option can be repeated to set manifests for multiple modules\n");
     printf("  --local-manifest <manifest>  Local manifest (.dmm) file; generates a companion\n");
-    printf("                        <module>-local.dmd where dependencies present in the manifest\n");
-    printf("                        get an inline $from <manifest> directive\n");
+    printf("                        <module>-local.dmd listing only dependencies present in\n");
+    printf("                        the manifest, each with an inline $from <manifest> directive\n");
     printf("\nArguments:\n");
     printf("  path/to/file.dmf      Path to the DMF module file\n");
     printf("  [output.dmd]          (optional) Output .dmd file path (default: module_name.dmd)\n");
@@ -247,9 +247,10 @@ void PrintHelp( const char* AppName )
     printf("  only for that specific module using the $from syntax.\n");
     printf("\n");
     printf("  If --local-manifest is provided, a companion <module>-local.dmd file is\n");
-    printf("  generated alongside the regular .dmd. In this file, dependencies that are\n");
-    printf("  present in the local manifest receive an inline $from <manifest> directive\n");
-    printf("  so they can be resolved from the local build.\n");
+    printf("  generated alongside the regular .dmd. All non-system dependencies are listed:\n");
+    printf("  those present in the local manifest get an inline $from <manifest> directive\n");
+    printf("  so they are resolved from the local build; all other dependencies are listed\n");
+    printf("  without $from so they are fetched from the default remote repository.\n");
     printf("\nExamples:\n");
     printf("  %s myapp.dmf                                        # Creates myapp.dmd\n", AppName);
     printf("  %s myapp.dmf dependencies.dmd                       # Creates dependencies.dmd\n", AppName);
@@ -676,7 +677,9 @@ int main( int argc, char *argv[] )
                     }
                 }
 
-                // Use local manifest as $from source if this module is available locally
+                // Use local manifest as $from source if this module is available locally;
+                // non-local modules are still listed (without $from) so they are fetched
+                // from the default remote repository.
                 bool isLocal = IsModuleInLocalManifest( localManifestModules, localManifestModuleCount, reqModule->Name );
 
                 if( versionToUse != NULL )

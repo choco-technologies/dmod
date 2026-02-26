@@ -245,7 +245,7 @@ EOF
     fi
 
     echo ""
-    echo "Test 11: Verify local .dmd uses \$from for locally available deps"
+    echo "Test 11: Verify local .dmd uses \$from for locally available deps and lists non-local deps without \$from"
 
     if [ -n "$DMF_FILE" ] && [ -f "$DMF_FILE" ]; then
         # Get the list of dependencies from the regular .dmd
@@ -270,6 +270,22 @@ EOF
                     else
                         echo "✗ Expected \$from directive for ${FIRST_DEP} in local .dmd"
                         exit 1
+                    fi
+
+                    # Non-local deps (all except FIRST_DEP) must appear WITHOUT $from in the local .dmd
+                    OTHER_DEPS=$(echo "$DEPS" | tail -n +2)
+                    for dep in $OTHER_DEPS; do
+                        if ! grep -v '^#' test_local_dep-local.dmd | grep -q "^${dep}"; then
+                            echo "✗ Non-local dependency '${dep}' is missing from local .dmd"
+                            exit 1
+                        fi
+                        if grep -v '^#' test_local_dep-local.dmd | grep "^${dep}" | grep -q "\$from"; then
+                            echo "✗ Non-local dependency '${dep}' should not have \$from in local .dmd"
+                            exit 1
+                        fi
+                    done
+                    if [ -n "$OTHER_DEPS" ]; then
+                        echo "✓ Non-local dependencies appear without \$from in local .dmd"
                     fi
                 else
                     echo "✗ Local .dmd file test_local_dep-local.dmd was not created"

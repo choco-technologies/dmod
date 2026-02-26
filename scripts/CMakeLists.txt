@@ -455,27 +455,44 @@ function(dmod_create_module moduleName version moduleType)
             )
 
             if(TODMM)
-                add_custom_command(
-                    TARGET ${moduleName} POST_BUILD
-                    # todmm <folder> <base_url> --zip -o <output>
-                    # For a local manifest, base_url is the local packages directory path
-                    COMMAND ${TODMM} "${DMOD_PACKAGES_DIR}" "${DMOD_PACKAGES_DIR}" --zip -o "${DMOD_LOCAL_MANIFEST_PATH}"
-                    COMMENT "Generating local manifest for packages: ${DMOD_LOCAL_MANIFEST_PATH}"
-                )
+                # Create a shared target (once per project) that regenerates the local
+                # manifest from ALL package zips after every module has been built.
+                # Using a dedicated target (rather than per-module POST_BUILD) guarantees
+                # that todmm runs only after ALL modules have created their zip archives,
+                # so the manifest is always complete when local .dmd files are generated.
+                if(NOT TARGET dmod_generate_manifest)
+                    add_custom_target(dmod_generate_manifest ALL)
+                    add_custom_command(
+                        TARGET dmod_generate_manifest POST_BUILD
+                        # todmm <folder> <base_url> --zip -o <output>
+                        # For a local manifest, base_url is the local packages directory path
+                        COMMAND ${TODMM} "${DMOD_PACKAGES_DIR}" "${DMOD_PACKAGES_DIR}" --zip -o "${DMOD_LOCAL_MANIFEST_PATH}"
+                        COMMENT "Generating local manifest from all packages: ${DMOD_LOCAL_MANIFEST_PATH}"
+                    )
+                endif()
 
-                # Generate <module_name>-local.dmd using todmd with the local manifest
+                # This module's zip must exist before the manifest is generated
+                add_dependencies(dmod_generate_manifest ${moduleName})
+
+                # Generate <module_name>-local.dmd using todmd AFTER the complete manifest
+                # is ready (i.e., after all modules' zips have been collected by todmm).
                 if(TODMD)
                     set(LOCAL_DMD_OUTPUT "${DMOD_DMF_DIR}/${moduleName}-local.dmd")
+
+                    # A per-module ALL target that runs todmd once the manifest is complete
+                    add_custom_target(${moduleName}_local_dmd ALL)
+                    add_dependencies(${moduleName}_local_dmd dmod_generate_manifest)
+
                     get_target_property(VERSION_REQS_FILE ${moduleName} DMOD_VERSION_REQUIREMENTS_FILE)
                     if(VERSION_REQS_FILE AND EXISTS "${VERSION_REQS_FILE}")
                         add_custom_command(
-                            TARGET ${moduleName} POST_BUILD
+                            TARGET ${moduleName}_local_dmd POST_BUILD
                             COMMAND ${TODMD} ${DMF_OUTPUT} ${DMD_OUTPUT} -r ${VERSION_REQS_FILE} --local-manifest "${DMOD_LOCAL_MANIFEST_PATH}"
                             COMMENT "Generating local dependencies file: ${LOCAL_DMD_OUTPUT}"
                         )
                     else()
                         add_custom_command(
-                            TARGET ${moduleName} POST_BUILD
+                            TARGET ${moduleName}_local_dmd POST_BUILD
                             COMMAND ${TODMD} ${DMF_OUTPUT} ${DMD_OUTPUT} --local-manifest "${DMOD_LOCAL_MANIFEST_PATH}"
                             COMMENT "Generating local dependencies file: ${LOCAL_DMD_OUTPUT}"
                         )
