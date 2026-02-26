@@ -79,6 +79,19 @@ TEST_F(DmodResourceTest, ParseSimpleEntry) {
     ASSERT_EQ(entry.origin_count, 0u);
 }
 
+TEST_F(DmodResourceTest, ParseSourceWithVariableSubstitution) {
+    ASSERT_TRUE(Dmod_Resource_Parse(ctx,
+        "dmf=./${module}.dmf => ${destination}/${module}.dmf [origin=/build/${module}.dmf]\n"));
+    ASSERT_EQ(Dmod_Resource_GetEntryCount(ctx), 1u);
+
+    Dmod_ResourceEntry_t entry;
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 0, &entry));
+    ASSERT_STREQ(entry.source, "./mymodule.dmf");
+    ASSERT_STREQ(entry.destination, "/install/path/mymodule.dmf");
+    ASSERT_EQ(entry.origin_count, 1u);
+    ASSERT_STREQ(entry.origins[0], "/build/mymodule.dmf");
+}
+
 TEST_F(DmodResourceTest, ParseDestinationVariable) {
     ASSERT_TRUE(Dmod_Resource_Parse(ctx, "inc=./include => ${destination}/${module}/include\n"));
     ASSERT_EQ(Dmod_Resource_GetEntryCount(ctx), 1u);

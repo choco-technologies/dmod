@@ -213,9 +213,12 @@ static bool ParseLine(Dmod_ResourceContext_t* ctx, const char* line) {
     strncpy(entry->key, key, sizeof(entry->key) - 1);
     entry->key[sizeof(entry->key) - 1] = '\0';
     
-    // Copy source (no substitution needed for source)
-    strncpy(entry->source, source, sizeof(entry->source) - 1);
-    entry->source[sizeof(entry->source) - 1] = '\0';
+    // Substitute variables in source path
+    if (!SubstituteVariables(ctx, source, entry->source, sizeof(entry->source))) {
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error),
+                     "Source path too long after variable substitution");
+        return false;
+    }
     
     // Substitute variables in destination
     if (!SubstituteVariables(ctx, dest, entry->destination, sizeof(entry->destination))) {
