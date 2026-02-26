@@ -21,6 +21,7 @@ struct Dmod_ResourceContext {
     char module_name[DMOD_RESOURCE_MAX_KEY_LEN];
     char repo_dir[DMOD_RESOURCE_MAX_PATH_LEN];
     char dmf_dir[DMOD_RESOURCE_MAX_PATH_LEN];
+    char dmfc_dir[DMOD_RESOURCE_MAX_PATH_LEN];
     char build_dir[DMOD_RESOURCE_MAX_PATH_LEN];
     Dmod_ResourceEntry_t entries[MAX_ENTRIES];
     size_t entry_count;
@@ -99,6 +100,8 @@ static bool SubstituteVariables(Dmod_ResourceContext_t* ctx, const char* input,
                 value = ctx->repo_dir[0] != '\0' ? ctx->repo_dir : NULL;
             } else if (strcmp(var_name, "dmf_dir") == 0) {
                 value = ctx->dmf_dir[0] != '\0' ? ctx->dmf_dir : NULL;
+            } else if (strcmp(var_name, "dmfc_dir") == 0) {
+                value = ctx->dmfc_dir[0] != '\0' ? ctx->dmfc_dir : NULL;
             } else if (strcmp(var_name, "build_dir") == 0) {
                 value = ctx->build_dir[0] != '\0' ? ctx->build_dir : NULL;
             } else {
@@ -298,6 +301,7 @@ Dmod_ResourceContext_t* Dmod_Resource_Init(const char* destination_path,
                                             const char* module_name,
                                             const char* repo_dir,
                                             const char* dmf_dir,
+                                            const char* dmfc_dir,
                                             const char* build_dir) {
     if (!destination_path || !module_name) {
         return NULL;
@@ -324,6 +328,11 @@ Dmod_ResourceContext_t* Dmod_Resource_Init(const char* destination_path,
     if (dmf_dir) {
         strncpy(ctx->dmf_dir, dmf_dir, sizeof(ctx->dmf_dir) - 1);
         ctx->dmf_dir[sizeof(ctx->dmf_dir) - 1] = '\0';
+    }
+    
+    if (dmfc_dir) {
+        strncpy(ctx->dmfc_dir, dmfc_dir, sizeof(ctx->dmfc_dir) - 1);
+        ctx->dmfc_dir[sizeof(ctx->dmfc_dir) - 1] = '\0';
     }
     
     if (build_dir) {

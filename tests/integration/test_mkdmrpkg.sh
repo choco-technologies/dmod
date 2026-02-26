@@ -322,6 +322,31 @@ else
 fi
 
 echo ""
+echo "Test 16: --dmfc-dir variable substitution"
+
+mkdir -p dmfc_dir_src
+echo "compiled module" > dmfc_dir_src/testmodule.dmfc
+
+cat > dmfc_varsubst.dmr <<'EOF'
+dmfc=./testmodule.dmfc => ${dmfc_dir}/testmodule.dmfc [origin=${dmfc_dir}/testmodule.dmfc]
+EOF
+
+rm -rf pkg_dmfc_varsubst
+if $MKDMRPKG dmfc_varsubst.dmr -m testmodule --dmfc-dir "$TEST_DIR/dmfc_dir_src" -o pkg_dmfc_varsubst 2>&1 | grep -q "Success"; then
+    echo "✓ --dmfc-dir variable substitution works"
+else
+    echo "✗ --dmfc-dir variable substitution failed"
+    exit 1
+fi
+
+if [ -f "pkg_dmfc_varsubst/testmodule.dmfc" ]; then
+    echo "✓ DMFC file placed at correct substituted path"
+else
+    echo "✗ DMFC file not found at substituted path"
+    exit 1
+fi
+
+echo ""
 echo "=== All mkdmrpkg integration tests passed! ==="
 cd ..
 rm -rf "$TEST_DIR"
