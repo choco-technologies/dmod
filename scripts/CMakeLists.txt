@@ -429,6 +429,7 @@ function(dmod_create_module moduleName version moduleType)
             set(DMOD_PACKAGES_DIR "${CMAKE_BINARY_DIR}/packages")
             set(DMOD_PKG_OUT_DIR "${DMOD_PACKAGES_DIR}/${moduleName}")
             set(DMOD_PKG_ZIP_PATH "${DMOD_PACKAGES_DIR}/${moduleName}.zip")
+            set(DMOD_LOCAL_MANIFEST_PATH "${DMOD_PACKAGES_DIR}/manifest-local.dmm")
 
             # Create the packages directory
             file(MAKE_DIRECTORY "${DMOD_PACKAGES_DIR}")
@@ -446,6 +447,24 @@ function(dmod_create_module moduleName version moduleType)
                 WORKING_DIRECTORY "${DMOD_PACKAGES_DIR}"
                 COMMENT "Creating release package and zip archive for ${moduleName}"
             )
+
+            # Find todmm tool and generate local manifest from all zip packages
+            find_program(TODMM
+                todmm
+                HINTS ${DMOD_TOOLS_BIN_DIR}
+            )
+
+            if(TODMM)
+                add_custom_command(
+                    TARGET ${moduleName} POST_BUILD
+                    # todmm <folder> <base_url> --zip -o <output>
+                    # For a local manifest, base_url is the local packages directory path
+                    COMMAND ${TODMM} "${DMOD_PACKAGES_DIR}" "${DMOD_PACKAGES_DIR}" --zip -o "${DMOD_LOCAL_MANIFEST_PATH}"
+                    COMMENT "Generating local manifest for packages: ${DMOD_LOCAL_MANIFEST_PATH}"
+                )
+            else()
+                message(WARNING "todmm not found - local manifest for packages will not be generated. Build the tools first with -DDMOD_BUILD_TOOLS=ON")
+            endif()
         else()
             message(WARNING "mkdmrpkg not found - release package for ${moduleName} will not be created. Build the tools first with -DDMOD_BUILD_TOOLS=ON")
         endif()
