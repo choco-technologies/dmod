@@ -14,6 +14,7 @@ The **DMOD (Dynamic Modules)** framework ships with a set of command-line tools 
 | **todmp** | DMP package creator - creates packages containing multiple modules | [todmp/README.md](../tools/system/todmp/README.md) |
 | **todmd** | DMD dependencies file generator - extracts dependencies from modules | [todmd/README.md](../tools/system/todmd/README.md) |
 | **whereisdmf** | Tool for locating module files in configured repository directories | [whereisdmf/README.md](../tools/system/whereisdmf/README.md) |
+| **mkdmrpkg** | Release package maker - assembles a release directory from a `.dmr` resource file | [mkdmrpkg-tool.md](mkdmrpkg-tool.md) |
 
 ## Environment Variables
 
@@ -100,6 +101,7 @@ make -C tools/system/todmfc
 make -C tools/system/todmp
 make -C tools/system/todmd
 make -C tools/system/whereisdmf
+make -C tools/system/mkdmrpkg
 ```
 
 ## Installing Tools on Linux
@@ -159,6 +161,7 @@ sudo rm /usr/local/bin/todmfc
 sudo rm /usr/local/bin/todmp
 sudo rm /usr/local/bin/todmd
 sudo rm /usr/local/bin/whereisdmf
+sudo rm /usr/local/bin/mkdmrpkg
 ```
 
 ## Tool Details
@@ -294,6 +297,36 @@ whereisdmf mymodule armv7-cortex-m7
 
 Full documentation: [whereisdmf/README.md](../tools/system/whereisdmf/README.md)
 
+### mkdmrpkg
+
+**mkdmrpkg** assembles a release package directory from a `.dmr` resource file. It
+copies files from their `[origin]` locations into an output directory, reproducing
+the package structure. The resulting directory can be archived (e.g. with `zip`) to
+produce the final release package.
+
+**Basic usage:**
+```bash
+# Assemble package into ./package
+mkdmrpkg module.dmr -m mymodule
+
+# Custom package name (output goes to ./mymodule-1.0.0/)
+mkdmrpkg module.dmr -m mymodule --name mymodule-1.0.0
+
+# Append CI-generated files to the package
+mkdmrpkg module.dmr -m mymodule -n mymodule-1.0.0 --add-file release-notes.txt
+```
+
+**Key options:**
+- `<file.dmr>` - Path to the `.dmr` resource file
+- `-n`/`--name <name>` - Package name, used as the output directory when `-o` is not set
+- `-o <dir>` - Explicit output directory (overrides `--name`)
+- `--add-file <path>` - Copy an extra file into the output root (repeatable)
+- `-m <module>` - Value for `${module}` variable substitution
+- `-r <repo_dir>` - Value for `${repo_dir}` variable substitution
+- `-b <build_dir>` - Value for `${build_dir}` variable substitution
+
+Full documentation: [mkdmrpkg-tool.md](mkdmrpkg-tool.md)
+
 ## Docker Image
 
 The DMOD framework is available as a ready-to-use Docker image that contains all DMOD tools and a compilation environment for embedded systems.
@@ -309,7 +342,7 @@ The DMOD framework is available as a ready-to-use Docker image that contains all
 
 The Docker image contains:
 
-- **DMOD Tools:** dmf-get, todmm, todmfc, todmp, todmd, whereisdmf
+- **DMOD Tools:** dmf-get, todmm, todmfc, todmp, todmd, whereisdmf, mkdmrpkg
 - **Compiler:** GCC arm-none-eabi (version 10.3-2021.10)
 - **Build system:** CMake (version 3.31.3), Make
 - **Development tools:** OpenOCD, gcovr, git, jq, zip/unzip
