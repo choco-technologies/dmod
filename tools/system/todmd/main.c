@@ -247,9 +247,10 @@ void PrintHelp( const char* AppName )
     printf("  only for that specific module using the $from syntax.\n");
     printf("\n");
     printf("  If --local-manifest is provided, a companion <module>-local.dmd file is\n");
-    printf("  generated alongside the regular .dmd. This file lists only the dependencies\n");
-    printf("  that are present in the local manifest, each with an inline $from <manifest>\n");
-    printf("  directive so they can be resolved from the local build.\n");
+    printf("  generated alongside the regular .dmd. All non-system dependencies are listed:\n");
+    printf("  those present in the local manifest get an inline $from <manifest> directive\n");
+    printf("  so they are resolved from the local build; all other dependencies are listed\n");
+    printf("  without $from so they are fetched from the default remote repository.\n");
     printf("\nExamples:\n");
     printf("  %s myapp.dmf                                        # Creates myapp.dmd\n", AppName);
     printf("  %s myapp.dmf dependencies.dmd                       # Creates dependencies.dmd\n", AppName);
@@ -676,24 +677,38 @@ int main( int argc, char *argv[] )
                     }
                 }
 
-                // Use local manifest as $from source if this module is available locally
+                // Use local manifest as $from source if this module is available locally;
+                // non-local modules are still listed (without $from) so they are fetched
+                // from the default remote repository.
                 bool isLocal = IsModuleInLocalManifest( localManifestModules, localManifestModuleCount, reqModule->Name );
 
-                // Only include modules present in the local manifest (with $from directive)
-                if( isLocal )
+                if( versionToUse != NULL )
                 {
-                    if( versionToUse != NULL )
+                    if( isLocal )
                     {
                         Dmod_FPrintf( localOutputFile, "%s@%s $from %s\n", reqModule->Name, versionToUse, localManifestPath );
                         Dmod_Printf("  + %s@%s $from %s\n", reqModule->Name, versionToUse, localManifestPath);
                     }
                     else
                     {
+                        Dmod_FPrintf( localOutputFile, "%s@%s\n", reqModule->Name, versionToUse );
+                        Dmod_Printf("  + %s@%s\n", reqModule->Name, versionToUse);
+                    }
+                }
+                else
+                {
+                    if( isLocal )
+                    {
                         Dmod_FPrintf( localOutputFile, "%s $from %s\n", reqModule->Name, localManifestPath );
                         Dmod_Printf("  + %s $from %s\n", reqModule->Name, localManifestPath);
                     }
-                    localModuleCount++;
+                    else
+                    {
+                        Dmod_FPrintf( localOutputFile, "%s\n", reqModule->Name );
+                        Dmod_Printf("  + %s\n", reqModule->Name);
+                    }
                 }
+                localModuleCount++;
             }
 
             reqModule = Dmod_GetNextRequiredModule( context, reqModule );
