@@ -27,12 +27,27 @@ static bool IsDmfFile( const char* fileName )
 
 // -----------------------------------------
 //
+//      Returns true if the filename has a ZIP extension
+//
+// -----------------------------------------
+static bool IsZipFile( const char* fileName )
+{
+    size_t len = strlen( fileName );
+    if( len > 4 && strcmp( fileName + len - 4, ".zip" ) == 0 )
+    {
+        return true;
+    }
+    return false;
+}
+
+// -----------------------------------------
+//
 //      Prints usage message
 //
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s <folder> <base_url> [-o output.dmm]\n", AppName);
+    printf("Usage: %s <folder> <base_url> [-o output.dmm] [--zip]\n", AppName);
 }
 
 // -----------------------------------------
@@ -53,15 +68,19 @@ void PrintHelp( const char* AppName )
     printf("  -h, --help     Print this help message\n");
     printf("  -v, --version  Print version information\n");
     printf("  -o <file>      Output manifest file path (default: manifest.dmm)\n");
+    printf("  -z, --zip      Scan for .zip release packages instead of .dmf / .dmfc files\n");
     printf("\nExamples:\n");
     printf("  %s ./dmf https://registry.example.com/modules\n", AppName);
     printf("  %s ./dmf https://registry.example.com/modules/ -o output.dmm\n", AppName);
+    printf("  %s ./build/packages https://releases.example.com/packages --zip\n", AppName);
     printf("\nDescription:\n");
     printf("  The tool scans the given folder for .dmf and .dmfc files, reads\n");
     printf("  the module name and version from each file header, and writes a\n");
     printf("  manifest.dmm entry of the form:\n");
     printf("    module_name@version <base_url>/<filename>\n");
     printf("  If base_url already ends with '/', no extra separator is added.\n");
+    printf("  When --zip is given, the tool scans for .zip files instead and\n");
+    printf("  derives the module name from the filename (without extension).\n");
 }
 
 // -----------------------------------------
@@ -99,6 +118,7 @@ int main( int argc, char *argv[] )
     const char* folderPath = argv[1];
     const char* baseUrl    = argv[2];
     const char* outputPath = "manifest.dmm";
+    bool        zipMode    = false;
 
     // Parse optional arguments
     for( int i = 3; i < argc; i++ )
@@ -116,6 +136,10 @@ int main( int argc, char *argv[] )
                 PrintUsage( argv[0] );
                 return -1;
             }
+        }
+        else if( strcmp( argv[i], "-z" ) == 0 || strcmp( argv[i], "--zip" ) == 0 )
+        {
+            zipMode = true;
         }
         else
         {
@@ -170,47 +194,75 @@ int main( int argc, char *argv[] )
     const Dmod_DirEntry_t* entry;
     while( (entry = Dmod_ReadDirEx( dir )) != NULL )
     {
-        // Only process regular files with .dmf or .dmfc extension
+        // Only process regular files
         if( entry->type != Dmod_DirEntryType_File )
         {
             continue;
         }
 
-        if( !IsDmfFile( entry->name ) )
+        if( zipMode )
         {
-            continue;
-        }
+            // ZIP mode: scan for .zip release packages
+            if( !IsZipFile( entry->name ) )
+            {
+                continue;
+            }
 
-        // Build full file path
-        char filePath[TODMM_MAX_PATH_LEN];
-        Dmod_SnPrintf( filePath, sizeof(filePath), "%s/%s", folderPath, entry->name );
+            // Build the full URL for this zip file
+            char url[TODMM_MAX_PATH_LEN];
+            Dmod_SnPrintf( url, sizeof(url), "%s%s%s", baseUrl, separator, entry->name );
 
-        // Read module header
-        Dmod_ModuleHeader_t header;
-        if( !Dmod_ReadModuleHeader( filePath, &header ) )
-        {
-            printf("Warning: Cannot read header from '%s', skipping\n", entry->name);
-            errorCount++;
-            continue;
-        }
+            // Derive module name from filename (strip .zip extension)
+            // IsZipFile() guarantees len > 4, so nameLen is at least 1
+            size_t nameLen = strlen( entry->name ) - 4; // len(".zip") == 4
+            char moduleName[TODMM_MAX_PATH_LEN];
+            Dmod_SnPrintf( moduleName, sizeof(moduleName), "%.*s", (int)nameLen, entry->name );
 
-        // Build the full URL for this module file
-        char url[TODMM_MAX_PATH_LEN];
-        Dmod_SnPrintf( url, sizeof(url), "%s%s%s", baseUrl, separator, entry->name );
+            // Write manifest entry: name url
+            Dmod_FPrintf( outputFile, "%s %s\n", moduleName, url );
+            Dmod_Printf("  + %s %s\n", moduleName, url);
 
-        // Write manifest entry: name@version url  (omit @version if version is empty)
-        if( header.Version[0] != '\0' )
-        {
-            Dmod_FPrintf( outputFile, "%s@%s %s\n", header.Name, header.Version, url );
-            Dmod_Printf("  + %s@%s %s\n", header.Name, header.Version, url);
+            moduleCount++;
         }
         else
         {
-            Dmod_FPrintf( outputFile, "%s %s\n", header.Name, url );
-            Dmod_Printf("  + %s %s\n", header.Name, url);
-        }
+            // DMF mode: scan for .dmf / .dmfc module files
+            if( !IsDmfFile( entry->name ) )
+            {
+                continue;
+            }
 
-        moduleCount++;
+            // Build full file path
+            char filePath[TODMM_MAX_PATH_LEN];
+            Dmod_SnPrintf( filePath, sizeof(filePath), "%s/%s", folderPath, entry->name );
+
+            // Read module header
+            Dmod_ModuleHeader_t header;
+            if( !Dmod_ReadModuleHeader( filePath, &header ) )
+            {
+                printf("Warning: Cannot read header from '%s', skipping\n", entry->name);
+                errorCount++;
+                continue;
+            }
+
+            // Build the full URL for this module file
+            char url[TODMM_MAX_PATH_LEN];
+            Dmod_SnPrintf( url, sizeof(url), "%s%s%s", baseUrl, separator, entry->name );
+
+            // Write manifest entry: name@version url  (omit @version if version is empty)
+            if( header.Version[0] != '\0' )
+            {
+                Dmod_FPrintf( outputFile, "%s@%s %s\n", header.Name, header.Version, url );
+                Dmod_Printf("  + %s@%s %s\n", header.Name, header.Version, url);
+            }
+            else
+            {
+                Dmod_FPrintf( outputFile, "%s %s\n", header.Name, url );
+                Dmod_Printf("  + %s %s\n", header.Name, url);
+            }
+
+            moduleCount++;
+        }
     }
 
     // Close directory and output file
@@ -229,7 +281,14 @@ int main( int argc, char *argv[] )
 
     if( moduleCount == 0 )
     {
-        printf("Warning: No DMF modules found in folder: %s\n", folderPath);
+        if( zipMode )
+        {
+            printf("Warning: No ZIP packages found in folder: %s\n", folderPath);
+        }
+        else
+        {
+            printf("Warning: No DMF modules found in folder: %s\n", folderPath);
+        }
     }
     else
     {
