@@ -60,13 +60,14 @@ The DMR parser supports variable substitution using `${VAR_NAME}` syntax:
 
 #### Special Variables
 
-Five special variables are automatically set by `dmf-get` (or the tool initializing the resource context):
+Six special variables are automatically set by `dmf-get` (or the tool initializing the resource context):
 
 - **`${destination}`**: The installation destination path (from `-o` flag or `DMOD_DMF_DIR`)
 - **`${module}`**: The name of the module being installed
 - **`${DMOD_DMF_DIR}`**: DMF directory from environment variable
 - **`${repo_dir}`**: Path to the repository root (for package creation workflows)
 - **`${dmf_dir}`**: Path to the directory containing built DMF files (for package creation workflows)
+- **`${dmfc_dir}`**: Path to the directory containing built DMFC files (for package creation workflows)
 - **`${build_dir}`**: Path to the build output directory (for package creation workflows)
 
 #### Environment Variables

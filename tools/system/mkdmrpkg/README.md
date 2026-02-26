@@ -31,6 +31,7 @@ mkdmrpkg <file.dmr> [options]
 | `-m <module>` | Value for `${module}` variable substitution |
 | `-r <repo_dir>` | Value for `${repo_dir}` variable substitution |
 | `--dmf-dir <dir>` | Value for `${dmf_dir}` variable substitution |
+| `--dmfc-dir <dir>` | Value for `${dmfc_dir}` variable substitution |
 | `-b <build_dir>` | Value for `${build_dir}` variable substitution |
 
 ## Examples

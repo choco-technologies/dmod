@@ -10,7 +10,7 @@
  * - Comments (lines starting with #)
  * - Resource entries: key=source_path => destination_path [origin=path] ...
  * - Environment variable substitution: ${VAR_NAME}
- * - Special variables: ${destination}, ${module}, ${repo_dir}, ${dmf_dir}, ${build_dir}
+ * - Special variables: ${destination}, ${module}, ${repo_dir}, ${dmf_dir}, ${dmfc_dir}, ${build_dir}
  * - Origin directives: [origin=path] specifying where files come from for package creation
  */
 
@@ -63,6 +63,7 @@ typedef struct Dmod_ResourceContext Dmod_ResourceContext_t;
  * @param module_name The module name for ${module} substitution
  * @param repo_dir The repository root path for ${repo_dir} substitution (may be NULL)
  * @param dmf_dir The DMF files directory path for ${dmf_dir} substitution (may be NULL)
+ * @param dmfc_dir The DMFC files directory path for ${dmfc_dir} substitution (may be NULL)
  * @param build_dir The build directory path for ${build_dir} substitution (may be NULL)
  * @return Pointer to resource context, or NULL on failure
  */
@@ -71,6 +72,7 @@ Dmod_ResourceContext_t* Dmod_Resource_Init(
     const char* module_name,
     const char* repo_dir,
     const char* dmf_dir,
+    const char* dmfc_dir,
     const char* build_dir
 );
 

@@ -310,6 +310,7 @@ static void PrintHelp( const char* AppName )
     printf("  -m <module>           Value for ${module} variable substitution\n");
     printf("  -r <repo_dir>         Value for ${repo_dir} variable substitution\n");
     printf("  --dmf-dir <dir>       Value for ${dmf_dir} variable substitution\n");
+    printf("  --dmfc-dir <dir>      Value for ${dmfc_dir} variable substitution\n");
     printf("  -b <build_dir>        Value for ${build_dir} variable substitution\n");
     printf("\nArguments:\n");
     printf("  <file.dmr>            Path to the .dmr resource file\n");
@@ -359,6 +360,7 @@ int main( int argc, char *argv[] )
     const char* moduleName   = "";
     const char* repoDir      = NULL;
     const char* dmfDir       = NULL;
+    const char* dmfcDir      = NULL;
     const char* buildDir     = NULL;
 
     const char* additionalFiles[MKDMRPKG_MAX_ADDITIONAL_FILES];
@@ -471,6 +473,19 @@ int main( int argc, char *argv[] )
                 return -1;
             }
         }
+        else if( strcmp( argv[i], "--dmfc-dir" ) == 0 )
+        {
+            if( i + 1 < argc )
+            {
+                dmfcDir = argv[++i];
+            }
+            else
+            {
+                printf("Error: --dmfc-dir option requires a value\n");
+                PrintUsage( argv[0] );
+                return -1;
+            }
+        }
         else if( strcmp( argv[i], "-b" ) == 0 )
         {
             if( i + 1 < argc )
@@ -509,7 +524,7 @@ int main( int argc, char *argv[] )
 
     // Initialize resource context
     Dmod_ResourceContext_t* ctx = Dmod_Resource_Init(
-        destination, moduleName, repoDir, dmfDir, buildDir );
+        destination, moduleName, repoDir, dmfDir, dmfcDir, buildDir );
 
     if( !ctx )
     {

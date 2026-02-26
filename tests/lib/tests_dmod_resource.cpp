@@ -15,7 +15,7 @@ protected:
     Dmod_ResourceContext_t* ctx = nullptr;
 
     void SetUp() override {
-        ctx = Dmod_Resource_Init("/install/path", "mymodule", nullptr, nullptr, nullptr);
+        ctx = Dmod_Resource_Init("/install/path", "mymodule", nullptr, nullptr, nullptr, nullptr);
     }
 
     void TearDown() override {
@@ -35,19 +35,19 @@ TEST_F(DmodResourceTest, InitWithRequiredParams) {
 }
 
 TEST_F(DmodResourceTest, InitWithNullDestination) {
-    Dmod_ResourceContext_t* c = Dmod_Resource_Init(nullptr, "mymodule", nullptr, nullptr, nullptr);
+    Dmod_ResourceContext_t* c = Dmod_Resource_Init(nullptr, "mymodule", nullptr, nullptr, nullptr, nullptr);
     ASSERT_EQ(c, nullptr);
 }
 
 TEST_F(DmodResourceTest, InitWithNullModule) {
-    Dmod_ResourceContext_t* c = Dmod_Resource_Init("/install/path", nullptr, nullptr, nullptr, nullptr);
+    Dmod_ResourceContext_t* c = Dmod_Resource_Init("/install/path", nullptr, nullptr, nullptr, nullptr, nullptr);
     ASSERT_EQ(c, nullptr);
 }
 
 TEST_F(DmodResourceTest, InitWithOptionalPaths) {
     Dmod_ResourceContext_t* c = Dmod_Resource_Init(
         "/install/path", "mymodule",
-        "/repo", "/dmf", "/build");
+        "/repo", "/dmf", nullptr, "/build");
     ASSERT_NE(c, nullptr);
     Dmod_Resource_Free(c);
 }
@@ -149,7 +149,7 @@ TEST_F(DmodResourceTest, ParseMultipleOrigins) {
 TEST_F(DmodResourceTest, ParseOriginWithVariableSubstitution) {
     Dmod_ResourceContext_t* c = Dmod_Resource_Init(
         "/install", "mymodule",
-        "/repo", "/dmf", "/build");
+        "/repo", "/dmf", nullptr, "/build");
 
     const char* content =
         "inc=./include => ${destination}/${module}/include "
@@ -168,7 +168,7 @@ TEST_F(DmodResourceTest, ParseOriginWithVariableSubstitution) {
 TEST_F(DmodResourceTest, ParseOriginWithDmfDirVariable) {
     Dmod_ResourceContext_t* c = Dmod_Resource_Init(
         "/install", "mymodule",
-        nullptr, "/dmf_files", nullptr);
+        nullptr, "/dmf_files", nullptr, nullptr);
 
     const char* content =
         "dmf=./module.dmf => ${destination}/${module}.dmf [origin=${dmf_dir}/module.dmf]\n";
@@ -203,7 +203,7 @@ TEST_F(DmodResourceTest, ParseEntryWithoutOriginHasZeroOrigins) {
 TEST_F(DmodResourceTest, RepoDirVariableSubstitution) {
     Dmod_ResourceContext_t* c = Dmod_Resource_Init(
         "/install", "mymodule",
-        "/my/repo", nullptr, nullptr);
+        "/my/repo", nullptr, nullptr, nullptr);
 
     ASSERT_TRUE(Dmod_Resource_Parse(c, "inc=./inc => ${repo_dir}/include\n"));
     Dmod_ResourceEntry_t entry;
@@ -216,7 +216,7 @@ TEST_F(DmodResourceTest, RepoDirVariableSubstitution) {
 TEST_F(DmodResourceTest, BuildDirVariableSubstitution) {
     Dmod_ResourceContext_t* c = Dmod_Resource_Init(
         "/install", "mymodule",
-        nullptr, nullptr, "/my/build");
+        nullptr, nullptr, nullptr, "/my/build");
 
     ASSERT_TRUE(Dmod_Resource_Parse(c, "gen=./gen => ${build_dir}/generated\n"));
     Dmod_ResourceEntry_t entry;
@@ -229,12 +229,25 @@ TEST_F(DmodResourceTest, BuildDirVariableSubstitution) {
 TEST_F(DmodResourceTest, DmfDirVariableSubstitution) {
     Dmod_ResourceContext_t* c = Dmod_Resource_Init(
         "/install", "mymodule",
-        nullptr, "/my/dmf", nullptr);
+        nullptr, "/my/dmf", nullptr, nullptr);
 
     ASSERT_TRUE(Dmod_Resource_Parse(c, "dmf=./module.dmf => ${dmf_dir}/${module}.dmf\n"));
     Dmod_ResourceEntry_t entry;
     ASSERT_TRUE(Dmod_Resource_GetEntry(c, 0, &entry));
     ASSERT_STREQ(entry.destination, "/my/dmf/mymodule.dmf");
+
+    Dmod_Resource_Free(c);
+}
+
+TEST_F(DmodResourceTest, DmfcDirVariableSubstitution) {
+    Dmod_ResourceContext_t* c = Dmod_Resource_Init(
+        "/install", "mymodule",
+        nullptr, nullptr, "/my/dmfc", nullptr);
+
+    ASSERT_TRUE(Dmod_Resource_Parse(c, "dmfc=./module.dmfc => ${dmfc_dir}/${module}.dmfc\n"));
+    Dmod_ResourceEntry_t entry;
+    ASSERT_TRUE(Dmod_Resource_GetEntry(c, 0, &entry));
+    ASSERT_STREQ(entry.destination, "/my/dmfc/mymodule.dmfc");
 
     Dmod_Resource_Free(c);
 }

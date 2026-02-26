@@ -37,6 +37,7 @@ mkdmrpkg <file.dmr> [options]
 | `-m <module>` | Value for `${module}` variable substitution |
 | `-r <repo_dir>` | Value for `${repo_dir}` variable substitution |
 | `--dmf-dir <dir>` | Value for `${dmf_dir}` variable substitution |
+| `--dmfc-dir <dir>` | Value for `${dmfc_dir}` variable substitution |
 | `-b <build_dir>` | Value for `${build_dir}` variable substitution |
 
 ## Examples
@@ -61,6 +62,7 @@ mkdmrpkg module.dmr -m mymodule \
   -r /path/to/repo \
   -b /path/to/build \
   --dmf-dir /path/to/dmf \
+  --dmfc-dir /path/to/dmfc \
   --name mymodule-1.0.0
 ```
 
@@ -123,6 +125,7 @@ The following variables are substituted in path expressions within the `.dmr` fi
 | `${destination}` | `-d <destination>` | Installation destination path |
 | `${repo_dir}` | `-r <repo_dir>` | Repository root directory |
 | `${dmf_dir}` | `--dmf-dir <dir>` | Directory containing built DMF files |
+| `${dmfc_dir}` | `--dmfc-dir <dir>` | Directory containing built DMFC files |
 | `${build_dir}` | `-b <build_dir>` | Build output directory |
 
 Any environment variable can also be referenced with `${VAR_NAME}`.
@@ -163,6 +166,7 @@ Coverage:
 - `-o` overrides `--name`
 - `--add-file` copies extra files into the output root
 - Multiple `--add-file` options
+- `--dmfc-dir` variable substitution
 
 ## See Also
 
