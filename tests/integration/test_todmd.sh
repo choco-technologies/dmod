@@ -271,6 +271,18 @@ EOF
                         echo "✗ Expected \$from directive for ${FIRST_DEP} in local .dmd"
                         exit 1
                     fi
+
+                    # Non-local deps (all except FIRST_DEP) must NOT appear in the local .dmd
+                    OTHER_DEPS=$(echo "$DEPS" | tail -n +2)
+                    for dep in $OTHER_DEPS; do
+                        if grep -v '^#' test_local_dep-local.dmd | grep -q "^${dep}"; then
+                            echo "✗ Non-local dependency '${dep}' should not appear in local .dmd"
+                            exit 1
+                        fi
+                    done
+                    if [ -n "$OTHER_DEPS" ]; then
+                        echo "✓ Non-local dependencies are absent from local .dmd"
+                    fi
                 else
                     echo "✗ Local .dmd file test_local_dep-local.dmd was not created"
                     exit 1
