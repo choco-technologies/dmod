@@ -202,6 +202,126 @@ else
 fi
 
 echo ""
+echo "Test 11: --name sets the output directory name"
+
+mkdir -p named_src
+echo "named content" > named_src/named.bin
+
+cat > named.dmr <<'EOF'
+bin=./named.bin => ${destination}/named.bin [origin=named_src/named.bin]
+EOF
+
+rm -rf mymodule-1.0.0
+if $MKDMRPKG named.dmr -m testmodule --name mymodule-1.0.0 2>&1 | grep -q "Success"; then
+    echo "✓ Package creation with --name succeeded"
+else
+    echo "✗ Package creation with --name failed"
+    exit 1
+fi
+
+if [ -f "mymodule-1.0.0/named.bin" ]; then
+    echo "✓ Output placed in directory named after --name value"
+else
+    echo "✗ Output directory not named after --name value"
+    exit 1
+fi
+
+echo ""
+echo "Test 12: -n short form also sets the output directory name"
+
+rm -rf mymodule-short
+if $MKDMRPKG named.dmr -m testmodule -n mymodule-short 2>&1 | grep -q "Success"; then
+    echo "✓ Package creation with -n succeeded"
+else
+    echo "✗ Package creation with -n failed"
+    exit 1
+fi
+
+if [ -f "mymodule-short/named.bin" ]; then
+    echo "✓ Output placed in directory named after -n value"
+else
+    echo "✗ Output directory not named after -n value"
+    exit 1
+fi
+
+echo ""
+echo "Test 13: -o overrides --name for the output directory"
+
+rm -rf pkg_override_name mymodule-override
+if $MKDMRPKG named.dmr -m testmodule --name mymodule-override -o pkg_override_name 2>&1 | grep -q "Success"; then
+    echo "✓ Package creation with --name and -o succeeded"
+else
+    echo "✗ Package creation with --name and -o failed"
+    exit 1
+fi
+
+if [ -f "pkg_override_name/named.bin" ]; then
+    echo "✓ -o directory used (overrides --name)"
+else
+    echo "✗ Expected -o to override --name"
+    exit 1
+fi
+
+if [ -d "mymodule-override" ]; then
+    echo "✗ --name directory should not be created when -o is provided"
+    exit 1
+else
+    echo "✓ --name directory not created (correctly overridden by -o)"
+fi
+
+echo ""
+echo "Test 14: --add-file copies extra file into the output directory root"
+
+echo "Release notes for v1.0.0" > release-notes.txt
+
+cat > addfile.dmr <<'EOF'
+bin=./named.bin => ${destination}/named.bin [origin=named_src/named.bin]
+EOF
+
+rm -rf pkg_addfile
+if $MKDMRPKG addfile.dmr -m testmodule -o pkg_addfile --add-file release-notes.txt 2>&1 | grep -q "Success"; then
+    echo "✓ Package creation with --add-file succeeded"
+else
+    echo "✗ Package creation with --add-file failed"
+    exit 1
+fi
+
+if [ -f "pkg_addfile/release-notes.txt" ]; then
+    echo "✓ Extra file copied into output directory"
+else
+    echo "✗ Extra file not found in output directory"
+    exit 1
+fi
+
+if diff release-notes.txt pkg_addfile/release-notes.txt > /dev/null 2>&1; then
+    echo "✓ Extra file content preserved"
+else
+    echo "✗ Extra file content differs"
+    exit 1
+fi
+
+echo ""
+echo "Test 15: Multiple --add-file options"
+
+echo "Changelog entry" > changelog.txt
+
+rm -rf pkg_multi_addfile
+if $MKDMRPKG addfile.dmr -m testmodule -o pkg_multi_addfile \
+    --add-file release-notes.txt --add-file changelog.txt 2>&1 | grep -q "Success"; then
+    echo "✓ Package creation with multiple --add-file succeeded"
+else
+    echo "✗ Package creation with multiple --add-file failed"
+    exit 1
+fi
+
+if [ -f "pkg_multi_addfile/release-notes.txt" ] && [ -f "pkg_multi_addfile/changelog.txt" ]; then
+    echo "✓ Both extra files copied into output directory"
+else
+    echo "✗ Not all extra files found in output directory"
+    exit 1
+fi
+
+echo ""
 echo "=== All mkdmrpkg integration tests passed! ==="
 cd ..
 rm -rf "$TEST_DIR"

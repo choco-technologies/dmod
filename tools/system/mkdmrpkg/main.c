@@ -21,6 +21,9 @@
 // Buffer size for file copy
 #define MKDMRPKG_COPY_BUF_SIZE (64 * 1024)
 
+// Maximum number of additional files that can be added via --add-file
+#define MKDMRPKG_MAX_ADDITIONAL_FILES 64
+
 // -----------------------------------------
 //
 //      Check whether a path is a directory
@@ -299,7 +302,10 @@ static void PrintHelp( const char* AppName )
     printf("  -h, --help            Print this help message\n");
     printf("  -v, --version         Print version information\n");
     printf("  --verbose             Enable verbose output\n");
-    printf("  -o <dir>              Output directory (default: ./package)\n");
+    printf("  -o <dir>              Output directory (default: package name or ./package)\n");
+    printf("  -n, --name <name>     Package name; used as output directory when -o is not set\n");
+    printf("  --add-file <path>     Copy an extra file into the output directory root\n");
+    printf("                        (can be specified multiple times)\n");
     printf("  -d <destination>      Value for ${destination} variable substitution\n");
     printf("  -m <module>           Value for ${module} variable substitution\n");
     printf("  -r <repo_dir>         Value for ${repo_dir} variable substitution\n");
@@ -308,7 +314,8 @@ static void PrintHelp( const char* AppName )
     printf("\nArguments:\n");
     printf("  <file.dmr>            Path to the .dmr resource file\n");
     printf("\nExamples:\n");
-    printf("  %s module.dmr -m mymodule -o ./release_package\n", AppName);
+    printf("  %s module.dmr -m mymodule -n mymodule-1.0.0 -o ./release_package\n", AppName);
+    printf("  %s module.dmr -m mymodule -n mymodule-1.0.0 --add-file release-notes.txt\n", AppName);
     printf("  %s module.dmr -m mymodule -r /path/to/repo -b /path/to/build -o /tmp/pkg\n", AppName);
     printf("\nDescription:\n");
     printf("  For each resource entry in the .dmr file that has one or more [origin]\n");
@@ -346,12 +353,16 @@ int main( int argc, char *argv[] )
     }
 
     const char* dmrPath      = argv[1];
-    const char* outputDir    = "package";
+    const char* outputDir    = NULL;
+    const char* packageName  = NULL;
     const char* destination  = "";
     const char* moduleName   = "";
     const char* repoDir      = NULL;
     const char* dmfDir       = NULL;
     const char* buildDir     = NULL;
+
+    const char* additionalFiles[MKDMRPKG_MAX_ADDITIONAL_FILES];
+    int additionalFileCount = 0;
 
     // Parse optional arguments
     for( int i = 2; i < argc; i++ )
@@ -369,6 +380,41 @@ int main( int argc, char *argv[] )
             else
             {
                 printf("Error: -o option requires a directory path\n");
+                PrintUsage( argv[0] );
+                return -1;
+            }
+        }
+        else if( strcmp( argv[i], "-n" ) == 0 || strcmp( argv[i], "--name" ) == 0 )
+        {
+            if( i + 1 < argc )
+            {
+                packageName = argv[++i];
+            }
+            else
+            {
+                printf("Error: %s option requires a package name\n", argv[i]);
+                PrintUsage( argv[0] );
+                return -1;
+            }
+        }
+        else if( strcmp( argv[i], "--add-file" ) == 0 )
+        {
+            if( i + 1 < argc )
+            {
+                if( additionalFileCount < MKDMRPKG_MAX_ADDITIONAL_FILES )
+                {
+                    additionalFiles[additionalFileCount++] = argv[++i];
+                }
+                else
+                {
+                    printf("Error: Too many --add-file arguments (max %d)\n",
+                           MKDMRPKG_MAX_ADDITIONAL_FILES);
+                    return -1;
+                }
+            }
+            else
+            {
+                printf("Error: --add-file option requires a file path\n");
                 PrintUsage( argv[0] );
                 return -1;
             }
@@ -444,6 +490,12 @@ int main( int argc, char *argv[] )
             PrintUsage( argv[0] );
             return -1;
         }
+    }
+
+    // Resolve the output directory: explicit -o takes priority, then --name, then default
+    if( outputDir == NULL )
+    {
+        outputDir = (packageName != NULL) ? packageName : "package";
     }
 
     Dmod_Printf("Parsing resource file: %s\n", dmrPath);
@@ -539,6 +591,24 @@ int main( int argc, char *argv[] )
 
     Dmod_Resource_Free( ctx );
     Dmod_Deinitialize();
+
+    // Copy additional files specified via --add-file into the output directory root
+    for( int i = 0; i < additionalFileCount; i++ )
+    {
+        const char* filePath = additionalFiles[i];
+        const char* baseName = strrchr( filePath, '/' );
+        baseName = baseName ? baseName + 1 : filePath;
+
+        char destPath[MKDMRPKG_MAX_PATH_LEN];
+        Dmod_SnPrintf( destPath, sizeof(destPath), "%s/%s", outputDir, baseName );
+
+        Dmod_Printf("  [extra] %s -> %s\n", filePath, destPath);
+        if( !CopyFile( filePath, destPath ) )
+        {
+            DMOD_LOG_ERROR("Failed to copy additional file: %s\n", filePath);
+            errorCount++;
+        }
+    }
 
     // Print summary
     Dmod_Printf("\nSummary:\n");
