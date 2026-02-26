@@ -204,10 +204,102 @@ if [ -n "$MODULE_BUILD_DIR" ] && [ -d "$MODULE_BUILD_DIR/dmf" ]; then
     else
         echo "⊘ Skipping test 9: test_output.dmd not found"
     fi
+
+    echo ""
+    echo "Test 10: Generate local .dmd with --local-manifest option"
+
+    if [ -n "$DMF_FILE" ] && [ -f "$DMF_FILE" ]; then
+        # Create a minimal mock local manifest (.dmm)
+        cat > mock_manifest_local.dmm << 'EOF'
+# DMOD Local Manifest
+# Generated for testing
+example_dep@0.1 /path/to/example_dep.zip
+EOF
+
+        if $TODMD "$DMF_FILE" test_local_output.dmd --local-manifest mock_manifest_local.dmm 2>&1 | grep -q "Success"; then
+            echo "✓ Successfully generated .dmd with --local-manifest option"
+
+            # The local .dmd file should be test_local_output-local.dmd
+            if [ -f "test_local_output-local.dmd" ]; then
+                echo "✓ Local .dmd file was created"
+
+                # Check that local .dmd has proper header
+                if head -1 test_local_output-local.dmd | grep -q "# DMOD Dependencies File"; then
+                    echo "✓ Local .dmd file has correct header"
+                else
+                    echo "✗ Local .dmd file header is incorrect"
+                    exit 1
+                fi
+            else
+                echo "✗ Local .dmd file was not created (expected test_local_output-local.dmd)"
+                exit 1
+            fi
+        else
+            echo "✗ Failed to generate .dmd with --local-manifest option"
+            exit 1
+        fi
+
+        rm -f mock_manifest_local.dmm
+    else
+        echo "⊘ Skipping test 10: example_app.dmf not found"
+    fi
+
+    echo ""
+    echo "Test 11: Verify local .dmd uses \$from for locally available deps"
+
+    if [ -n "$DMF_FILE" ] && [ -f "$DMF_FILE" ]; then
+        # Get the list of dependencies from the regular .dmd
+        DEPS=$(grep -v '^#' test_output.dmd | grep -v '^$' | sed 's/@.*//' | sed 's/ .*//')
+
+        if [ -n "$DEPS" ]; then
+            # Pick the first dependency and create a manifest listing it
+            FIRST_DEP=$(echo "$DEPS" | head -1)
+            MANIFEST_PATH="$(pwd)/local_manifest_with_dep.dmm"
+
+            # Create a manifest that includes this dependency
+            echo "# Test local manifest" > "$MANIFEST_PATH"
+            echo "${FIRST_DEP}@0.1 /some/local/path/${FIRST_DEP}.zip" >> "$MANIFEST_PATH"
+
+            if $TODMD "$DMF_FILE" test_local_dep.dmd --local-manifest "$MANIFEST_PATH" 2>&1 | grep -q "Success"; then
+                echo "✓ Generated local .dmd with a known local dependency"
+
+                if [ -f "test_local_dep-local.dmd" ]; then
+                    # The first dep should appear with $from in the local .dmd
+                    if grep -v '^#' test_local_dep-local.dmd | grep -q "${FIRST_DEP}.*\$from"; then
+                        echo "✓ Local dependency has \$from directive in local .dmd"
+                    else
+                        echo "✗ Expected \$from directive for ${FIRST_DEP} in local .dmd"
+                        exit 1
+                    fi
+                else
+                    echo "✗ Local .dmd file test_local_dep-local.dmd was not created"
+                    exit 1
+                fi
+            else
+                echo "✗ Failed to generate local .dmd for dep test"
+                exit 1
+            fi
+
+            rm -f "$MANIFEST_PATH" test_local_dep.dmd test_local_dep-local.dmd
+        else
+            echo "⊘ Skipping test 11: no non-system dependencies found in test_output.dmd"
+        fi
+    else
+        echo "⊘ Skipping test 11: example_app.dmf not found"
+    fi
 else
     echo ""
-    echo "⊘ Skipping tests 5-9: Module build directory not found"
+    echo "⊘ Skipping tests 5-11: Module build directory not found"
     echo "   Run 'cmake -DDMOD_MODE=DMOD_MODULE -B build-module' first"
+fi
+
+echo ""
+echo "Test 12: Verify --local-manifest error handling (missing argument)"
+if $TODMD nonexistent.dmf --local-manifest 2>&1 | grep -q "requires a manifest file path"; then
+    echo "✓ Correctly reports missing argument for --local-manifest"
+else
+    echo "✗ Should report missing argument for --local-manifest"
+    exit 1
 fi
 
 echo ""

@@ -11,11 +11,12 @@ The `todmd` tool reads a module's required dependencies and generates a `.dmd` f
 - Filters out system modules automatically
 - Generates `.dmd` files compatible with `dmf-get`
 - Supports modules with or without version specifications
+- Supports generating a companion `-local.dmd` file for local builds
 
 ## Usage
 
 ```bash
-todmd path/to/file.dmf [output.dmd] [-r version_requirements.txt] [--from manifest_or_mapping ...]
+todmd path/to/file.dmf [output.dmd] [-r version_requirements.txt] [--from manifest_or_mapping ...] [--local-manifest manifest.dmm]
 ```
 
 ### Arguments
@@ -30,6 +31,7 @@ todmd path/to/file.dmf [output.dmd] [-r version_requirements.txt] [--from manife
 - `-r <file>` - Version requirements file from `dmod_link_modules` (optional)
 - `--from <manifest>` - Global manifest file/URL; adds a `$from` directive at the top of the generated `.dmd` so all modules are fetched from that manifest (optional)
 - `--from <module>=<manifest>` - Per-module manifest mapping; adds an inline `$from <manifest>` only for the named module (optional, repeatable)
+- `--local-manifest <manifest>` - Local manifest (`.dmm`) file; generates a companion `<module>-local.dmd` file where dependencies that are present in the manifest receive an inline `$from <manifest>` directive (optional)
 
 ## Examples
 
@@ -57,6 +59,10 @@ todmd myapp.dmf --from https://registry.example.com/manifest.dmm
 # Use different manifests for specific modules
 todmd myapp.dmf --from dmgpio=build/manifest.dmm --from dmclk=build/manifest2.dmm
 # Creates: myapp.dmd with inline "$from" directives for dmgpio and dmclk
+
+# Generate a local .dmd alongside the regular .dmd
+todmd myapp.dmf --local-manifest build/packages/manifest-local.dmm
+# Creates: myapp.dmd (regular) and myapp-local.dmd (local build variant)
 ```
 
 ## Generated File Format
@@ -100,6 +106,20 @@ other_module@>=1.2.3<2.0
 another_module $from build/manifest2.dmm
 ```
 
+When `--local-manifest` is provided, a companion `<module>-local.dmd` file is also created.
+Dependencies present in the local manifest receive an inline `$from` pointing to it, while
+other dependencies are listed without any `$from`:
+
+```dmd
+# DMOD Dependencies File
+# Generated from module: dmgpio
+# ...
+
+dmhaman@>=0.3<1.0
+dmgpio_port@>=0.1<1.0 $from /path/to/build/packages/manifest-local.dmm
+dmini@>=0.3<1.0
+```
+
 > **Note:** When a dependency version is auto-discovered from the DMF (i.e., not explicitly specified
 > by the user via `dmod_link_modules`), a soft range constraint (`>=version<(major+1).0`) is generated
 > instead of a hard exact constraint. The lower bound allows any newer patch/minor version; the upper
@@ -113,11 +133,14 @@ another_module $from build/manifest2.dmm
 1. Enables crossplatform mode using `Dmod_SetCrossplatformMode(true)` to allow loading modules without execution
 2. Loads the specified DMF module using `Dmod_LoadFile()`
 3. Optionally loads version requirements from a file (if `-r` flag is provided)
-4. Iterates through required modules using `Dmod_GetNextRequiredModule()`
-5. For each module, checks if there's a version requirement specified in the version requirements file
-6. Merges version information: version requirements from the file take precedence over versions in the DMF
-7. Filters out system modules by checking the `SystemModule` flag in `Dmod_RequiredModule_t`
-8. Writes non-system modules with their versions to the output `.dmd` file
+4. Optionally loads local manifest module names from a `.dmm` file (if `--local-manifest` is provided)
+5. Iterates through required modules using `Dmod_GetNextRequiredModule()`
+6. For each module, checks if there's a version requirement specified in the version requirements file
+7. Merges version information: version requirements from the file take precedence over versions in the DMF
+8. Filters out system modules by checking the `SystemModule` flag in `Dmod_RequiredModule_t`
+9. Writes non-system modules with their versions to the output `.dmd` file
+10. If `--local-manifest` is provided, iterates through the modules again and writes a companion
+    `<module>-local.dmd` where dependencies found in the local manifest get an inline `$from`
 
 ## Version Requirements File Format
 
@@ -153,6 +176,18 @@ dmod_link_modules(my_module
 
 When the module is built, `todmd` automatically receives the version requirements and generates a `.dmd` file that includes these version constraints.
 
+## Integration with Local Build Manifests
+
+When `DMOD_DMR_PATH` is set in the CMakeLists.txt of a module project, the build system
+automatically:
+1. Creates release packages for each module
+2. Generates `build/packages/manifest-local.dmm` listing all locally-built modules
+3. Calls `todmd` with `--local-manifest build/packages/manifest-local.dmm` to produce
+   `build/dmf/<module>-local.dmd` for each module
+
+This local `.dmd` file can be used to install the module and all its dependencies from
+the local build output instead of a remote registry.
+
 ## Integration with dmf-get
 
 The generated `.dmd` file can be used directly with the `dmf-get` tool to download all dependencies:
@@ -163,6 +198,9 @@ todmd myapp.dmf
 
 # Download all dependencies using dmf-get
 dmf-get -d myapp.dmd
+
+# Install all dependencies from a local build
+dmf-get -d myapp-local.dmd
 ```
 
 ## Notes

@@ -9,6 +9,9 @@
 // Maximum number of per-module manifest mappings
 #define MAX_MODULE_MANIFESTS 64
 
+// Maximum number of local manifest module entries
+#define MAX_LOCAL_MANIFEST_MODULES 128
+
 // Structure to hold a version requirement
 typedef struct {
     char moduleName[64];
@@ -124,12 +127,86 @@ const char* FindModuleManifest( const ModuleManifest_t* manifests, int manifestC
 
 // -----------------------------------------
 //
+//      Load module names from a local manifest (.dmm) file
+//
+// -----------------------------------------
+int LoadLocalManifestModules( const char* filePath, char moduleNames[][64], int maxModules )
+{
+    FILE* file = fopen( filePath, "r" );
+    if( file == NULL )
+    {
+        DMOD_LOG_WARN("Cannot open local manifest file: %s\n", filePath);
+        return 0;
+    }
+
+    int count = 0;
+    char line[1024];
+
+    while( fgets( line, sizeof(line), file ) != NULL && count < maxModules )
+    {
+        // Remove newline
+        size_t len = strlen(line);
+        if( len > 0 && line[len-1] == '\n' )
+        {
+            line[len-1] = '\0';
+            len--;
+        }
+
+        // Skip empty lines, comments and directives
+        if( len == 0 || line[0] == '#' || line[0] == '$' )
+        {
+            continue;
+        }
+
+        // Extract module name: everything before '@' or first space
+        size_t nameLen = 0;
+        while( nameLen < len && line[nameLen] != '@' && line[nameLen] != ' ' && line[nameLen] != '\t' )
+        {
+            nameLen++;
+        }
+
+        if( nameLen == 0 || nameLen >= 64 )
+        {
+            continue;
+        }
+
+        strncpy( moduleNames[count], line, nameLen );
+        moduleNames[count][nameLen] = '\0';
+        count++;
+    }
+
+    fclose( file );
+
+    Dmod_Printf("Loaded %d module names from local manifest %s\n", count, filePath);
+
+    return count;
+}
+
+// -----------------------------------------
+//
+//      Check if a module name is in the local manifest list
+//
+// -----------------------------------------
+bool IsModuleInLocalManifest( char moduleNames[][64], int count, const char* moduleName )
+{
+    for( int i = 0; i < count; i++ )
+    {
+        if( strcmp( moduleNames[i], moduleName ) == 0 )
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+// -----------------------------------------
+//
 //      Prints usage message
 //
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s path/to/file.dmf [output.dmd] [-r version_requirements.txt] [--from manifest_or_mapping ...]\n", AppName);
+    printf("Usage: %s path/to/file.dmf [output.dmd] [-r version_requirements.txt] [--from manifest_or_mapping ...] [--local-manifest manifest.dmm]\n", AppName);
 }
 
 // -----------------------------------------
@@ -150,6 +227,9 @@ void PrintHelp( const char* AppName )
     printf("  --from <manifest>     Global manifest file/URL added as $from at the top of the .dmd\n");
     printf("  --from <mod>=<manifest>  Per-module manifest: adds inline $from for the named module\n");
     printf("                        Option can be repeated to set manifests for multiple modules\n");
+    printf("  --local-manifest <manifest>  Local manifest (.dmm) file; generates a companion\n");
+    printf("                        <module>-local.dmd where dependencies present in the manifest\n");
+    printf("                        get an inline $from <manifest> directive\n");
     printf("\nArguments:\n");
     printf("  path/to/file.dmf      Path to the DMF module file\n");
     printf("  [output.dmd]          (optional) Output .dmd file path (default: module_name.dmd)\n");
@@ -165,6 +245,11 @@ void PrintHelp( const char* AppName )
     printf("  the top of the .dmd file so all modules are fetched from that manifest.\n");
     printf("  If --from is provided with 'module=manifest', the manifest is added inline\n");
     printf("  only for that specific module using the $from syntax.\n");
+    printf("\n");
+    printf("  If --local-manifest is provided, a companion <module>-local.dmd file is\n");
+    printf("  generated alongside the regular .dmd. In this file, dependencies that are\n");
+    printf("  present in the local manifest receive an inline $from <manifest> directive\n");
+    printf("  so they can be resolved from the local build.\n");
     printf("\nExamples:\n");
     printf("  %s myapp.dmf                                        # Creates myapp.dmd\n", AppName);
     printf("  %s myapp.dmf dependencies.dmd                       # Creates dependencies.dmd\n", AppName);
@@ -172,6 +257,8 @@ void PrintHelp( const char* AppName )
     printf("  %s myapp.dmf --from build/manifest.dmm              # Global manifest for all modules\n", AppName);
     printf("  %s myapp.dmf --from dmgpio=build/manifest.dmm \\\n", AppName);
     printf("             --from dmclk=build/manifest2.dmm         # Per-module manifests\n");
+    printf("  %s myapp.dmf --local-manifest build/packages/manifest-local.dmm\n", AppName);
+    printf("                                                       # Creates myapp.dmd and myapp-local.dmd\n");
 }
 
 // -----------------------------------------
@@ -204,6 +291,7 @@ int main( int argc, char *argv[] )
     const char* outputPath = NULL;
     const char* versionReqsPath = NULL;
     const char* globalManifest = NULL;
+    const char* localManifestPath = NULL;
     ModuleManifest_t moduleManifests[MAX_MODULE_MANIFESTS];
     int moduleManifestCount = 0;
     
@@ -269,6 +357,20 @@ int main( int argc, char *argv[] )
                 return -1;
             }
         }
+        else if( strcmp( argv[i], "--local-manifest" ) == 0 )
+        {
+            if( i + 1 < argc )
+            {
+                localManifestPath = argv[i + 1];
+                i++; // Skip next argument
+            }
+            else
+            {
+                printf("Error: --local-manifest option requires a manifest file path\n");
+                PrintUsage( argv[0] );
+                return -1;
+            }
+        }
         else if( outputPath == NULL )
         {
             // This is the output path
@@ -308,6 +410,35 @@ int main( int argc, char *argv[] )
         outputPath = defaultOutputPath;
     }
 
+    // Compute the local dmd output path: replace trailing ".dmd" with "-local.dmd"
+    char localDmdOutputPath[512];
+    if( localManifestPath != NULL )
+    {
+        size_t outLen = strlen( outputPath );
+        if( outLen >= 4 && strcmp( outputPath + outLen - 4, ".dmd" ) == 0 )
+        {
+            if( outLen - 4 >= sizeof(localDmdOutputPath) - 10 )
+            {
+                printf("Error: Output path too long for local .dmd generation\n");
+                return -1;
+            }
+            strncpy( localDmdOutputPath, outputPath, outLen - 4 );
+            localDmdOutputPath[outLen - 4] = '\0';
+            strcat( localDmdOutputPath, "-local.dmd" );
+        }
+        else
+        {
+            if( outLen >= sizeof(localDmdOutputPath) - 10 )
+            {
+                printf("Error: Output path too long for local .dmd generation\n");
+                return -1;
+            }
+            strncpy( localDmdOutputPath, outputPath, outLen );
+            localDmdOutputPath[outLen] = '\0';
+            strcat( localDmdOutputPath, "-local.dmd" );
+        }
+    }
+
     printf("Reading module: %s\n", dmfPath);
     
     // Load version requirements if provided
@@ -318,6 +449,16 @@ int main( int argc, char *argv[] )
     {
         printf("Loading version requirements from: %s\n", versionReqsPath);
         versionRequirementCount = LoadVersionRequirements( versionReqsPath, versionRequirements, MAX_VERSION_REQUIREMENTS );
+    }
+
+    // Load local manifest module names if provided
+    char localManifestModules[MAX_LOCAL_MANIFEST_MODULES][64];
+    int localManifestModuleCount = 0;
+
+    if( localManifestPath != NULL )
+    {
+        printf("Loading local manifest from: %s\n", localManifestPath);
+        localManifestModuleCount = LoadLocalManifestModules( localManifestPath, localManifestModules, MAX_LOCAL_MANIFEST_MODULES );
     }
 
     // Initialize Dmod system
@@ -473,6 +614,107 @@ int main( int argc, char *argv[] )
     // Close the output file
     Dmod_FileClose( outputFile );
 
+    // Generate the local .dmd file if a local manifest was provided
+    if( localManifestPath != NULL )
+    {
+        Dmod_Printf("\nGenerating local dependencies file: %s\n", localDmdOutputPath);
+
+        void* localOutputFile = Dmod_FileOpen( localDmdOutputPath, "w" );
+        if( localOutputFile == NULL )
+        {
+            DMOD_LOG_ERROR("Cannot create local output file: %s\n", localDmdOutputPath);
+            Dmod_Unload( context, false );
+            Dmod_Deinitialize();
+            return -1;
+        }
+
+        // Write header comment to the local .dmd file
+        Dmod_FPrintf( localOutputFile, "# DMOD Dependencies File\n" );
+        Dmod_FPrintf( localOutputFile, "# Generated from module: %s\n", moduleName ? moduleName : "<unknown>" );
+        Dmod_FPrintf( localOutputFile, "# Source file: %s\n", dmfPath );
+        Dmod_FPrintf( localOutputFile, "#\n" );
+        Dmod_FPrintf( localOutputFile, "# This file lists all non-system modules required by the module.\n" );
+        Dmod_FPrintf( localOutputFile, "# Use with dmf-get: dmf-get -d %s\n", localDmdOutputPath );
+        Dmod_FPrintf( localOutputFile, "\n" );
+
+        // Iterate through required modules again for the local .dmd
+        int localModuleCount = 0;
+        reqModule = Dmod_GetNextRequiredModule( context, NULL );
+
+        while( reqModule != NULL )
+        {
+            if( reqModule->Name[0] != '\0' )
+            {
+                if( reqModule->SystemModule )
+                {
+                    reqModule = Dmod_GetNextRequiredModule( context, reqModule );
+                    continue;
+                }
+
+                // Determine version (same logic as for the regular .dmd)
+                const char* requiredVersion = FindVersionRequirement( versionRequirements, versionRequirementCount, reqModule->Name );
+                const char* versionToUse = NULL;
+                bool hasVersionInDmf = (reqModule->Version[0] != '\0');
+                char softVersionBuf[64];
+
+                if( requiredVersion != NULL )
+                {
+                    versionToUse = requiredVersion;
+                }
+                else if( hasVersionInDmf )
+                {
+                    const char* v = reqModule->Version;
+                    if( v[0] == '>' || v[0] == '<' || v[0] == '=' )
+                    {
+                        versionToUse = v;
+                    }
+                    else
+                    {
+                        long major = strtol( v, NULL, 10 );
+                        snprintf( softVersionBuf, sizeof(softVersionBuf), ">=%s<%ld.0", v, major + 1 );
+                        versionToUse = softVersionBuf;
+                    }
+                }
+
+                // Use local manifest as $from source if this module is available locally
+                bool isLocal = IsModuleInLocalManifest( localManifestModules, localManifestModuleCount, reqModule->Name );
+
+                if( versionToUse != NULL )
+                {
+                    if( isLocal )
+                    {
+                        Dmod_FPrintf( localOutputFile, "%s@%s $from %s\n", reqModule->Name, versionToUse, localManifestPath );
+                        Dmod_Printf("  + %s@%s $from %s\n", reqModule->Name, versionToUse, localManifestPath);
+                    }
+                    else
+                    {
+                        Dmod_FPrintf( localOutputFile, "%s@%s\n", reqModule->Name, versionToUse );
+                        Dmod_Printf("  + %s@%s\n", reqModule->Name, versionToUse);
+                    }
+                }
+                else
+                {
+                    if( isLocal )
+                    {
+                        Dmod_FPrintf( localOutputFile, "%s $from %s\n", reqModule->Name, localManifestPath );
+                        Dmod_Printf("  + %s $from %s\n", reqModule->Name, localManifestPath);
+                    }
+                    else
+                    {
+                        Dmod_FPrintf( localOutputFile, "%s\n", reqModule->Name );
+                        Dmod_Printf("  + %s\n", reqModule->Name);
+                    }
+                }
+                localModuleCount++;
+            }
+
+            reqModule = Dmod_GetNextRequiredModule( context, reqModule );
+        }
+
+        Dmod_FileClose( localOutputFile );
+        Dmod_Printf("  Local output file: %s (%d entries)\n", localDmdOutputPath, localModuleCount);
+    }
+
     // Clean up
     Dmod_Unload( context, false );
     Dmod_Deinitialize();
@@ -494,6 +736,11 @@ int main( int argc, char *argv[] )
         Dmod_Printf("  Per-module manifest mappings: %d\n", moduleManifestCount);
     }
     Dmod_Printf("  Output file: %s\n", outputPath);
+    if( localManifestPath != NULL )
+    {
+        Dmod_Printf("  Local manifest: %s\n", localManifestPath);
+        Dmod_Printf("  Local output file: %s\n", localDmdOutputPath);
+    }
     
     if( moduleCount == 0 && systemModuleCount == 0 )
     {
