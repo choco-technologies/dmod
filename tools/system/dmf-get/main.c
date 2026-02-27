@@ -568,6 +568,67 @@ static size_t CurlWriteCallback(void* contents, size_t size, size_t nmemb, void*
 }
 
 /**
+ * @brief Check if a string is a local file path (not a URL)
+ *
+ * @param url String to check
+ * @return true if it is a local file path, false otherwise
+ */
+static bool IsLocalPath(const char* url) {
+    return url != NULL && url[0] == '/';
+}
+
+/**
+ * @brief Read a local file into a newly allocated buffer
+ *
+ * @param path Local file path to read
+ * @param buffer Output buffer pointer (caller must free with Dmod_Free)
+ * @param size Output size of data
+ * @return true on success, false on failure
+ */
+static bool ReadLocalFile(const char* path, char** buffer, size_t* size) {
+    void* file = Dmod_FileOpen(path, "rb");
+    if (!file) {
+        DMOD_LOG_ERROR("Cannot open local file: %s\n", path);
+        return false;
+    }
+
+    int fd = fileno((FILE*)file);
+    struct stat st;
+    if (fstat(fd, &st) != 0) {
+        DMOD_LOG_ERROR("Cannot stat local file: %s\n", path);
+        Dmod_FileClose(file);
+        return false;
+    }
+
+    off_t file_size = st.st_size;
+    if (file_size < 0 || (uintmax_t)file_size > SIZE_MAX) {
+        DMOD_LOG_ERROR("File size invalid or too large: %s\n", path);
+        Dmod_FileClose(file);
+        return false;
+    }
+
+    char* data = (char*)Dmod_Malloc((size_t)file_size + 1);
+    if (!data) {
+        Dmod_FileClose(file);
+        return false;
+    }
+
+    size_t read_size = Dmod_FileRead(data, 1, (size_t)file_size, file);
+    Dmod_FileClose(file);
+
+    if (read_size != (size_t)file_size) {
+        DMOD_LOG_ERROR("Failed to read local file: %s\n", path);
+        Dmod_Free(data);
+        return false;
+    }
+
+    data[file_size] = '\0';
+    *buffer = data;
+    *size = (size_t)file_size;
+    return true;
+}
+
+/**
  * @brief Download function using libcurl with caching support
  * 
  * This function first checks the cache for the requested URL.
@@ -575,6 +636,11 @@ static size_t CurlWriteCallback(void* contents, size_t size, size_t nmemb, void*
  * and saves to cache.
  */
 static bool DownloadWithCurl(const char* url, char** buffer, size_t* size, void* user_data) {
+    // Handle local file paths directly without curl
+    if (IsLocalPath(url)) {
+        return ReadLocalFile(url, buffer, size);
+    }
+
     // Check cache first (manifests are cached)
     char cache_path[1024];
     if (g_cache_enabled && GetCachePath(url, true, cache_path, sizeof(cache_path))) {
@@ -689,7 +755,31 @@ static bool DownloadWithCurlNoCache(const char* url, char** buffer, size_t* size
  */
 static bool DownloadFile(const char* url, const char* output_path) {
     DMOD_LOG_INFO("Downloading: %s\n", url);
-    
+
+    // Handle local file paths directly without curl
+    if (IsLocalPath(url)) {
+        char* buffer = NULL;
+        size_t size = 0;
+        if (!ReadLocalFile(url, &buffer, &size)) {
+            return false;
+        }
+        void* out = Dmod_FileOpen(output_path, "wb");
+        if (!out) {
+            DMOD_LOG_ERROR("Cannot create file: %s\n", output_path);
+            Dmod_Free(buffer);
+            return false;
+        }
+        size_t written = Dmod_FileWrite(buffer, 1, size, out);
+        Dmod_FileClose(out);
+        Dmod_Free(buffer);
+        if (written != size) {
+            DMOD_LOG_ERROR("Failed to write complete file: %s\n", output_path);
+            return false;
+        }
+        DMOD_LOG_INFO("Copied local file: %s (%zu bytes)\n", output_path, size);
+        return true;
+    }
+
     char* buffer = NULL;
     size_t size = 0;
     
