@@ -301,6 +301,54 @@ else
 fi
 
 echo ""
+echo "Test 19: Test --no-fallback flag is recognized"
+if $DMF_GET --help | grep -q "no-fallback"; then
+    echo "✓ --no-fallback flag documented in help"
+else
+    echo "✗ --no-fallback flag missing from help"
+    exit 1
+fi
+
+echo ""
+echo "Test 20: Test fallback behavior - module not in local manifest triggers fallback message"
+cat > manifest_partial.dmm << 'EOF'
+# Partial manifest with only one module
+othermodule https://example.com/other.dmf
+EOF
+
+# Module 'nonexistent' is not in manifest_partial.dmm, should trigger fallback attempt
+OUTPUT=$($DMF_GET -m manifest_partial.dmm -o output nonexistent 2>&1 || true)
+if echo "$OUTPUT" | grep -q "not found in provided manifest"; then
+    echo "✓ Fallback message shown when module not in local manifest"
+else
+    echo "✗ Fallback message not shown for module missing from local manifest"
+    exit 1
+fi
+
+echo ""
+echo "Test 21: Test --no-fallback flag prevents fallback"
+OUTPUT=$($DMF_GET -m manifest_partial.dmm --no-fallback -o output nonexistent 2>&1 || true)
+if echo "$OUTPUT" | grep -q "not found in provided manifest"; then
+    echo "✗ --no-fallback did not prevent fallback message"
+    exit 1
+fi
+if echo "$OUTPUT" | grep -q "not found"; then
+    echo "✓ --no-fallback prevents fallback to public manifest"
+else
+    echo "✓ --no-fallback flag accepted (module lookup stopped at provided manifest)"
+fi
+
+echo ""
+echo "Test 22: Test no fallback when module IS in provided manifest"
+# testmod is in manifest.dmm so no fallback should be triggered
+OUTPUT=$($DMF_GET -m manifest.dmm -o output testmod 2>&1 || true)
+if echo "$OUTPUT" | grep -q "not found in provided manifest"; then
+    echo "✗ Fallback triggered even though module is in provided manifest"
+    exit 1
+fi
+echo "✓ No fallback triggered when module is in provided manifest"
+
+echo ""
 echo "=== All dmf-get integration tests passed! ==="
 cd ..
 rm -rf "$TEST_DIR"
