@@ -443,8 +443,8 @@ function(dmod_create_module moduleName version moduleType)
                     -b "${CMAKE_BINARY_DIR}"
                     --dmf-dir "${DMOD_DMF_DIR}"
                     -o "${DMOD_PKG_OUT_DIR}"
-                COMMAND ${CMAKE_COMMAND} -E tar "cf" "${DMOD_PKG_ZIP_PATH}" --format=zip -- "${moduleName}"
-                WORKING_DIRECTORY "${DMOD_PACKAGES_DIR}"
+                COMMAND ${CMAKE_COMMAND} -E tar "cf" "${DMOD_PKG_ZIP_PATH}" --format=zip -- .
+                WORKING_DIRECTORY "${DMOD_PKG_OUT_DIR}"
                 COMMENT "Creating release package and zip archive for ${moduleName}"
             )
 
