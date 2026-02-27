@@ -154,6 +154,7 @@ dmf-get mymodule --config boards/${BOARD}/config.ini --config-dir ./config -D BO
 - `-a, --arch-name <name>` - Architecture name for variable substitution
 - `--type <dmf|dmfc>` - Prefer dmf or dmfc file type
 - `--no-dependencies` - Don't download dependencies automatically
+- `--no-fallback` - Don't fall back to the public manifest if the module is not found in the provided manifest
 - `-y, --yes` - Automatic yes to license prompts (non-interactive mode)
 - `-c, --clear-cache` - Clear downloaded manifests and packages cache
 - `-h, --help` - Show help message

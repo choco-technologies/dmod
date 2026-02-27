@@ -1925,6 +1925,72 @@ static bool EnsureDirectory(const char* path) {
 }
 
 /**
+ * @brief Try to fall back to the public manifest if module not found in the provided context.
+ *
+ * If the module is not found in ctx and fallback conditions are met, frees ctx and returns
+ * a new context for the public manifest. If no fallback is needed, returns ctx unchanged.
+ * On fallback failure, frees ctx and returns NULL (caller should handle the error).
+ *
+ * @param ctx             Current manifest context
+ * @param manifest_path   Path/URL of the current manifest (used to check if already default)
+ * @param module_name     Module name to probe
+ * @param module_version  Module version to probe (NULL or empty for any version)
+ * @param tools_name      Tools name for the new context
+ * @param arch_name       Architecture name for the new context
+ * @param cpu_name        CPU name for the new context (can be NULL)
+ * @param cpu_family      CPU family for the new context (can be NULL)
+ * @param no_fallback     If true, skip the fallback logic entirely
+ * @param out_manifest_path  If not NULL and fallback occurs, set to DEFAULT_MANIFEST_URL
+ * @return Updated manifest context (may be same or new), or NULL on error
+ */
+static Dmod_ManifestContext_t* TryPublicManifestFallback(
+    Dmod_ManifestContext_t* ctx,
+    const char* manifest_path,
+    const char* module_name,
+    const char* module_version,
+    const char* tools_name,
+    const char* arch_name,
+    const char* cpu_name,
+    const char* cpu_family,
+    bool no_fallback,
+    const char** out_manifest_path)
+{
+    if (no_fallback || strcmp(manifest_path, DEFAULT_MANIFEST_URL) == 0) {
+        return ctx;
+    }
+
+    Dmod_ManifestEntry_t probe_entry;
+    if (Dmod_Manifest_FindEntry(ctx, module_name,
+                                (module_version && module_version[0]) ? module_version : NULL,
+                                NULL, &probe_entry)) {
+        return ctx;  /* Module found - no fallback needed */
+    }
+
+    DMOD_LOG_INFO("Module '%s' not found in provided manifest, trying public manifest: %s\n",
+                  module_name, DEFAULT_MANIFEST_URL);
+    Dmod_Manifest_Free(ctx);
+
+    if (out_manifest_path) {
+        *out_manifest_path = DEFAULT_MANIFEST_URL;
+    }
+
+    ctx = Dmod_Manifest_Init(tools_name, arch_name, cpu_name, cpu_family, DownloadWithCurl, NULL);
+    if (!ctx) {
+        DMOD_LOG_ERROR("Error: Failed to initialize manifest parser for public manifest\n");
+        return NULL;
+    }
+
+    if (!Dmod_Manifest_ParseUrl(ctx, DEFAULT_MANIFEST_URL)) {
+        DMOD_LOG_ERROR("Error: Failed to parse public manifest: %s\n", Dmod_Manifest_GetError(ctx));
+        Dmod_Manifest_Free(ctx);
+        return NULL;
+    }
+
+    DMOD_LOG_INFO("Public manifest loaded with %zu entries\n", Dmod_Manifest_GetEntryCount(ctx));
+    return ctx;
+}
+
+/**
  * @brief Find manifest file in default locations
  */
 static char* FindManifest(const char* dmf_dir, const char* dmfc_dir) {
@@ -1981,6 +2047,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --skip-arch-check         Skip architecture compatibility check\n");
     Dmod_Printf("  --skip-dmod-ver-check     Skip DMOD version compatibility check\n");
     Dmod_Printf("  --mini                    Install only dmf/dmfc files (skip other resources from .dmr)\n");
+    Dmod_Printf("  --no-fallback             Don't fall back to public manifest if module not found in provided manifest\n");
     Dmod_Printf("  -y, --yes                 Automatic yes to license prompts (non-interactive mode)\n");
     Dmod_Printf("  -c, --clear-cache         Clear downloaded manifests and packages cache\n");
     Dmod_Printf("  -h, --help                Show this help message\n");
@@ -2391,6 +2458,7 @@ int main(int argc, char* argv[]) {
     bool skip_dmod_ver_check = false;
     bool mini_mode = false;
     bool auto_accept_license = false;  // -y flag for automatic license acceptance
+    bool no_fallback = false;  // --no-fallback flag to disable public manifest fallback
     
     Dmod_SetLogLevel(Dmod_LogLevel_Info);
     Dmod_SetCrossplatformMode(true);
@@ -2531,6 +2599,9 @@ int main(int argc, char* argv[]) {
         }
         else if (strcmp(argv[i], "--mini") == 0) {
             mini_mode = true;
+        }
+        else if (strcmp(argv[i], "--no-fallback") == 0) {
+            no_fallback = true;
         }
         else if (strcmp(argv[i], "-y") == 0 || strcmp(argv[i], "--yes") == 0) {
             auto_accept_license = true;
@@ -2742,6 +2813,17 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         
+        // If module not found in provided manifest, fall back to public manifest (unless --no-fallback)
+        manifest_ctx = TryPublicManifestFallback(
+            manifest_ctx, manifest_path, module_name,
+            module_version[0] ? module_version : NULL,
+            tools_name, arch_name, cpu_name, cpu_family,
+            no_fallback, NULL);
+        if (!manifest_ctx) {
+            curl_global_cleanup();
+            return 1;
+        }
+        
         // Extract the resource
         int result = ExtractResourceCommand(
             module_name,
@@ -2892,6 +2974,17 @@ int main(int argc, char* argv[]) {
                 continue;
             }
             
+            // If module not found in entry manifest, fall back to public manifest (unless --no-fallback)
+            man_ctx = TryPublicManifestFallback(
+                man_ctx, dep_entry.manifest, dep_entry.name,
+                dep_entry.version[0] ? dep_entry.version : NULL,
+                tools_name, arch_name, cpu_name, cpu_family,
+                no_fallback, NULL);
+            if (!man_ctx) {
+                counts.failed_count++;
+                continue;
+            }
+            
             // Download the module (with dependencies)
             int download_result = DownloadModule(
                 dep_entry.name,
@@ -2991,6 +3084,17 @@ int main(int argc, char* argv[]) {
         }
         
         DMOD_LOG_INFO("Manifest loaded with %zu entries\n", Dmod_Manifest_GetEntryCount(ctx));
+        
+        // If module not found in provided manifest, fall back to public manifest (unless --no-fallback)
+        ctx = TryPublicManifestFallback(
+            ctx, manifest_path, module_name,
+            module_version[0] ? module_version : NULL,
+            tools_name, arch_name, cpu_name, cpu_family,
+            no_fallback, &manifest_path);
+        if (!ctx) {
+            curl_global_cleanup();
+            return 1;
+        }
         
         // Initialize installation counts
         InstallationCounts_t counts = {0, 0};
