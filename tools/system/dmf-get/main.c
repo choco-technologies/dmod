@@ -1925,69 +1925,73 @@ static bool EnsureDirectory(const char* path) {
 }
 
 /**
- * @brief Try to fall back to the public manifest if module not found in the provided context.
+ * @brief Return the manifest context to use for a given module, with fallback to the public manifest.
  *
- * If the module is not found in ctx and fallback conditions are met, frees ctx and returns
- * a new context for the public manifest. If no fallback is needed, returns ctx unchanged.
- * On fallback failure, frees ctx and returns NULL (caller should handle the error).
+ * Tries primary_ctx first. If the module is not found in primary_ctx and fallback is allowed,
+ * the public manifest is lazily initialised into *fallback_ctx (only once) and returned.
+ * primary_ctx is never freed by this function – both contexts remain alive so that subsequent
+ * module lookups still use primary_ctx as the first choice.
  *
- * @param ctx             Current manifest context
- * @param manifest_path   Path/URL of the current manifest (used to check if already default)
- * @param module_name     Module name to probe
- * @param module_version  Module version to probe (NULL or empty for any version)
- * @param tools_name      Tools name for the new context
- * @param arch_name       Architecture name for the new context
- * @param cpu_name        CPU name for the new context (can be NULL)
- * @param cpu_family      CPU family for the new context (can be NULL)
- * @param no_fallback     If true, skip the fallback logic entirely
- * @param out_manifest_path  If not NULL and fallback occurs, set to DEFAULT_MANIFEST_URL
- * @return Updated manifest context (may be same or new), or NULL on error
+ * @param primary_ctx       Primary (provided) manifest context.
+ * @param fallback_ctx      Pointer to the lazily-initialised public-manifest context.
+ *                          Must point to NULL on first call; updated in-place on first fallback.
+ * @param primary_path      Path/URL of primary_ctx (to detect if already the public manifest).
+ * @param module_name       Module name to probe.
+ * @param module_version    Module version to probe (NULL or empty for any version).
+ * @param tools_name        Tools name for initialising the fallback context.
+ * @param arch_name         Architecture name for initialising the fallback context.
+ * @param cpu_name          CPU name (can be NULL).
+ * @param cpu_family        CPU family (can be NULL).
+ * @param no_fallback       When true, always return primary_ctx without probing the public manifest.
+ * @return The context to use for the module (primary_ctx or *fallback_ctx), or NULL on error.
  */
-static Dmod_ManifestContext_t* TryPublicManifestFallback(
-    Dmod_ManifestContext_t* ctx,
-    const char* manifest_path,
+static Dmod_ManifestContext_t* GetContextForModule(
+    Dmod_ManifestContext_t* primary_ctx,
+    Dmod_ManifestContext_t** fallback_ctx,
+    const char* primary_path,
     const char* module_name,
     const char* module_version,
     const char* tools_name,
     const char* arch_name,
     const char* cpu_name,
     const char* cpu_family,
-    bool no_fallback,
-    const char** out_manifest_path)
+    bool no_fallback)
 {
-    if (no_fallback || strcmp(manifest_path, DEFAULT_MANIFEST_URL) == 0) {
-        return ctx;
+    /* If the caller disabled fallback, or the provided manifest IS the public one,
+       always use the primary context without any probing. */
+    if (no_fallback || strcmp(primary_path, DEFAULT_MANIFEST_URL) == 0) {
+        return primary_ctx;
     }
 
+    /* Check if the module exists in the primary manifest. */
     Dmod_ManifestEntry_t probe_entry;
-    if (Dmod_Manifest_FindEntry(ctx, module_name,
+    if (Dmod_Manifest_FindEntry(primary_ctx, module_name,
                                 (module_version && module_version[0]) ? module_version : NULL,
                                 NULL, &probe_entry)) {
-        return ctx;  /* Module found - no fallback needed */
+        return primary_ctx;  /* Found – use provided manifest */
     }
 
+    /* Module not in primary manifest – initialise the public fallback if needed. */
     DMOD_LOG_INFO("Module '%s' not found in provided manifest, trying public manifest: %s\n",
                   module_name, DEFAULT_MANIFEST_URL);
-    Dmod_Manifest_Free(ctx);
 
-    if (out_manifest_path) {
-        *out_manifest_path = DEFAULT_MANIFEST_URL;
+    if (*fallback_ctx == NULL) {
+        *fallback_ctx = Dmod_Manifest_Init(tools_name, arch_name, cpu_name, cpu_family, DownloadWithCurl, NULL);
+        if (!*fallback_ctx) {
+            DMOD_LOG_ERROR("Error: Failed to initialize manifest parser for public manifest\n");
+            return NULL;
+        }
+        if (!Dmod_Manifest_ParseUrl(*fallback_ctx, DEFAULT_MANIFEST_URL)) {
+            DMOD_LOG_ERROR("Error: Failed to parse public manifest: %s\n",
+                           Dmod_Manifest_GetError(*fallback_ctx));
+            Dmod_Manifest_Free(*fallback_ctx);
+            *fallback_ctx = NULL;
+            return NULL;
+        }
+        DMOD_LOG_INFO("Public manifest loaded with %zu entries\n", Dmod_Manifest_GetEntryCount(*fallback_ctx));
     }
 
-    ctx = Dmod_Manifest_Init(tools_name, arch_name, cpu_name, cpu_family, DownloadWithCurl, NULL);
-    if (!ctx) {
-        DMOD_LOG_ERROR("Error: Failed to initialize manifest parser for public manifest\n");
-        return NULL;
-    }
-
-    if (!Dmod_Manifest_ParseUrl(ctx, DEFAULT_MANIFEST_URL)) {
-        DMOD_LOG_ERROR("Error: Failed to parse public manifest: %s\n", Dmod_Manifest_GetError(ctx));
-        Dmod_Manifest_Free(ctx);
-        return NULL;
-    }
-
-    DMOD_LOG_INFO("Public manifest loaded with %zu entries\n", Dmod_Manifest_GetEntryCount(ctx));
-    return ctx;
+    return *fallback_ctx;
 }
 
 /**
@@ -2813,13 +2817,15 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         
-        // If module not found in provided manifest, fall back to public manifest (unless --no-fallback)
-        manifest_ctx = TryPublicManifestFallback(
-            manifest_ctx, manifest_path, module_name,
+        // Select context: use provided manifest first; fall back to public manifest if needed
+        Dmod_ManifestContext_t* fallback_manifest_ctx = NULL;
+        Dmod_ManifestContext_t* active_manifest_ctx = GetContextForModule(
+            manifest_ctx, &fallback_manifest_ctx, manifest_path, module_name,
             module_version[0] ? module_version : NULL,
-            tools_name, arch_name, cpu_name, cpu_family,
-            no_fallback, NULL);
-        if (!manifest_ctx) {
+            tools_name, arch_name, cpu_name, cpu_family, no_fallback);
+        if (!active_manifest_ctx) {
+            Dmod_Manifest_Free(manifest_ctx);
+            if (fallback_manifest_ctx) Dmod_Manifest_Free(fallback_manifest_ctx);
             curl_global_cleanup();
             return 1;
         }
@@ -2828,7 +2834,7 @@ int main(int argc, char* argv[]) {
         int result = ExtractResourceCommand(
             module_name,
             module_version[0] ? module_version : NULL,
-            manifest_ctx,
+            active_manifest_ctx,
             output_dir,
             tools_name,
             arch_name,
@@ -2838,6 +2844,7 @@ int main(int argc, char* argv[]) {
         );
         
         Dmod_Manifest_Free(manifest_ctx);
+        if (fallback_manifest_ctx) Dmod_Manifest_Free(fallback_manifest_ctx);
         curl_global_cleanup();
         return result;
     }
@@ -2934,6 +2941,11 @@ int main(int argc, char* argv[]) {
         // Initialize installation counts
         InstallationCounts_t counts = {0, 0};
         
+        // Shared public-manifest fallback context: lazily initialised on first miss,
+        // then reused for subsequent entries so each module is always tried against its
+        // own primary manifest first and the public manifest second.
+        Dmod_ManifestContext_t* dep_fallback_ctx = NULL;
+        
         for (size_t i = 0; i < dep_count; i++) {
             Dmod_DependencyEntry_t dep_entry;
             if (!Dmod_Dependencies_GetEntry(dep_ctx, i, &dep_entry)) {
@@ -2974,13 +2986,14 @@ int main(int argc, char* argv[]) {
                 continue;
             }
             
-            // If module not found in entry manifest, fall back to public manifest (unless --no-fallback)
-            man_ctx = TryPublicManifestFallback(
-                man_ctx, dep_entry.manifest, dep_entry.name,
+            // Select context: try primary manifest first; fall back to public manifest if needed.
+            // dep_fallback_ctx is shared across loop iterations – parsed only once.
+            Dmod_ManifestContext_t* active_ctx = GetContextForModule(
+                man_ctx, &dep_fallback_ctx, dep_entry.manifest, dep_entry.name,
                 dep_entry.version[0] ? dep_entry.version : NULL,
-                tools_name, arch_name, cpu_name, cpu_family,
-                no_fallback, NULL);
-            if (!man_ctx) {
+                tools_name, arch_name, cpu_name, cpu_family, no_fallback);
+            if (!active_ctx) {
+                Dmod_Manifest_Free(man_ctx);
                 counts.failed_count++;
                 continue;
             }
@@ -2989,7 +3002,7 @@ int main(int argc, char* argv[]) {
             int download_result = DownloadModule(
                 dep_entry.name,
                 dep_entry.version[0] ? dep_entry.version : NULL,
-                man_ctx,
+                active_ctx,
                 output_dir,
                 tools_name,
                 arch_name,
@@ -3018,6 +3031,8 @@ int main(int argc, char* argv[]) {
                 }
             }
         }
+        
+        if (dep_fallback_ctx) Dmod_Manifest_Free(dep_fallback_ctx);
         
         // Print installation summary
         Dmod_Printf("\n");
@@ -3085,13 +3100,15 @@ int main(int argc, char* argv[]) {
         
         DMOD_LOG_INFO("Manifest loaded with %zu entries\n", Dmod_Manifest_GetEntryCount(ctx));
         
-        // If module not found in provided manifest, fall back to public manifest (unless --no-fallback)
-        ctx = TryPublicManifestFallback(
-            ctx, manifest_path, module_name,
+        // Select context: try the provided manifest first; fall back to public manifest if needed.
+        Dmod_ManifestContext_t* fallback_ctx = NULL;
+        Dmod_ManifestContext_t* active_ctx = GetContextForModule(
+            ctx, &fallback_ctx, manifest_path, module_name,
             module_version[0] ? module_version : NULL,
-            tools_name, arch_name, cpu_name, cpu_family,
-            no_fallback, &manifest_path);
-        if (!ctx) {
+            tools_name, arch_name, cpu_name, cpu_family, no_fallback);
+        if (!active_ctx) {
+            Dmod_Manifest_Free(ctx);
+            if (fallback_ctx) Dmod_Manifest_Free(fallback_ctx);
             curl_global_cleanup();
             return 1;
         }
@@ -3103,7 +3120,7 @@ int main(int argc, char* argv[]) {
         result = DownloadModule(
             module_name,
             module_version[0] ? module_version : NULL,
-            ctx,
+            active_ctx,
             output_dir,
             tools_name,
             arch_name,
@@ -3142,6 +3159,7 @@ int main(int argc, char* argv[]) {
         
         // Cleanup
         Dmod_Manifest_Free(ctx);
+        if (fallback_ctx) Dmod_Manifest_Free(fallback_ctx);
     }
     
     // Cleanup
