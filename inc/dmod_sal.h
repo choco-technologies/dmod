@@ -205,11 +205,8 @@ DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message
                                 }
 #   define DMOD_LOG_STEP(Result, ...)                      \
                                 do { \
-                                    if ((int)(Result) > 0) { \
+                                    if ((int)(Result) == 0) { \
                                         Dmod_Printf( "\033[32;1m[  OK  ]\033[0m " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
-                                        Dmod_Printf( "\033[0m" ); \
-                                    } else if ((int)(Result) == 0) { \
-                                        Dmod_Printf( "\033[33;1m[ WARN ]\033[0m " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
                                         Dmod_Printf( "\033[0m" ); \
                                     } else { \
                                         Dmod_Printf( "\033[31;1m[ FAIL ]\033[0m " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
