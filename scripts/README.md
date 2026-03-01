@@ -13,6 +13,30 @@ The `new-module.sh` script creates a new DMOD module with all necessary files:
 - Optional: GitHub Actions workflow (`.github/workflows/ci.yml`)
 - Optional: Bitbucket pipeline (`bitbucket-pipelines.yml`)
 
+## Native Linux Environment Setup
+
+The `setup-linux-env.sh` script configures a native Linux host in the same way as `Docker/Dockerfile.env`.
+
+It installs:
+- Required apt packages (including `gcc`, `g++`, `make`, `openocd`, `gcovr`, `git`, `jq`, `zip`, `unzip`)
+- Choco scripts from `https://raw.githubusercontent.com/JohnAmadis/choco-scripts/refs/heads/master/install-choco-scripts.sh`
+- ARM GNU toolchain `10.3-2021.10` into `/tools/gcc-arm-none-eabi`
+- CMake `3.31.3` into `/usr`
+- PATH integration via `/etc/profile.d/dmod-tools.sh` and `~/.bashrc`
+
+Usage:
+
+```bash
+./scripts/setup-linux-env.sh
+```
+
+Optional flags:
+- `--tools-dir PATH`
+- `--arm-version VERSION`
+- `--cmake-version VERSION`
+- `--skip-choco-scripts`
+- `--skip-profile-setup`
+
 ## Usage
 
 ```bash

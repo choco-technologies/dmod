@@ -29,7 +29,7 @@ function installChocoScripts()
     apt-get update && apt-get install -y wget
 
     # This downloads an installation script and run it 
-    wget -O - https://release.choco-technologies.com/scripts/install-choco-scripts.sh | bash
+    wget -O - https://raw.githubusercontent.com/JohnAmadis/choco-scripts/refs/heads/master/install-choco-scripts.sh | bash
 }
 
 #
