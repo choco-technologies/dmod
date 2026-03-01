@@ -190,21 +190,32 @@ DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message
 #   define DMOD_ASSERT_MSG( Condition, Message )           Dmod_Assert( Condition, Message, __FILE__, __LINE__, __func__ )
 #endif
 #ifdef DMOD_NO_LOGGING
-#   define DMOD_LOG(...)                                   ((void)0)    
+#   define DMOD_LOG(...)                                   ((void)0)
+#   define DMOD_LOG_STEP(Result, ...)                      ((void)0)
 #else
 #   ifdef DMOD_MODULE_NAME
-#   define DMOD_LOG(LogLevel,...)                          \
-                                if(Dmod_CheckLogLevel(LogLevel)) {\
-                                    Dmod_Printf( DMOD_MODULE_NAME ": " __VA_ARGS__ );\
-                                    Dmod_Printf( "\033[0m" );\
-                                }
-#   else 
-#   define DMOD_LOG(LogLevel,...)                          \
-                                if(Dmod_CheckLogLevel(LogLevel)) {\
-                                    Dmod_Printf( __VA_ARGS__ );\
-                                    Dmod_Printf( "\033[0m" );\
-                                }
+#       define DMOD_LOG_MODULE_PREFIX  "\033[37;1m" DMOD_MODULE_NAME ": \033[0m"
+#   else
+#       define DMOD_LOG_MODULE_PREFIX  ""
 #   endif
+#   define DMOD_LOG(LogLevel,...)                          \
+                                if(Dmod_CheckLogLevel(LogLevel)) {\
+                                    Dmod_Printf( DMOD_LOG_MODULE_PREFIX __VA_ARGS__ );\
+                                    Dmod_Printf( "\033[0m" );\
+                                }
+#   define DMOD_LOG_STEP(Result, ...)                      \
+                                do { \
+                                    if ((int)(Result) > 0) { \
+                                        Dmod_Printf( "\033[32;1m[  OK  ]\033[0m " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
+                                        Dmod_Printf( "\033[0m" ); \
+                                    } else if ((int)(Result) == 0) { \
+                                        Dmod_Printf( "\033[33;1m[ WARN ]\033[0m " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
+                                        Dmod_Printf( "\033[0m" ); \
+                                    } else { \
+                                        Dmod_Printf( "\033[31;1m[ FAIL ]\033[0m " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
+                                        Dmod_Printf( "\033[0m" ); \
+                                    } \
+                                } while(0)
 #endif 
 
 #ifdef DMOD_LOG_LEVEL
