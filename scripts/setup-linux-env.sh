@@ -6,6 +6,8 @@ TOOLS_DIR="${TOOLS_DIR:-/tools}"
 ARM_NONE_EABI_VERSION="${ARM_NONE_EABI_VERSION:-10.3-2021.10}"
 ARM_NONE_EABI_DIR_NAME="${ARM_NONE_EABI_DIR_NAME:-gcc-arm-none-eabi}"
 CMAKE_VERSION="${CMAKE_VERSION:-3.31.3}"
+DMOD_DMF_DIR="${DMOD_DMF_DIR:-/tools/dmf}"
+DMOD_DMFC_DIR="${DMOD_DMFC_DIR:-/tools/dmfc}"
 CHOCOLATE_SCRIPTS_URL="https://raw.githubusercontent.com/JohnAmadis/choco-scripts/refs/heads/master/install-choco-scripts.sh"
 SKIP_CHOCO_SCRIPTS="false"
 SKIP_PROFILE_SETUP="false"
@@ -30,6 +32,8 @@ Environment overrides:
   ARM_NONE_EABI_VERSION
   ARM_NONE_EABI_DIR_NAME
   CMAKE_VERSION
+    DMOD_DMF_DIR
+    DMOD_DMFC_DIR
 EOF
 }
 
@@ -111,6 +115,8 @@ fi
 
 ${SUDO} mv "${TOOLS_DIR}/${ARM_NONE_EABI_DIR_NAME}-${ARM_NONE_EABI_VERSION}" "${ARM_NONE_EABI_DIR_PATH}"
 
+${SUDO} mkdir -p "${DMOD_DMF_DIR}" "${DMOD_DMFC_DIR}"
+
 echo "[4/6] Installing CMake ${CMAKE_VERSION} to /usr..."
 wget "${CMAKE_URL}" -O /tmp/cmake.sh
 chmod +x /tmp/cmake.sh
@@ -121,6 +127,8 @@ if [[ "${SKIP_PROFILE_SETUP}" != "true" ]]; then
     echo "[5/6] Configuring PATH in /etc/profile.d/dmod-tools.sh and ~/.bashrc..."
     ${SUDO} tee /etc/profile.d/dmod-tools.sh >/dev/null << EOF
 #!/usr/bin/env sh
+export DMOD_DMF_DIR="${DMOD_DMF_DIR}"
+export DMOD_DMFC_DIR="${DMOD_DMFC_DIR}"
 if [ -d "${ARM_NONE_EABI_BIN_DIR_PATH}" ]; then
     case ":\$PATH:" in
         *:"${ARM_NONE_EABI_BIN_DIR_PATH}":*) ;;

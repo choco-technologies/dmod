@@ -23,6 +23,7 @@ It installs:
 - ARM GNU toolchain `10.3-2021.10` into `/tools/gcc-arm-none-eabi`
 - CMake `3.31.3` into `/usr`
 - PATH integration via `/etc/profile.d/dmod-tools.sh` and `~/.bashrc`
+- DMOD tool output variables `DMOD_DMF_DIR=/tools/dmf` and `DMOD_DMFC_DIR=/tools/dmfc`
 
 Usage:
 
