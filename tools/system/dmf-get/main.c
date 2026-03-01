@@ -849,6 +849,18 @@ static int DownloadModule(const char* module_name, const char* module_version,
                           bool mini_mode, bool auto_accept_license, 
                           InstallationCounts_t* counts);
 
+static Dmod_ManifestContext_t* GetContextForModule(
+    Dmod_ManifestContext_t* primary_ctx,
+    Dmod_ManifestContext_t** fallback_ctx,
+    const char* primary_path,
+    const char* module_name,
+    const char* module_version,
+    const char* tools_name,
+    const char* arch_name,
+    const char* cpu_name,
+    const char* cpu_family,
+    bool no_fallback);
+
 /**
  * @brief Sanitize path for use in shell commands
  * 
@@ -1806,6 +1818,11 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
         size_t dep_count = Dmod_Dependencies_GetEntryCount(dep_ctx);
         DMOD_LOG_INFO("Found %zu dependencies in .dmd file\n", dep_count);
         
+        // Shared public-manifest fallback context: lazily initialised on first miss,
+        // then reused for subsequent entries so each module is always tried against its
+        // own primary manifest first and the public manifest second.
+        Dmod_ManifestContext_t* dep_fallback_ctx = NULL;
+
         // Download each dependency
         for (size_t i = 0; i < dep_count; i++) {
             Dmod_DependencyEntry_t dep_entry;
@@ -1845,12 +1862,24 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                 failed_count++;
                 continue;
             }
+
+            // Select context: try primary manifest first; fall back to public manifest if needed.
+            // dep_fallback_ctx is shared across loop iterations – parsed only once.
+            Dmod_ManifestContext_t* active_ctx = GetContextForModule(
+                man_ctx, &dep_fallback_ctx, dep_entry.manifest, dep_entry.name,
+                dep_entry.version[0] ? dep_entry.version : NULL,
+                tools_name, arch_name, cpu_name, cpu_family, false);
+            if (!active_ctx) {
+                Dmod_Manifest_Free(man_ctx);
+                failed_count++;
+                continue;
+            }
             
             // Download the dependency (with its own dependencies)
             int download_result = DownloadModule(
                 dep_entry.name,
                 dep_entry.version[0] ? dep_entry.version : NULL,
-                man_ctx,
+                active_ctx,
                 output_dir,
                 tools_name,
                 arch_name,
@@ -1872,6 +1901,8 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                 failed_count++;
             }
         }
+
+        if (dep_fallback_ctx) Dmod_Manifest_Free(dep_fallback_ctx);
         
         Dmod_Dependencies_Free(dep_ctx);
     }
@@ -1910,6 +1941,11 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
             if (dep_count > 0) {
                 DMOD_LOG_INFO("Found %d non-system dependencies in module\n", dep_count);
                 
+                // Shared public-manifest fallback context: lazily initialised on first miss,
+                // then reused for subsequent entries so each module is always tried against its
+                // own primary manifest first and the public manifest second.
+                Dmod_ManifestContext_t* bin_fallback_ctx = NULL;
+
                 // Download each dependency
                 int processed = 0;
                 for (size_t i = 0; i < DMOD_MAX_REQUIRED_MODULES; i++) {
@@ -1950,12 +1986,24 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                         failed_count++;
                         continue;
                     }
+
+                    // Select context: try primary manifest first; fall back to public manifest if needed.
+                    // bin_fallback_ctx is shared across loop iterations – parsed only once.
+                    Dmod_ManifestContext_t* active_ctx = GetContextForModule(
+                        man_ctx, &bin_fallback_ctx, default_manifest, required_modules[i].Name,
+                        required_modules[i].Version[0] ? required_modules[i].Version : NULL,
+                        tools_name, arch_name, cpu_name, cpu_family, false);
+                    if (!active_ctx) {
+                        Dmod_Manifest_Free(man_ctx);
+                        failed_count++;
+                        continue;
+                    }
                     
                     // Download the dependency (with its own dependencies)
                     int download_result = DownloadModule(
                         required_modules[i].Name,
                         required_modules[i].Version[0] ? required_modules[i].Version : NULL,
-                        man_ctx,
+                        active_ctx,
                         output_dir,
                         tools_name,
                         arch_name,
@@ -1977,6 +2025,8 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                         failed_count++;
                     }
                 }
+
+                if (bin_fallback_ctx) Dmod_Manifest_Free(bin_fallback_ctx);
             } else {
                 DMOD_LOG_INFO("No non-system dependencies found in module\n");
             }
