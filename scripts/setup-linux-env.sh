@@ -93,6 +93,7 @@ export DEBIAN_FRONTEND=noninteractive
 ${SUDO} apt-get update
 ${SUDO} apt-get install -y \
     wget gcc make g++ openocd gcovr git jq zip unzip \
+    gdb-multiarch \
     libcurl4-openssl-dev libusb-1.0-0-dev ca-certificates tar bzip2
 
 if [[ "${SKIP_CHOCO_SCRIPTS}" != "true" ]]; then
@@ -103,25 +104,49 @@ else
 fi
 
 echo "[3/6] Installing ARM GNU toolchain ${ARM_NONE_EABI_VERSION} to ${TOOLS_DIR}..."
-${SUDO} mkdir -p "${TOOLS_DIR}"
-wget "https://developer.arm.com/-/media/Files/downloads/gnu-rm/${ARM_NONE_EABI_VERSION}/${ARM_NONE_EABI_FILE_NAME}" -O "${ARM_NONE_EABI_FILE_PATH}"
 
-${SUDO} tar xf "${ARM_NONE_EABI_FILE_PATH}" -C "${TOOLS_DIR}"
-rm -f "${ARM_NONE_EABI_FILE_PATH}"
+if [[ -d "${ARM_NONE_EABI_DIR_PATH}" && -x "${ARM_NONE_EABI_BIN_DIR_PATH}/arm-none-eabi-gcc" ]]; then
+    echo "    ARM toolchain ${ARM_NONE_EABI_VERSION} already installed at ${ARM_NONE_EABI_DIR_PATH}"
+else
+    ${SUDO} mkdir -p "${TOOLS_DIR}"
+    
+    if [[ ! -f "${ARM_NONE_EABI_FILE_PATH}" ]]; then
+        echo "    Downloading ARM toolkit (this may take a few minutes)..."
+        wget "https://developer.arm.com/-/media/Files/downloads/gnu-rm/${ARM_NONE_EABI_VERSION}/${ARM_NONE_EABI_FILE_NAME}" -O "${ARM_NONE_EABI_FILE_PATH}"
+    else
+        echo "    Using cached ARM toolkit archive..."
+    fi
 
-if [[ -d "${ARM_NONE_EABI_DIR_PATH}" ]]; then
-    ${SUDO} rm -rf "${ARM_NONE_EABI_DIR_PATH}"
+    ${SUDO} tar xf "${ARM_NONE_EABI_FILE_PATH}" -C "${TOOLS_DIR}"
+
+    if [[ -d "${ARM_NONE_EABI_DIR_PATH}" ]]; then
+        ${SUDO} rm -rf "${ARM_NONE_EABI_DIR_PATH}"
+    fi
+
+    ${SUDO} mv "${TOOLS_DIR}/${ARM_NONE_EABI_DIR_NAME}-${ARM_NONE_EABI_VERSION}" "${ARM_NONE_EABI_DIR_PATH}"
+    echo "    ARM toolchain installed successfully"
 fi
-
-${SUDO} mv "${TOOLS_DIR}/${ARM_NONE_EABI_DIR_NAME}-${ARM_NONE_EABI_VERSION}" "${ARM_NONE_EABI_DIR_PATH}"
 
 ${SUDO} mkdir -p "${DMOD_DMF_DIR}" "${DMOD_DMFC_DIR}"
 
 echo "[4/6] Installing CMake ${CMAKE_VERSION} to /usr..."
-wget "${CMAKE_URL}" -O /tmp/cmake.sh
-chmod +x /tmp/cmake.sh
-${SUDO} /tmp/cmake.sh --skip-license --prefix=/usr
-rm -f /tmp/cmake.sh
+
+if ! command -v cmake &>/dev/null || ! cmake --version | grep -q "${CMAKE_VERSION}"; then
+    CMAKE_SCRIPT="/tmp/cmake.sh"
+    if [[ ! -f "${CMAKE_SCRIPT}" ]]; then
+        echo "    Downloading CMake (this may take a few minutes)..."
+        wget "${CMAKE_URL}" -O "${CMAKE_SCRIPT}"
+    else
+        echo "    Using cached CMake installer..."
+    fi
+    
+    chmod +x "${CMAKE_SCRIPT}"
+    ${SUDO} "${CMAKE_SCRIPT}" --skip-license --prefix=/usr
+    rm -f "${CMAKE_SCRIPT}"
+    echo "    CMake installed successfully"
+else
+    echo "    CMake ${CMAKE_VERSION} already installed"
+fi
 
 if [[ "${SKIP_PROFILE_SETUP}" != "true" ]]; then
     echo "[5/6] Configuring PATH in /etc/profile.d/dmod-tools.sh and ~/.bashrc..."

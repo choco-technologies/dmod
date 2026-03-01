@@ -62,7 +62,12 @@ endif()
 
 find_program(ARM_GDB arm-none-eabi-gdb)
 if(NOT ARM_GDB)
-    message(FATAL_ERROR "ARM GDB not found")
+    find_program(ARM_GDB gdb-multiarch)
+    if(NOT ARM_GDB)
+        message(FATAL_ERROR "ARM GDB not found (tried arm-none-eabi-gdb and gdb-multiarch)")
+    else()
+        message(STATUS "Using gdb-multiarch for ARM debugging")
+    endif()
 endif()
 
 # ==============================================================================
