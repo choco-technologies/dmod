@@ -537,30 +537,3 @@ static bool ApiSignature_AreVersionsEqual( const char* Signature1, const char* S
 
     return *version1 == *version2;
 }
-
-/**
- * @brief Get progress bar string for a given percentage
- *
- * Returns one of seven UTF-8 bar strings corresponding to 0–100%.
- * Each segment represents ~17% (Percent * 6 / 100, clamped to 0–6).
- *
- * @param Percent  Completion percentage (0–100; values outside this range are clamped)
- *
- * @return Pointer to a statically-allocated bar string, e.g. "[██░░░░]"
- */
-const char* Dmod_GetStepBar( int Percent )
-{
-    static const char* const bars[7] = {
-        "[\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91]",
-        "[\xe2\x96\x88\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91]",
-        "[\xe2\x96\x88\xe2\x96\x88\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91]",
-        "[\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91]",
-        "[\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x91\xe2\x96\x91]",
-        "[\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x91]",
-        "[\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88]"
-    };
-    int idx = Percent * 6 / 100;
-    if( idx < 0 ) idx = 0;
-    if( idx > 6 ) idx = 6;
-    return bars[idx];
-}

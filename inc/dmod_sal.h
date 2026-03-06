@@ -182,9 +182,8 @@ DMOD_BUILTIN_API( Dmod, 1.0, int  ,_Printf, ( const char* Format, ... ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_FPrintf, ( void* File, const char* Format, ... ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_VSnPrintf, ( char* Buffer, size_t Size, const char* Format, va_list Args ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_SnPrintf, ( char* Buffer, size_t Size, const char* Format, ... ) );
-DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message, const char* File, int Line, const char* Function ) );
-/** @brief Returns the UTF-8 progress-bar string for 0-100% (6 segments). Internal helper for DMOD_LOG_STEP_PROGRESS. */
-const char* Dmod_GetStepBar( int Percent );
+DMOD_BUILTIN_API( Dmod, 1.0, void        ,_Assert,      ( int Condition, const char* Message, const char* File, int Line, const char* Function ) );
+DMOD_BUILTIN_API( Dmod, 1.0, const char* ,_GetStepBar,  ( int Percent ) );
 
 #ifdef NDEBUG
 #   define DMOD_ASSERT_MSG( Condition, Message )           ((void)0)
