@@ -1281,6 +1281,57 @@ void Dmod_SetLogLevel( Dmod_LogLevel_t Level )
 }
 
 /**
+ * @brief Set log level for a specific module
+ * 
+ * Sets the log level for the named module. The level will be stored in a
+ * singly linked list so it can be queried by Dmod_CheckModuleLogLevel.
+ * Calling this function for the same module name will update the existing entry.
+ * 
+ * @param ModuleName Name of the module (case-sensitive)
+ * @param Level      Log level to set for this module
+ */
+void Dmod_SetModuleLogLevel( const char* ModuleName, Dmod_LogLevel_t Level )
+{
+    if( ModuleName == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot set module log level - null module name\n");
+        return;
+    }
+    if( Level >= Dmod_LogLevel_Count )
+    {
+        DMOD_LOG_ERROR("Cannot set module log level - invalid level: %d\n", Level);
+        return;
+    }
+
+    /* Search for an existing entry and update if found */
+    Dmod_ModuleLogLevel_t* node = Dmod_ModuleLogLevels;
+    while( node != NULL )
+    {
+        if( strncmp(node->Name, ModuleName, DMOD_MAX_MODULE_NAME_LENGTH - 1) == 0 )
+        {
+            node->Level = Level;
+            DMOD_LOG_INFO("Updated module log level for '%s' to: %d\n", ModuleName, Level);
+            return;
+        }
+        node = node->Next;
+    }
+
+    /* Not found - allocate a new node and prepend to the list */
+    Dmod_ModuleLogLevel_t* newNode = (Dmod_ModuleLogLevel_t*)Dmod_MallocEx(sizeof(Dmod_ModuleLogLevel_t), "dmod");
+    if( newNode == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot set module log level - out of memory\n");
+        return;
+    }
+    strncpy(newNode->Name, ModuleName, DMOD_MAX_MODULE_NAME_LENGTH - 1);
+    newNode->Name[DMOD_MAX_MODULE_NAME_LENGTH - 1] = '\0';
+    newNode->Level = Level;
+    newNode->Next  = Dmod_ModuleLogLevels;
+    Dmod_ModuleLogLevels = newNode;
+    DMOD_LOG_INFO("Set module log level for '%s' to: %d\n", ModuleName, Level);
+}
+
+/**
  * @brief Read module header
  * 
  * @param FilePath Path to the module file

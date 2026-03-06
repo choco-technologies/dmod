@@ -21,3 +21,4 @@ Dmod_LogLevel_t Dmod_LogLevel =
 #else
     Dmod_LogLevel_Warn;
 #endif
+Dmod_ModuleLogLevel_t* Dmod_ModuleLogLevels = NULL;

@@ -178,6 +178,7 @@ DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetCurrentModuleNameEx, ( const char* 
  * @{
  */
 DMOD_BUILTIN_API( Dmod, 1.0, bool ,_CheckLogLevel, ( Dmod_LogLevel_t LogLevel ) );
+DMOD_BUILTIN_API( Dmod, 1.0, bool ,_CheckModuleLogLevel, ( const char* ModuleName, Dmod_LogLevel_t LogLevel ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_Printf, ( const char* Format, ... ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_FPrintf, ( void* File, const char* Format, ... ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_VSnPrintf, ( char* Buffer, size_t Size, const char* Format, va_list Args ) );
@@ -201,11 +202,19 @@ DMOD_BUILTIN_API( Dmod, 1.0, const char* ,_GetStepBar,  ( int Percent ) );
 #   else
 #       define DMOD_LOG_MODULE_PREFIX  ""
 #   endif
-#   define DMOD_LOG(LogLevel,...)                          \
+#   ifdef DMOD_MODULE_NAME
+#       define DMOD_LOG(LogLevel,...)                      \
+                                if(Dmod_CheckModuleLogLevel(DMOD_MODULE_NAME, LogLevel)) {\
+                                    Dmod_Printf( DMOD_LOG_MODULE_PREFIX __VA_ARGS__ );\
+                                    Dmod_Printf( "\033[0m" );\
+                                }
+#   else
+#       define DMOD_LOG(LogLevel,...)                      \
                                 if(Dmod_CheckLogLevel(LogLevel)) {\
                                     Dmod_Printf( DMOD_LOG_MODULE_PREFIX __VA_ARGS__ );\
                                     Dmod_Printf( "\033[0m" );\
                                 }
+#   endif
 #   define DMOD_LOG_STEP_BEGIN(...)                        \
                                 do { \
                                     Dmod_Printf( "\r\033[K[\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91] " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \

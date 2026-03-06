@@ -299,6 +299,20 @@ typedef void* Dmod_List_t;
 typedef void* Dmod_ListElement_t;
 
 /**
+ * @brief Per-module log level node
+ * 
+ * This structure is used to store the per-module log level in a singly
+ * linked list. The list is traversed when checking the log level for a
+ * specific module.
+ */
+typedef struct Dmod_ModuleLogLevel
+{
+    char                            Name[DMOD_MAX_MODULE_NAME_LENGTH]; //!< Module name
+    Dmod_LogLevel_t                 Level;                             //!< Log level for this module
+    struct Dmod_ModuleLogLevel*     Next;                              //!< Pointer to next node
+} Dmod_ModuleLogLevel_t;
+
+/**
  * @brief Search path node
  */
 typedef struct Dmod_SearchNode

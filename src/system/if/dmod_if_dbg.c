@@ -46,9 +46,17 @@
 #   include <stdarg.h>
 #endif
 
+#if DMOD_USE_STDLIB
+#   include <string.h>
+#   include <ctype.h>
+#endif
+
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
 //==============================================================================
+
+/* Forward declaration for caching env-var-based module log levels */
+extern void Dmod_SetModuleLogLevel( const char* ModuleName, Dmod_LogLevel_t Level );
 
 /**
  * @brief Check if the log level is enabled
@@ -60,6 +68,106 @@
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _CheckLogLevel, ( Dmod_LogLevel_t LogLevel ))
 {
     return Dmod_LogLevel >= LogLevel;
+}
+
+/**
+ * @brief Parse a log level string into a Dmod_LogLevel_t value
+ *
+ * Recognised strings (case-insensitive): verbose, info, warning, error, none.
+ *
+ * @param Value  Null-terminated string to parse (may be NULL)
+ *
+ * @return Parsed log level, or Dmod_LogLevel_Count if the string is unknown / NULL
+ */
+static Dmod_LogLevel_t ParseLogLevelString( const char* Value )
+{
+#if DMOD_USE_STDLIB
+    if( Value == NULL )
+    {
+        return Dmod_LogLevel_Count;
+    }
+    /* Build a lowercase copy of Value for comparison (up to 8 chars) */
+    char lower[8];
+    size_t i;
+    for( i = 0; i < sizeof(lower) - 1 && Value[i] != '\0'; i++ )
+    {
+        lower[i] = (char)tolower((unsigned char)Value[i]);
+    }
+    lower[i] = '\0';
+
+    if( strcmp(lower, "verbose") == 0 ) return Dmod_LogLevel_Verbose;
+    if( strcmp(lower, "info")    == 0 ) return Dmod_LogLevel_Info;
+    if( strcmp(lower, "warning") == 0 ) return Dmod_LogLevel_Warn;
+    if( strcmp(lower, "error")   == 0 ) return Dmod_LogLevel_Error;
+    if( strcmp(lower, "none")    == 0 ) return Dmod_LogLevel_None;
+#else
+    (void)Value;
+#endif
+    return Dmod_LogLevel_Count; /* unknown */
+}
+
+/**
+ * @brief Check if the given log level is enabled for the specified module
+ *
+ * The function resolves the effective log level in the following order:
+ *  1. Per-module level set via Dmod_SetModuleLogLevel()
+ *  2. Environment variable <UPPERCASE_MODULE_NAME>_LOG_LEVEL (cached on first use)
+ *  3. Global Dmod_LogLevel (fallback)
+ *
+ * @param ModuleName  Name of the calling module (may be NULL)
+ * @param LogLevel    Log level to check
+ *
+ * @return True if the log level is enabled, false otherwise
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _CheckModuleLogLevel, ( const char* ModuleName, Dmod_LogLevel_t LogLevel ))
+{
+    if( ModuleName == NULL )
+    {
+        return Dmod_CheckLogLevel(LogLevel);
+    }
+
+#if DMOD_USE_STDLIB
+    /* Search the per-module list first */
+    Dmod_ModuleLogLevel_t* node = Dmod_ModuleLogLevels;
+    while( node != NULL )
+    {
+        if( strncmp(node->Name, ModuleName, DMOD_MAX_MODULE_NAME_LENGTH - 1) == 0 )
+        {
+            return node->Level >= LogLevel;
+        }
+        node = node->Next;
+    }
+
+    /* Not found – check env var: <UPPERCASE_MODULE_NAME>_LOG_LEVEL */
+    {
+        char envName[DMOD_MAX_MODULE_NAME_LENGTH + 11]; /* "_LOG_LEVEL\0" = 11 chars */
+        size_t i = 0;
+        while( ModuleName[i] != '\0' && i < (DMOD_MAX_MODULE_NAME_LENGTH - 1) )
+        {
+            envName[i] = (char)toupper((unsigned char)ModuleName[i]);
+            i++;
+        }
+        if( i + 11 <= sizeof(envName) )
+        {
+            memcpy(envName + i, "_LOG_LEVEL", 11);  /* includes null terminator */
+
+            const char* envValue = Dmod_GetEnv(envName);
+            if( envValue != NULL )
+            {
+                Dmod_LogLevel_t level = ParseLogLevelString(envValue);
+                if( level < Dmod_LogLevel_Count )
+                {
+                    /* Cache the result so future calls skip the env lookup */
+                    Dmod_SetModuleLogLevel(ModuleName, level);
+                    return level >= LogLevel;
+                }
+            }
+        }
+    }
+#endif /* DMOD_USE_STDLIB */
+
+    /* Fall back to the global log level */
+    return Dmod_CheckLogLevel(LogLevel);
 }
 
 /**
