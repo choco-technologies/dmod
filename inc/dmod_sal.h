@@ -191,6 +191,8 @@ DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message
 #endif
 #ifdef DMOD_NO_LOGGING
 #   define DMOD_LOG(...)                                   ((void)0)
+#   define DMOD_LOG_STEP_BEGIN(...)                        ((void)0)
+#   define DMOD_LOG_STEP_PROGRESS(Percent, ...)            ((void)0)
 #   define DMOD_LOG_STEP(Result, ...)                      ((void)0)
 #else
 #   ifdef DMOD_MODULE_NAME
@@ -203,13 +205,35 @@ DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message
                                     Dmod_Printf( DMOD_LOG_MODULE_PREFIX __VA_ARGS__ );\
                                     Dmod_Printf( "\033[0m" );\
                                 }
+#   define DMOD_LOG_STEP_BEGIN(...)                        \
+                                do { \
+                                    Dmod_Printf( "\r\033[K[\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91] " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
+                                    Dmod_Printf( "\r" ); \
+                                } while(0)
+#   define DMOD_LOG_STEP_PROGRESS(Percent, ...)            \
+                                do { \
+                                    static const char* const _dmod_step_bars[6] = { \
+                                        "[\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91]", \
+                                        "[\xe2\x96\x88\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91]", \
+                                        "[\xe2\x96\x88\xe2\x96\x88\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91]", \
+                                        "[\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x91\xe2\x96\x91]", \
+                                        "[\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x91]", \
+                                        "[\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88]" \
+                                    }; \
+                                    int _dmod_idx = (int)(Percent) * 5 / 100; \
+                                    if (_dmod_idx < 0) _dmod_idx = 0; \
+                                    if (_dmod_idx > 5) _dmod_idx = 5; \
+                                    Dmod_Printf( "\r\033[K%s " DMOD_LOG_MODULE_PREFIX, _dmod_step_bars[_dmod_idx] ); \
+                                    Dmod_Printf( __VA_ARGS__ ); \
+                                    Dmod_Printf( "\r" ); \
+                                } while(0)
 #   define DMOD_LOG_STEP(Result, ...)                      \
                                 do { \
                                     if ((int)(Result) == 0) { \
-                                        Dmod_Printf( "\033[32;1m[  OK  ]\033[0m " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
+                                        Dmod_Printf( "\r\033[K\033[32;1m[  OK  ]\033[0m " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
                                         Dmod_Printf( "\033[0m" ); \
                                     } else { \
-                                        Dmod_Printf( "\033[31;1m[ FAIL ]\033[0m " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
+                                        Dmod_Printf( "\r\033[K\033[31;1m[ FAIL ]\033[0m " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
                                         Dmod_Printf( "\033[0m" ); \
                                     } \
                                 } while(0)
