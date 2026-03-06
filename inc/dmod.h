@@ -140,36 +140,6 @@ DMOD_BUILTIN_API( Dmod, 1.0, void       , _CloseModules, ( Dmod_ModuleNode_t* ou
 
 //! @}
 
-#if (DMOD_MODULE_EN == ON) && defined(DMOD_MODULE_NAME)
-/**
- * @brief Get the effective log level for the current module
- * 
- * On the first call the module context is looked up once via
- * Dmod_GetModuleContext() and cached in a per-translation-unit static
- * variable.  Subsequent calls skip the lookup and call
- * Dmod_GetModuleLogLevel() directly, making them essentially a single
- * indirect function call.
- * 
- * @note Available only when compiling a named module
- *       (DMOD_MODULE_NAME defined and DMOD_MODULE_EN == ON).
- * 
- * @note Thread safety: a benign race is possible on the very first call
- *       from multiple threads - both will look up the same context and
- *       store the same pointer, so the result is always correct.
- */
-static inline Dmod_LogLevel_t Dmod_GetLogLevel(void)
-{
-    static bool s_initialized = false;
-    static Dmod_Context_t* s_ctx = NULL;
-    if( !s_initialized )
-    {
-        s_ctx = Dmod_GetModuleContext(Dmod_GetCurrentModuleName());
-        s_initialized = true;
-    }
-    return Dmod_GetModuleLogLevel(s_ctx);
-}
-#endif
-
 #ifdef __cplusplus
 }
 #endif
