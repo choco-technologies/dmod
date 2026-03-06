@@ -182,7 +182,8 @@ DMOD_BUILTIN_API( Dmod, 1.0, int  ,_Printf, ( const char* Format, ... ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_FPrintf, ( void* File, const char* Format, ... ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_VSnPrintf, ( char* Buffer, size_t Size, const char* Format, va_list Args ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_SnPrintf, ( char* Buffer, size_t Size, const char* Format, ... ) );
-DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message, const char* File, int Line, const char* Function ) );
+DMOD_BUILTIN_API( Dmod, 1.0, void        ,_Assert,      ( int Condition, const char* Message, const char* File, int Line, const char* Function ) );
+DMOD_BUILTIN_API( Dmod, 1.0, const char* ,_GetStepBar,  ( int Percent ) );
 
 #ifdef NDEBUG
 #   define DMOD_ASSERT_MSG( Condition, Message )           ((void)0)
@@ -191,6 +192,8 @@ DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message
 #endif
 #ifdef DMOD_NO_LOGGING
 #   define DMOD_LOG(...)                                   ((void)0)
+#   define DMOD_LOG_STEP_BEGIN(...)                        ((void)0)
+#   define DMOD_LOG_STEP_PROGRESS(Percent, ...)            ((void)0)
 #   define DMOD_LOG_STEP(Result, ...)                      ((void)0)
 #else
 #   ifdef DMOD_MODULE_NAME
@@ -203,13 +206,24 @@ DMOD_BUILTIN_API( Dmod, 1.0, void ,_Assert, ( int Condition, const char* Message
                                     Dmod_Printf( DMOD_LOG_MODULE_PREFIX __VA_ARGS__ );\
                                     Dmod_Printf( "\033[0m" );\
                                 }
+#   define DMOD_LOG_STEP_BEGIN(...)                        \
+                                do { \
+                                    Dmod_Printf( "\r\033[K[\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91] " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
+                                    Dmod_Printf( "\r" ); \
+                                } while(0)
+#   define DMOD_LOG_STEP_PROGRESS(Percent, ...)            \
+                                do { \
+                                    Dmod_Printf( "\r\033[K%s " DMOD_LOG_MODULE_PREFIX, Dmod_GetStepBar(Percent) ); \
+                                    Dmod_Printf( __VA_ARGS__ ); \
+                                    Dmod_Printf( "\r" ); \
+                                } while(0)
 #   define DMOD_LOG_STEP(Result, ...)                      \
                                 do { \
                                     if ((int)(Result) == 0) { \
-                                        Dmod_Printf( "\033[32;1m[  OK  ]\033[0m " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
+                                        Dmod_Printf( "\r\033[K\033[32;1m[  OK  ]\033[0m " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
                                         Dmod_Printf( "\033[0m" ); \
                                     } else { \
-                                        Dmod_Printf( "\033[31;1m[ FAIL ]\033[0m " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
+                                        Dmod_Printf( "\r\033[K\033[31;1m[ FAIL ]\033[0m " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \
                                         Dmod_Printf( "\033[0m" ); \
                                     } \
                                 } while(0)

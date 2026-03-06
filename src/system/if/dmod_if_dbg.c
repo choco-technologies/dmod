@@ -189,3 +189,30 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Assert, ( int Condition, const
     }
     #endif
 }
+
+/**
+ * @brief Get progress bar string for a given percentage
+ * 
+ * Returns one of seven UTF-8 block bar strings corresponding to 0–100%.
+ * Each of the 6 segments represents ~17% (Percent * 6 / 100, clamped to 0–6).
+ * 
+ * @param Percent  Completion percentage (0–100; values outside this range are clamped)
+ * 
+ * @return Pointer to a statically-allocated bar string, e.g. "[██░░░░]"
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetStepBar, ( int Percent ))
+{
+    static const char* const bars[7] = {
+        "[\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91]",
+        "[\xe2\x96\x88\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91]",
+        "[\xe2\x96\x88\xe2\x96\x88\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91]",
+        "[\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91]",
+        "[\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x91\xe2\x96\x91]",
+        "[\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x91]",
+        "[\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88\xe2\x96\x88]"
+    };
+    int idx = Percent * 6 / 100;
+    if( idx < 0 ) idx = 0;
+    if( idx > 6 ) idx = 6;
+    return bars[idx];
+}
