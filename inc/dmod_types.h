@@ -283,7 +283,8 @@ typedef struct
     Dmod_RequiredModule_t    RequiredModules[DMOD_MAX_REQUIRED_MODULES];
     bool                     Enabled;
     bool                     Running;
-    const char*              PackageName;  
+    const char*              PackageName;
+    Dmod_LogLevel_t          LogLevel;      /*!< Per-module log level. Dmod_LogLevel_Count = inherit from global. */
 } Dmod_Context_t;
 
 /**

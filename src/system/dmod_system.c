@@ -25,6 +25,8 @@ static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* Fil
 static bool IsAllApiConnected( Dmod_Context_t* Context );
 static bool PrepareModulePath( const char* RepoDir, const char* ModuleName, bool Compressed, char* Path, size_t MaxLength );
 static bool CheckModuleArchitecture( const char* FilePath, const char* ExpectedArch );
+static Dmod_LogLevel_t ParseLogLevelString( const char* Value );
+static void Dmod_ApplyEnvLogLevel( Dmod_Context_t* Context );
 
 //==============================================================================
 //                              LOCAL MACROS
@@ -42,6 +44,83 @@ static bool CheckModuleArchitecture( const char* FilePath, const char* ExpectedA
 //==============================================================================
 //                              FUNCTION IMPLEMENTATIONS
 //==============================================================================
+
+/**
+ * @brief Parse a log level from its string representation (case-insensitive)
+ *
+ * Recognised values: verbose, info, warning, error, none.
+ *
+ * @param Value  Null-terminated string (may be NULL)
+ *
+ * @return Corresponding Dmod_LogLevel_t, or Dmod_LogLevel_Count if unknown/NULL
+ */
+static Dmod_LogLevel_t ParseLogLevelString( const char* Value )
+{
+    if( Value == NULL )
+    {
+        return Dmod_LogLevel_Count;
+    }
+    /* Build a lowercase copy (up to 8 chars) for comparison */
+    char lower[8];
+    size_t i;
+    for( i = 0; i < sizeof(lower) - 1 && Value[i] != '\0'; i++ )
+    {
+        char c = Value[i];
+        lower[i] = ( c >= 'A' && c <= 'Z' ) ? (char)(c - 'A' + 'a') : c;
+    }
+    lower[i] = '\0';
+
+    if( strcmp(lower, "verbose") == 0 ) return Dmod_LogLevel_Verbose;
+    if( strcmp(lower, "info")    == 0 ) return Dmod_LogLevel_Info;
+    if( strcmp(lower, "warning") == 0 ) return Dmod_LogLevel_Warn;
+    if( strcmp(lower, "error")   == 0 ) return Dmod_LogLevel_Error;
+    if( strcmp(lower, "none")    == 0 ) return Dmod_LogLevel_None;
+    return Dmod_LogLevel_Count;
+}
+
+/**
+ * @brief Apply per-module log level from environment variable
+ *
+ * Reads the environment variable named <UPPERCASE_MODULE_NAME>_LOG_LEVEL.
+ * If found and parseable, stores the result in Context->LogLevel.
+ * Called once at module load time.
+ *
+ * @param Context  Loaded module context (must be valid with Header set)
+ */
+static void Dmod_ApplyEnvLogLevel( Dmod_Context_t* Context )
+{
+    const char* name = Dmod_Context_GetModuleName( Context );
+    if( name == NULL )
+    {
+        return;
+    }
+
+    /* Build "<UPPERCASE_MODULE_NAME>_LOG_LEVEL\0" in envName */
+    char envName[DMOD_MAX_MODULE_NAME_LENGTH + 11]; /* "_LOG_LEVEL\0" = 11 chars */
+    size_t i = 0;
+    while( name[i] != '\0' && i < (size_t)(DMOD_MAX_MODULE_NAME_LENGTH - 1) )
+    {
+        char c = name[i];
+        envName[i] = ( c >= 'a' && c <= 'z' ) ? (char)(c - 'a' + 'A') : c;
+        i++;
+    }
+    if( i + 11 > sizeof(envName) )
+    {
+        return;
+    }
+    memcpy( envName + i, "_LOG_LEVEL", 11 ); /* includes NUL terminator */
+
+    const char* envVal = Dmod_GetEnv( envName );
+    if( envVal != NULL )
+    {
+        Dmod_LogLevel_t level = ParseLogLevelString( envVal );
+        if( level < Dmod_LogLevel_Count )
+        {
+            Context->LogLevel = level;
+            DMOD_LOG_INFO("Module '%s' log level set from env var '%s': %d\n", name, envName, (int)level);
+        }
+    }
+}
 
 /**
  * @brief Initialize DMOD system
@@ -229,6 +308,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
     Dmod_PrintAllApis( context );
     Dmod_Event_ModuleLoadingInProgress( Path, 100 );
 
+    Dmod_ApplyEnvLogLevel( context );
     DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
     DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", Dmod_Context_GetModuleName( context ), DMOD_GET_TEXT_SECTION_ADDR(context));
 
@@ -321,6 +401,7 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
     Dmod_PrintAllApis( context );
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(context), 100 );
 
+    Dmod_ApplyEnvLogLevel( context );
     DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
     DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", Dmod_Context_GetModuleName( context ), DMOD_GET_TEXT_SECTION_ADDR(context));
     Dmod_Event_ModuleLoaded( context );
@@ -439,6 +520,7 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
     Dmod_PrintAllApis( context );
     Dmod_Event_ModuleLoadingInProgress( slot->FilePath, 100 );
 
+    Dmod_ApplyEnvLogLevel( context );
     DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
     DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", Dmod_Context_GetModuleName( context ), DMOD_GET_TEXT_SECTION_ADDR(context));
 
@@ -1278,6 +1360,76 @@ void Dmod_SetLogLevel( Dmod_LogLevel_t Level )
     }
     Dmod_LogLevel = Level;
     DMOD_LOG_INFO("Setting log level to: %d\n", Level);
+}
+
+/**
+ * @brief Set log level for a specific loaded module
+ * 
+ * Looks up the module by name and sets its per-module log level stored in
+ * the module's Dmod_Context_t.  If the module is not currently loaded a
+ * warning is emitted and the call is ignored.
+ * 
+ * @param ModuleName Name of the module (case-sensitive)
+ * @param Level      Log level to set for this module
+ */
+void Dmod_SetModuleLogLevel( const char* ModuleName, Dmod_LogLevel_t Level )
+{
+    if( ModuleName == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot set module log level - null module name\n");
+        return;
+    }
+    if( Level >= Dmod_LogLevel_Count )
+    {
+        DMOD_LOG_ERROR("Cannot set module log level - invalid level: %d\n", Level);
+        return;
+    }
+
+    Dmod_Context_t* context = Dmod_Context_Get( ModuleName );
+    if( context == NULL )
+    {
+        DMOD_LOG_WARN("Cannot set module log level - module '%s' is not loaded\n", ModuleName);
+        return;
+    }
+
+    context->LogLevel = Level;
+    DMOD_LOG_INFO("Set module log level for '%s' to: %d\n", ModuleName, Level);
+}
+
+/**
+ * @brief Get module context by module name
+ * 
+ * Returns the context for the named module, or NULL if the module is not
+ * currently loaded.
+ * 
+ * @param ModuleName Name of the module
+ * 
+ * @return Pointer to the module context, or NULL
+ */
+Dmod_Context_t* Dmod_GetModuleContext( const char* ModuleName )
+{
+    return Dmod_Context_Get( ModuleName );
+}
+
+/**
+ * @brief Get the effective log level for a module context
+ * 
+ * Returns the module-specific log level stored in the context.  If the
+ * context is invalid or its log level is set to the sentinel value
+ * Dmod_LogLevel_Count (meaning "inherit from global"), the current global
+ * Dmod_LogLevel is returned instead.
+ * 
+ * @param Context  Module context (may be NULL)
+ * 
+ * @return Effective log level for the module
+ */
+Dmod_LogLevel_t Dmod_GetModuleLogLevel( Dmod_Context_t* Context )
+{
+    if( !Dmod_Context_IsValid( Context ) || Context->LogLevel >= Dmod_LogLevel_Count )
+    {
+        return Dmod_LogLevel;
+    }
+    return Context->LogLevel;
 }
 
 /**

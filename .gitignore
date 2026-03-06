@@ -61,6 +61,8 @@ Thumbs.db
 
 # Build directories (use build/ for standard builds, not build_module/)
 build/
+build2/
+_build/
 build_module*/
 build-*/
 build_system/

@@ -95,6 +95,9 @@ extern bool         Dmod_ApiSignature_IsMal( const char* Signature );
 extern bool         Dmod_ApiSignature_IsBuiltin( const char* Signature );
 
 DMOD_BUILTIN_API( Dmod, 1.0, void       , _SetLogLevel, ( Dmod_LogLevel_t LogLevel ) );
+DMOD_BUILTIN_API( Dmod, 1.0, void       , _SetModuleLogLevel, ( const char* ModuleName, Dmod_LogLevel_t LogLevel ) );
+DMOD_BUILTIN_API( Dmod, 1.0, Dmod_Context_t*, _GetModuleContext, ( const char* ModuleName ) );
+DMOD_BUILTIN_API( Dmod, 1.0, Dmod_LogLevel_t, _GetModuleLogLevel, ( Dmod_Context_t* Context ) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _ReadModuleHeader, (const char* FilePath, Dmod_ModuleHeader_t* Header) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _ReadRequiredModules, (const char* Path, Dmod_RequiredModule_t* outRequiredModules, size_t MaxModules) );
 DMOD_BUILTIN_API( Dmod, 1.0, void       , _BeginUsage, (const char* ModuleName) );

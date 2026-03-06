@@ -201,11 +201,19 @@ DMOD_BUILTIN_API( Dmod, 1.0, const char* ,_GetStepBar,  ( int Percent ) );
 #   else
 #       define DMOD_LOG_MODULE_PREFIX  ""
 #   endif
-#   define DMOD_LOG(LogLevel,...)                          \
+#   if defined(DMOD_MODULE_NAME) && (DMOD_MODULE_EN == ON)
+#       define DMOD_LOG(LogLevel,...)                      \
+                                if(Dmod_GetLogLevel() >= (LogLevel)) {\
+                                    Dmod_Printf( DMOD_LOG_MODULE_PREFIX __VA_ARGS__ );\
+                                    Dmod_Printf( "\033[0m" );\
+                                }
+#   else
+#       define DMOD_LOG(LogLevel,...)                      \
                                 if(Dmod_CheckLogLevel(LogLevel)) {\
                                     Dmod_Printf( DMOD_LOG_MODULE_PREFIX __VA_ARGS__ );\
                                     Dmod_Printf( "\033[0m" );\
                                 }
+#   endif
 #   define DMOD_LOG_STEP_BEGIN(...)                        \
                                 do { \
                                     Dmod_Printf( "\r\033[K[\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91\xe2\x96\x91] " DMOD_LOG_MODULE_PREFIX __VA_ARGS__ ); \

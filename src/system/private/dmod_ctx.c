@@ -39,6 +39,7 @@ Dmod_Context_t* Dmod_Context_New( void* Data, size_t FileSize )
     Context->Running    = false;
     Context->UsageCounter = 0;
     Context->PackageName = NULL;
+    Context->LogLevel   = Dmod_LogLevel_Count; /* inherit from global until env var is applied */
 
     if( Context->Data == NULL )
     {
