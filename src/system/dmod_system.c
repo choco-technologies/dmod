@@ -2138,7 +2138,7 @@ static bool IsAllApiConnected( Dmod_Context_t* Context )
         const char* apiSignature = Context->Outputs.OutputSection->Entries[outputIndex];
         if(Dmod_ApiSignature_IsValid(apiSignature))
         {
-            DMOD_LOG_VERBOSE("API '%s' is not connected\n", apiSignature);
+            DMOD_LOG_ERROR("API '%s' is not connected\n", apiSignature);
             return false;
         }
     }
