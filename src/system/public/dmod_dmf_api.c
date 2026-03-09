@@ -174,21 +174,23 @@ bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
 }
 
 /**
- * @brief Check if a pointer matches any known function in system inputs or loaded module inputs
+ * @brief Find the signature of a connected function matching a given pointer
  *
  * This is used by Dmod_VerifyAllApisSignatures to distinguish between an output
  * entry that is already connected (holds a valid function pointer) and one that
- * contains garbage or an unrecognised value.
+ * contains garbage or an unrecognised value.  When a match is found the
+ * associated signature string is returned so callers can include it in log
+ * messages.
  *
- * @param Pointer Pointer to check
+ * @param Pointer Pointer to look up
  *
- * @return true if the pointer matches a known connected function, false otherwise
+ * @return Signature string of the matching input entry, or NULL if not found
  */
-static bool IsPointerAConnectedFunction( void* Pointer )
+static const char* FindConnectedFunctionSignature( void* Pointer )
 {
     if( Pointer == NULL )
     {
-        return false;
+        return NULL;
     }
 
     // Check system builtin inputs
@@ -199,7 +201,7 @@ static bool IsPointerAConnectedFunction( void* Pointer )
         {
             if( Dmod_BuiltinInputApi.InputSection->Entries[i].Function == Pointer )
             {
-                return true;
+                return Dmod_BuiltinInputApi.InputSection->Entries[i].Signature;
             }
         }
     }
@@ -216,12 +218,12 @@ static bool IsPointerAConnectedFunction( void* Pointer )
         {
             if( Dmod_Contexts[i]->Inputs.InputSection->Entries[j].Function == Pointer )
             {
-                return true;
+                return Dmod_Contexts[i]->Inputs.InputSection->Entries[j].Signature;
             }
         }
     }
 
-    return false;
+    return NULL;
 }
 
 /**
@@ -246,9 +248,10 @@ bool Dmod_VerifyAllApisSignatures( Dmod_Context_t* Context )
     {
         if( !Dmod_ApiSignature_IsValid( Context->Outputs.OutputSection->Entries[i] ) )
         {
-            if( IsPointerAConnectedFunction( Context->Outputs.OutputSection->Entries[i] ) )
+            const char* connectedSignature = FindConnectedFunctionSignature( Context->Outputs.OutputSection->Entries[i] );
+            if( connectedSignature != NULL )
             {
-                DMOD_LOG_WARN("Output API at index %zu is already connected (function: %p)\n", i, Context->Outputs.OutputSection->Entries[i]);
+                DMOD_LOG_VERBOSE("Output API at index %zu is already connected: %s\n", i, connectedSignature);
             }
             else
             {
