@@ -364,6 +364,40 @@ void Dmod_PrintAllApis( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Get the number of output API entries for a module
+ * 
+ * @param Context Context to query
+ * 
+ * @return Number of output API entries, or 0 if the context is invalid
+ */
+size_t Dmod_GetOutputApiCount( Dmod_Context_t* Context )
+{
+    if( !Dmod_Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot get output API count - invalid context\n");
+        return 0;
+    }
+    return Dmod_Api_GetNumberOfEntries( &Context->Outputs );
+}
+
+/**
+ * @brief Get the number of input API entries for a module
+ * 
+ * @param Context Context to query
+ * 
+ * @return Number of input API entries, or 0 if the context is invalid
+ */
+size_t Dmod_GetInputApiCount( Dmod_Context_t* Context )
+{
+    if( !Dmod_Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot get input API count - invalid context\n");
+        return 0;
+    }
+    return Dmod_Api_GetNumberOfEntries( &Context->Inputs );
+}
+
+/**
  * @brief Get the signature string for an output API entry by index
  * 
  * @param Context Context to query

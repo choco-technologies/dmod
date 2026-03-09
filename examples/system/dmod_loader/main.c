@@ -639,7 +639,7 @@ static void PrintModuleApiList( Dmod_Context_t* context )
     printf("Module: %s\n\n", Dmod_GetName( context ));
 
     // Print output APIs
-    size_t outputCount = Dmod_Api_GetNumberOfEntries( &context->Outputs );
+    size_t outputCount = Dmod_GetOutputApiCount( context );
     printf("Output APIs (%zu):\n", outputCount);
     for( size_t i = 0; i < outputCount; i++ )
     {
@@ -648,7 +648,7 @@ static void PrintModuleApiList( Dmod_Context_t* context )
     }
 
     // Print input APIs
-    size_t inputCount = Dmod_Api_GetNumberOfEntries( &context->Inputs );
+    size_t inputCount = Dmod_GetInputApiCount( context );
     printf("\nInput APIs (%zu):\n", inputCount);
     for( size_t i = 0; i < inputCount; i++ )
     {
