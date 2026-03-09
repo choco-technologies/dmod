@@ -179,33 +179,6 @@ DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetCurrentModuleNameEx, ( const char* 
  * @{
  */
 
- #ifdef DMOD_MODULE_NAME
-    /**
-     * @brief Get the effective log level for the current module
-     * 
-     * On the first call the module context is looked up via
-     * Dmod_GetModuleContext() using the module name supplied by
-     * Dmod_GetCurrentModuleName(), and the result is cached in a static
-     * variable.  Subsequent calls skip the lookup entirely.
-     * 
-     * A critical section guards the initialization to prevent concurrent
-     * first-call races.
-     */
-    static inline Dmod_LogLevel_t Dmod_GetLogLevel(void)
-    {
-        static volatile Dmod_Context_t* s_ctx = NULL;
-
-        Dmod_EnterCritical();
-        if( s_ctx == NULL )
-        {
-            s_ctx = Dmod_GetModuleContext(Dmod_GetCurrentModuleName());
-        }
-        Dmod_ExitCritical();
-
-        return Dmod_GetModuleLogLevel(s_ctx);
-    }
- #endif 
-
 DMOD_BUILTIN_API( Dmod, 1.0, bool ,_CheckLogLevel, ( Dmod_LogLevel_t LogLevel ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_Printf, ( const char* Format, ... ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_FPrintf, ( void* File, const char* Format, ... ) );
