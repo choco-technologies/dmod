@@ -802,6 +802,11 @@ int main( int argc, char *argv[] )
         }
     }
 
+    if (listApiMode)
+    {
+        Dmod_SetCrossplatformMode( true );
+    }
+
     // Handle --info: print header info and exit (no module loading)
     if( infoMode )
     {
