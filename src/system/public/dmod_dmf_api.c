@@ -174,16 +174,64 @@ bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Verify that all API signatures are valid
+ * 
+ * @param Context Context to verify APIs
+ */
+bool Dmod_VerifyAllApisSignatures( Dmod_Context_t* Context )
+{
+    if( !Dmod_Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot verify API signatures - invalid context\n");
+        return false;
+    }
+
+    Dmod_EnterCritical();
+
+    bool result = true;
+
+    size_t numberOfOutputs = Dmod_Api_GetNumberOfEntries( &Context->Outputs );
+    for(size_t i = 0; i < numberOfOutputs; i++)
+    {
+        if( !Dmod_ApiSignature_IsValid( Context->Outputs.OutputSection->Entries[i] ) )
+        {
+            DMOD_LOG_ERROR("Invalid API signature in output API: %s\n", (const char*)(uintptr_t)Context->Outputs.OutputSection->Entries[i]);
+            result = false;
+        }
+    }
+
+    size_t numberOfInputs = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
+    for(size_t i = 0; i < numberOfInputs; i++)
+    {
+        if( !Dmod_ApiSignature_IsValid( Context->Inputs.InputSection->Entries[i].Signature ) )
+        {
+            DMOD_LOG_ERROR("Invalid API signature in input API: %s\n", Context->Inputs.InputSection->Entries[i].Signature);
+            result = false;
+        }
+    }
+
+    Dmod_ExitCritical();
+
+    return result;
+}
+
+
+/**
  * @brief Connect all APIs
  * 
  * @param Context Context to connect APIs
  */
 bool Dmod_ConnectAllApis( Dmod_Context_t* Context )
 {
+    DMOD_LOG_VERBOSE("Connecting all APIs for module: %s\n", Dmod_Context_GetModuleName( Context ));
     if( !Dmod_Context_IsValid( Context ) )
     {
         DMOD_LOG_ERROR("Cannot connect APIs - invalid context\n");
         return false;
+    }
+    if( !Dmod_VerifyAllApisSignatures( Context ) )
+    {
+        DMOD_LOG_WARN("Cannot connect APIs - invalid API signatures\n");
     }
 
     Dmod_EnterCritical();

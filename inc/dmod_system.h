@@ -70,6 +70,7 @@ extern bool             Dmod_ConnectApi         ( Dmod_Api_t* OutputsApi, Dmod_A
 extern bool             Dmod_DisconnectApi      ( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi );
 extern bool             Dmod_ConnectOutputApis  ( Dmod_Context_t* Context );
 extern bool             Dmod_ConnectInputApis   ( Dmod_Context_t* Context );
+extern bool             Dmod_VerifyAllApisSignatures( Dmod_Context_t* Context );
 extern bool             Dmod_ConnectAllApis     ( Dmod_Context_t* Context );
 extern bool             Dmod_DisconnectOutputApis( Dmod_Context_t* Context );
 extern bool             Dmod_DisconnectInputApis ( Dmod_Context_t* Context );
