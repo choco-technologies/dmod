@@ -174,6 +174,59 @@ bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Find the signature of a connected function matching a given pointer
+ *
+ * This is used by Dmod_VerifyAllApisSignatures to distinguish between an output
+ * entry that is already connected (holds a valid function pointer) and one that
+ * contains garbage or an unrecognised value.  When a match is found the
+ * associated signature string is returned so callers can include it in log
+ * messages.
+ *
+ * @param Pointer Pointer to look up
+ *
+ * @return Signature string of the matching input entry, or NULL if not found
+ */
+static const char* FindConnectedFunctionSignature( void* Pointer )
+{
+    if( Pointer == NULL )
+    {
+        return NULL;
+    }
+
+    // Check system builtin inputs
+    if( Dmod_BuiltinInputApi.InputSection != NULL )
+    {
+        size_t numberOfBuiltinInputs = Dmod_Api_GetNumberOfEntries( &Dmod_BuiltinInputApi );
+        for( size_t i = 0; i < numberOfBuiltinInputs; i++ )
+        {
+            if( Dmod_BuiltinInputApi.InputSection->Entries[i].Function == Pointer )
+            {
+                return Dmod_BuiltinInputApi.InputSection->Entries[i].Signature;
+            }
+        }
+    }
+
+    // Check loaded module inputs
+    for( size_t i = 0; i < DMOD_MAX_MODULES; i++ )
+    {
+        if( Dmod_Contexts[i] == NULL || Dmod_Contexts[i]->Inputs.InputSection == NULL )
+        {
+            continue;
+        }
+        size_t numberOfInputs = Dmod_Api_GetNumberOfEntries( &Dmod_Contexts[i]->Inputs );
+        for( size_t j = 0; j < numberOfInputs; j++ )
+        {
+            if( Dmod_Contexts[i]->Inputs.InputSection->Entries[j].Function == Pointer )
+            {
+                return Dmod_Contexts[i]->Inputs.InputSection->Entries[j].Signature;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+/**
  * @brief Verify that all API signatures are valid
  * 
  * @param Context Context to verify APIs
@@ -195,8 +248,16 @@ bool Dmod_VerifyAllApisSignatures( Dmod_Context_t* Context )
     {
         if( !Dmod_ApiSignature_IsValid( Context->Outputs.OutputSection->Entries[i] ) )
         {
-            DMOD_LOG_ERROR("Invalid API signature in output API: %s\n", (const char*)(uintptr_t)Context->Outputs.OutputSection->Entries[i]);
-            result = false;
+            const char* connectedSignature = FindConnectedFunctionSignature( Context->Outputs.OutputSection->Entries[i] );
+            if( connectedSignature != NULL )
+            {
+                DMOD_LOG_VERBOSE("Output API at index %zu is already connected: %s\n", i, connectedSignature);
+            }
+            else
+            {
+                DMOD_LOG_ERROR("Invalid API signature in output API: %s\n", (const char*)(uintptr_t)Context->Outputs.OutputSection->Entries[i]);
+                result = false;
+            }
         }
     }
 
