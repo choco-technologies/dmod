@@ -174,6 +174,57 @@ bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Check if a pointer matches any known function in system inputs or loaded module inputs
+ *
+ * This is used by Dmod_VerifyAllApisSignatures to distinguish between an output
+ * entry that is already connected (holds a valid function pointer) and one that
+ * contains garbage or an unrecognised value.
+ *
+ * @param Pointer Pointer to check
+ *
+ * @return true if the pointer matches a known connected function, false otherwise
+ */
+static bool IsPointerAConnectedFunction( void* Pointer )
+{
+    if( Pointer == NULL )
+    {
+        return false;
+    }
+
+    // Check system builtin inputs
+    if( Dmod_BuiltinInputApi.InputSection != NULL )
+    {
+        size_t numberOfBuiltinInputs = Dmod_Api_GetNumberOfEntries( &Dmod_BuiltinInputApi );
+        for( size_t i = 0; i < numberOfBuiltinInputs; i++ )
+        {
+            if( Dmod_BuiltinInputApi.InputSection->Entries[i].Function == Pointer )
+            {
+                return true;
+            }
+        }
+    }
+
+    // Check loaded module inputs
+    for( size_t i = 0; i < DMOD_MAX_MODULES; i++ )
+    {
+        if( Dmod_Contexts[i] == NULL || Dmod_Contexts[i]->Inputs.InputSection == NULL )
+        {
+            continue;
+        }
+        size_t numberOfInputs = Dmod_Api_GetNumberOfEntries( &Dmod_Contexts[i]->Inputs );
+        for( size_t j = 0; j < numberOfInputs; j++ )
+        {
+            if( Dmod_Contexts[i]->Inputs.InputSection->Entries[j].Function == Pointer )
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
  * @brief Verify that all API signatures are valid
  * 
  * @param Context Context to verify APIs
@@ -195,8 +246,15 @@ bool Dmod_VerifyAllApisSignatures( Dmod_Context_t* Context )
     {
         if( !Dmod_ApiSignature_IsValid( Context->Outputs.OutputSection->Entries[i] ) )
         {
-            DMOD_LOG_ERROR("Invalid API signature in output API: %s\n", (const char*)(uintptr_t)Context->Outputs.OutputSection->Entries[i]);
-            result = false;
+            if( IsPointerAConnectedFunction( Context->Outputs.OutputSection->Entries[i] ) )
+            {
+                DMOD_LOG_WARN("Output API at index %zu is already connected (function: %p)\n", i, Context->Outputs.OutputSection->Entries[i]);
+            }
+            else
+            {
+                DMOD_LOG_ERROR("Invalid API signature in output API: %s\n", (const char*)(uintptr_t)Context->Outputs.OutputSection->Entries[i]);
+                result = false;
+            }
         }
     }
 
