@@ -630,12 +630,41 @@ bool IsFilePath( const char* str )
 
 // -----------------------------------------
 //
+//      Prints the input and output API list
+//      of a loaded module to stdout
+//
+// -----------------------------------------
+static void PrintModuleApiList( Dmod_Context_t* context )
+{
+    printf("Module: %s\n\n", Dmod_GetName( context ));
+
+    // Print output APIs
+    size_t outputCount = Dmod_GetOutputApiCount( context );
+    printf("Output APIs (%zu):\n", outputCount);
+    for( size_t i = 0; i < outputCount; i++ )
+    {
+        const char* sig = Dmod_GetOutputApiSignature( context, i );
+        printf("  %s\n", sig ? sig : "(null)");
+    }
+
+    // Print input APIs
+    size_t inputCount = Dmod_GetInputApiCount( context );
+    printf("\nInput APIs (%zu):\n", inputCount);
+    for( size_t i = 0; i < inputCount; i++ )
+    {
+        const char* sig = Dmod_GetInputApiSignature( context, i );
+        printf("  %s\n", sig ? sig : "(null)");
+    }
+}
+
+// -----------------------------------------
+//
 //      Prints usage message
 //
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]] [--info] [--stack [size]] [--stack-timeout <seconds>]\n", AppName);
+    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]] [--info] [--list-api] [--stack [size]] [--stack-timeout <seconds>]\n", AppName);
 }
 
 // -----------------------------------------
@@ -648,11 +677,12 @@ void PrintHelp( const char* AppName )
     printf("-- Dynamic Module Loader ver. " DMOD_VERSION_STRING " --\n\n");
     printf("The DMOD is a dynamic module loader that allows to load and unload modules\n");
     printf("This is an example application that uses the DMOD system\n\n");
-    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]] [--info] [--stack [size]] [--stack-timeout <seconds>]\n", AppName);
+    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]] [--info] [--list-api] [--stack [size]] [--stack-timeout <seconds>]\n", AppName);
     printf("Options:\n");
     printf("  -h, --help                Print this help message\n");
     printf("  -v, --version             Print version information\n");
     printf("  --info                    Print header information from a dmf/dmfc/dmp file without running it\n");
+    printf("  --list-api                Load the module and print its input/output API list, then exit\n");
     printf("  --module <module_name>    Specify which module to load from a DMP package\n");
     printf("  --args <arguments>        Arguments to pass to the application module\n");
     printf("  --debug [elf_path]        Debug mode: pause after load, show addresses\n");
@@ -679,6 +709,8 @@ void PrintHelp( const char* AppName )
     printf("  %s my-app.dmf --debug ./my-app                # Debug mode + generate scripts\n", AppName);
     printf("  %s my-app.dmf --info                          # Print header info without running\n", AppName);
     printf("  %s my-package.dmp --info                      # Print DMP package info\n", AppName);
+    printf("  %s my-app.dmf --list-api                      # Print module input/output API list\n", AppName);
+    printf("  %s my-package.dmp --module my_module --list-api  # Print API list of a module in a package\n", AppName);
     printf("  %s my-app.dmf --stack                         # Stack analysis with default 1 MB stack\n", AppName);
     printf("  %s my-app.dmf --stack 2M                      # Stack analysis with 2 MB stack\n", AppName);
     printf("  %s my-app.dmf --stack 512k --stack-timeout 5  # Stack analysis, 512 KB, 5 s timeout\n", AppName);
@@ -724,6 +756,7 @@ int main( int argc, char *argv[] )
     char** appArgv = NULL;
     bool debugMode = false;
     bool infoMode = false;
+    bool listApiMode = false;
     bool stackMode = false;
     size_t stackSize = STACK_DEFAULT_SIZE;
     unsigned int stackTimeout = 0;
@@ -753,6 +786,10 @@ int main( int argc, char *argv[] )
         else if( strcmp( argv[i], "--info" ) == 0 )
         {
             infoMode = true;
+        }
+        else if( strcmp( argv[i], "--list-api" ) == 0 )
+        {
+            listApiMode = true;
         }
         else if( strcmp( argv[i], "--stack" ) == 0 )
         {
@@ -948,6 +985,15 @@ int main( int argc, char *argv[] )
         Dmod_Unload( context, false );
         Dmod_Free( appArgv );
         return result;
+    }
+
+    // If list-api mode is enabled, print APIs and exit without running
+    if( listApiMode )
+    {
+        PrintModuleApiList( context );
+        Dmod_Unload( context, false );
+        Dmod_Free( appArgv );
+        return 0;
     }
 
     // Check module type and handle accordingly
