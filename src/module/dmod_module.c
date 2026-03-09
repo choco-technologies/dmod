@@ -16,13 +16,14 @@ Dmod_LogLevel_t Dmod_GetLogLevel(void)
     static volatile bool s_initialized = false;
     static Dmod_Context_t* s_ctx = NULL;
 
-    Dmod_EnterCritical();
+    // TODO: Check why this crashes in dmgpio (it is not connected)
+    // Dmod_EnterCritical();
     if( !s_initialized )
     {
         s_ctx = Dmod_GetModuleContext(Dmod_GetCurrentModuleName());
         s_initialized = true;
     }
-    Dmod_ExitCritical();
+    // Dmod_ExitCritical();
 
     return Dmod_GetModuleLogLevel(s_ctx);
 }
