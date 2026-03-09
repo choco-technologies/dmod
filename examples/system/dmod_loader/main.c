@@ -643,17 +643,7 @@ static void PrintModuleApiList( Dmod_Context_t* context )
     printf("Output APIs (%zu):\n", outputCount);
     for( size_t i = 0; i < outputCount; i++ )
     {
-        const char* sig;
-        if( context->Outputs.Crossplatform )
-        {
-            // In crossplatform mode the entry is a 32-bit file offset stored as an integer;
-            // cast via uintptr_t to suppress pointer-width warnings before treating as string.
-            sig = (const char*)(uintptr_t)context->Outputs.OutputSectionCross->Entries[i];
-        }
-        else
-        {
-            sig = (const char*)context->Outputs.OutputSection->Entries[i];
-        }
+        const char* sig = Dmod_GetOutputApiSignature( context, i );
         printf("  %s\n", sig ? sig : "(null)");
     }
 
@@ -662,16 +652,7 @@ static void PrintModuleApiList( Dmod_Context_t* context )
     printf("\nInput APIs (%zu):\n", inputCount);
     for( size_t i = 0; i < inputCount; i++ )
     {
-        const char* sig;
-        if( context->Inputs.Crossplatform )
-        {
-            // Same crossplatform convention: Signature is a 32-bit file offset cast to string.
-            sig = (const char*)(uintptr_t)context->Inputs.InputSectionCross->Entries[i].Signature;
-        }
-        else
-        {
-            sig = context->Inputs.InputSection->Entries[i].Signature;
-        }
+        const char* sig = Dmod_GetInputApiSignature( context, i );
         printf("  %s\n", sig ? sig : "(null)");
     }
 }
