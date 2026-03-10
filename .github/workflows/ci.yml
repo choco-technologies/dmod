@@ -71,6 +71,12 @@ jobs:
           ./examples/system/dif_test/dif_test
           ./examples/system/dif_test/test_direct_access
       
+      - name: Test DMOD_LOG_STEP_* macros via log_step module
+        working-directory: build
+        run: |
+          ./examples/system/dmod_loader/dmod_loader ./dmf/log_step.dmf
+          echo "log_step module loaded and executed successfully"
+      
       - name: Run manifest library tests
         working-directory: build
         run: ./tests/tests_dmod_manifest
@@ -218,6 +224,9 @@ jobs:
         run: |
           chmod +x ./build/examples/dif_test/dif_test
           ./build/examples/dif_test/dif_test
+      
+      - name: Test DMOD_LOG_STEP_* macros via log_step module
+        run: ./build/examples/system/dmod_loader build/dmf/log_step.dmf && echo "log_step module loaded and executed successfully"
       
       - name: Create DMP package from DMF files
         run: |
