@@ -7,7 +7,8 @@ DMOD_DIR=../..
 #   Subdirectories
 # -----------------------------------------------------------------------------
 SUBDIRS := library \
-	  application
+	  application \
+	  log_step
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths
