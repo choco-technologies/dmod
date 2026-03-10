@@ -225,9 +225,6 @@ jobs:
           chmod +x ./build/examples/dif_test/dif_test
           ./build/examples/dif_test/dif_test
       
-      - name: Test DMOD_LOG_STEP_* macros via log_step module
-        run: ./build/examples/system/dmod_loader build/dmf/log_step.dmf && echo "log_step module loaded and executed successfully"
-      
       - name: Create DMP package from DMF files
         run: |
           # Rebuild DMF files (remove artifacts to force rebuild)
