@@ -230,6 +230,10 @@ bool Dmod_ApiSignature_ReadModuleName( const char* Signature, char* ModuleName, 
     {
         return false;
     }
+    if( ModuleName == NULL )
+    {
+        return false;
+    }
     if( !Dmod_ApiSignature_IsValid( Signature ) )
     {
         return false;
@@ -275,6 +279,10 @@ bool Dmod_ApiSignature_ReadVersion( const char* Signature, char* Version, size_t
     {
         return false;
     }
+    if( Version == NULL )
+    {
+        return false;
+    }
     if( !Dmod_ApiSignature_IsValid( Signature ) )
     {
         return false;
@@ -312,6 +320,10 @@ bool Dmod_ApiSignature_ReadVersion( const char* Signature, char* Version, size_t
 bool Dmod_ApiSignature_ReadModuleVersion( const char* Signature, char* ModuleVersion, size_t MaxLength )
 {
     if(MaxLength == 0)
+    {
+        return false;
+    }
+    if( ModuleVersion == NULL )
     {
         return false;
     }
@@ -500,6 +512,11 @@ static bool ApiSignature_AreModulesEqual( const char* Signature1, const char* Si
     const char* module1 = ApiSignature_GetModule( Signature1 );
     const char* module2 = ApiSignature_GetModule( Signature2 );
 
+    if( module1 == NULL || module2 == NULL )
+    {
+        return module1 == module2;
+    }
+
     while( *module1 != '\0' && *module2 != '\0' && *module1 != ':' && *module2 != ':' )
     {
         if( *module1 != *module2 )
@@ -525,6 +542,11 @@ static bool ApiSignature_AreApiVersionsCompatible( const char* Signature1, const
 {
     const char* version1 = ApiSignature_GetVersion( Signature1 );
     const char* version2 = ApiSignature_GetVersion( Signature2 );
+
+    if( version1 == NULL || version2 == NULL )
+    {
+        return version1 == version2;
+    }
 
     while( *version1 != '\0' && *version2 != '\0' && *version1 != '/' && *version2 != '/' && *version1 != '.' && *version2 != '.' )
     {
@@ -552,6 +574,11 @@ static bool ApiSignature_AreModuleVersionsCompatible( const char* Signature1, co
 {
     const char* moduleVersion1 = ApiSignature_GetModuleVersion( Signature1 );
     const char* moduleVersion2 = ApiSignature_GetModuleVersion( Signature2 );
+
+    if( moduleVersion1 == NULL || moduleVersion2 == NULL )
+    {
+        return moduleVersion1 == moduleVersion2;
+    }
 
     while( *moduleVersion1 != '\0' && *moduleVersion2 != '\0' && *moduleVersion1 != '.' && *moduleVersion2 != '.' )
     {
