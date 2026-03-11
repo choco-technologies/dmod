@@ -10,7 +10,9 @@ static const char* ApiSignature_GetModuleVersion( const char* Signature );
 static const char* ApiSignature_GetModule( const char* Signature );
 static bool ApiSignature_AreNamesEqual( const char* Signature1, const char* Signature2 );
 static bool ApiSignature_AreModulesEqual( const char* Signature1, const char* Signature2 );
-static bool ApiSignature_AreVersionsEqual( const char* Signature1, const char* Signature2 );
+static bool ApiSignature_AreApiVersionsCompatible( const char* Signature1, const char* Signature2 );
+static bool ApiSignature_AreModuleVersionsCompatible( const char* Signature1, const char* Signature2 );
+static bool ApiSignature_AreVersionsCompatible( const char* Signature1, const char* Signature2 );
 
 //==============================================================================
 //                              FUNCTION IMPLEMENTATIONS
@@ -339,14 +341,14 @@ bool Dmod_ApiSignature_ReadModuleVersion( const char* Signature, char* ModuleVer
 }
 
 /**
- * @brief Check if API signatures are equal
+ * @brief Check if API signatures are compatible
  * 
  * @param Signature1 First signature
  * @param Signature2 Second signature
  * 
- * @return true if signatures are equal, false otherwise
+ * @return true if signatures are compatible, false otherwise
  */
-bool Dmod_ApiSignature_AreEqual( const char* Signature1, const char* Signature2 )
+bool Dmod_ApiSignature_AreCompatible( const char* Signature1, const char* Signature2 )
 {
     if( !Dmod_ApiSignature_IsValid( Signature1 ) || !Dmod_ApiSignature_IsValid( Signature2 ) )
     {
@@ -355,7 +357,7 @@ bool Dmod_ApiSignature_AreEqual( const char* Signature1, const char* Signature2 
 
     return ApiSignature_AreNamesEqual( Signature1, Signature2 )
         && ApiSignature_AreModulesEqual( Signature1, Signature2 )
-        && ApiSignature_AreVersionsEqual( Signature1, Signature2 );
+        && ApiSignature_AreVersionsCompatible( Signature1, Signature2 );
 }
 
 /**
@@ -472,7 +474,7 @@ static bool ApiSignature_AreNamesEqual( const char* Signature1, const char* Sign
     const char* name1 = ApiSignature_GetName( Signature1 );
     const char* name2 = ApiSignature_GetName( Signature2 );
 
-    while( *name1 != '\0' && *name2 != '\0' && *name1 != ':' && *name2 != ':' )
+    while( *name1 != '\0' && *name2 != '\0' && *name1 != '@' && *name2 != '@' )
     {
         if( *name1 != *name2 )
         {
@@ -498,7 +500,7 @@ static bool ApiSignature_AreModulesEqual( const char* Signature1, const char* Si
     const char* module1 = ApiSignature_GetModule( Signature1 );
     const char* module2 = ApiSignature_GetModule( Signature2 );
 
-    while( *module1 != '\0' && *module2 != '\0' && *module1 != '@' && *module2 != '@' )
+    while( *module1 != '\0' && *module2 != '\0' && *module1 != ':' && *module2 != ':' )
     {
         if( *module1 != *module2 )
         {
@@ -512,23 +514,23 @@ static bool ApiSignature_AreModulesEqual( const char* Signature1, const char* Si
 }
 
 /**
- * @brief Check if versions are equal
+ * @brief Check if API versions are compatible
  * 
  * @param Signature1 First signature
  * @param Signature2 Second signature
  * 
- * @return true if versions are equal, false otherwise
+ * @return true if API versions are compatible, false otherwise
  */
-static bool ApiSignature_AreVersionsEqual( const char* Signature1, const char* Signature2 )
+static bool ApiSignature_AreApiVersionsCompatible( const char* Signature1, const char* Signature2 )
 {
     const char* version1 = ApiSignature_GetVersion( Signature1 );
     const char* version2 = ApiSignature_GetVersion( Signature2 );
 
-    while( *version1 != '\0' && *version2 != '\0' && *version1 != '.' && *version2 != '.' )
+    while( *version1 != '\0' && *version2 != '\0' && *version1 != '/' && *version2 != '/' && *version1 != '.' && *version2 != '.' )
     {
         if( *version1 != *version2 )
         {
-            DMOD_LOG_ERROR("Version mismatch: %s != %s\n", version1, version2);
+            DMOD_LOG_ERROR("API version mismatch: %s != %s\n", version1, version2);
             return false;
         }
         version1++;
@@ -536,4 +538,45 @@ static bool ApiSignature_AreVersionsEqual( const char* Signature1, const char* S
     }
 
     return *version1 == *version2;
+}
+
+/**
+ * @brief Check if module versions are equal
+ * 
+ * @param Signature1 First signature
+ * @param Signature2 Second signature
+ * 
+ * @return true if module versions are compatible, false otherwise
+ */
+static bool ApiSignature_AreModuleVersionsCompatible( const char* Signature1, const char* Signature2 )
+{
+    const char* moduleVersion1 = ApiSignature_GetModuleVersion( Signature1 );
+    const char* moduleVersion2 = ApiSignature_GetModuleVersion( Signature2 );
+
+    while( *moduleVersion1 != '\0' && *moduleVersion2 != '\0' && *moduleVersion1 != '.' && *moduleVersion2 != '.' )
+    {
+        if( *moduleVersion1 != *moduleVersion2 )
+        {
+            DMOD_LOG_ERROR("Module version mismatch: %s != %s\n", moduleVersion1, moduleVersion2);
+            return false;
+        }
+        moduleVersion1++;
+        moduleVersion2++;
+    }
+
+    return *moduleVersion1 == *moduleVersion2;
+}
+
+/**
+ * @brief Check if versions are compatible
+ * 
+ * @param Signature1 First signature
+ * @param Signature2 Second signature
+ * 
+ * @return true if versions are compatible, false otherwise
+ */
+static bool ApiSignature_AreVersionsCompatible( const char* Signature1, const char* Signature2 )
+{
+    return ApiSignature_AreApiVersionsCompatible( Signature1, Signature2 ) 
+        && ApiSignature_AreModuleVersionsCompatible( Signature1, Signature2 );
 }
