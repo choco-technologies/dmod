@@ -434,3 +434,230 @@ TEST_F(DmodApiSignatureTest, IsBuiltinReturnsTrueForBuiltinSignature)
     EXPECT_TRUE(Dmod_ApiSignature_IsBuiltin(builtinSig));
     EXPECT_FALSE(Dmod_ApiSignature_IsBuiltin(dmodSig));
 }
+
+// ===============================================================
+//         Tests for complex / elaborate version strings
+//
+// Compatibility rules (derived from the implementation):
+//   API version:    only the segment before the first '.' or '/' is compared.
+//   Module version: only the segment before the first '.' is compared.
+//
+// In DMOD_MAKE_SIGNATURE the VERSION token is stringified as-is, so
+//   0.3/0.5  → version field "0.3/0.5"   (API major "0", module major "0")
+//   0.3.2/0.67.0 → "0.3.2/0.67.0"       (API major "0", module major "0")
+//   10/2     → "10/2"                    (API major "10", module major "2")
+//   23.5/4.1 → "23.5/4.1"               (API major "23", module major "4")
+// ===============================================================
+
+// ---------------------------------------------------------------
+// Group: two-component dotted version  A.B / C.D
+// ---------------------------------------------------------------
+
+/**
+ * @brief Identical two-component dotted versions must be compatible.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleDottedVersion_SameBoth)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 0.3/0.5, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 0.3/0.5, Func);
+    EXPECT_TRUE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Different API minor (0.3 vs 0.7) with the same API major (0) must be
+ *        compatible — the minor part after '.' is not compared.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleDottedVersion_DifferentApiMinor)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 0.3/0.5, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 0.7/0.5, Func);
+    EXPECT_TRUE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Different API major (0 vs 1) must be incompatible.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleDottedVersion_DifferentApiMajorReturnsFalse)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 0.3/0.5, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 1.3/0.5, Func);
+    EXPECT_FALSE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Different module minor (0.5 vs 0.9) with the same module major (0) must
+ *        be compatible.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleDottedVersion_DifferentModuleMinor)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 0.3/0.5, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 0.3/0.9, Func);
+    EXPECT_TRUE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Different module major (0 vs 1) must be incompatible.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleDottedVersion_DifferentModuleMajorReturnsFalse)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 0.3/0.5, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 0.3/1.5, Func);
+    EXPECT_FALSE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+// ---------------------------------------------------------------
+// Group: multi-segment version  A.B.C / D.E.F
+// ---------------------------------------------------------------
+
+/**
+ * @brief Identical multi-segment versions must be compatible.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleMultiSegment_SameBoth)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 0.3.2/0.67.0, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 0.3.2/0.67.0, Func);
+    EXPECT_TRUE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Different API middle and trailing segments (0.3.2 vs 0.9.1) with the
+ *        same API major (0) must be compatible.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleMultiSegment_DifferentApiMinorSegments)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 0.3.2/0.67.0, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 0.9.1/0.67.0, Func);
+    EXPECT_TRUE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Different API major (0 vs 1) in a multi-segment version must be
+ *        incompatible.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleMultiSegment_DifferentApiMajorReturnsFalse)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 0.3.2/0.67.0, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 1.3.2/0.67.0, Func);
+    EXPECT_FALSE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Different module minor segments (0.67.0 vs 0.99.5) with the same
+ *        module major (0) must be compatible.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleMultiSegment_DifferentModuleMinorSegments)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 0.3.2/0.67.0, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 0.3.2/0.99.5, Func);
+    EXPECT_TRUE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Different module major (0 vs 1) in a multi-segment version must be
+ *        incompatible.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleMultiSegment_DifferentModuleMajorReturnsFalse)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 0.3.2/0.67.0, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 0.3.2/1.67.0, Func);
+    EXPECT_FALSE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Different number of segments (0.3.2 vs 0.3) with the same API major
+ *        must still be compatible — only the part before the first '.' matters.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleMultiSegment_MixedSegmentCount)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 0.3.2/0.67.0, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 0.3/0.67,     Func);
+    EXPECT_TRUE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+// ---------------------------------------------------------------
+// Group: multi-digit major versions and mixed-length strings
+// ---------------------------------------------------------------
+
+/**
+ * @brief Two identical multi-digit versions (10/1) must be compatible.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleMultiDigit_SameBoth)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 10/1, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 10/1, Func);
+    EXPECT_TRUE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief API major 10 vs 1 must be incompatible: the comparison is character-
+ *        based, so '1','0' (then '/') does not equal '1' (then '/').
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleMultiDigit_ApiMajor10vs1ReturnsFalse)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 10/1, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 1/1,  Func);
+    EXPECT_FALSE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Module major 10 vs 1 must be incompatible for the same reason.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleMultiDigit_ModuleMajor10vs1ReturnsFalse)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 1/10, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 1/1,  Func);
+    EXPECT_FALSE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Large API minor digits (0.100 vs 0.999) with the same major (0) must
+ *        be compatible — only the part before the first '.' is compared.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleMultiDigit_LargeMinorApiVersions)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 0.100/0.200, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 0.999/0.888, Func);
+    EXPECT_TRUE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Multi-digit API major (23 vs 24) must be incompatible.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleMultiDigit_ApiMajor23vs24ReturnsFalse)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 23.5/0.1, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 24.5/0.1, Func);
+    EXPECT_FALSE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Same multi-digit API major (23) with different minors must be compatible.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleMultiDigit_SameApiMajor23DifferentMinor)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 23.5/0.1, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 23.9/0.1, Func);
+    EXPECT_TRUE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Multi-digit module major (23 vs 24) must be incompatible even when
+ *        the API version matches.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleMultiDigit_ModuleMajor23vs24ReturnsFalse)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 0.5/23.1, Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 0.5/24.1, Func);
+    EXPECT_FALSE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
+
+/**
+ * @brief Different minor lengths (0.3 vs 0.300) with the same major must be
+ *        compatible — only the part before the first '.' is compared.
+ */
+TEST_F(DmodApiSignatureTest, AreCompatibleMixedMinorLength_LongVsShort)
+{
+    static const char* sig1 = DMOD_MAKE_SIGNATURE(Mod, 0.3/0.5,     Func);
+    static const char* sig2 = DMOD_MAKE_SIGNATURE(Mod, 0.300/0.500, Func);
+    EXPECT_TRUE(Dmod_ApiSignature_AreCompatible(sig1, sig2));
+}
