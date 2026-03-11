@@ -2051,7 +2051,7 @@ void* Dmod_GetDifFunction( Dmod_Context_t* Context, const char* DifSignature )
     size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        if( Dmod_ApiSignature_AreEqual( Context->Inputs.InputSection->Entries[i].Signature, DifSignature ) )
+        if( Dmod_ApiSignature_AreCompatible( Context->Inputs.InputSection->Entries[i].Signature, DifSignature ) )
         {
             return Context->Inputs.InputSection->Entries[i].Function;
         }

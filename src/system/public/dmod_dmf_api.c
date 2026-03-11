@@ -30,7 +30,7 @@ bool Dmod_ConnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
             {
                 continue;
             }
-            else if( Dmod_ApiSignature_AreEqual( OutputsApi->OutputSection->Entries[i], InputsApi->InputSection->Entries[j].Signature ) )
+            else if( Dmod_ApiSignature_AreCompatible( OutputsApi->OutputSection->Entries[i], InputsApi->InputSection->Entries[j].Signature ) )
             {
                 DMOD_LOG_VERBOSE("Connected: %s 0x%08X\n", InputsApi->InputSection->Entries[j].Signature, InputsApi->InputSection->Entries[j].Function);
                 OutputsApi->OutputSection->Entries[i] = InputsApi->InputSection->Entries[j].Function;
@@ -585,7 +585,7 @@ void* Dmod_GetFunction( Dmod_Context_t* Context, const char* Signature )
     size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        if( Dmod_ApiSignature_AreEqual( Context->Inputs.InputSection->Entries[i].Signature, Signature ) )
+        if( Dmod_ApiSignature_AreCompatible( Context->Inputs.InputSection->Entries[i].Signature, Signature ) )
         {
             return Context->Inputs.InputSection->Entries[i].Function;
         }
@@ -652,7 +652,7 @@ Dmod_Context_t* Dmod_GetNextDifModule( const char* DifSignature, Dmod_Context_t*
         size_t numberOfInputs = Dmod_Api_GetNumberOfEntries( &Dmod_Contexts[i]->Inputs );
         for(size_t j = 0; j < numberOfInputs; j++)
         {
-            if( Dmod_ApiSignature_AreEqual( Dmod_Contexts[i]->Inputs.InputSection->Entries[j].Signature, DifSignature ) )
+            if( Dmod_ApiSignature_AreCompatible( Dmod_Contexts[i]->Inputs.InputSection->Entries[j].Signature, DifSignature ) )
             {
                 Dmod_ExitCritical();
                 return Dmod_Contexts[i];
