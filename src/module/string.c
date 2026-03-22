@@ -12,8 +12,7 @@
 /**
  * @brief Set memory to a specified value
  */
-void *memset(void *s, int c, size_t n) __attribute__((optimize("no-builtin")));
-void *memset(void *s, int c, size_t n)
+void *memset_impl(void *s, int c, size_t n)
 {
     unsigned char *p = (unsigned char *)s;
     unsigned char value = (unsigned char)c;
@@ -291,7 +290,7 @@ void *__memmove_chk(void *dest, const void *src, size_t n, size_t destlen)
 void *__memset_chk(void *s, int c, size_t n, size_t slen)
 {
     (void)slen;
-    return memset(s, c, n);
+    return memset_impl(s, c, n);
 }
 
 /**
