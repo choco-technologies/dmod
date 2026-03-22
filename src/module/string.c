@@ -9,7 +9,8 @@
 
 #include <stddef.h>
 
-#pragma GCC optimize ("no-builtin")
+#pragma GCC push_options
+#pragma GCC optimize ("no-tree-loop-distribute-patterns")
 
 /**
  * @brief Set memory to a specified value
@@ -340,3 +341,5 @@ char *__strcat_chk(char *dest, const char *src, size_t destlen)
     (void)destlen;
     return strcat(dest, src);
 }
+
+#pragma GCC pop_options
