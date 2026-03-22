@@ -9,6 +9,8 @@
 
 #include <stddef.h>
 
+#pragma GCC optimize ("no-builtin")
+
 /**
  * @brief Set memory to a specified value
  */
