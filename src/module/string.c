@@ -12,6 +12,7 @@
 /**
  * @brief Set memory to a specified value
  */
+void *memset(void *s, int c, size_t n) __attribute__((optimize("no-builtin")));
 void *memset(void *s, int c, size_t n)
 {
     unsigned char *p = (unsigned char *)s;
@@ -24,6 +25,7 @@ void *memset(void *s, int c, size_t n)
     
     return s;
 }
+
 
 /**
  * @brief Copy memory area
