@@ -340,3 +340,5 @@ char *__strcat_chk(char *dest, const char *src, size_t destlen)
     (void)destlen;
     return strcat(dest, src);
 }
+
+#pragma GCC pop_options
