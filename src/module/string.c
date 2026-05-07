@@ -8,6 +8,8 @@
  */
 
 #include <stddef.h>
+#pragma GCC push_options
+#pragma GCC optimize ("no-tree-loop-distribute-patterns")
 
 /**
  * @brief Set memory to a specified value
