@@ -25,6 +25,14 @@ extern "C" {
 #       define DMOD_ARCH	"ARM"
 #   elif defined(__aarch64__) || defined(_M_ARM64)
 #       define DMOD_ARCH	"ARM64"
+#   elif defined(__XTENSA__)
+#       if defined(CONFIG_IDF_TARGET_ESP32S3)
+#           define DMOD_ARCH	"xtensa-esp32s3"
+#       elif defined(CONFIG_IDF_TARGET_ESP32)
+#           define DMOD_ARCH	"xtensa-esp32"
+#       else
+#           define DMOD_ARCH	"XTENSA"
+#       endif
 #   elif defined(__ppc__) || defined(__powerpc__) || defined(__ppc64__) || defined(__powerpc64__)
 #       define DMOD_ARCH	"PPC"    
 #   elif defined(__mips__)
