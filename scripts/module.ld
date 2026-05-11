@@ -27,6 +27,8 @@ SECTIONS
     .text : 
     {
         __text_start = .;
+        /* Xtensa: literal pools must precede the code that references them */
+        *(.literal .literal.* .gnu.linkonce.literal.*)
         *(.text .text.* .gnu.linkonce.t.*);
         
         . = ALIGN(8);
@@ -105,4 +107,15 @@ SECTIONS
 
     . = ALIGN(8);
     .unwanted_sections : { *(.unwanted) }
+
+    /DISCARD/ :
+    {
+        /* Discard Xtensa-specific metadata sections to prevent orphan placement */
+        *(.xt.lit .xt.prop .xt.prop.*)
+        *(.xtensa.info)
+        /* Discard debug and exception unwinding sections */
+        *(.comment .note .note.*)
+        *(.ARM.exidx .ARM.extab)
+        *(.eh_frame .eh_frame_hdr)
+    }
 }
