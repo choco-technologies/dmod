@@ -343,14 +343,16 @@ The DMOD framework is available as a ready-to-use Docker image that contains all
 The Docker image contains:
 
 - **DMOD Tools:** dmf-get, todmm, todmfc, todmp, todmd, whereisdmf, mkdmrpkg
-- **Compiler:** GCC arm-none-eabi (version 10.3-2021.10)
+- **Compilers:**
+  - GCC arm-none-eabi (version 10.3-2021.10) — for ARM Cortex-M targets
+  - Xtensa ESP toolchain (version 14.2.0_20260121) — for ESP32/ESP32-S3/ESP32-S2 targets (`xtensa-esp32s3-elf-gcc`, `xtensa-esp-elf-gcc`, etc.)
 - **Build system:** CMake (version 3.31.3), Make
 - **Development tools:** OpenOCD, gcovr, git, jq, zip/unzip
 - **Libraries:** libcurl, libusb
 - **Configured environment variables:**
   - `DMOD_DMF_DIR=/tools/dmf`
   - `DMOD_DMFC_DIR=/tools/dmfc`
-  - `PATH` includes `/usr/local/bin` with DMOD tools
+  - `PATH` includes `/usr/local/bin` with DMOD tools, `/tools/gcc-arm-none-eabi/bin`, and `/tools/xtensa-esp-elf/bin`
 
 ### Using the Docker Image
 
@@ -374,11 +376,19 @@ docker run --rm -v $(pwd):/workspace -w /workspace \
     chocotechnologies/dmod:1.0.4 dmf-get mymodule
 ```
 
-**Build project in container:**
+**Build project in container (x86_64):**
 ```bash
 # Mount project directory and build
 docker run --rm -v $(pwd):/project -w /project \
     chocotechnologies/dmod:1.0.4 bash -c "cmake -B build && cmake --build build"
+```
+
+**Build project in container (ESP32-S3 / Xtensa):**
+```bash
+# Mount project directory and build for ESP32-S3
+docker run --rm -v $(pwd):/project -w /project \
+    chocotechnologies/dmod:1.0.4 bash -c \
+    "mkdir -p build && cd build && cmake .. -DDMOD_TOOLS_NAME=arch/xtensa/esp32s3 && cmake --build ."
 ```
 
 ### Customizing the Image
