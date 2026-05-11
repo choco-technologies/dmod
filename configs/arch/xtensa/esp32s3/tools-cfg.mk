@@ -11,10 +11,10 @@ ifeq ($(CROSS_COMPILE),)
 	CROSS_COMPILE=xtensa-esp32s3-elf-
 endif
 ifeq ($(CPUCONFIG_CFLAGS),)
-	CPUCONFIG_CFLAGS=-mlongcalls -fstrict-volatile-bitfields -Wno-frame-address -DDMOD_ARCH="$(DMOD_ARCH)" -DDMOD_CPU="$(DMOD_CPU)"
+	CPUCONFIG_CFLAGS=-mlongcalls -mtext-section-literals -fstrict-volatile-bitfields -Wno-frame-address -DDMOD_ARCH="$(DMOD_ARCH)" -DDMOD_CPU="$(DMOD_CPU)"
 endif
 ifeq ($(CPUCONFIG_CXXFLAGS),)
-	CPUCONFIG_CXXFLAGS=-mlongcalls -fstrict-volatile-bitfields -Wno-frame-address -DDMOD_ARCH="$(DMOD_ARCH)" -DDMOD_CPU="$(DMOD_CPU)"
+	CPUCONFIG_CXXFLAGS=-mlongcalls -mtext-section-literals -fstrict-volatile-bitfields -Wno-frame-address -DDMOD_ARCH="$(DMOD_ARCH)" -DDMOD_CPU="$(DMOD_CPU)"
 endif
 CC=$(CROSS_COMPILE)gcc
 CXX=$(CROSS_COMPILE)g++
