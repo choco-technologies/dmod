@@ -78,11 +78,12 @@ endif()
 
 set(ESP_IDF_INCLUDE_FLAGS "")
 if(EXISTS "${IDF_PATH}")
-    file(GLOB_RECURSE ESP_IDF_INCLUDE_DIRS LIST_DIRECTORIES false
+    file(GLOB_RECURSE ESP_IDF_INCLUDE_DIRS LIST_DIRECTORIES true
         "${IDF_PATH}/components/*/include"
         "${IDF_PATH}/components/*/*/include"
         "${IDF_PATH}/components/*/*/*/include"
     )
+    list(APPEND ESP_IDF_INCLUDE_DIRS "${IDF_PATH}/components/esp_hw_support/include")
     list(REMOVE_DUPLICATES ESP_IDF_INCLUDE_DIRS)
 
     foreach(ESP_IDF_INCLUDE_DIR ${ESP_IDF_INCLUDE_DIRS})
