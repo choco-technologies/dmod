@@ -37,6 +37,18 @@ project (dmod
 	DESCRIPTION "Library for managing of dynamic modules")
 
 # ===========================================================================
+# 						Enable Response Files (fix "argument list too long" error)
+# ===========================================================================
+# Enable response files to handle very long compiler command lines (common with ESP-IDF)
+if(CMAKE_C_RESPONSE_FILE_LINK_FLAG)
+	# Response files already configured
+elseif(CROSS_COMPILE MATCHES "xtensa-esp.*-elf")
+	# For Xtensa ESP toolchain, explicitly enable response files
+	set(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
+	set(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
+endif()
+
+# ===========================================================================
 # 						Configuration file
 # ===========================================================================
 if(DMOD_MODE STREQUAL "DMOD_SYSTEM")
