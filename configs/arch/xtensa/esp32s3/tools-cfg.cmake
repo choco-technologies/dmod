@@ -67,10 +67,36 @@ endif()
 # ==============================================================================
 set(DMOD_ARCH "xtensa-esp32s3" CACHE STRING "Target architecture")
 set(DMOD_CPU "esp32s3" CACHE STRING "Target CPU")
+
+if(NOT DEFINED IDF_PATH)
+    if(DEFINED ENV{IDF_PATH} AND NOT "$ENV{IDF_PATH}" STREQUAL "")
+        set(IDF_PATH "$ENV{IDF_PATH}" CACHE PATH "ESP-IDF path")
+    else()
+        set(IDF_PATH "/tools/esp-idf" CACHE PATH "ESP-IDF path")
+    endif()
+endif()
+
+set(ESP_IDF_INCLUDE_FLAGS "")
+if(EXISTS "${IDF_PATH}")
+    file(GLOB_RECURSE ESP_IDF_INCLUDE_DIRS LIST_DIRECTORIES true
+        "${IDF_PATH}/components/*/include"
+        "${IDF_PATH}/components/*/*/include"
+        "${IDF_PATH}/components/*/*/*/include"
+    )
+    list(APPEND ESP_IDF_INCLUDE_DIRS "${IDF_PATH}/components/esp_hw_support/include")
+    list(REMOVE_DUPLICATES ESP_IDF_INCLUDE_DIRS)
+
+    foreach(ESP_IDF_INCLUDE_DIR ${ESP_IDF_INCLUDE_DIRS})
+        string(APPEND ESP_IDF_INCLUDE_FLAGS " -I${ESP_IDF_INCLUDE_DIR}")
+    endforeach()
+else()
+    message(WARNING "ESP-IDF directory not found: ${IDF_PATH}. ESP-IDF headers will not be available.")
+endif()
+
 set(COMMON_DEFINE_FLAGS "-DDMOD_ARCH=\\\"${DMOD_ARCH}\\\" -DDMOD_CPU=\\\"${DMOD_CPU}\\\"")
-set(CPUCONFIG_CFLAGS "-mlongcalls -mtext-section-literals -fstrict-volatile-bitfields -Wno-frame-address ${COMMON_DEFINE_FLAGS}" CACHE STRING "C compiler flags")
-set(CPUCONFIG_CXXFLAGS "-mlongcalls -mtext-section-literals -fstrict-volatile-bitfields -Wno-frame-address ${COMMON_DEFINE_FLAGS}" CACHE STRING "C++ compiler flags")
-set(CPUCONFIG_ASMFLAGS "-mlongcalls -mtext-section-literals -fstrict-volatile-bitfields -Wno-frame-address ${COMMON_DEFINE_FLAGS}" CACHE STRING "ASM compiler flags")
+set(CPUCONFIG_CFLAGS "-mlongcalls -mtext-section-literals -fstrict-volatile-bitfields -Wno-frame-address ${COMMON_DEFINE_FLAGS}${ESP_IDF_INCLUDE_FLAGS}" CACHE STRING "C compiler flags")
+set(CPUCONFIG_CXXFLAGS "-mlongcalls -mtext-section-literals -fstrict-volatile-bitfields -Wno-frame-address ${COMMON_DEFINE_FLAGS}${ESP_IDF_INCLUDE_FLAGS}" CACHE STRING "C++ compiler flags")
+set(CPUCONFIG_ASMFLAGS "-mlongcalls -mtext-section-literals -fstrict-volatile-bitfields -Wno-frame-address ${COMMON_DEFINE_FLAGS}${ESP_IDF_INCLUDE_FLAGS}" CACHE STRING "ASM compiler flags")
 set(CPUCONFIG_LDFLAGS "-Wl,--gc-sections -Wl,-static -mlongcalls -mtext-section-literals" CACHE STRING "Linker flags")
 set(CMAKE_C_COMPILER "${ESP32S3_GCC}" CACHE STRING "C compiler")
 set(CMAKE_CXX_COMPILER "${ESP32S3_GXX}" CACHE STRING "C++ compiler")
