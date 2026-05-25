@@ -76,23 +76,6 @@ if(NOT DEFINED IDF_PATH)
     endif()
 endif()
 
-set(ESP_IDF_INCLUDE_FLAGS "")
-if(EXISTS "${IDF_PATH}")
-    file(GLOB_RECURSE ESP_IDF_INCLUDE_DIRS LIST_DIRECTORIES true
-        "${IDF_PATH}/components/*/include"
-        "${IDF_PATH}/components/*/*/include"
-        "${IDF_PATH}/components/*/*/*/include"
-    )
-    list(APPEND ESP_IDF_INCLUDE_DIRS "${IDF_PATH}/components/esp_hw_support/include")
-    list(REMOVE_DUPLICATES ESP_IDF_INCLUDE_DIRS)
-
-    foreach(ESP_IDF_INCLUDE_DIR ${ESP_IDF_INCLUDE_DIRS})
-        string(APPEND ESP_IDF_INCLUDE_FLAGS " -I${ESP_IDF_INCLUDE_DIR}")
-    endforeach()
-else()
-    message(WARNING "ESP-IDF directory not found: ${IDF_PATH}. ESP-IDF headers will not be available.")
-endif()
-
 set(COMMON_DEFINE_FLAGS "-DDMOD_ARCH=\\\"${DMOD_ARCH}\\\" -DDMOD_CPU=\\\"${DMOD_CPU}\\\"")
 set(CPUCONFIG_CFLAGS "-mlongcalls -mtext-section-literals -fstrict-volatile-bitfields -Wno-frame-address ${COMMON_DEFINE_FLAGS}${ESP_IDF_INCLUDE_FLAGS}" CACHE STRING "C compiler flags")
 set(CPUCONFIG_CXXFLAGS "-mlongcalls -mtext-section-literals -fstrict-volatile-bitfields -Wno-frame-address ${COMMON_DEFINE_FLAGS}${ESP_IDF_INCLUDE_FLAGS}" CACHE STRING "C++ compiler flags")
