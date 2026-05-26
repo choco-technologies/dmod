@@ -234,7 +234,7 @@ Dmod_DmpModuleEntry_t* Dmod_Pck_FindModuleEntry( Dmod_PackageSlot_t* Slot, const
         }
     }
 
-    DMOD_LOG_ERROR("Module '%s' not found in package '%s'", ModuleName, Dmod_Pck_GetPackageName( Slot ));
+    DMOD_LOG_VERBOSE("Module '%s' not found in package '%s'\n", ModuleName, Dmod_Pck_GetPackageName( Slot ));
     return NULL;
 }
 
