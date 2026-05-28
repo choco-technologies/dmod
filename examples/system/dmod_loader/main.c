@@ -664,7 +664,7 @@ static void PrintModuleApiList( Dmod_Context_t* context )
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--arch <arch_name>] [--args <arguments>] [--debug [elf_path]] [--info] [--list-api] [--stack [size]] [--stack-timeout <seconds>]\n", AppName);
+    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]] [--info] [--list-api] [--stack [size]] [--stack-timeout <seconds>]\n", AppName);
 }
 
 // -----------------------------------------
@@ -677,14 +677,12 @@ void PrintHelp( const char* AppName )
     printf("-- Dynamic Module Loader ver. " DMOD_VERSION_STRING " --\n\n");
     printf("The DMOD is a dynamic module loader that allows to load and unload modules\n");
     printf("This is an example application that uses the DMOD system\n\n");
-    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--arch <arch_name>] [--args <arguments>] [--debug [elf_path]] [--info] [--list-api] [--stack [size]] [--stack-timeout <seconds>]\n", AppName);
+    printf("Usage: %s <path/to/file.dmf | module_name> [--module <module_name>] [--args <arguments>] [--debug [elf_path]] [--info] [--list-api] [--stack [size]] [--stack-timeout <seconds>]\n", AppName);
     printf("Options:\n");
     printf("  -h, --help                Print this help message\n");
     printf("  -v, --version             Print version information\n");
     printf("  --info                    Print header information from a dmf/dmfc/dmp file without running it\n");
     printf("  --list-api                Load the module and print its input/output API list, then exit\n");
-    printf("  --arch <arch_name>        Architecture name for module name lookup (default: current arch)\n");
-    printf("                            Use with --list-api to inspect modules built for other platforms\n");
     printf("  --module <module_name>    Specify which module to load from a DMP package\n");
     printf("  --args <arguments>        Arguments to pass to the application module\n");
     printf("  --debug [elf_path]        Debug mode: pause after load, show addresses\n");
@@ -713,7 +711,6 @@ void PrintHelp( const char* AppName )
     printf("  %s my-package.dmp --info                      # Print DMP package info\n", AppName);
     printf("  %s my-app.dmf --list-api                      # Print module input/output API list\n", AppName);
     printf("  %s my-package.dmp --module my_module --list-api  # Print API list of a module in a package\n", AppName);
-    printf("  %s difs --list-api --arch armv7-cortex-m7     # Print API list of a module for another arch\n", AppName);
     printf("  %s my-app.dmf --stack                         # Stack analysis with default 1 MB stack\n", AppName);
     printf("  %s my-app.dmf --stack 2M                      # Stack analysis with 2 MB stack\n", AppName);
     printf("  %s my-app.dmf --stack 512k --stack-timeout 5  # Stack analysis, 512 KB, 5 s timeout\n", AppName);
@@ -754,7 +751,6 @@ int main( int argc, char *argv[] )
     // Parse arguments
     const char* pathOrName = argv[1];
     const char* moduleName = NULL;
-    const char* archName = NULL;
     const char* debugElfPath = NULL;
     int appArgc = 0;
     char** appArgv = NULL;
@@ -771,7 +767,6 @@ int main( int argc, char *argv[] )
     int debugIndex = -1;
     int stackIndex = -1;
     int stackTimeoutIndex = -1;
-    int archIndex = -1;
     for( int i = 2; i < argc; i++ )
     {
         if( strcmp( argv[i], "--module" ) == 0 )
@@ -795,10 +790,6 @@ int main( int argc, char *argv[] )
         else if( strcmp( argv[i], "--list-api" ) == 0 )
         {
             listApiMode = true;
-        }
-        else if( strcmp( argv[i], "--arch" ) == 0 )
-        {
-            archIndex = i;
         }
         else if( strcmp( argv[i], "--stack" ) == 0 )
         {
@@ -875,18 +866,6 @@ int main( int argc, char *argv[] )
         moduleName = argv[moduleIndex + 1];
     }
 
-    // Get architecture name if --arch flag was provided
-    if( archIndex != -1 )
-    {
-        if( argc <= archIndex + 1 )
-        {
-            printf("Error: --arch flag requires an architecture name\n");
-            PrintUsage( argv[0] );
-            return -1;
-        }
-        archName = argv[archIndex + 1];
-    }
-
     // Prepare arguments to pass to the module
     // We need to construct argv array with pathOrName as argv[0]
     // followed by any arguments after --args
@@ -928,7 +907,7 @@ int main( int argc, char *argv[] )
     {
         // It's a module name, use Dmod_LoadModuleByName
         printf("Loading module by name: %s\n", pathOrName);
-        if( !Dmod_FindModuleFile( pathOrName, archName, filePath, sizeof(filePath) ) )
+        if( !Dmod_FindModuleFile( pathOrName, DMOD_ARCH, filePath, sizeof(filePath) ) )
         {
             printf("Cannot find module file for module name: %s\n", pathOrName);
             Dmod_Free( appArgv );

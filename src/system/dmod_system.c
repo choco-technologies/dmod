@@ -549,6 +549,7 @@ bool Dmod_FindModuleFile(const char* ModuleName, const char* ArchName, char* out
         ArchName = DMOD_ARCH;
     }
 
+    bool crossplatform = Dmod_IsCrossplatformMode();
     Dmod_SearchNode_t* searchNode = Dmod_Hlp_PrepareModulesSearchNodes();
     Dmod_SearchNode_t* currentNode = searchNode;
     while( currentNode != NULL )
@@ -560,13 +561,12 @@ bool Dmod_FindModuleFile(const char* ModuleName, const char* ArchName, char* out
             (
                 PrepareModulePath(repoDir, ModuleName, false, outFilePath, MaxLength)
              && Dmod_FileAvailable(outFilePath)
-             && CheckModuleArchitecture(outFilePath, ArchName)
+             && (crossplatform || CheckModuleArchitecture(outFilePath, ArchName))
                 ) ||
             (
                 PrepareModulePath(repoDir, ModuleName, true, outFilePath, MaxLength)
              && Dmod_FileAvailable(outFilePath)
-             && CheckModuleArchitecture(outFilePath, ArchName
-                )
+             && (crossplatform || CheckModuleArchitecture(outFilePath, ArchName))
             )
             )
         {   
