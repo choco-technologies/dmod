@@ -838,6 +838,117 @@ typedef struct {
     int failed_count;
 } InstallationCounts_t;
 
+typedef enum {
+    MODULE_VISIT_PROCESSING = 1,
+    MODULE_VISIT_PROCESSED = 2
+} ModuleVisitState_t;
+
+typedef struct {
+    char name[DMOD_MANIFEST_MAX_NAME_LEN];
+    char version[DMOD_MANIFEST_MAX_VERSION_LEN];
+    ModuleVisitState_t state;
+} ModuleVisitEntry_t;
+
+static ModuleVisitEntry_t* g_module_visit_entries = NULL;
+static size_t g_module_visit_count = 0;
+static size_t g_module_visit_capacity = 0;
+
+static int FindModuleVisitEntry(const char* module_name, const char* module_version) {
+    const char* normalized_version = (module_version && module_version[0] != '\0') ? module_version : "";
+
+    for (size_t index = 0; index < g_module_visit_count; index++) {
+        if (strcmp(g_module_visit_entries[index].name, module_name) == 0 &&
+            strcmp(g_module_visit_entries[index].version, normalized_version) == 0) {
+            return (int)index;
+        }
+    }
+
+    return -1;
+}
+
+static bool EnsureModuleVisitCapacity(size_t required_capacity) {
+    if (g_module_visit_capacity >= required_capacity) {
+        return true;
+    }
+
+    size_t new_capacity = (g_module_visit_capacity == 0) ? 32 : g_module_visit_capacity * 2;
+    while (new_capacity < required_capacity) {
+        new_capacity *= 2;
+    }
+
+    ModuleVisitEntry_t* resized = (ModuleVisitEntry_t*)realloc(
+        g_module_visit_entries, new_capacity * sizeof(ModuleVisitEntry_t));
+    if (!resized) {
+        return false;
+    }
+
+    g_module_visit_entries = resized;
+    g_module_visit_capacity = new_capacity;
+    return true;
+}
+
+static bool SetModuleVisitState(const char* module_name, const char* module_version, ModuleVisitState_t state) {
+    const char* normalized_version = (module_version && module_version[0] != '\0') ? module_version : "";
+    int existing_index = FindModuleVisitEntry(module_name, normalized_version);
+
+    if (existing_index >= 0) {
+        g_module_visit_entries[existing_index].state = state;
+        return true;
+    }
+
+    if (!EnsureModuleVisitCapacity(g_module_visit_count + 1)) {
+        return false;
+    }
+
+    ModuleVisitEntry_t* entry = &g_module_visit_entries[g_module_visit_count];
+    strncpy(entry->name, module_name, sizeof(entry->name) - 1);
+    entry->name[sizeof(entry->name) - 1] = '\0';
+    strncpy(entry->version, normalized_version, sizeof(entry->version) - 1);
+    entry->version[sizeof(entry->version) - 1] = '\0';
+    entry->state = state;
+    g_module_visit_count++;
+    return true;
+}
+
+static bool GetModuleVisitState(const char* module_name, const char* module_version, ModuleVisitState_t* out_state) {
+    int existing_index = FindModuleVisitEntry(module_name, module_version);
+    if (existing_index < 0) {
+        return false;
+    }
+
+    *out_state = g_module_visit_entries[existing_index].state;
+    return true;
+}
+
+static void RemoveModuleVisitEntry(const char* module_name, const char* module_version) {
+    int existing_index = FindModuleVisitEntry(module_name, module_version);
+    if (existing_index < 0) {
+        return;
+    }
+
+    size_t remove_index = (size_t)existing_index;
+    if (remove_index + 1 < g_module_visit_count) {
+        memmove(&g_module_visit_entries[remove_index],
+                &g_module_visit_entries[remove_index + 1],
+                (g_module_visit_count - remove_index - 1) * sizeof(ModuleVisitEntry_t));
+    }
+    g_module_visit_count--;
+}
+
+static int FinalizeModuleDownload(const char* module_name, const char* module_version, int result) {
+    if (result == 0) {
+        if (!SetModuleVisitState(module_name, module_version, MODULE_VISIT_PROCESSED)) {
+            DMOD_LOG_WARN("Failed to persist processed state for %s%s%s\n",
+                          module_name,
+                          (module_version && module_version[0] != '\0') ? "@" : "",
+                          (module_version && module_version[0] != '\0') ? module_version : "");
+        }
+    } else {
+        RemoveModuleVisitEntry(module_name, module_version);
+    }
+    return result;
+}
+
 // Forward declarations
 static int DownloadModule(const char* module_name, const char* module_version,
                           Dmod_ManifestContext_t* manifest_ctx, 
@@ -2374,6 +2485,30 @@ static int DownloadModule(const char* module_name, const char* module_version,
                           bool ignore_missing, bool skip_dmod_ver_check,
                           bool mini_mode, bool auto_accept_license,
                           InstallationCounts_t* counts) {
+    ModuleVisitState_t existing_state;
+    if (GetModuleVisitState(module_name, module_version, &existing_state)) {
+        if (existing_state == MODULE_VISIT_PROCESSING) {
+            DMOD_LOG_WARN("Detected dependency cycle for %s%s%s - skipping\n",
+                          module_name,
+                          (module_version && module_version[0] != '\0') ? "@" : "",
+                          (module_version && module_version[0] != '\0') ? module_version : "");
+        } else {
+            DMOD_LOG_INFO("Dependency already processed: %s%s%s\n",
+                          module_name,
+                          (module_version && module_version[0] != '\0') ? "@" : "",
+                          (module_version && module_version[0] != '\0') ? module_version : "");
+        }
+        return 0;
+    }
+
+    if (!SetModuleVisitState(module_name, module_version, MODULE_VISIT_PROCESSING)) {
+        DMOD_LOG_ERROR("Failed to track dependency state for %s%s%s\n",
+                       module_name,
+                       (module_version && module_version[0] != '\0') ? "@" : "",
+                       (module_version && module_version[0] != '\0') ? module_version : "");
+        return 1;
+    }
+
     // Try to find entries for this module, checking architecture for each
     Dmod_ManifestNode_t* last_node = NULL;
     Dmod_ManifestEntry_t entry;
@@ -2390,11 +2525,11 @@ static int DownloadModule(const char* module_name, const char* module_version,
             // No more entries found
             if (!found_any) {
                 DMOD_LOG_ERROR("Error: %s\n", Dmod_Manifest_GetError(manifest_ctx));
-                return ignore_missing ? 0 : 1;
+                return FinalizeModuleDownload(module_name, module_version, ignore_missing ? 0 : 1);
             } else {
                 // We tried all entries but none matched architecture
                 DMOD_LOG_ERROR("Error: No compatible architecture found for module: %s\n", module_name);
-                return ignore_missing ? 0 : 1;
+                return FinalizeModuleDownload(module_name, module_version, ignore_missing ? 0 : 1);
             }
         }
         
@@ -2486,7 +2621,7 @@ static int DownloadModule(const char* module_name, const char* module_version,
             // Download the file
             if (!DownloadFile(url, output_file)) {
                 DMOD_LOG_ERROR("Error: Failed to download module\n");
-                return 1;
+                return FinalizeModuleDownload(module_name, module_version, 1);
             }
         }
         
@@ -2500,7 +2635,7 @@ static int DownloadModule(const char* module_name, const char* module_version,
                                         final_module_path, sizeof(final_module_path),
                                         dmd_file_path, sizeof(dmd_file_path))) {
                 DMOD_LOG_ERROR("Error: Failed to extract and find module from ZIP\n");
-                return 1;
+                return FinalizeModuleDownload(module_name, module_version, 1);
             }
             // ExtractZipAndFindModule already prints where it was installed
         } else {
@@ -2573,9 +2708,9 @@ static int DownloadModule(const char* module_name, const char* module_version,
             counts->success_count++;
         }
         
-        return 0;  // Success - found and installed compatible module
+        return FinalizeModuleDownload(module_name, module_version, 0);  // Success - found and installed compatible module
     } // end while loop
-    return -1;  // Should not reach here
+    return FinalizeModuleDownload(module_name, module_version, -1);  // Should not reach here
 }
 
 /**
