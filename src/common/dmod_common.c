@@ -74,6 +74,7 @@ bool Dmod_ApiSignature_IsValid( const char* Signature )
      && strncmp( Signature, DMOD_IRQ_SIGNATURE_PREFIX, sizeof( DMOD_IRQ_SIGNATURE_PREFIX ) - 1 ) != 0
      && strncmp( Signature, DMOD_MAL_SIGNATURE_PREFIX, sizeof( DMOD_MAL_SIGNATURE_PREFIX ) - 1 ) != 0
      && strncmp( Signature, DMOD_DIF_SIGNATURE_PREFIX, sizeof( DMOD_DIF_SIGNATURE_PREFIX ) - 1 ) != 0
+     && strncmp( Signature, DMOD_TEST_SIGNATURE_PREFIX, sizeof( DMOD_TEST_SIGNATURE_PREFIX ) - 1 ) != 0
         )
     {
         return false;
