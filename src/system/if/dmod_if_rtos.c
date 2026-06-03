@@ -231,10 +231,11 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _Semaphore_New, ( uint32_t Ini
  * @brief Wait for semaphore
  * 
  * @param Semaphore Semaphore to wait for
+ * @param Count Number of semaphore units to wait for
  * 
  * @return 0 on success, negative errno on error
  */
-DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Semaphore_Wait, ( void* Semaphore ))
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Semaphore_Wait, ( void* Semaphore, uint32_t Count ))
 {
     #if DMOD_USE_PTHREAD
     if( Semaphore == NULL )
@@ -243,7 +244,20 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Semaphore_Wait, ( void* Semapho
         return -EINVAL;
     }
 
-    return sem_wait(&((Dmod_Semaphore_t*)Semaphore)->Semaphore);
+    Dmod_Semaphore_t* SemaphoreObj = (Dmod_Semaphore_t*)Semaphore;
+    for( uint32_t i = 0; i < Count; i++ )
+    {
+        while( sem_wait(&SemaphoreObj->Semaphore) != 0 )
+        {
+            if( errno != EINTR )
+            {
+                DMOD_LOG_ERROR("Cannot wait for semaphore - cannot wait semaphore unit\n");
+                return -errno;
+            }
+        }
+    }
+
+    return 0;
     #else
     if( Semaphore == NULL )
     {
@@ -251,6 +265,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Semaphore_Wait, ( void* Semapho
     }
     else
     {
+        (void)Count;
         DMOD_LOG_WARN("Dmod_Semaphore_Wait interface not implemented\n");
         return -ENOSYS;
     }
@@ -261,10 +276,11 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Semaphore_Wait, ( void* Semapho
  * @brief Post semaphore
  * 
  * @param Semaphore Semaphore to post
+ * @param Count Number of semaphore units to post
  * 
  * @return 0 on success, negative errno on error
  */
-DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Semaphore_Post, ( void* Semaphore ))
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Semaphore_Post, ( void* Semaphore, uint32_t Count ))
 {
     #if DMOD_USE_PTHREAD
     if( Semaphore == NULL )
@@ -281,13 +297,28 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Semaphore_Post, ( void* Semapho
         return -errno;
     }
 
-    if( SemaphoreValue >= (int)SemaphoreObj->MaxCount )
+    if( Count > SemaphoreObj->MaxCount )
     {
         DMOD_LOG_ERROR("Cannot post semaphore - maximum value reached\n");
         return -EOVERFLOW;
     }
 
-    return sem_post(&SemaphoreObj->Semaphore);
+    if( ( SemaphoreValue >= 0 ) && ( (uint32_t)SemaphoreValue > ( SemaphoreObj->MaxCount - Count ) ) )
+    {
+        DMOD_LOG_ERROR("Cannot post semaphore - maximum value reached\n");
+        return -EOVERFLOW;
+    }
+
+    for( uint32_t i = 0; i < Count; i++ )
+    {
+        if( sem_post(&SemaphoreObj->Semaphore) != 0 )
+        {
+            DMOD_LOG_ERROR("Cannot post semaphore - cannot signal semaphore unit\n");
+            return -errno;
+        }
+    }
+
+    return 0;
     #else
     if( Semaphore == NULL )
     {
@@ -295,6 +326,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Semaphore_Post, ( void* Semapho
     }
     else
     {
+        (void)Count;
         DMOD_LOG_WARN("Dmod_Semaphore_Post interface not implemented\n");
         return -ENOSYS;
     }
