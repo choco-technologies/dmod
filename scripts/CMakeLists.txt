@@ -527,6 +527,29 @@ function(dmod_add_library moduleName version)
 endfunction()
 
 #
+# Function to create a DMOD test module
+#
+# Usage:
+#   dmod_add_test(moduleName version sources...)
+#
+# Creates an Application-type module with a pre-provided main() that
+# automatically discovers and runs all test steps registered via
+# DMOD_TEST_STEP().  Do NOT define main() yourself in the test sources.
+#
+# Lifecycle hooks dmod_test_setup() and dmod_test_teardown() are called
+# before/after each step; define them in your test sources to override
+# the default empty implementations.
+#
+function(dmod_add_test moduleName version)
+    set(SOURCES ${ARGN})
+
+    # Inject the pre-built test runner as an additional source file
+    list(APPEND SOURCES ${DMOD_SRC_DIR}/module/dmod_test_main.c)
+
+    dmod_create_module(${moduleName} ${version} Application ${SOURCES})
+endfunction()
+
+#
 # Function to link external modules and download their headers
 #
 # Usage:

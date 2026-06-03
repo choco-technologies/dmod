@@ -176,3 +176,135 @@ int Dmod_Irq( Dmod_Context_t* Context, int IrqNumber )
     }
     return 0;
 }
+
+/**
+ * @brief Run all test steps registered in a module
+ *
+ * Iterates the module's .dmod.inputs section, discovers all entries whose
+ * signature begins with DMOD_TEST_SIGNATURE_PREFIX, and executes them one
+ * by one.  Three special reserved step names drive the fixture mechanism:
+ *
+ *   __setup__      — called before every step (optional)
+ *   __teardown__   — called after  every step (optional)
+ *   __step_failed__ — pointer to the module-side volatile int flag that
+ *                     assertion macros set on failure
+ *
+ * These reserved entries are registered automatically by the
+ * dmod_test_main.c translation unit compiled in by dmod_add_test().
+ *
+ * @param Context  Context of the loaded test module
+ * @param argc     Argument count forwarded from main()
+ * @param argv     Argument vector; argv[1..] are treated as a step-name
+ *                 allow-list — only the named steps run.  Pass argc == 1
+ *                 (or argc == 0) to run all steps.
+ *
+ * @return Number of failed test steps (0 = all passed)
+ */
+int Dmod_RunTests( Dmod_Context_t* Context, int argc, char* argv[] )
+{
+    if( !Dmod_Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot run tests - invalid context\n");
+        return -1;
+    }
+
+    if( Context->Inputs.InputSection == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot run tests - no input section\n");
+        return -1;
+    }
+
+    size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
+
+    /* Locate the optional fixture pointers registered by dmod_test_main.c */
+    void         (*setup_fn)(void)   = NULL;
+    void         (*teardown_fn)(void) = NULL;
+    volatile int  *pStepFailed        = NULL;
+
+    for( size_t i = 0; i < numberOfEntries; i++ )
+    {
+        const char* sig = Context->Inputs.InputSection->Entries[i].Signature;
+        void*       fn  = Context->Inputs.InputSection->Entries[i].Function;
+
+        if( sig == NULL || fn == NULL )               { continue; }
+        if( !Dmod_ApiSignature_IsTest( sig ) )        { continue; }
+
+        const char* name = Dmod_ApiSignature_GetName( sig );
+        if( name == NULL )                             { continue; }
+
+        if(      strcmp( name, "__setup__" )      == 0 ) { setup_fn    = (void (*)(void))fn; }
+        else if( strcmp( name, "__teardown__" )   == 0 ) { teardown_fn = (void (*)(void))fn; }
+        else if( strcmp( name, "__step_failed__" ) == 0 ) { pStepFailed = (volatile int*)fn; }
+    }
+
+    int total_steps  = 0;
+    int failed_steps = 0;
+
+    Dmod_Printf( "=== DMOD Test Runner ===\n" );
+
+    for( size_t i = 0; i < numberOfEntries; i++ )
+    {
+        const char* sig = Context->Inputs.InputSection->Entries[i].Signature;
+        void*       fn  = Context->Inputs.InputSection->Entries[i].Function;
+
+        if( sig == NULL || fn == NULL )               { continue; }
+        if( !Dmod_ApiSignature_IsTest( sig ) )        { continue; }
+
+        const char* name = Dmod_ApiSignature_GetName( sig );
+        if( name == NULL )                             { continue; }
+
+        /* Skip reserved fixture entries */
+        if( strcmp( name, "__setup__" )       == 0 )  { continue; }
+        if( strcmp( name, "__teardown__" )    == 0 )  { continue; }
+        if( strcmp( name, "__step_failed__" ) == 0 )  { continue; }
+
+        /* Apply optional step-name filter from argv */
+        if( argc > 1 )
+        {
+            int found = 0;
+            for( int j = 1; j < argc; j++ )
+            {
+                if( argv[j] != NULL && strcmp( name, argv[j] ) == 0 )
+                {
+                    found = 1;
+                    break;
+                }
+            }
+            if( !found ) { continue; }
+        }
+
+        Dmod_Printf( "[ RUN  ] %s\n", name );
+
+        if( pStepFailed != NULL )  { *pStepFailed = 0; }
+
+        void (*stepFn)(void) = (void (*)(void))fn;
+        if( setup_fn    != NULL )  { setup_fn(); }
+        stepFn();
+        if( teardown_fn != NULL )  { teardown_fn(); }
+
+        total_steps++;
+
+        int step_failed = ( pStepFailed != NULL ) ? *pStepFailed : 0;
+        if( step_failed )
+        {
+            Dmod_Printf( "[FAILED] %s\n", name );
+            failed_steps++;
+        }
+        else
+        {
+            Dmod_Printf( "[  OK  ] %s\n", name );
+        }
+    }
+
+    if( total_steps == 0 )
+    {
+        Dmod_Printf( "\nNo test steps found.\n" );
+    }
+    else
+    {
+        Dmod_Printf( "\n=== Results: %d/%d passed ===\n",
+                     total_steps - failed_steps, total_steps );
+    }
+
+    return failed_steps;
+}

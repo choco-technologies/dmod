@@ -59,6 +59,81 @@ build/
       └── my_lib.zip
 ```
 
+### `dmod_add_test(moduleName version sources...)`
+
+Creates a DMOD test module.
+
+The test runner `main()` is provided automatically by the framework — do **not**
+define `main()` in your test sources.  Test steps are registered with the
+`DMOD_TEST_STEP()` macro from `dmod_test.h` and are discovered and executed
+automatically at runtime.
+
+The exit code of the resulting binary equals the number of failed steps, making
+it suitable for use in CI pipelines.
+
+**Parameters:**
+- `moduleName` - Name of the test module
+- `version` - Module version (e.g., "1.0")
+- `sources...` - List of test source files (must **not** define `main()`)
+
+**Example:**
+```cmake
+set(DMOD_MODULE_NAME        my_module_tests)
+set(DMOD_MODULE_VERSION     "1.0")
+set(DMOD_AUTHOR_NAME        "Jane Smith")
+set(DMOD_STACK_SIZE         2048)
+
+dmod_add_test(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
+    test_feature_a.c
+    test_feature_b.c
+)
+```
+
+**Test source example:**
+```c
+#include "dmod_test.h"
+
+/* Optional lifecycle hooks */
+void dmod_test_setup(void)    { /* reset state */ }
+void dmod_test_teardown(void) { /* cleanup    */ }
+
+DMOD_TEST_STEP(addition_works)
+{
+    DMOD_TEST_EXPECT_EQ(1 + 1, 2);
+}
+
+DMOD_TEST_STEP(null_pointer_check)
+{
+    void* ptr = get_something();
+    DMOD_TEST_EXPECT_NOT_NULL(ptr);
+}
+```
+
+**Output example:**
+```
+=== DMOD Test Runner ===
+[ RUN  ] addition_works
+[  OK  ] addition_works
+[ RUN  ] null_pointer_check
+[  OK  ] null_pointer_check
+
+=== Results: 2/2 passed ===
+```
+
+**Available assertion macros (from `dmod_test.h`):**
+
+| Macro | Description |
+|-------|-------------|
+| `DMOD_TEST_EXPECT(cond)` | Fail if condition is false |
+| `DMOD_TEST_EXPECT_TRUE(cond)` | Alias for `DMOD_TEST_EXPECT` |
+| `DMOD_TEST_EXPECT_FALSE(cond)` | Fail if condition is true |
+| `DMOD_TEST_EXPECT_EQ(a, b)` | Fail if `a != b` |
+| `DMOD_TEST_EXPECT_NE(a, b)` | Fail if `a == b` |
+| `DMOD_TEST_EXPECT_NULL(ptr)` | Fail if `ptr != NULL` |
+| `DMOD_TEST_EXPECT_NOT_NULL(ptr)` | Fail if `ptr == NULL` |
+| `DMOD_TEST_FAIL()` | Unconditionally fail |
+| `DMOD_TEST_FAIL_MSG(msg, ...)` | Unconditionally fail with message |
+
 ## Dependency Management Functions
 
 ### `dmod_link_modules(targetName [PRIVATE|PUBLIC|INTERFACE] modules...)`

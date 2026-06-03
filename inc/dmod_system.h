@@ -94,6 +94,8 @@ extern int              Dmod_Deinit             ( Dmod_Context_t* Context );
 extern int              Dmod_Signal             ( Dmod_Context_t* Context, int SignalNumber );
 extern int              Dmod_Irq                ( Dmod_Context_t* Context, int IrqNumber );
 extern void             Dmod_IrqAll             ( int IrqNumber );
+extern int              Dmod_RunTests           ( Dmod_Context_t* Context, int argc, char* argv[] );
+extern int              Dmod_RunModuleTests     ( const char* ModuleName, int argc, char* argv[] );
 
 // DMF Getters
 extern uint64_t         Dmod_GetStackSize       ( Dmod_Context_t* Context );

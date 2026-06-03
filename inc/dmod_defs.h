@@ -102,12 +102,14 @@ extern "C" {
 #define DMOD_IRQ_SIGNATURE_PREFIX	"\021DIRQ\022"
 #define DMOD_MAL_SIGNATURE_PREFIX	"\021DMAL\022"
 #define DMOD_DIF_SIGNATURE_PREFIX	"\021DDIF\022"
+#define DMOD_TEST_SIGNATURE_PREFIX	"\021DTST\022"
 #define DMOD_SIGNATURE_SUFFIX           "\0"       
 #define DMOD_MAKE_SIGNATURE( MODULE, VERSION, NAME )		    DMOD_SIGNATURE_PREFIX #NAME "@" #MODULE ":" #VERSION DMOD_SIGNATURE_SUFFIX
 #define DMOD_MAKE_BUILTIN_SIGNATURE( MODULE, VERSION, NAME )	    DMOD_BUILTIN_SIGNATURE_PREFIX #NAME "@" #MODULE ":" #VERSION DMOD_SIGNATURE_SUFFIX
 #define DMOD_MAKE_IRQ_SIGNATURE( NAME )		                    DMOD_IRQ_SIGNATURE_PREFIX #NAME 
 #define DMOD_MAKE_MAL_SIGNATURE( MODULE, VERSION, NAME )	    DMOD_MAL_SIGNATURE_PREFIX #NAME "@" #MODULE ":" #VERSION DMOD_SIGNATURE_SUFFIX
 #define DMOD_MAKE_DIF_SIGNATURE( MODULE, VERSION, NAME )	    DMOD_DIF_SIGNATURE_PREFIX #NAME "@" #MODULE ":" #VERSION DMOD_SIGNATURE_SUFFIX
+#define DMOD_MAKE_TEST_SIGNATURE( NAME )	                    DMOD_TEST_SIGNATURE_PREFIX #NAME DMOD_SIGNATURE_SUFFIX
 #define DMOD_MAKE_VERSION(API_VERSION, MODULE_VERSION)              API_VERSION/MODULE_VERSION
        
 //==============================================================================
@@ -231,6 +233,8 @@ extern "C" {
 #define DMOD_IRQ_MAKE_HANDLER_NAME(IRQ_NUMBER)          __irq_##IRQ_NUMBER
 #define DMOD_IRQ_MAKE_REG_NAME(IRQ_NUMBER)              __irq_##IRQ_NUMBER##_registration
 #define DMOD_IRQ_SIGNATURE_BUFFER_SIZE                  ( sizeof(DMOD_IRQ_SIGNATURE_PREFIX) + 20 )
+#define DMOD_TEST_MAKE_STEP_NAME(NAME)                  dmod_test_step_##NAME
+#define DMOD_TEST_MAKE_REG_NAME(NAME)                   dmod_test_step_##NAME##_registration
 
 #define DMOD_MAL_CONNECT( MODULE, NAME, FUNCTION_NAME )   \
                         DMOD_FUNCTION_REDEFINITION( DMOD_MAKE_MAL_API_FUNCTION_NAME(MODULE,NAME), FUNCTION_NAME )
@@ -259,6 +263,33 @@ extern "C" {
             .Signature = DMOD_MAKE_IRQ_SIGNATURE(IRQ_NUMBER) \
         };\
         static void DMOD_IRQ_MAKE_HANDLER_NAME(IRQ_NUMBER)(void)
+
+/**
+ * @brief Defines a test step function and registers it for automatic discovery.
+ *
+ * Use this macro to define a test step function. All test steps are automatically
+ * discovered by the test runner provided by dmod_add_test.
+ *
+ * @param NAME  Name of the test step (must be a valid C identifier)
+ *
+ * @note Include dmod_test.h to use assertion macros (DMOD_TEST_EXPECT_*) inside steps.
+ *
+ * Example:
+ * @code
+ *   DMOD_TEST_STEP(my_step)
+ *   {
+ *       DMOD_TEST_EXPECT_EQ(1 + 1, 2);
+ *   }
+ * @endcode
+ */
+#define DMOD_TEST_STEP( NAME )        \
+        static void DMOD_TEST_MAKE_STEP_NAME(NAME)(void);\
+        volatile const Dmod_ApiRegistration_t DMOD_TEST_MAKE_REG_NAME(NAME) DMOD_USED_SECTION(".dmod.inputs") = \
+        { \
+            .Function = (void*)DMOD_TEST_MAKE_STEP_NAME(NAME), \
+            .Signature = DMOD_MAKE_TEST_SIGNATURE(NAME) \
+        };\
+        static void DMOD_TEST_MAKE_STEP_NAME(NAME)(void)
 
 #ifdef DOXYGEN
 /**

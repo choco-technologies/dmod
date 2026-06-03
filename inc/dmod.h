@@ -93,6 +93,7 @@ extern bool         Dmod_ApiSignature_ReadModuleVersion( const char* Signature, 
 extern bool         Dmod_ApiSignature_AreCompatible( const char* Signature1, const char* Signature2 );
 extern bool         Dmod_ApiSignature_IsMal( const char* Signature );
 extern bool         Dmod_ApiSignature_IsBuiltin( const char* Signature );
+extern bool         Dmod_ApiSignature_IsTest( const char* Signature );
 
 DMOD_BUILTIN_API( Dmod, 1.0, void       , _SetLogLevel, ( Dmod_LogLevel_t LogLevel ) );
 DMOD_BUILTIN_API( Dmod, 1.0, void       , _SetModuleLogLevel, ( const char* ModuleName, Dmod_LogLevel_t LogLevel ) );
@@ -124,6 +125,7 @@ DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsFunctionConnected, (void* FunctionP
 DMOD_BUILTIN_API( Dmod, 1.0, Dmod_Context_t*, _GetNextDifModule, (const char* DifSignature, Dmod_Context_t* Previous) );
 DMOD_BUILTIN_API( Dmod, 1.0, void*      , _GetDifFunction, (Dmod_Context_t* Context, const char* DifSignature) );
 DMOD_BUILTIN_API( Dmod, 1.0, const char*, _GetName, (Dmod_Context_t* Context) );
+DMOD_BUILTIN_API( Dmod, 1.0, int        , _RunTests, (Dmod_Context_t* Context, int argc, char* argv[]) );
 
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _AddPackageBuffer, ( const void* Buffer, size_t Size, uint32_t* outIndex ) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _AddPackageFile, ( const char* FilePath, uint32_t* outIndex ) );
