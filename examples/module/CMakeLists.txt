@@ -1,3 +1,4 @@
 add_subdirectory(library)
 add_subdirectory(application)
 add_subdirectory(log_step)
+add_subdirectory(test_example)

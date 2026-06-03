@@ -5,16 +5,20 @@
  * Each DMOD_TEST_STEP defines one test step.  Steps are discovered
  * automatically at runtime and executed by the test runner.
  *
- * Optionally define dmod_test_setup() / dmod_test_teardown() to run code
- * before / after every step.
+ * dmod_test_setup() runs before every step and dmod_test_teardown()
+ * runs after every step.  Remove them if no common fixture is needed.
  */
 #include "dmod_test.h"
 
-/* Optional: runs before every test step */
-/* void dmod_test_setup(void)    {} */
+void dmod_test_setup(void)
+{
+    /* initialise fixtures before every step */
+}
 
-/* Optional: runs after every test step */
-/* void dmod_test_teardown(void) {} */
+void dmod_test_teardown(void)
+{
+    /* clean up after every step */
+}
 
 DMOD_TEST_STEP(example_pass)
 {

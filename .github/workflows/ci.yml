@@ -77,6 +77,12 @@ jobs:
           ./examples/system/dmod_loader/dmod_loader ./dmf/log_step.dmf
           echo "log_step module loaded and executed successfully"
       
+      - name: Run example dmod_add_test module
+        working-directory: build
+        run: |
+          ./examples/system/dmod_loader/dmod_loader ./dmf/test_example.dmf
+          echo "test_example module passed all test steps"
+      
       - name: Run manifest library tests
         working-directory: build
         run: ./tests/tests_dmod_manifest

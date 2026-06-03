@@ -397,6 +397,18 @@ bool Dmod_ApiSignature_IsBuiltin( const char* Signature )
     return strncmp( Signature, DMOD_BUILTIN_SIGNATURE_PREFIX, sizeof(DMOD_BUILTIN_SIGNATURE_PREFIX) - 1 ) == 0;
 }
 
+/**
+ * @brief Check if API signature is a test step
+ * 
+ * @param Signature API signature
+ * 
+ * @return true if signature is a test step, false otherwise
+ */
+bool Dmod_ApiSignature_IsTest( const char* Signature )
+{
+    return strncmp( Signature, DMOD_TEST_SIGNATURE_PREFIX, sizeof(DMOD_TEST_SIGNATURE_PREFIX) - 1 ) == 0;
+}
+
 //==============================================================================
 //                              LOCAL FUNCTIONS IMPLEMENTATIONS
 //==============================================================================

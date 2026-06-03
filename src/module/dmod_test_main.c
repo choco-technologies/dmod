@@ -8,19 +8,18 @@
  * section) and executes them one by one, calling dmod_test_setup() before
  * each step and dmod_test_teardown() after each step.
  *
+ * Optional command-line filtering: pass one or more step names as arguments
+ * to run only those steps.  With no arguments all steps are executed.
+ *
  * Return value of main() equals the number of failed test steps, so the
  * test binary can be used directly in CI pipelines.
  */
 
 #include "dmod_test.h"
+#include "dmod_module.h"
 
 #include <stdint.h>
-#include <stddef.h>
 #include <string.h>
-
-/* Defined in the module's generated _header.c - points to ModuleHeader which
- * is at offset 0 in the binary, i.e. equals Context->Data (binary base). */
-extern volatile const Dmod_ModuleHeader_t* DMOD_Header;
 
 //==============================================================================
 //                      TEST STATE
@@ -41,26 +40,25 @@ DMOD_WEAK_SYMBOL void dmod_test_teardown(void) {}
 
 typedef void (*DmodTestStepFn)(void);
 
-/* Return 1 if sig starts with the test signature prefix, 0 otherwise. */
-static int IsTestSignature( const char* sig )
+/* Return 1 if this step should run given the argv filter, 0 otherwise. */
+static int ShouldRunStep( const char* name, int argc, char* argv[] )
 {
-    const char prefix[] = DMOD_TEST_SIGNATURE_PREFIX;
-    size_t i;
+    int i;
 
-    for( i = 0; i < sizeof( prefix ) - 1; i++ )
+    if( argc <= 1 )
     {
-        if( sig[i] != prefix[i] )
+        return 1; /* no filter: run everything */
+    }
+
+    for( i = 1; i < argc; i++ )
+    {
+        if( strcmp( name, argv[i] ) == 0 )
         {
-            return 0;
+            return 1;
         }
     }
-    return 1;
-}
 
-/* Return the step name embedded in the signature (the part after the prefix). */
-static const char* GetTestName( const char* sig )
-{
-    return sig + sizeof( DMOD_TEST_SIGNATURE_PREFIX ) - 1;
+    return 0;
 }
 
 //==============================================================================
@@ -69,21 +67,13 @@ static const char* GetTestName( const char* sig )
 
 int main( int argc, char* argv[] )
 {
-    (void)argc;
-    (void)argv;
-
-    /* Obtain the footer via the module header.
-     * DMOD_Header == binary base address (ModuleHeader is at offset 0).
-     * After loading, Footer.Ptr is the relocated pointer to __footer_start. */
-    Dmod_ModuleFooter_t* footer = (Dmod_ModuleFooter_t*)DMOD_Header->Footer.Ptr;
-    uint8_t* base               = (uint8_t*)(uintptr_t)DMOD_Header;
-
-    Dmod_ApiRegistration_t* entries =
-        (Dmod_ApiRegistration_t*)( base + footer->Inputs.SectionStart );
-    uint32_t count = footer->Inputs.SectionSize / sizeof( Dmod_ApiRegistration_t );
+    Dmod_ApiRegistration_t* entries = NULL;
+    uint32_t                count   = 0;
 
     int total_steps  = 0;
     int failed_steps = 0;
+
+    Dmod_Module_GetInputs( &entries, &count );
 
     Dmod_Printf( "=== DMOD Test Runner ===\n" );
 
@@ -91,10 +81,12 @@ int main( int argc, char* argv[] )
     {
         if( entries[i].Function  == NULL ) { continue; }
         if( entries[i].Signature == NULL ) { continue; }
-        if( !IsTestSignature( entries[i].Signature ) ) { continue; }
+        if( !Dmod_ApiSignature_IsTest( entries[i].Signature ) ) { continue; }
 
-        const char*    name = GetTestName( entries[i].Signature );
+        const char*    name = Dmod_ApiSignature_GetName( entries[i].Signature );
         DmodTestStepFn fn   = (DmodTestStepFn)entries[i].Function;
+
+        if( !ShouldRunStep( name, argc, argv ) ) { continue; }
 
         Dmod_Printf( "[ RUN  ] %s\n", name );
 
