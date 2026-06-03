@@ -1928,6 +1928,48 @@ int Dmod_RunModule(const char* Module, int argc, char *argv[])
 }
 
 /**
+ * @brief Run all test steps registered in a named module
+ *
+ * Loads the module identified by @p ModuleName (or file path), connects its
+ * output APIs via the standard run sequence, executes the module's main()
+ * which in turn calls Dmod_RunTests(), then unloads the module.
+ *
+ * @param ModuleName  Name of the module or path to the .dmf file
+ * @param argc        Argument count forwarded to the test runner
+ * @param argv        Argument vector forwarded to the test runner
+ *
+ * @return Return value of the module's main() (number of failed steps, 0 = all
+ *         passed), or a negative errno value if the module could not be loaded.
+ */
+int Dmod_RunModuleTests( const char* ModuleName, int argc, char* argv[] )
+{
+    if( ModuleName == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot run module tests - missing module name\n");
+        return -EINVAL;
+    }
+
+    Dmod_Context_t* context = NULL;
+    if( Dmod_FileAvailable( ModuleName ) )
+    {
+        context = Dmod_LoadFile( ModuleName );
+    }
+    else
+    {
+        context = Dmod_LoadModuleByName( ModuleName );
+    }
+    if( context == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot run module tests - cannot load module: %s\n", ModuleName);
+        return -ENOENT;
+    }
+
+    int result = Dmod_Run( context, argc, argv );
+    Dmod_Unload( context, false );
+    return result;
+}
+
+/**
  * @brief Spawn application in a new child process
  * 
  * @param Module Name of the module or file path
