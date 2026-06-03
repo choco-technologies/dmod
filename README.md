@@ -555,6 +555,10 @@ It is also **recommended** (but not mandatory) to define those:
 | `Dmod_Mutex_Delete`  | *Releases mutex memory*               |
 | `Dmod_Mutex_Lock`    | *Locks the mutex*                     |
 | `Dmod_Mutex_Unlock`  | *Unlocks the mutex*                   |
+| `Dmod_Semaphore_New` | *Creates new semaphore*               |
+| `Dmod_Semaphore_Wait`| *Waits for semaphore*                 |
+| `Dmod_Semaphore_Post`| *Signals semaphore*                   |
+| `Dmod_Semaphore_Delete`| *Releases semaphore memory*         |
 
 6. **Initialize the Dmod system**: Before using any Dmod functions, you must call `Dmod_Initialize()` to initialize the system's global variables. This function should be called once at the beginning of your application, before loading any modules.
 
@@ -868,4 +872,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-

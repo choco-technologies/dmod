@@ -7,6 +7,7 @@ set(TEST_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_readnextmodule.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_loadfile_package_path.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_irq.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_semaphore.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_verify_apis.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_api_signature.cpp
         PARENT_SCOPE
