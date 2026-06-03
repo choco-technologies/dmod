@@ -323,6 +323,10 @@ DMOD_BUILTIN_API(Dmod, 1.0, void*, _Mutex_New, ( bool Recursive ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int  , _Mutex_Lock, ( void* Mutex ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int  , _Mutex_Unlock, ( void* Mutex ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void , _Mutex_Delete, ( void* Mutex ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void*, _Semaphore_New, ( uint32_t InitialValue ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int  , _Semaphore_Wait, ( void* Semaphore ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int  , _Semaphore_Post, ( void* Semaphore ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void , _Semaphore_Delete, ( void* Semaphore ) );
 DMOD_BUILTIN_API(Dmod, 1.0, size_t, _GetLeftStackSize, ( void ) );
 
 //! @}

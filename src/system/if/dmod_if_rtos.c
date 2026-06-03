@@ -31,6 +31,7 @@
 #if DMOD_USE_PTHREAD
 #   define __USE_UNIX98
 #   include <pthread.h>
+#   include <semaphore.h>
 #   ifdef __linux__
 /* Forward declarations for Linux-specific thread attribute functions */
 extern int pthread_getattr_np(pthread_t th, pthread_attr_t *attr);
@@ -174,6 +175,129 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Mutex_Delete, ( void* Mutex ))
     else
     {
         DMOD_LOG_WARN("Dmod_Mutex_Delete interface not implemented\n");
+    }
+    #endif
+}
+
+/**
+ * @brief Create new semaphore
+ * 
+ * @param InitialValue Initial semaphore value
+ * 
+ * @return Pointer to new semaphore
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _Semaphore_New, ( uint32_t InitialValue ))
+{
+    #if DMOD_USE_PTHREAD
+    sem_t* Semaphore = Dmod_Malloc(sizeof(sem_t));
+    if( Semaphore == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot create new semaphore - cannot allocate memory\n");
+        return NULL;
+    }
+
+    if( sem_init(Semaphore, 0, InitialValue) != 0 )
+    {
+        DMOD_LOG_ERROR("Cannot create new semaphore - cannot initialize semaphore\n");
+        Dmod_Free(Semaphore);
+        return NULL;
+    }
+
+    return Semaphore;
+    #else
+    (void)InitialValue;
+    return NULL;
+    #endif
+}
+
+/**
+ * @brief Wait for semaphore
+ * 
+ * @param Semaphore Semaphore to wait for
+ * 
+ * @return 0 on success, negative errno on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Semaphore_Wait, ( void* Semaphore ))
+{
+    #if DMOD_USE_PTHREAD
+    if( Semaphore == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot wait for semaphore - invalid semaphore\n");
+        return -EINVAL;
+    }
+
+    return sem_wait(Semaphore);
+    #else
+    if( Semaphore == NULL )
+    {
+        return 0; // No-op if semaphore is NULL
+    }
+    else
+    {
+        DMOD_LOG_WARN("Dmod_Semaphore_Wait interface not implemented\n");
+        return -ENOSYS;
+    }
+    #endif
+}
+
+/**
+ * @brief Post semaphore
+ * 
+ * @param Semaphore Semaphore to post
+ * 
+ * @return 0 on success, negative errno on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Semaphore_Post, ( void* Semaphore ))
+{
+    #if DMOD_USE_PTHREAD
+    if( Semaphore == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot post semaphore - invalid semaphore\n");
+        return -EINVAL;
+    }
+
+    return sem_post(Semaphore);
+    #else
+    if( Semaphore == NULL )
+    {
+        return 0; // No-op if semaphore is NULL
+    }
+    else
+    {
+        DMOD_LOG_WARN("Dmod_Semaphore_Post interface not implemented\n");
+        return -ENOSYS;
+    }
+    #endif
+}
+
+/**
+ * @brief Delete semaphore
+ * 
+ * @param Semaphore Semaphore to delete
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Semaphore_Delete, ( void* Semaphore ))
+{
+    #if DMOD_USE_PTHREAD
+    if( Semaphore == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot delete semaphore - invalid semaphore\n");
+        return;
+    }
+
+    if( sem_destroy(Semaphore) != 0 )
+    {
+        DMOD_LOG_ERROR("Cannot delete semaphore - cannot destroy semaphore\n");
+    }
+
+    Dmod_Free(Semaphore);
+    #else
+    if( Semaphore == NULL )
+    {
+        return; // No-op if semaphore is NULL
+    }
+    else
+    {
+        DMOD_LOG_WARN("Dmod_Semaphore_Delete interface not implemented\n");
     }
     #endif
 }
