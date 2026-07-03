@@ -661,6 +661,18 @@ function(dmod_link_modules targetName)
         list(APPEND DMF_GET_OPTIONS "-m" "${DMOD_DMM_URL}")
         message(STATUS "Using manifest: ${DMOD_DMM_URL}")
     endif()
+
+    # Add CPU name if DMOD_CPU_NAME is defined and non-empty
+    if(DEFINED DMOD_CPU_NAME AND NOT "${DMOD_CPU_NAME}" STREQUAL "")
+        list(APPEND DMF_GET_OPTIONS "--cpu-name" "${DMOD_CPU_NAME}")
+        message(STATUS "Using CPU name: ${DMOD_CPU_NAME}")
+    endif()
+
+    # Add CPU family if DMOD_CPU_FAMILY is defined and non-empty
+    if(DEFINED DMOD_CPU_FAMILY AND NOT "${DMOD_CPU_FAMILY}" STREQUAL "")
+        list(APPEND DMF_GET_OPTIONS "--cpu-family" "${DMOD_CPU_FAMILY}")
+        message(STATUS "Using CPU family: ${DMOD_CPU_FAMILY}")
+    endif()
     
     # Process each module specification
     foreach(MODULE_SPEC ${MODULE_SPECS})

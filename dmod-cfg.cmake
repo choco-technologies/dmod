@@ -82,5 +82,8 @@ set(DMOD_REPO_PATHS             "${DMOD_DMF_DIR}${DMOD_ARRAY_SEP}${DMOD_DMFC_DIR
 # Name of the target cpu (if empty, the target is generic)
 set(DMOD_CPU_NAME			    "" 						  	                        CACHE STRING "Name of the target cpu, if empty, the target is generic")
 
+# Family of the target cpu (if empty, the cpu family is not used)
+set(DMOD_CPU_FAMILY			"" 						  	                        CACHE STRING "Family of the target cpu, if empty, the cpu family is not used")
+
 # Name of the tools configuration
 set(DMOD_TOOLS_NAME			    "arch/x86_64" 					                    CACHE STRING "Name of the tools configuration")
