@@ -23,7 +23,7 @@ Dmod_RequiredModule_t* Dmod_RMod_FindRequiredModule( Dmod_Context_t* Context, co
         return NULL;
     }
 
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    for(size_t i = 0; i < DMOD_MAX_REQUIRED_MODULES; i++)
     {
         if( Context->RequiredModules[i].Name[0] == 0 )
         {
@@ -53,7 +53,7 @@ Dmod_RequiredModule_t* Dmod_RMod_FindEmptyRequiredModule( Dmod_Context_t* Contex
         return NULL;
     }
 
-    for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
+    for(size_t i = 0; i < DMOD_MAX_REQUIRED_MODULES; i++)
     {
         if( Context->RequiredModules[i].Name[0] == 0 )
         {
