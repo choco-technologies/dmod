@@ -47,6 +47,25 @@
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
 //==============================================================================
+#if DMOD_USE_STDIO
+/**
+ * @brief Resolve a File handle, translating the DMOD_STDIN/DMOD_STDOUT/DMOD_STDERR/
+ *        DMOD_STDLOG sentinel values into the actual FILE* stream they represent.
+ *
+ * @param File File handle, possibly one of the standard stream sentinels
+ *
+ * @return Resolved FILE* stream
+ */
+static FILE* Dmod_ResolveStdioFile( void* File )
+{
+    if( File == DMOD_STDIN )  return stdin;
+    if( File == DMOD_STDOUT ) return stdout;
+    if( File == DMOD_STDERR ) return stderr;
+    if( File == DMOD_STDLOG ) return (FILE*)Dmod_GetStdLogFile();
+    return (FILE*)File;
+}
+#endif
+
 /**
  * @brief Open file
  * 
@@ -78,7 +97,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _FileOpen, ( const char* Path,
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileRead, ( void* Buffer, size_t Size, size_t Count, void* File ))
 {
     #if DMOD_USE_STDIO
-    return fread(Buffer, Size, Count, File);
+    return fread(Buffer, Size, Count, Dmod_ResolveStdioFile(File));
     #else
     DMOD_LOG_ERROR("Dmod_FileRead interface not implemented\n");
     return 0;
@@ -98,7 +117,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileRead, ( void* Buffer, si
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileWrite, ( const void* Buffer, size_t Size, size_t Count, void* File ))
 {
     #if DMOD_USE_STDIO
-    return fwrite(Buffer, Size, Count, File);
+    return fwrite(Buffer, Size, Count, Dmod_ResolveStdioFile(File));
     #else
     DMOD_LOG_ERROR("Dmod_FileWrite interface not implemented\n");
     return 0;
@@ -117,8 +136,8 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileWrite, ( const void* Buf
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileSeek, ( void* File, long Offset, int Origin ))
 {
     #if DMOD_USE_STDIO
-    return fseek(File, Offset, Origin);
-    #else 
+    return fseek(Dmod_ResolveStdioFile(File), Offset, Origin);
+    #else
     DMOD_LOG_ERROR("Dmod_FileSeek interface not implemented\n");
     return -1;
     #endif
@@ -134,8 +153,8 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileSeek, ( void* File, long Of
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileTell, ( void* File ))
 {
     #if DMOD_USE_STDIO
-    return ftell(File);
-    #else 
+    return ftell(Dmod_ResolveStdioFile(File));
+    #else
     DMOD_LOG_ERROR("Dmod_FileTell interface not implemented\n");
     return 0;
     #endif
@@ -174,9 +193,15 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileSize, ( void* File ))
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _FileClose, ( void* File ))
 {
+    if( File == DMOD_STDIN || File == DMOD_STDOUT || File == DMOD_STDERR || File == DMOD_STDLOG )
+    {
+        // Standard stream handles are not owned by the caller and must not be closed
+        return;
+    }
+
     #if DMOD_USE_STDIO
     fclose(File);
-    #else 
+    #else
     DMOD_LOG_ERROR("Dmod_FileClose interface not implemented\n");
     #endif
 }

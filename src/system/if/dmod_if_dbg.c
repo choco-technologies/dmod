@@ -96,12 +96,34 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FPrintf, ( void* File, const ch
     #if DMOD_USE_STDIO
     int Ret = 0;
     va_list Args;
+    if( File == DMOD_STDIN )  File = stdin;
+    if( File == DMOD_STDOUT ) File = stdout;
+    if( File == DMOD_STDERR ) File = stderr;
+    if( File == DMOD_STDLOG ) File = Dmod_GetStdLogFile();
     va_start( Args, Format );
     Ret = vfprintf( (FILE*)File, Format, Args );
     va_end( Args );
     return Ret;
     #else
     return 0;
+    #endif
+}
+
+/**
+ * @brief Get the file handle backing the DMOD_STDLOG stream
+ *
+ * By default this points at the same stream as DMOD_STDOUT. A platform-specific
+ * implementation can override this weak function to redirect logging elsewhere
+ * (a dedicated log file, UART, ...) without affecting DMOD_STDOUT.
+ *
+ * @return File handle used for the DMOD_STDLOG stream
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _GetStdLogFile, ( void ))
+{
+    #if DMOD_USE_STDIO
+    return stdout;
+    #else
+    return NULL;
     #endif
 }
 

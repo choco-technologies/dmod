@@ -139,6 +139,26 @@ DMOD_BUILTIN_API(Dmod, 1.0, int         , _FileRemove,  ( const char* Path ) );
 #   define EOF        DMOD_EOF
 #endif
 
+/**
+ * @brief Standard stream handles
+ *
+ * These special values can be passed wherever a file handle (`void* File`) is expected -
+ * e.g. Dmod_FPrintf, Dmod_FileRead, Dmod_FileWrite, Dmod_FileSeek, Dmod_FileTell,
+ * Dmod_FileClose - instead of a handle returned by Dmod_FileOpen, to target the standard
+ * input/output/error streams.
+ *
+ * DMOD_STDLOG is a separate, platform-configurable logging stream: by default it resolves
+ * to the same stream as DMOD_STDOUT (see Dmod_GetStdLogFile), but a platform-specific
+ * implementation can override Dmod_GetStdLogFile to redirect it elsewhere (a dedicated log
+ * file, UART, ...) without affecting DMOD_STDOUT.
+ */
+#define DMOD_STDIN     ((void*)1)
+#define DMOD_STDOUT    ((void*)2)
+#define DMOD_STDERR    ((void*)3)
+#define DMOD_STDLOG    ((void*)4)
+
+DMOD_BUILTIN_API(Dmod, 1.0, void*, _GetStdLogFile, ( void ) );
+
 //! @}
 
 /**
