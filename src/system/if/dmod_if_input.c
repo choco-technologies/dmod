@@ -56,11 +56,24 @@
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Getc, ( void ))
 {
-    #if DMOD_USE_STDIO
-    return getchar();
-    #else
-    return EOF;
-    #endif
+    int Result = EOF;
+    void* resolvedFile = Dmod_LockStdio( DMOD_STDIN );
+    if( resolvedFile == NULL )
+    {
+        unsigned char Byte;
+        if( Dmod_ReadKernel( &Byte, 1 ) == 1 )
+        {
+            Result = (int)Byte;
+        }
+    }
+    else
+    {
+        #if DMOD_USE_STDIO
+        Result = fgetc( resolvedFile );
+        #endif
+    }
+    Dmod_UnlockStdio( DMOD_STDIN );
+    return Result;
 }
 
 /**
@@ -73,17 +86,39 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Getc, ( void ))
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, char*, _Gets, ( char* Buffer, int Size ))
 {
-    #if DMOD_USE_STDIO
     if( Buffer == NULL || Size <= 0 )
     {
         return NULL;
     }
-    return fgets( Buffer, Size, stdin );
-    #else
-    (void)Buffer;
-    (void)Size;
-    return NULL;
-    #endif
+
+    char* Result = NULL;
+    void* resolvedFile = Dmod_LockStdio( DMOD_STDIN );
+    if( resolvedFile == NULL )
+    {
+        int Count = 0;
+        unsigned char Byte;
+        while( Count < (Size - 1) && Dmod_ReadKernel( &Byte, 1 ) == 1 )
+        {
+            Buffer[Count++] = (char)Byte;
+            if( Byte == '\n' )
+            {
+                break;
+            }
+        }
+        if( Count > 0 )
+        {
+            Buffer[Count] = '\0';
+            Result = Buffer;
+        }
+    }
+    else
+    {
+        #if DMOD_USE_STDIO
+        Result = fgets( Buffer, Size, resolvedFile );
+        #endif
+    }
+    Dmod_UnlockStdio( DMOD_STDIN );
+    return Result;
 }
 
 /**
@@ -145,23 +180,29 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Sscanf, ( const char* Buffer, c
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Vscanf, ( const char* Format, va_list Args ))
 {
-    #if DMOD_USE_STDIO
-    return vscanf( Format, Args );
-    #elif DMOD_IMPLEMENT_SCANF
-    // When custom scanf implementation is available but stdio is not,
-    // read a line of input and use Vsscanf to parse it
-    char buffer[256];
-    char* result = Dmod_Gets( buffer, sizeof(buffer) );
-    if( result == NULL )
+    int Ret = EOF;
+    void* resolvedFile = Dmod_LockStdio( DMOD_STDIN );
+    if( resolvedFile != NULL )
     {
-        return EOF;
+        #if DMOD_USE_STDIO
+        Ret = vfscanf( resolvedFile, Format, Args );
+        #endif
     }
-    return Dmod_Vsscanf( buffer, Format, Args );
-    #else
-    (void)Format;
-    (void)Args;
-    return EOF;
-    #endif
+    else
+    {
+        #if DMOD_IMPLEMENT_SCANF
+        // When custom scanf implementation is available but stdio is not,
+        // read a line of input and use Vsscanf to parse it
+        char buffer[256];
+        char* result = Dmod_Gets( buffer, sizeof(buffer) );
+        if( result != NULL )
+        {
+            Ret = Dmod_Vsscanf( buffer, Format, Args );
+        }
+        #endif
+    }
+    Dmod_UnlockStdio( DMOD_STDIN );
+    return Ret;
 }
 
 /**
