@@ -186,9 +186,8 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileRead, ( void* Buffer, si
         #if DMOD_USE_STDIO
         read = fread(Buffer, Size, Count, resolvedFile);
         #endif
-
+        Dmod_UnlockStdio(File);
     }
-    Dmod_UnlockStdio(File);
     return read;
 }
 
@@ -219,9 +218,8 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileWrite, ( const void* Buf
         #if DMOD_USE_STDIO
         written = fwrite(Buffer, Size, Count, resolvedFile);
         #endif
-        
+        Dmod_UnlockStdio(File);
     }
-    Dmod_UnlockStdio(File);
     return written;
 }
 
