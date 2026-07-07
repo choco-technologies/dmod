@@ -452,8 +452,8 @@ DMOD_BUILTIN_API(Dmod, 1.0, Dmod_Pid_t, _Spawn, ( Dmod_Context_t* Context, int a
 DMOD_BUILTIN_API(Dmod, 1.0, Dmod_Pid_t, _RunDetached, ( Dmod_Context_t* Context, int argc, char *argv[] ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _GetProcessResult, ( Dmod_Pid_t Pid ) );
 DMOD_BUILTIN_API(Dmod, 1.0, Dmod_Pid_t, _GetCurrentPid, (void));
-DMOD_BUILTIN_API(Dmod, 1.0, void*, _ResolveProcessFile, ( Dmod_Pid_t Pid, void* StdHandle ) );
-DMOD_BUILTIN_API(Dmod, 1.0, int, _SetProcessFile, ( Dmod_Pid_t Pid, void* StdHandle, void* File ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void*, _ResolveStreamFile, ( Dmod_Pid_t Pid, void* StdHandle ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int, _SetStreamFilePath, ( Dmod_Pid_t Pid, void* StdHandle, const char* Path ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void*, _LockStdio, ( void* StdHandle ));
 DMOD_BUILTIN_API(Dmod, 1.0, void, _UnlockStdio, ( void* StdHandle ));
 

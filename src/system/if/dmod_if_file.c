@@ -86,7 +86,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _GetStdLogFile, ( void ))
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _VFPrintf, ( void* File, const char* Format, va_list Args ))
 {
     #if DMOD_USE_STDIO
-    return vfprintf( Dmod_ResolveProcessFile( Dmod_GetCurrentPid(), File ), Format, Args );
+    return vfprintf( Dmod_ResolveStreamFile( Dmod_GetCurrentPid(), File ), Format, Args );
     #elif DMOD_IMPLEMENT_PRINTF
     va_list ArgsCopy;
     va_copy( ArgsCopy, Args );
@@ -237,7 +237,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileWrite, ( const void* Buf
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileSeek, ( void* File, long Offset, int Origin ))
 {
     #if DMOD_USE_STDIO
-    return fseek(Dmod_ResolveProcessFile( Dmod_GetCurrentPid(), File ), Offset, Origin);
+    return fseek(Dmod_ResolveStreamFile( Dmod_GetCurrentPid(), File ), Offset, Origin);
     #else
     DMOD_LOG_ERROR("Dmod_FileSeek interface not implemented\n");
     return -1;
@@ -254,7 +254,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileSeek, ( void* File, long Of
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileTell, ( void* File ))
 {
     #if DMOD_USE_STDIO
-    return ftell(Dmod_ResolveProcessFile( Dmod_GetCurrentPid(), File ));
+    return ftell(Dmod_ResolveStreamFile( Dmod_GetCurrentPid(), File ));
     #else
     DMOD_LOG_ERROR("Dmod_FileTell interface not implemented\n");
     return 0;

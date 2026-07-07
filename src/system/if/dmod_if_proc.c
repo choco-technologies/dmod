@@ -159,7 +159,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Pid_t, _GetCurrentPid, ( void ))
  * @param StdHandle One of DMOD_STDIN/DMOD_STDOUT/DMOD_STDERR/DMOD_STDLOG
  * @return NULL
  */
-DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _ResolveProcessFile, ( Dmod_Pid_t Pid, void* StdHandle ))
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _ResolveStreamFile, ( Dmod_Pid_t Pid, void* StdHandle ))
 {
     if(StdHandle == DMOD_STDIN)
     {
@@ -197,20 +197,20 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _ResolveProcessFile, ( Dmod_Pi
 }
 
 /**
- * @brief Register the real file handle backing one of a process's standard streams
+ * @brief Register the path of the file backing one of a process's standard streams
  *
  * This is a weak implementation that does nothing.
  * The real implementation should be provided by the dmosi layer.
  *
- * @param Pid Process ID to set the file handle for
+ * @param Pid Process ID to set the stream file path for
  * @param StdHandle One of DMOD_STDIN/DMOD_STDOUT/DMOD_STDERR/DMOD_STDLOG
- * @param File File handle to associate with this (Pid, StdHandle) pair
+ * @param Path Path of the file to associate with this (Pid, StdHandle) pair
  */
-DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _SetProcessFile, ( Dmod_Pid_t Pid, void* StdHandle, void* File ))
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _SetStreamFilePath, ( Dmod_Pid_t Pid, void* StdHandle, const char* Path ))
 {
     (void)Pid;
     (void)StdHandle;
-    (void)File;
+    (void)Path;
     return -ENOSYS;
 }
 
@@ -221,7 +221,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _SetProcessFile, ( Dmod_Pid_t Pi
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _LockStdio, ( void* File ))
 {
-    return Dmod_ResolveProcessFile( Dmod_GetCurrentPid(), File );
+    return Dmod_ResolveStreamFile( Dmod_GetCurrentPid(), File );
 }
 
 /**
