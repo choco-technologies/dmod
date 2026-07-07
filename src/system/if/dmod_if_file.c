@@ -33,9 +33,12 @@
  * 
  */
 
+#define DMOD_PRIVATE
 #include "dmod_sal.h"
 #if DMOD_USE_STDIO
 #   include <stdio.h>
+#elif DMOD_IMPLEMENT_PRINTF
+#   include "private/dmod_prf.h"
 #endif
 #if DMOD_USE_DIRENT
 #   include <dirent.h>
@@ -44,27 +47,99 @@
 #   include <unistd.h>
 #endif
 
+#ifndef DMOD_VFPRINTF_STACK_BUFFER_SIZE
+// Above this size, Dmod_VFPrintf falls back to a heap allocation instead of a stack buffer
+#   define DMOD_VFPRINTF_STACK_BUFFER_SIZE 100
+#endif
+
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
 //==============================================================================
-#if DMOD_USE_STDIO
+
 /**
- * @brief Resolve a File handle, translating the DMOD_STDIN/DMOD_STDOUT/DMOD_STDERR/
- *        DMOD_STDLOG sentinel values into the actual FILE* stream they represent.
+ * @brief Get the file handle backing the DMOD_STDLOG stream
  *
- * @param File File handle, possibly one of the standard stream sentinels
+ * By default this points at the same stream as DMOD_STDOUT. A platform-specific
+ * implementation can override this weak function to redirect logging elsewhere
+ * (a dedicated log file, UART, ...) without affecting DMOD_STDOUT.
  *
- * @return Resolved FILE* stream
+ * @return File handle used for the DMOD_STDLOG stream
  */
-static FILE* Dmod_ResolveStdioFile( void* File )
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _GetStdLogFile, ( void ))
 {
-    if( File == DMOD_STDIN )  return stdin;
-    if( File == DMOD_STDOUT ) return stdout;
-    if( File == DMOD_STDERR ) return stderr;
-    if( File == DMOD_STDLOG ) return (FILE*)Dmod_GetStdLogFile();
-    return (FILE*)File;
+    #if DMOD_USE_STDIO
+    return stdout;
+    #else
+    return NULL;
+    #endif
 }
-#endif
+
+/**
+ * @brief VFPrintf function - prints to a file using a va_list
+ *
+ * @param File File handle
+ * @param Format Format string
+ * @param Args Variable argument list
+ *
+ * @return Number of characters printed
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _VFPrintf, ( void* File, const char* Format, va_list Args ))
+{
+    #if DMOD_USE_STDIO
+    return vfprintf( Dmod_ResolveProcessFile( Dmod_GetCurrentPid(), File ), Format, Args );
+    #elif DMOD_IMPLEMENT_PRINTF
+    va_list ArgsCopy;
+    va_copy( ArgsCopy, Args );
+    int Len = Dmod_VSnPrintf_Impl( NULL, 0, Format, ArgsCopy );
+    va_end( ArgsCopy );
+
+    if( Len <= 0 )
+    {
+        return Len;
+    }
+
+    size_t Size = (size_t)Len + 1;
+
+    if( Size <= DMOD_VFPRINTF_STACK_BUFFER_SIZE )
+    {
+        char Buffer[Size];
+        Dmod_VSnPrintf_Impl( Buffer, Size, Format, Args );
+        return (int)Dmod_FileWrite( Buffer, 1, (size_t)Len, File );
+    }
+    else
+    {
+        char* Buffer = (char*)Dmod_Malloc( Size );
+        if( Buffer == NULL )
+        {
+            return -1;
+        }
+        Dmod_VSnPrintf_Impl( Buffer, Size, Format, Args );
+        int Written = (int)Dmod_FileWrite( Buffer, 1, (size_t)Len, File );
+        Dmod_Free( Buffer );
+        return Written;
+    }
+    #else
+    return 0;
+    #endif
+}
+
+/**
+ * @brief FPrintf function - prints to a file
+ *
+ * @param File File handle
+ * @param Format Format string
+ *
+ * @return Number of characters printed
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FPrintf, ( void* File, const char* Format, ... ))
+{
+    int Ret = 0;
+    va_list Args;
+    va_start( Args, Format );
+    Ret = Dmod_VFPrintf( File, Format, Args );
+    va_end( Args );
+    return Ret;
+}
 
 /**
  * @brief Open file
@@ -96,12 +171,25 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _FileOpen, ( const char* Path,
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileRead, ( void* Buffer, size_t Size, size_t Count, void* File ))
 {
-    #if DMOD_USE_STDIO
-    return fread(Buffer, Size, Count, Dmod_ResolveStdioFile(File));
-    #else
-    DMOD_LOG_ERROR("Dmod_FileRead interface not implemented\n");
-    return 0;
-    #endif
+    size_t read = 0;
+    if(File == NULL)
+    {
+        return read;
+    }
+    void* resolvedFile = Dmod_LockStdio(File);
+    if(resolvedFile == NULL)
+    {
+        read = Dmod_ReadKernel(Buffer, Size * Count);
+    }
+    else
+    {
+        #if DMOD_USE_STDIO
+        read = fread(Buffer, Size, Count, resolvedFile);
+        #endif
+
+    }
+    Dmod_UnlockStdio(File);
+    return read;
 }
 
 /**
@@ -116,12 +204,25 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileRead, ( void* Buffer, si
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileWrite, ( const void* Buffer, size_t Size, size_t Count, void* File ))
 {
-    #if DMOD_USE_STDIO
-    return fwrite(Buffer, Size, Count, Dmod_ResolveStdioFile(File));
-    #else
-    DMOD_LOG_ERROR("Dmod_FileWrite interface not implemented\n");
-    return 0;
-    #endif
+    size_t written = 0;
+    if(File == NULL)
+    {
+        return written;
+    }
+    void* resolvedFile = Dmod_LockStdio(File);
+    if(resolvedFile == NULL)
+    {
+        written = Dmod_WriteKernel(Buffer, Size * Count);
+    }
+    else 
+    {
+        #if DMOD_USE_STDIO
+        written = fwrite(Buffer, Size, Count, resolvedFile);
+        #endif
+        
+    }
+    Dmod_UnlockStdio(File);
+    return written;
 }
 
 /**
@@ -136,7 +237,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileWrite, ( const void* Buf
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileSeek, ( void* File, long Offset, int Origin ))
 {
     #if DMOD_USE_STDIO
-    return fseek(Dmod_ResolveStdioFile(File), Offset, Origin);
+    return fseek(Dmod_ResolveProcessFile( Dmod_GetCurrentPid(), File ), Offset, Origin);
     #else
     DMOD_LOG_ERROR("Dmod_FileSeek interface not implemented\n");
     return -1;
@@ -153,7 +254,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileSeek, ( void* File, long Of
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileTell, ( void* File ))
 {
     #if DMOD_USE_STDIO
-    return ftell(Dmod_ResolveStdioFile(File));
+    return ftell(Dmod_ResolveProcessFile( Dmod_GetCurrentPid(), File ));
     #else
     DMOD_LOG_ERROR("Dmod_FileTell interface not implemented\n");
     return 0;

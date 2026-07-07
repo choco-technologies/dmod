@@ -17,6 +17,7 @@ set(SYSTEM_SOURCES
     public/dmod_irq.c
     dmod_system.c
     if/dmod_if_file.c
+    if/dmod_if_kernel.c
     if/dmod_if_mem.c
     if/dmod_if_rawmem.c
     if/dmod_if_dbg.c

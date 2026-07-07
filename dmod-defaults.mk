@@ -81,6 +81,11 @@ ifndef DMOD_MAX_REQUIRED_MODULES
     DMOD_MAX_REQUIRED_MODULES = 10
 endif
 
+ifndef DMOD_VFPRINTF_STACK_BUFFER_SIZE
+    # Above this size, Dmod_VFPrintf falls back to a heap allocation instead of a stack buffer
+    DMOD_VFPRINTF_STACK_BUFFER_SIZE = 100
+endif
+
 ifndef DMOD_MODE
     DMOD_MODE = DMOD_SYSTEM
 endif

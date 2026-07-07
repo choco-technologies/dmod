@@ -33,8 +33,15 @@
 #include "dmod_sal.h"
 #include "dmod_system.h"
 #include <inttypes.h>
+#include <errno.h>
 #if DMOD_USE_STDLIB
 #   include <stdlib.h>
+#endif
+#if DMOD_USE_STDIO
+#   include <stdio.h>
+#endif
+#if DMOD_USE_DIRENT
+#   include <unistd.h>
 #endif
 
 //==============================================================================
@@ -122,4 +129,107 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _GetProcessResult, ( Dmod_Pid_t 
     }
     DMOD_LOG_ERROR("Dmod_GetProcessResult interface not implemented for PID %" PRId32 "\n", Pid);
     return -1;
+}
+
+/**
+ * @brief Get the PID of the calling process
+ *
+ * This is a weak implementation that returns the real PID via getpid() when available,
+ * or DMOD_CURRENT_PROCESS_PID as a placeholder otherwise.
+ * The real implementation should be provided by the dmosi layer.
+ *
+ * @return Process ID of the calling process
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Pid_t, _GetCurrentPid, ( void ))
+{
+    #if DMOD_USE_DIRENT
+    return (Dmod_Pid_t)getpid();
+    #else
+    return DMOD_CURRENT_PROCESS_PID;
+    #endif
+}
+
+/**
+ * @brief Get the real file handle registered for one of a process's standard streams
+ *
+ * This is a weak implementation that always returns NULL.
+ * The real implementation should be provided by the dmosi layer.
+ *
+ * @param Pid Process ID to get the file handle for
+ * @param StdHandle One of DMOD_STDIN/DMOD_STDOUT/DMOD_STDERR/DMOD_STDLOG
+ * @return NULL
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _ResolveProcessFile, ( Dmod_Pid_t Pid, void* StdHandle ))
+{
+    if(StdHandle == DMOD_STDIN)
+    {
+        #if DMOD_USE_STDIO
+        return stdin;
+        #else
+        return NULL;
+        #endif
+    }
+    else if(StdHandle == DMOD_STDOUT)
+    {
+        #if DMOD_USE_STDIO
+        return stdout;
+        #else
+        return NULL;
+        #endif
+    }
+    else if(StdHandle == DMOD_STDERR)
+    {
+        #if DMOD_USE_STDIO
+        return stderr;
+        #else
+        return NULL;
+        #endif
+    }
+    else if(StdHandle == DMOD_STDLOG)
+    {
+        #if DMOD_USE_STDIO
+        return stdout;
+        #else
+        return NULL;
+        #endif
+    }
+    return StdHandle;
+}
+
+/**
+ * @brief Register the real file handle backing one of a process's standard streams
+ *
+ * This is a weak implementation that does nothing.
+ * The real implementation should be provided by the dmosi layer.
+ *
+ * @param Pid Process ID to set the file handle for
+ * @param StdHandle One of DMOD_STDIN/DMOD_STDOUT/DMOD_STDERR/DMOD_STDLOG
+ * @param File File handle to associate with this (Pid, StdHandle) pair
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _SetProcessFile, ( Dmod_Pid_t Pid, void* StdHandle, void* File ))
+{
+    (void)Pid;
+    (void)StdHandle;
+    (void)File;
+    return -ENOSYS;
+}
+
+/**
+ * @brief Locks the stdio buffer (for current pid) to protect against recursive calls
+ * 
+ * @param File File handle or one of DMOD_STDIN/DMOD_STDOUT/DMOD_STDERR/DMOD_STDLOG
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _LockStdio, ( void* File ))
+{
+    return Dmod_ResolveProcessFile( Dmod_GetCurrentPid(), File );
+}
+
+/**
+ * @brief unlocks the stdio buffer 
+ * 
+ * @param File File handle or one of DMOD_STDIN/DMOD_STDOUT/DMOD_STDERR/DMOD_STDLOG
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _UnlockStdio, ( void* File ))
+{
+
 }

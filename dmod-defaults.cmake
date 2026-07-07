@@ -76,6 +76,11 @@ if (NOT DEFINED DMOD_MAX_REQUIRED_MODULES)
     set(DMOD_MAX_REQUIRED_MODULES 10)
 endif()
 
+if (NOT DEFINED DMOD_VFPRINTF_STACK_BUFFER_SIZE)
+    # Above this size, Dmod_VFPrintf falls back to a heap allocation instead of a stack buffer
+    set(DMOD_VFPRINTF_STACK_BUFFER_SIZE 100)
+endif()
+
 if (NOT DEFINED DMOD_MODE)
     set(DMOD_MODE "DMOD_SYSTEM")
 endif()

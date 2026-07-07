@@ -158,6 +158,28 @@ DMOD_BUILTIN_API(Dmod, 1.0, int         , _FileRemove,  ( const char* Path ) );
 #define DMOD_STDLOG    ((void*)4)
 
 DMOD_BUILTIN_API(Dmod, 1.0, void*, _GetStdLogFile, ( void ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int  , _VFPrintf,      ( void* File, const char* Format, va_list Args ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int  , _FPrintf,       ( void* File, const char* Format, ... ) );
+
+//! @}
+
+/**
+ * @defgroup DMOD_SAL_KERNEL Kernel I/O Interface
+ * @ingroup DMOD_SAL
+ *
+ * This interface gives raw, unbuffered access to the kernel's standard output/input -
+ * bypassing stdio buffering and the Dmod_FileWrite/Dmod_FileRead/DMOD_STDIN/DMOD_STDOUT
+ * abstraction entirely. It is meant for contexts where buffering must not happen, e.g.
+ * crash/panic handlers, signal handlers, or output emitted before stdio has been initialized.
+ *
+ * The default implementation uses the raw POSIX write(2)/read(2) syscalls on file
+ * descriptors 1 (stdout) and 0 (stdin).
+ *
+ * @addtogroup DMOD_SAL_KERNEL
+ * @{
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, size_t, _WriteKernel, ( const void* Buffer, size_t Size ) );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t, _ReadKernel,  ( void* Buffer, size_t Size ) );
 
 //! @}
 
@@ -200,8 +222,8 @@ DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetCurrentModuleNameEx, ( const char* 
  */
 
 DMOD_BUILTIN_API( Dmod, 1.0, bool ,_CheckLogLevel, ( Dmod_LogLevel_t LogLevel ) );
+DMOD_BUILTIN_API( Dmod, 1.0, int  ,_VPrintf, ( const char* Format, va_list Args ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_Printf, ( const char* Format, ... ) );
-DMOD_BUILTIN_API( Dmod, 1.0, int  ,_FPrintf, ( void* File, const char* Format, ... ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_VSnPrintf, ( char* Buffer, size_t Size, const char* Format, va_list Args ) );
 DMOD_BUILTIN_API( Dmod, 1.0, int  ,_SnPrintf, ( char* Buffer, size_t Size, const char* Format, ... ) );
 DMOD_BUILTIN_API( Dmod, 1.0, void        ,_Assert,      ( int Condition, const char* Message, const char* File, int Line, const char* Function ) );
@@ -429,6 +451,11 @@ DMOD_BUILTIN_API(Dmod, 1.0, void, _Exit, ( int Status ) );
 DMOD_BUILTIN_API(Dmod, 1.0, Dmod_Pid_t, _Spawn, ( Dmod_Context_t* Context, int argc, char *argv[] ) );
 DMOD_BUILTIN_API(Dmod, 1.0, Dmod_Pid_t, _RunDetached, ( Dmod_Context_t* Context, int argc, char *argv[] ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _GetProcessResult, ( Dmod_Pid_t Pid ) );
+DMOD_BUILTIN_API(Dmod, 1.0, Dmod_Pid_t, _GetCurrentPid, (void));
+DMOD_BUILTIN_API(Dmod, 1.0, void*, _ResolveProcessFile, ( Dmod_Pid_t Pid, void* StdHandle ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int, _SetProcessFile, ( Dmod_Pid_t Pid, void* StdHandle, void* File ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void*, _LockStdio, ( void* StdHandle ));
+DMOD_BUILTIN_API(Dmod, 1.0, void, _UnlockStdio, ( void* StdHandle ));
 
 //! @}
 
