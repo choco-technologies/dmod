@@ -86,7 +86,12 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _GetStdLogFile, ( void ))
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _VFPrintf, ( void* File, const char* Format, va_list Args ))
 {
     #if DMOD_USE_STDIO
-    return vfprintf( Dmod_ResolveStreamFile( Dmod_GetCurrentPid(), File ), Format, Args );
+    void* resolvedFile = Dmod_ResolveStreamFile( Dmod_GetCurrentPid(), File );
+    if( resolvedFile == NULL )
+    {
+        resolvedFile = stdout;
+    }
+    return vfprintf( resolvedFile, Format, Args );
     #elif DMOD_IMPLEMENT_PRINTF
     va_list ArgsCopy;
     va_copy( ArgsCopy, Args );
@@ -235,7 +240,14 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileWrite, ( const void* Buf
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileSeek, ( void* File, long Offset, int Origin ))
 {
     #if DMOD_USE_STDIO
-    return fseek(Dmod_ResolveStreamFile( Dmod_GetCurrentPid(), File ), Offset, Origin);
+    void* resolvedFile = Dmod_ResolveStreamFile( Dmod_GetCurrentPid(), File );
+    if( resolvedFile == NULL )
+    {
+        // No real file bound for the current process/stream slot: seeking has no
+        // meaning on the raw kernel I/O fallback used by Dmod_FileRead/Dmod_FileWrite.
+        return -1;
+    }
+    return fseek(resolvedFile, Offset, Origin);
     #else
     DMOD_LOG_ERROR("Dmod_FileSeek interface not implemented\n");
     return -1;
@@ -252,7 +264,14 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileSeek, ( void* File, long Of
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileTell, ( void* File ))
 {
     #if DMOD_USE_STDIO
-    return ftell(Dmod_ResolveStreamFile( Dmod_GetCurrentPid(), File ));
+    void* resolvedFile = Dmod_ResolveStreamFile( Dmod_GetCurrentPid(), File );
+    if( resolvedFile == NULL )
+    {
+        // No real file bound for the current process/stream slot: there is no
+        // position to report on the raw kernel I/O fallback.
+        return 0;
+    }
+    return ftell(resolvedFile);
     #else
     DMOD_LOG_ERROR("Dmod_FileTell interface not implemented\n");
     return 0;
