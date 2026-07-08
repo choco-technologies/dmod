@@ -80,7 +80,37 @@ typedef int32_t Dmod_Pid_t;
  */
 #define DMOD_CURRENT_PROCESS_PID ((Dmod_Pid_t)1)
 
-typedef struct 
+/**
+ * @brief Single stream redirection entry
+ *
+ * Associates one of the standard stream handles (DMOD_STDIN/DMOD_STDOUT/DMOD_STDERR/DMOD_STDLOG,
+ * see dmod_sal.h) with the path of the file that should back it in a spawned/detached process.
+ */
+typedef struct
+{
+    void*       StdHandle;   //!< One of DMOD_STDIN/DMOD_STDOUT/DMOD_STDERR/DMOD_STDLOG
+    const char* Path;        //!< Path of the file to associate with this stream
+} Dmod_StreamRedirection_t;
+
+/**
+ * @brief Set of stream redirections to apply to a spawned/detached process
+ *
+ * Passed to Dmod_Spawn/Dmod_RunDetached (and Dmod_SpawnModule/Dmod_RunModuleDetached) to let
+ * the caller redirect the new process's standard streams to specific files. May be NULL, or
+ * have a zero Count, if no redirection is needed.
+ *
+ * The default weak implementations ignore this parameter - they run the module in the current
+ * process, and there is no way to redirect its streams without affecting (and not restoring)
+ * the caller's own streams. A real dmosi implementation is expected to honor it when actually
+ * spawning a new process.
+ */
+typedef struct
+{
+    const Dmod_StreamRedirection_t* Entries;   //!< Array of stream redirection entries
+    size_t                          Count;     //!< Number of entries in the array
+} Dmod_StreamRedirections_t;
+
+typedef struct
 {
     uint32_t       Size;
     uint32_t       Version;

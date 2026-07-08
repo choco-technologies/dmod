@@ -1971,14 +1971,15 @@ int Dmod_RunModuleTests( const char* ModuleName, int argc, char* argv[] )
 
 /**
  * @brief Spawn application in a new child process
- * 
+ *
  * @param Module Name of the module or file path
  * @param argc Number of arguments
  * @param argv Arguments
- * 
+ * @param Streams Stream redirections to apply to the spawned process, or NULL if none are needed
+ *
  * @return Process ID on success (positive value), negative error code on failure
  */
-int Dmod_SpawnModule(const char* Module, int argc, char *argv[])
+int Dmod_SpawnModule(const char* Module, int argc, char *argv[], const Dmod_StreamRedirections_t* Streams)
 {
     if( Module == NULL )
     {
@@ -2001,21 +2002,22 @@ int Dmod_SpawnModule(const char* Module, int argc, char *argv[])
         return -ENOENT;
     }
 
-    Dmod_Pid_t result = Dmod_Spawn( context, argc, argv );
+    Dmod_Pid_t result = Dmod_Spawn( context, argc, argv, Streams );
     Dmod_Unload( context, false );
     return (int)result;
 }
 
 /**
  * @brief Run application in a detached process
- * 
+ *
  * @param Module Name of the module or file path
  * @param argc Number of arguments
  * @param argv Arguments
- * 
+ * @param Streams Stream redirections to apply to the detached process, or NULL if none are needed
+ *
  * @return Process ID on success (positive value), negative error code on failure
  */
-int Dmod_RunModuleDetached(const char* Module, int argc, char *argv[])
+int Dmod_RunModuleDetached(const char* Module, int argc, char *argv[], const Dmod_StreamRedirections_t* Streams)
 {
     if( Module == NULL )
     {
@@ -2038,7 +2040,7 @@ int Dmod_RunModuleDetached(const char* Module, int argc, char *argv[])
         return -ENOENT;
     }
 
-    Dmod_Pid_t result = Dmod_RunDetached( context, argc, argv );
+    Dmod_Pid_t result = Dmod_RunDetached( context, argc, argv, Streams );
     Dmod_Unload( context, false );
     return (int)result;
 }
