@@ -209,12 +209,14 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _ResolveStreamFile, ( Dmod_Pid
 /**
  * @brief Register the path of the file backing one of a process's standard streams
  *
- * This is a weak implementation that does nothing.
+ * This is a weak implementation that does nothing. Path == NULL is meant to clear an
+ * existing binding, but since this weak implementation never binds anything in the first
+ * place, there is nothing to clear either.
  * The real implementation should be provided by the dmosi layer.
  *
  * @param Pid Process ID to set the stream file path for
  * @param StdHandle One of DMOD_STDIN/DMOD_STDOUT/DMOD_STDERR/DMOD_STDLOG
- * @param Path Path of the file to associate with this (Pid, StdHandle) pair
+ * @param Path Path of the file to associate with this (Pid, StdHandle) pair, or NULL to clear it
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _SetStreamFilePath, ( Dmod_Pid_t Pid, void* StdHandle, const char* Path ))
 {
@@ -222,6 +224,31 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _SetStreamFilePath, ( Dmod_Pid_t
     (void)StdHandle;
     (void)Path;
     return -ENOSYS;
+}
+
+/**
+ * @brief Snapshot the currently explicitly-bound standard streams of a process
+ *
+ * This is a weak implementation that always reports an empty snapshot (nothing bound),
+ * since this weak implementation never binds anything via Dmod_SetStreamFilePath either.
+ * The real implementation should be provided by the dmosi layer.
+ *
+ * @param Pid Process ID to snapshot
+ * @param OutEntries Buffer to receive the snapshot entries
+ * @param MaxEntries Capacity of OutEntries, in entries
+ * @param OutCount Receives the number of entries written to OutEntries (always 0 here)
+ * @return 0
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _GetStreamRedirections, ( Dmod_Pid_t Pid, Dmod_StreamRedirection_t* OutEntries, size_t MaxEntries, size_t* OutCount ))
+{
+    (void)Pid;
+    (void)OutEntries;
+    (void)MaxEntries;
+    if( OutCount != NULL )
+    {
+        *OutCount = 0;
+    }
+    return 0;
 }
 
 /**

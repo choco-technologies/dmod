@@ -454,6 +454,8 @@ DMOD_BUILTIN_API(Dmod, 1.0, int, _GetProcessResult, ( Dmod_Pid_t Pid ) );
 DMOD_BUILTIN_API(Dmod, 1.0, Dmod_Pid_t, _GetCurrentPid, (void));
 DMOD_BUILTIN_API(Dmod, 1.0, void*, _ResolveStreamFile, ( Dmod_Pid_t Pid, void* StdHandle ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _SetStreamFilePath, ( Dmod_Pid_t Pid, void* StdHandle, const char* Path ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int, _GetStreamRedirections, ( Dmod_Pid_t Pid, Dmod_StreamRedirection_t* OutEntries, size_t MaxEntries, size_t* OutCount ) );
+
 DMOD_BUILTIN_API(Dmod, 1.0, void*, _LockStdio, ( void* StdHandle ));
 DMOD_BUILTIN_API(Dmod, 1.0, void, _UnlockStdio, ( void* StdHandle ));
 
