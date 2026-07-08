@@ -2003,7 +2003,16 @@ int Dmod_SpawnModule(const char* Module, int argc, char *argv[], const Dmod_Stre
     }
 
     Dmod_Pid_t result = Dmod_Spawn( context, argc, argv, Streams );
-    Dmod_Unload( context, false );
+    if( result < 0 )
+    {
+        // No thread was created to take ownership of the context - unload it here.
+        // On success, the spawned thread now owns that responsibility (see
+        // dmod_spawn_thread_entry): unloading here unconditionally would race with
+        // it, since Dmod_Unload(..., false) only actually unloads a module that
+        // isn't marked Running, and Running only becomes true once the spawned
+        // thread starts executing Dmod_Run() - which may not have happened yet.
+        Dmod_Unload( context, false );
+    }
     return (int)result;
 }
 
@@ -2041,7 +2050,11 @@ int Dmod_RunModuleDetached(const char* Module, int argc, char *argv[], const Dmo
     }
 
     Dmod_Pid_t result = Dmod_RunDetached( context, argc, argv, Streams );
-    Dmod_Unload( context, false );
+    if( result < 0 )
+    {
+        // See the matching comment in Dmod_SpawnModule above.
+        Dmod_Unload( context, false );
+    }
     return (int)result;
 }
 

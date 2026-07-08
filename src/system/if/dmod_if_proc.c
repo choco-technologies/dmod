@@ -91,6 +91,12 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Pid_t, _Spawn, ( Dmod_Context_t*
     {
         return (Dmod_Pid_t)result;
     }
+    // This weak implementation runs the module synchronously - no thread is spawned,
+    // so nothing else will take ownership of unloading the context. The real
+    // (dmosi-backed) implementation transfers that responsibility to the spawned
+    // thread instead (its caller, Dmod_SpawnModule, only unloads on failure), so this
+    // weak fallback must do it itself here now that Dmod_Run() has finished.
+    Dmod_Unload(Context, false);
     return DMOD_CURRENT_PROCESS_PID;
 }
 
@@ -118,6 +124,8 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Pid_t, _RunDetached, ( Dmod_Cont
     {
         return (Dmod_Pid_t)result;
     }
+    // See the matching comment in Dmod_Spawn above.
+    Dmod_Unload(Context, false);
     return DMOD_CURRENT_PROCESS_PID;
 }
 
