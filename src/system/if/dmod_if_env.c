@@ -250,19 +250,38 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetCurrentModuleNameEx,
 }
 
 /**
+ * @brief Get the context currently executing on this thread, if any
+ *
+ * This is a weak implementation with no process/thread tracking to draw on, so it always
+ * returns NULL. The real implementation is provided by the dmosi glue layer, which resolves
+ * the current process and returns the Dmod_Context_t it was linked to at spawn time.
+ *
+ * @return Dmod_Context_t* Always NULL in the weak implementation
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Context_t*, _GetCurrentContext, ( void ))
+{
+    return NULL;
+}
+
+/**
  * @brief Get the name used to attribute heap allocations to their owner
  *
- * This is a weak implementation with no real process tracking to draw on, so it can't
- * tell apart two concurrently loaded instances of the same module - it just falls back
- * to the module name, same as Dmod_GetCurrentModuleNameEx(). The real implementation
- * should be provided by the dmosi layer, which can incorporate process identity (e.g.
- * name + PID) to give each spawned instance its own unique allocator name.
+ * Reads Context->AllocatorName off Dmod_GetCurrentContext() - a per-instance-unique string
+ * generated once when the context was loaded (see Dmod_Ldr_LoadHeader), so this correctly
+ * tells apart two concurrently loaded instances of the same module as long as the current
+ * context can be determined at all. Falls back to Default when it cannot (e.g. no real
+ * process tracking is available, so Dmod_GetCurrentContext() returns NULL).
  *
- * @param Default The default name to return if no better allocator name is available
+ * @param Default The default name to return if no current context is available
  *
  * @return The current allocator name, or Default if it cannot be determined
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetCurrentAllocatorNameEx, ( const char* Default ))
 {
+    Dmod_Context_t* context = Dmod_GetCurrentContext();
+    if( context != NULL && context->AllocatorName[0] != '\0' )
+    {
+        return context->AllocatorName;
+    }
     return Default;
 }

@@ -40,6 +40,7 @@ Dmod_Context_t* Dmod_Context_New( void* Data, size_t FileSize )
     Context->UsageCounter = 0;
     Context->PackageName = NULL;
     Context->LogLevel   = Dmod_LogLevel_Count; /* inherit from global until env var is applied */
+    Context->AllocatorName[0] = '\0'; /* set once the header is loaded, see Dmod_Ldr_LoadHeader */
 
     if( Context->Data == NULL )
     {
@@ -94,6 +95,9 @@ void Dmod_Context_Delete( Dmod_Context_t* Context )
     char moduleName[DMOD_MAX_MODULE_NAME_LENGTH] = {0};
     strncpy( moduleName, Dmod_Context_GetModuleName( Context ), sizeof(moduleName)-1 );
 
+    char allocatorName[sizeof(Context->AllocatorName)] = {0};
+    strncpy( allocatorName, Context->AllocatorName, sizeof(allocatorName)-1 );
+
     Dmod_Mutex_Delete( Context->Mutex );
     if( Context->Data != NULL )
     {
@@ -101,7 +105,20 @@ void Dmod_Context_Delete( Dmod_Context_t* Context )
     }
     Context->Signature = 0;
     Dmod_Free( Context );
-    Dmod_FreeModule( moduleName );
+
+    /* Bulk-free whatever this module's own code allocated. Sweep both possible keys: the
+     * unique per-instance identity (used whenever a current context could be determined -
+     * see Dmod_GetCurrentAllocatorNameEx) and the plain module name (used as a fallback
+     * when it couldn't, e.g. no real process tracking available at all). Each call is a
+     * harmless no-op if nothing was ever tagged with that particular key. */
+    if( allocatorName[0] != '\0' )
+    {
+        Dmod_FreeModule( allocatorName );
+    }
+    else 
+    {
+        Dmod_FreeModule( moduleName );
+    }
 }
 
 /**

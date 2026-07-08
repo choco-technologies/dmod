@@ -209,11 +209,11 @@ DMOD_BUILTIN_API(Dmod, 1.0, size_t, _ReadKernel,  ( void* Buffer, size_t Size ) 
  * string, including bulk-freeing all of a module's memory on unload (Dmod_FreeModule) - if two
  * live instances shared that key, unloading one would free memory the other is still using.
  *
- * The default (weak) implementation just falls back to the module name, same as
- * Dmod_GetCurrentModuleName() - a platform without real process tracking has no way to tell two
- * instances apart anyway. A real implementation (see the dmosi glue layer) can return something
- * that also incorporates the current process's identity (e.g. name + PID), which is unique per
- * spawned instance even when the module name repeats.
+ * The default (weak) implementation reads Context->AllocatorName off Dmod_GetCurrentContext() -
+ * a per-instance-unique string ("<module name>@<context address>") generated once when the
+ * context's header is loaded, so it works for any backend that can report which context is
+ * currently executing. Falls back to Default when there is no current context (e.g. no real
+ * process tracking is available at all).
  */
 #ifdef DMOD_MODULE_NAME
 #   define Dmod_GetCurrentAllocatorName()      Dmod_GetCurrentAllocatorNameEx(DMOD_MODULE_NAME)
@@ -229,6 +229,7 @@ DMOD_BUILTIN_API(Dmod, 1.0, int, _EnvCtx_Push, ( void ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _EnvCtx_Pop, ( void ) );
 DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetCurrentModuleNameEx, ( const char* Default ) );
 DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetCurrentAllocatorNameEx, ( const char* Default ) );
+DMOD_BUILTIN_API(Dmod, 1.0, Dmod_Context_t*, _GetCurrentContext, ( void ) );
 
 //! @}
 

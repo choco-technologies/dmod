@@ -315,6 +315,15 @@ typedef struct
     bool                     Running;
     const char*              PackageName;
     Dmod_LogLevel_t          LogLevel;      /*!< Per-module log level. Dmod_LogLevel_Count = inherit from global. */
+    /**
+     * @brief Unique heap allocation identity for this context instance: "<module name>@<address>".
+     *
+     * Generated once, when the header is loaded (see Dmod_Ldr_LoadHeader) - the context's own
+     * address is already unique among all live contexts, so this is unique per instance even
+     * when the same module is loaded more than once at the same time (e.g. a shell spawning
+     * another instance of itself). See Dmod_GetCurrentAllocatorNameEx/Dmod_GetCurrentContext.
+     */
+    char                     AllocatorName[DMOD_MAX_MODULE_NAME_LENGTH + 24];
 } Dmod_Context_t;
 
 /**
