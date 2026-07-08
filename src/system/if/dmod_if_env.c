@@ -248,3 +248,21 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetCurrentModuleNameEx,
     /* The default implementation simply returns the provided default name. */
     return Default;
 }
+
+/**
+ * @brief Get the name used to attribute heap allocations to their owner
+ *
+ * This is a weak implementation with no real process tracking to draw on, so it can't
+ * tell apart two concurrently loaded instances of the same module - it just falls back
+ * to the module name, same as Dmod_GetCurrentModuleNameEx(). The real implementation
+ * should be provided by the dmosi layer, which can incorporate process identity (e.g.
+ * name + PID) to give each spawned instance its own unique allocator name.
+ *
+ * @param Default The default name to return if no better allocator name is available
+ *
+ * @return The current allocator name, or Default if it cannot be determined
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetCurrentAllocatorNameEx, ( const char* Default ))
+{
+    return Default;
+}

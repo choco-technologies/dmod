@@ -716,8 +716,21 @@ Dmod_Context_t* Dmod_LoadModuleByName(const char* ModuleName)
 
     if(Dmod_Mgr_IsLoaded(ModuleName))
     {
-        DMOD_LOG_INFO("Module %s is already loaded\n", ModuleName);
-        return Dmod_Context_Get(ModuleName);
+        Dmod_Context_t* existing = Dmod_Context_Get(ModuleName);
+
+        // Only Library modules are shared singletons (drivers etc. must stay one
+        // instance). Application modules are not: reusing an already-loaded
+        // Application's context here would hand out the SAME context (and so the
+        // same Dmod_Run() mutex) to a second, concurrent invocation - which would
+        // then block forever waiting for a mutex the first, still-running instance
+        // never releases, instead of getting its own independent run. So for an
+        // Application module that's already loaded, fall through and load a fresh,
+        // independent context instead of reusing this one.
+        if( existing != NULL && Dmod_GetModuleType( existing ) != Dmod_ModuleType_Application )
+        {
+            DMOD_LOG_INFO("Module %s is already loaded\n", ModuleName);
+            return existing;
+        }
     }
 
     Dmod_SearchNode_t* searchNode = Dmod_Hlp_PrepareModulesSearchNodes();
@@ -783,8 +796,17 @@ Dmod_Context_t* Dmod_LoadModuleFromPackage(const char* ModuleName, const char* P
 
     if(Dmod_Mgr_IsLoaded(ModuleName))
     {
-        DMOD_LOG_INFO("Module %s is already loaded\n", ModuleName);
-        return Dmod_Context_Get(ModuleName);
+        Dmod_Context_t* existing = Dmod_Context_Get(ModuleName);
+
+        // See the matching comment in Dmod_LoadModuleByName: only Library modules
+        // are shared singletons - an already-loaded Application module keeps its
+        // own context so a concurrent second run doesn't deadlock on the first
+        // instance's Dmod_Run() mutex.
+        if( existing != NULL && Dmod_GetModuleType( existing ) != Dmod_ModuleType_Application )
+        {
+            DMOD_LOG_INFO("Module %s is already loaded\n", ModuleName);
+            return existing;
+        }
     }
 
     Dmod_Context_t* context = Dmod_LoadFromPackage( PackageName, ModuleName );

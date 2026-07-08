@@ -67,9 +67,9 @@ extern "C" {
  * @{
  */
 #if defined(DMOD_MODULE_NAME)
-#   define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, Dmod_GetCurrentModuleName())
-#   define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, Dmod_GetCurrentModuleName())
-#   define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, Dmod_GetCurrentModuleName(DMOD_MODULE_NAME))
+#   define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, Dmod_GetCurrentAllocatorName())
+#   define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, Dmod_GetCurrentAllocatorName())
+#   define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, Dmod_GetCurrentAllocatorName(DMOD_MODULE_NAME))
 #   define Dmod_Free(Ptr)                           Dmod_FreeEx(Ptr, false)
 #else 
     DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Malloc ,           ( size_t Size )                     );
@@ -199,6 +199,28 @@ DMOD_BUILTIN_API(Dmod, 1.0, size_t, _ReadKernel,  ( void* Buffer, size_t Size ) 
 #   define Dmod_GetCurrentModuleName()      Dmod_GetCurrentModuleNameEx(NULL)
 #endif
 
+/**
+ * @brief Name used to attribute heap allocations (Dmod_Malloc/Dmod_MallocEx/...) to their owner.
+ *
+ * This is deliberately a *separate* identity from Dmod_GetCurrentModuleName(): the module name
+ * is not unique when the same module is loaded more than once at the same time (e.g. a shell
+ * spawning another instance of itself in the background) - two independent Dmod_Context_t's
+ * end up sharing one name. Allocation tracking (dmheap and similar) keys everything off this
+ * string, including bulk-freeing all of a module's memory on unload (Dmod_FreeModule) - if two
+ * live instances shared that key, unloading one would free memory the other is still using.
+ *
+ * The default (weak) implementation just falls back to the module name, same as
+ * Dmod_GetCurrentModuleName() - a platform without real process tracking has no way to tell two
+ * instances apart anyway. A real implementation (see the dmosi glue layer) can return something
+ * that also incorporates the current process's identity (e.g. name + PID), which is unique per
+ * spawned instance even when the module name repeats.
+ */
+#ifdef DMOD_MODULE_NAME
+#   define Dmod_GetCurrentAllocatorName()      Dmod_GetCurrentAllocatorNameEx(DMOD_MODULE_NAME)
+#else
+#   define Dmod_GetCurrentAllocatorName()      Dmod_GetCurrentAllocatorNameEx(NULL)
+#endif
+
 DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetEnv, ( const char* Name ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _SetEnv, ( const char* Name, const char* Value, int Overwrite ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _Unsetenv, ( const char* Name ) );
@@ -206,6 +228,7 @@ DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetNextEnvName, ( const char* Last ) )
 DMOD_BUILTIN_API(Dmod, 1.0, int, _EnvCtx_Push, ( void ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _EnvCtx_Pop, ( void ) );
 DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetCurrentModuleNameEx, ( const char* Default ) );
+DMOD_BUILTIN_API(Dmod, 1.0, const char*, _GetCurrentAllocatorNameEx, ( const char* Default ) );
 
 //! @}
 
