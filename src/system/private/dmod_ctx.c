@@ -129,10 +129,19 @@ void Dmod_Context_Delete( Dmod_Context_t* Context )
     Dmod_Mutex_Delete( Context->Mutex );
     if( Context->Data != NULL )
     {
-        Dmod_Free( Context->Data );
+        /* Concatenate on free: Data is aligned to DMOD_STACK_ALIGNMENT (16) while the
+         * heap's own base alignment can be smaller (e.g. 4), so a freed Data block
+         * often doesn't have enough padding room to satisfy the next same-size,
+         * differently-aligned request and is skipped by find_suitable_block() instead
+         * of being reused. Without eager coalescing here, every load/unload cycle of
+         * the same module (e.g. repeatedly running a command) permanently strands one
+         * more orphaned block instead of returning it to the pool, and the heap's
+         * largest contiguous block keeps shrinking one instance at a time until the
+         * emergency fragmentation retry in _aligned_alloc() finally kicks in. */
+        Dmod_FreeEx( Context->Data, true );
     }
     Context->Signature = 0;
-    Dmod_Free( Context );
+    Dmod_FreeEx( Context, true );
 
     /* Bulk-free whatever this module's own code allocated. Sweep both possible keys: the
      * unique per-instance identity (used whenever a current context could be determined -
