@@ -540,11 +540,77 @@ TEST_F(DmodSnPrintfTest, SnPrintfMixedNewFormats)
     short s = -32768;
     unsigned char uc = 255;
     unsigned int oct = 0755;
-    int result = Dmod_SnPrintf(buffer, sizeof(buffer), 
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer),
                                 "Mixed: %lu, %hd, %hhu, %o", ul, s, uc, oct);
-    
+
     ASSERT_GT(result, 0);
     ASSERT_STREQ(buffer, "Mixed: 4294967295, -32768, 255, 755");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with right-aligned unsigned integer (%10u)
+ *
+ * Regression test: integer conversions previously parsed the width flag but
+ * silently ignored it, unlike %s which honored it correctly.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfRightAlignedUnsigned)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%10u", 14u);
+
+    ASSERT_EQ(result, 10);
+    ASSERT_STREQ(buffer, "        14");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with right-aligned size_t (%14zu)
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfRightAlignedSizeT)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%14zu", (size_t)36924);
+
+    ASSERT_EQ(result, 14);
+    ASSERT_STREQ(buffer, "         36924");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with right-aligned signed integer, including sign (%5d)
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfRightAlignedSignedInt)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%5d", -42);
+
+    ASSERT_EQ(result, 5);
+    ASSERT_STREQ(buffer, "  -42");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with left-aligned signed integer (%-10d)
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfLeftAlignedSignedInt)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%-10d|", -42);
+
+    ASSERT_EQ(result, 11);
+    ASSERT_STREQ(buffer, "-42       |");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with a full tabular row: string + two width-padded
+ * size_t columns, mirroring how modules print aligned tables (e.g. memory -m).
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfTabularRowMatchesHeaderWidth)
+{
+    char header[128];
+    char row[128];
+
+    Dmod_SnPrintf(header, sizeof(header), "%-32s %10s %14s", "MODULE", "BLOCKS", "BYTES");
+    Dmod_SnPrintf(row, sizeof(row), "%-32s %10zu %14zu", "dmell#0", (size_t)14, (size_t)36924);
+
+    ASSERT_EQ(strlen(header), strlen(row));
 }
 
 
