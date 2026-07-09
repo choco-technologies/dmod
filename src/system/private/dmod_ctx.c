@@ -6,15 +6,19 @@
 
 /**
  * @brief Creates new context
- * 
+ *
  * @param Data          Pointer to the data (if NULL, the data will be allocated)
  * @param FileSize      Size of the file
- * 
+ * @param ModuleName    Name of the module being loaded, used (with a uniquing counter) to
+ *                       build this context's allocator identity right away - pass NULL if
+ *                       not known yet at this point (e.g. loading straight from a raw file
+ *                       or buffer, before the header has been parsed).
+ *
  * @return Pointer to new context
- * 
+ *
  * @note This function creates a new context and initializes it
  */
-Dmod_Context_t* Dmod_Context_New( void* Data, size_t FileSize )
+Dmod_Context_t* Dmod_Context_New( void* Data, size_t FileSize, const char* ModuleName )
 {
     if( FileSize == 0 )
     {
@@ -22,7 +26,18 @@ Dmod_Context_t* Dmod_Context_New( void* Data, size_t FileSize )
         return NULL;
     }
 
-    Dmod_Context_t* Context = Dmod_Malloc( sizeof( Dmod_Context_t ) );
+    /* Unique per-instance identity for heap allocation tracking (see
+     * Dmod_GetCurrentAllocatorNameEx) - a monotonic counter makes it unique even when
+     * the same module name repeats (e.g. a shell spawning another instance of itself),
+     * without needing the context's own address (which isn't known until after this
+     * struct itself is allocated). Built up front so the context struct and its data
+     * buffer - both allocated right here in kernel code with no ambient module identity
+     * of their own - get tagged with it too, instead of always falling back to NULL. */
+    static uint64_t contextCounter = 0;
+    char allocatorName[DMOD_MAX_MODULE_NAME_LENGTH + 24];
+    Dmod_SnPrintf( allocatorName, sizeof(allocatorName), "%s#%llu", ModuleName != NULL ? ModuleName : "module", (unsigned long long)(contextCounter++) );
+
+    Dmod_Context_t* Context = Dmod_MallocEx( sizeof( Dmod_Context_t ), allocatorName );
     if( Context == NULL )
     {
         DMOD_LOG_ERROR("Cannot create new context - cannot allocate memory\n");
@@ -32,7 +47,19 @@ Dmod_Context_t* Dmod_Context_New( void* Data, size_t FileSize )
     Context->Signature  = DMOD_CONTEXT_SIGNATURE;
     Context->Header     = NULL;
     Context->Footer     = NULL;
-    Context->Data       = Data != NULL ? Data : Dmod_AlignedMalloc( FileSize, DMOD_STACK_ALIGNMENT );
+    if( Data != NULL )
+    {
+        /* Already allocated by the caller (e.g. a decompression buffer from
+         * Dmod_FromDMFC) under whatever identity was ambient at that point, not
+         * necessarily this context's. Move it into this context's bucket instead of
+         * leaving it permanently mistagged - a no-op if the backend can't retag. */
+        Dmod_RetagEx( Data, allocatorName );
+        Context->Data = Data;
+    }
+    else
+    {
+        Context->Data = Dmod_AlignedMallocEx( FileSize, DMOD_STACK_ALIGNMENT, allocatorName );
+    }
     Context->Size       = FileSize;
     Context->Mutex      = Dmod_Mutex_New(true);
     Context->Enabled    = false;
@@ -40,7 +67,8 @@ Dmod_Context_t* Dmod_Context_New( void* Data, size_t FileSize )
     Context->UsageCounter = 0;
     Context->PackageName = NULL;
     Context->LogLevel   = Dmod_LogLevel_Count; /* inherit from global until env var is applied */
-    Context->AllocatorName[0] = '\0'; /* set once the header is loaded, see Dmod_Ldr_LoadHeader */
+    strncpy( Context->AllocatorName, allocatorName, sizeof(Context->AllocatorName)-1 );
+    Context->AllocatorName[sizeof(Context->AllocatorName)-1] = '\0';
 
     if( Context->Data == NULL )
     {

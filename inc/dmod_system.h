@@ -63,6 +63,28 @@ extern bool             Dmod_Unload             ( Dmod_Context_t* Context, bool 
 extern void             Dmod_SetCrossplatformMode ( bool Enable );
 extern bool             Dmod_IsCrossplatformMode ( void );
 
+/**
+ * @brief Force all stdio writes (Dmod_Printf, DMOD_LOG_ERROR, Dmod_Assert, ...) through
+ * Dmod_WriteKernel, bypassing stream resolution and process/thread lookup entirely.
+ *
+ * Meant to be set at the very start of fault handlers (HardFault, stack overflow, ...)
+ * before doing anything else. Those run in contexts where per-thread/process state may
+ * already be corrupted (that is often the reason the fault happened), and the normal
+ * stdio path (Dmod_LockStdio -> dmosi_process_current() -> ...) can itself fault a
+ * second time trying to resolve it. This is a plain, trivial variable write - safe to
+ * call from interrupt/exception context, and deliberately does not log anything itself.
+ *
+ * @param Enable If true, all subsequent stdio writes go straight to Dmod_WriteKernel
+ */
+extern void             Dmod_SetForceKernelWrite ( bool Enable );
+
+/**
+ * @brief Check whether forced raw kernel writes (see Dmod_SetForceKernelWrite) are active
+ *
+ * @return true if stdio writes are currently forced through Dmod_WriteKernel
+ */
+extern bool             Dmod_IsForceKernelWrite ( void );
+
 extern const Dmod_RequiredModule_t* Dmod_GetNextRequiredModule( Dmod_Context_t* Context, const Dmod_RequiredModule_t* Last );
 
 // DMF API

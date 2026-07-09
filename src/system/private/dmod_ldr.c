@@ -119,11 +119,6 @@ bool Dmod_Ldr_LoadHeader( Dmod_Context_t* Context )
 
     Context->Header = header;
 
-    /* Unique per-instance identity for heap allocation tracking (see Dmod_GetCurrentAllocatorNameEx) -
-     * the context's own address is already unique among all live contexts, so this stays unique
-     * even when the same module is loaded more than once at the same time. */
-    Dmod_SnPrintf( Context->AllocatorName, sizeof(Context->AllocatorName), "%s@%p", header->Name, (void*)Context );
-
     bool result = Dmod_Hlp_InitPointer( Context, (void**)&header->Preinit,  "Preinit"    )
                && Dmod_Hlp_InitPointer( Context, (void**)&header->Init,     "Init"       ) 
                && Dmod_Hlp_InitPointer( Context, (void**)&header->Main,     "Main"       ) 

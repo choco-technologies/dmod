@@ -167,7 +167,7 @@ TEST_F(DmodGetNameTest, GetNameValidContext)
         GTEST_SKIP() << "DMF test file not available";
     }
 
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
 
     // Set the module header
     ASSERT_NE(context, nullptr);
@@ -202,7 +202,7 @@ TEST_F(DmodGetNameTest, GetNameNoHeader)
 {
     size_t fileSize = 1024;
     void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_STREQ(Dmod_GetName(context), "Unknown");
     Dmod_Context_Delete(context);
 }

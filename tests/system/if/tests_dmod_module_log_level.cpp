@@ -124,7 +124,7 @@ TEST_F(DmodModuleLogLevelTest, ContextNew_LogLevelInitialisedToCount)
 {
     /* Allocate a tiny fake buffer so Context_New doesn't fail */
     static uint8_t fakeBuf[64] = {0};
-    Dmod_Context_t* ctx = Dmod_Context_New(fakeBuf, sizeof(fakeBuf));
+    Dmod_Context_t* ctx = Dmod_Context_New(fakeBuf, sizeof(fakeBuf), NULL);
     ASSERT_NE(ctx, nullptr);
 
     EXPECT_EQ(ctx->LogLevel, Dmod_LogLevel_Count);

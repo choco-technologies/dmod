@@ -29,6 +29,11 @@ void* Dmod_AlignedMalloc(size_t Size, size_t Alignment)
 void Dmod_Free(void* ptr)   { free(ptr); }
 void* Dmod_Malloc(size_t Size) { return malloc(Size); }
 
+// Dmod_Context_New() calls these directly (it has no ambient module identity of its own)
+void* Dmod_MallocEx(size_t Size, const char* ModuleName) { (void)ModuleName; return Dmod_Malloc(Size); }
+void* Dmod_AlignedMallocEx(size_t Size, size_t Alignment, const char* ModuleName) { (void)ModuleName; return Dmod_AlignedMalloc(Size, Alignment); }
+void Dmod_FreeEx(void* ptr, bool Concatenate) { (void)Concatenate; Dmod_Free(ptr); }
+
 void* Dmod_Mutex_New(bool Recursive)
 {
     pthread_mutex_t* m = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
@@ -55,7 +60,7 @@ static Dmod_Context_t* MakeContext(size_t fileSize = 1024)
 {
     void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
     if (!data) return nullptr;
-    return Dmod_Context_New(data, fileSize);
+    return Dmod_Context_New(data, fileSize, NULL);
 }
 
 static void AttachInputSection(Dmod_Context_t* ctx,

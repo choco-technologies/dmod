@@ -82,6 +82,26 @@ DMOD_BUILTIN_API(Dmod, 1.0, void*,  _ReallocEx,         ( void* Ptr, size_t Size
 DMOD_BUILTIN_API(Dmod, 1.0, void ,  _FreeEx ,           ( void* Ptr, bool Concatenate ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void*,  _AlignedMallocEx,   ( size_t Size, size_t Alignment, const char* ModuleName ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void,   _FreeModule,        ( const char* ModuleName )          );
+
+/**
+ * @brief Change which module a previously-allocated block is attributed to
+ *
+ * For allocations whose true owner is only known after the fact - e.g. a decompression
+ * buffer allocated by generic kernel code (see Dmod_FromDMFC) before the caller has a
+ * chance to assign it to a specific module instance. The pointer itself is unchanged;
+ * only its bulk-free/reporting attribution moves to the new name.
+ *
+ * The default (weak) implementation is a no-op that always returns false - a backend
+ * with no allocation tracking has nothing to retag. A real allocator (see dmheap) looks
+ * the block up by its existing address and moves it to the named module's bucket.
+ *
+ * @param Ptr Pointer previously returned by Dmod_Malloc/Dmod_MallocEx/Dmod_AlignedMalloc/...
+ * @param ModuleName Name of the module to attribute the block to from now on
+ *
+ * @return true if the block was found and retagged, false otherwise
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, bool,   _RetagEx,           ( void* Ptr, const char* ModuleName ) );
+
 DMOD_BUILTIN_API(Dmod, 1.0, size_t, _ReadMemory,        ( uintptr_t Address, void* Buffer, size_t Size ) );
 DMOD_BUILTIN_API(Dmod, 1.0, size_t, _WriteMemory,       ( uintptr_t Address, const void* Buffer, size_t Size ) );
 //! @}

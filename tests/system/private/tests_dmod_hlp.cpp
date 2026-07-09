@@ -31,7 +31,7 @@ TEST_F(DmodHlpTest, InitPointer)
 {
     size_t fileSize = 1024;
     void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     uint32_t offset = 100;
@@ -52,7 +52,7 @@ TEST_F(DmodHlpTest, InitPointerFail)
 {
     size_t fileSize = 1024;
     void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_FALSE(Dmod_Hlp_InitPointer(context, nullptr, "Pointer"));
@@ -72,7 +72,7 @@ TEST_F(DmodHlpTest, InitPointerFailOffset)
 {
     size_t fileSize = 1024;
     void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     uint32_t offset = 2000;

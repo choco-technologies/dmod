@@ -227,3 +227,22 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _FreeModule, ( const char* Modu
 {
     (void)ModuleName;
 }
+
+/**
+ * @brief Change which module a previously-allocated block is attributed to
+ *
+ * This is a weak implementation with no allocation tracking to draw on, so there is
+ * nothing to retag. A real implementation is provided by an allocator backend that
+ * tracks per-block ownership (see dmheap).
+ *
+ * @param Ptr Pointer previously returned by an allocation function
+ * @param ModuleName Name of the module to attribute the block to from now on
+ *
+ * @return Always false in the weak implementation
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _RetagEx, ( void* Ptr, const char* ModuleName ))
+{
+    (void)Ptr;
+    (void)ModuleName;
+    return false;
+}

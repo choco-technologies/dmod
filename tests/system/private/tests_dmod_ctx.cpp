@@ -76,7 +76,7 @@ void* Dmod_AlignedMalloc(size_t Size, size_t Alignment)
 
 /**
  * @brief Free memory
- * 
+ *
  * @param ptr Pointer to memory to free
  */
 void Dmod_Free(void *ptr)
@@ -87,6 +87,51 @@ void Dmod_Free(void *ptr)
         return;
     }
     free(ptr);
+}
+
+/**
+ * @brief Allocate memory, attributed to an allocator name
+ *
+ * Dmod_Context_New() calls this directly (not the plain Dmod_Malloc above) since it has
+ * no ambient module identity of its own - route it through the same mock so existing
+ * EXPECT_CALL(*mockMemory, Malloc(...)) expectations keep working unchanged.
+ *
+ * @param Size Size of memory to allocate
+ * @param ModuleName Allocator name to attribute the allocation to (ignored by this mock)
+ *
+ * @return Pointer to allocated memory
+ */
+void* Dmod_MallocEx(size_t Size, const char* ModuleName)
+{
+    (void)ModuleName;
+    return Dmod_Malloc(Size);
+}
+
+/**
+ * @brief Allocate aligned memory, attributed to an allocator name
+ *
+ * @param Size Size of memory to allocate
+ * @param Alignment Alignment of memory
+ * @param ModuleName Allocator name to attribute the allocation to (ignored by this mock)
+ *
+ * @return Pointer to allocated memory
+ */
+void* Dmod_AlignedMallocEx(size_t Size, size_t Alignment, const char* ModuleName)
+{
+    (void)ModuleName;
+    return Dmod_AlignedMalloc(Size, Alignment);
+}
+
+/**
+ * @brief Free memory allocated via Dmod_MallocEx/Dmod_AlignedMallocEx
+ *
+ * @param ptr Pointer to memory to free
+ * @param Concatenate Ignored by this mock
+ */
+void Dmod_FreeEx(void* ptr, bool Concatenate)
+{
+    (void)Concatenate;
+    Dmod_Free(ptr);
 }
 
 /**
@@ -226,7 +271,7 @@ TEST_F(DmodContextTest, NewWithData)
 {
     size_t fileSize = 1024;
     void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
     Dmod_Context_Delete(context);
 }
@@ -240,7 +285,7 @@ TEST_F(DmodContextTest, NewWithData)
 TEST_F(DmodContextTest, NewWithoutData)
 {
     size_t fileSize = 1024;
-    Dmod_Context_t* context = Dmod_Context_New(NULL, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(NULL, fileSize, NULL);
     ASSERT_NE(context, nullptr);
     Dmod_Context_Delete(context);
 }
@@ -253,7 +298,7 @@ TEST_F(DmodContextTest, NewWithoutData)
  */
 TEST_F(DmodContextTest, NewWithoutDataAndZeroFileSize)
 {
-    Dmod_Context_t* context = Dmod_Context_New(NULL, 0);
+    Dmod_Context_t* context = Dmod_Context_New(NULL, 0, NULL);
     ASSERT_EQ(context, nullptr);
 }
 
@@ -270,7 +315,7 @@ TEST_F(DmodContextTest, NewMallocFail)
     EnableMockMemory();
     EXPECT_CALL(*mockMemory, Malloc(testing::_)).WillOnce(testing::Return(nullptr));
 
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_EQ(context, nullptr);
 }
 
@@ -292,7 +337,7 @@ TEST_F(DmodContextTest, NewAlignedMallocFail)
     EXPECT_CALL(*mockMemory, AlignedMalloc(testing::_, testing::_)).WillOnce(testing::Return(nullptr));
     EXPECT_CALL(*mockRtos, MutexNew(testing::_)).WillOnce(testing::Return(nullptr));
 
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_EQ(context, nullptr);
 
     free(expectedContext);
@@ -311,7 +356,7 @@ TEST_F(DmodContextTest, NewMutexFail)
     EnableMockRtos();
     EXPECT_CALL(*mockRtos, MutexNew(testing::_)).WillOnce(testing::Return(nullptr));
 
-    Dmod_Context_New(data, fileSize);
+    Dmod_Context_New(data, fileSize, NULL);
 
     // The test is successful if the function does not crash or hang
 }
@@ -328,7 +373,7 @@ TEST_F(DmodContextTest, IsValidTrue)
 {
     size_t fileSize = 1024;
     void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_TRUE(Dmod_Context_IsValid(context));
     Dmod_Context_Delete(context);
 }
@@ -353,7 +398,7 @@ TEST_F(DmodContextTest, IsValidInvalidSignature)
 {
     size_t fileSize = 1024;
     void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     context->Signature = 0;
     ASSERT_FALSE(Dmod_Context_IsValid(context));
     Dmod_Context_Delete(context);
@@ -371,7 +416,7 @@ TEST_F(DmodContextTest, DeleteValidContext)
 {
     size_t fileSize = 1024;
     void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     Dmod_Context_Delete(context);
 }
 
@@ -398,7 +443,7 @@ TEST_F(DmodContextTest, GetModuleNameValidContext)
 {
     size_t fileSize = 1024;
     void* data = Dmod_AlignedMalloc(fileSize, DMOD_STACK_ALIGNMENT);
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_STREQ(Dmod_Context_GetModuleName(context), "Unknown");
     Dmod_Context_Delete(context);
 }
@@ -428,7 +473,7 @@ TEST_F(DmodContextTest, AddValidContext)
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
 
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
 
     // Get the module name
     ASSERT_NE(context, nullptr);
@@ -468,7 +513,7 @@ TEST_F(DmodContextTest, AddNoSpaceLeft)
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
 
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
 
     // Get the module name
     ASSERT_NE(context, nullptr);
@@ -501,7 +546,7 @@ TEST_F(DmodContextTest, RemoveValidContext)
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
 
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
 
     // Get the module name
     ASSERT_NE(context, nullptr);
@@ -547,7 +592,7 @@ TEST_F(DmodContextTest, RemoveNotInList)
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
 
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
 
     // Get the module name
     ASSERT_NE(context, nullptr);
@@ -575,7 +620,7 @@ TEST_F(DmodContextTest, GetValidContext)
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
 
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
 
     // Set the module name
     ASSERT_NE(context, nullptr);
@@ -628,7 +673,7 @@ TEST_F(DmodContextTest, GetModuleTypeValidContext)
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
 
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
 
     // Set the module name
     ASSERT_NE(context, nullptr);
@@ -667,7 +712,7 @@ TEST_F(DmodContextTest, GetModuleTypeInvalidHeader)
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
 
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
 
     // Set the module name
     ASSERT_NE(context, nullptr);

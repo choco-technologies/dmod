@@ -65,7 +65,7 @@ TEST_F(DmodLdrTest, LoadHeader)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
@@ -101,7 +101,7 @@ TEST_F(DmodLdrTest, LoadHeaderInvalidSignature)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
@@ -126,7 +126,7 @@ TEST_F(DmodLdrTest, LoadHeaderIncompatibleVersion)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
@@ -151,7 +151,7 @@ TEST_F(DmodLdrTest, LoadHeaderInvalidArchitecture)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
@@ -176,7 +176,7 @@ TEST_F(DmodLdrTest, LoadHeaderInvalidTargetCpu)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
@@ -201,7 +201,7 @@ TEST_F(DmodLdrTest, LoadHeaderTooLongName)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
@@ -226,7 +226,7 @@ TEST_F(DmodLdrTest, LoadHeaderModuleAlreadyLoaded)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize, false));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_Context_t* context2 = Dmod_LoadFile(DMOD_TEST_DMF_LIB_FILE);
@@ -247,7 +247,7 @@ TEST_F(DmodLdrTest, LoadHeaderModuleAlreadyLoadedApplication)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_Context_t* context2 = Dmod_LoadFile(DMOD_TEST_DMF_FILE);
@@ -268,7 +268,7 @@ TEST_F(DmodLdrTest, LoadHeaderMissingInitDeinitFunction)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
@@ -296,7 +296,7 @@ TEST_F(DmodLdrTest, LoadHeaderInvalidModuleType)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
@@ -322,7 +322,7 @@ TEST_F(DmodLdrTest, LoadHeaderMissingMainFunction)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
@@ -349,7 +349,7 @@ TEST_F(DmodLdrTest, LoadHeaderValidLicense)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
@@ -383,7 +383,7 @@ TEST_F(DmodLdrTest, LoadHeaderInvalidLicense)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
@@ -406,7 +406,7 @@ TEST_F(DmodLdrTest, LoadHeaderInvalidLicenseTextPointer)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
@@ -433,7 +433,7 @@ TEST_F(DmodLdrTest, LoadHeaderInvalidFooterPointer)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
@@ -463,7 +463,7 @@ TEST_F(DmodLdrTest, LoadFooter)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -493,7 +493,7 @@ TEST_F(DmodLdrTest, LoadFooterNoHeader)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_FALSE(Dmod_Ldr_LoadFooter(context));
@@ -511,7 +511,7 @@ TEST_F(DmodLdrTest, LoadFooterInvalidHeaderSection)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     Dmod_ModuleHeader_t* header = (Dmod_ModuleHeader_t*)data;
@@ -547,7 +547,7 @@ TEST_F(DmodLdrTest, LoadInput)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -578,7 +578,7 @@ TEST_F(DmodLdrTest, LoadInputNoFooter)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_FALSE(Dmod_Ldr_LoadInput(context));
@@ -596,7 +596,7 @@ TEST_F(DmodLdrTest, LoadInputEmptyInputSection)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -622,7 +622,7 @@ TEST_F(DmodLdrTest, LoadInputEmptyInputEntriesNoFunctionsToCall)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -653,7 +653,7 @@ TEST_F(DmodLdrTest, LoadInputInvalidInputSection)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -683,7 +683,7 @@ TEST_F(DmodLdrTest, LoadInputEmptyEntryFunctionPointer)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -713,7 +713,7 @@ TEST_F(DmodLdrTest, LoadInputInvalidEntrySignature)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -747,7 +747,7 @@ TEST_F(DmodLdrTest, LoadOutput)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -778,7 +778,7 @@ TEST_F(DmodLdrTest, LoadOutputNoFooter)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_FALSE(Dmod_Ldr_LoadOutput(context));
@@ -796,7 +796,7 @@ TEST_F(DmodLdrTest, LoadOutputInvalidOutputSection)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -826,7 +826,7 @@ TEST_F(DmodLdrTest, LoadOutputInvalidOutputSectionOutOfBounds)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -852,7 +852,7 @@ TEST_F(DmodLdrTest, LoadOutputEmptySectionSizeStart)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -878,7 +878,7 @@ TEST_F(DmodLdrTest, LoadOutputInvalidEntryFunctionPointer)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -909,7 +909,7 @@ TEST_F(DmodLdrTest, LoadOutputInvalidEntrySignature)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
 
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -943,7 +943,7 @@ TEST_F(DmodLdrTest, LoadGot)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
     
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -974,7 +974,7 @@ TEST_F(DmodLdrTest, LoadGotNoFooter)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
     
     ASSERT_FALSE(Dmod_Ldr_LoadGot(context));
@@ -992,7 +992,7 @@ TEST_F(DmodLdrTest, LoadGotInvalidGotSection)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
     
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -1018,7 +1018,7 @@ TEST_F(DmodLdrTest, LoadGotEmptyGotSectionSizeStart)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
     
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -1048,7 +1048,7 @@ TEST_F(DmodLdrTest, LoadBss)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
     
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -1086,7 +1086,7 @@ TEST_F(DmodLdrTest, LoadBssNoFooter)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize, false));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
     
     ASSERT_FALSE(Dmod_Ldr_LoadBss(context));
@@ -1104,7 +1104,7 @@ TEST_F(DmodLdrTest, LoadBssInvalidBssSection)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize, false));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
     
     ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
@@ -1135,7 +1135,7 @@ TEST_F(DmodLdrTest, Load)
     size_t fileSize = 0;
     void* data = nullptr;
     EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize, false));
-    Dmod_Context_t* context = Dmod_Context_New(data, fileSize);
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
     ASSERT_NE(context, nullptr);
     
     ASSERT_TRUE(Dmod_Ldr_Load(context));

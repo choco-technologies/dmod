@@ -288,7 +288,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
     }
 
     Dmod_Event_ModuleLoadingInProgress( Path, 78 );
-    Dmod_Context_t* context = Dmod_Context_New( dmfData, dmfSize );
+    Dmod_Context_t* context = Dmod_Context_New( dmfData, dmfSize, Path );
     Dmod_FileClose( file );
     if( context == NULL )
     {
@@ -316,49 +316,21 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
 }
 
 /**
- * @brief Load module
- * 
- * @param Data Data of the module (aligned to 16 bytes)
- * @param Size Size of the data
- * 
+ * @brief Load a single module (not a DMP package) from a raw buffer
+ *
+ * Shared by Dmod_Load() (ModuleName not known yet at this point) and
+ * Dmod_LoadFromPackage()'s in-memory-package branch (ModuleName already known from the
+ * package's own module entry, so it's passed straight through instead of being lost).
+ *
+ * @param Data       Data of the module (aligned to 16 bytes)
+ * @param Size       Size of the data
+ * @param ModuleName Name to seed this context's allocator identity with, or NULL if unknown
+ *
  * @return Pointer to the context
  */
-Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
+static Dmod_Context_t* Dmod_LoadBuffer( const void* Data, size_t Size, const char* ModuleName )
 {
-    if( Data == NULL || Size == 0 )
-    {
-        DMOD_LOG_ERROR("Cannot load module - invalid data\n");
-        return NULL;
-    }
-
-    if( Dmod_IsDMP(Data, Size) )
-    {
-        uint32_t nIndex = UINT32_MAX;
-        DMOD_LOG_INFO("Module is DMP package - loading from package\n");
-        if( !Dmod_AddPackageBuffer( Data, Size, &nIndex ) )
-        {
-            DMOD_LOG_ERROR("Cannot load module - failed to add DMP package\n");
-            return NULL;
-        }
-
-        Dmod_PackageSlot_t* slot = Dmod_Pck_GetSlotByIndex( nIndex );
-        if( !Dmod_Pck_IsValidSlot( slot ) )
-        {
-            DMOD_LOG_ERROR("Cannot load module - failed to get DMP package slot\n");
-            return NULL;
-        }
-
-        const char* mainModuleName = Dmod_Pck_GetMainModuleName( slot );
-        if( mainModuleName == NULL )
-        {
-            DMOD_LOG_ERROR("Cannot load module - failed to get main module name from DMP package\n");
-            return NULL;    
-        }
-
-        return Dmod_LoadFromPackage( Dmod_Pck_GetPackageName( slot ), mainModuleName );
-    }
-
-    Dmod_Event_ModuleLoadingInProgress( "Unknown", 10 );
+    Dmod_Event_ModuleLoadingInProgress( ModuleName != NULL ? ModuleName : "Unknown", 10 );
 
     void* dmfData = NULL;
     size_t dmfSize = Size;
@@ -372,7 +344,7 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
         }
     }
 
-    Dmod_Context_t* context = Dmod_Context_New( dmfData, dmfSize );
+    Dmod_Context_t* context = Dmod_Context_New( dmfData, dmfSize, ModuleName );
     if( context == NULL )
     {
         return NULL;
@@ -407,6 +379,52 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
     Dmod_Event_ModuleLoaded( context );
 
     return context;
+}
+
+/**
+ * @brief Load module
+ *
+ * @param Data Data of the module (aligned to 16 bytes)
+ * @param Size Size of the data
+ *
+ * @return Pointer to the context
+ */
+Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
+{
+    if( Data == NULL || Size == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot load module - invalid data\n");
+        return NULL;
+    }
+
+    if( Dmod_IsDMP(Data, Size) )
+    {
+        uint32_t nIndex = UINT32_MAX;
+        DMOD_LOG_INFO("Module is DMP package - loading from package\n");
+        if( !Dmod_AddPackageBuffer( Data, Size, &nIndex ) )
+        {
+            DMOD_LOG_ERROR("Cannot load module - failed to add DMP package\n");
+            return NULL;
+        }
+
+        Dmod_PackageSlot_t* slot = Dmod_Pck_GetSlotByIndex( nIndex );
+        if( !Dmod_Pck_IsValidSlot( slot ) )
+        {
+            DMOD_LOG_ERROR("Cannot load module - failed to get DMP package slot\n");
+            return NULL;
+        }
+
+        const char* mainModuleName = Dmod_Pck_GetMainModuleName( slot );
+        if( mainModuleName == NULL )
+        {
+            DMOD_LOG_ERROR("Cannot load module - failed to get main module name from DMP package\n");
+            return NULL;
+        }
+
+        return Dmod_LoadFromPackage( Dmod_Pck_GetPackageName( slot ), mainModuleName );
+    }
+
+    return Dmod_LoadBuffer( Data, Size, NULL );
 }
 
 /**
@@ -445,7 +463,7 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
     if( slot->PackageBuffer != NULL )
     {
         const void* moduleData = (const uint8_t*)slot->PackageBuffer + moduleEntry->ModuleOffset;
-        context = Dmod_Load( moduleData, moduleEntry->FileSize );
+        context = Dmod_LoadBuffer( moduleData, moduleEntry->FileSize, ModuleName );
         if( context != NULL )
         {
             context->PackageName = PackageName;
@@ -499,7 +517,7 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
     }
 
     Dmod_Event_ModuleLoadingInProgress( slot->FilePath, 78 );
-    context = Dmod_Context_New( dmfData, dmfSize );
+    context = Dmod_Context_New( dmfData, dmfSize, ModuleName );
     Dmod_FileClose( file );
     if( context == NULL )
     {
@@ -771,10 +789,12 @@ Dmod_Context_t* Dmod_LoadModuleByName(const char* ModuleName)
     {
         DMOD_LOG_INFO("Using module '%s' from package '%s'\n", ModuleName, Dmod_Pck_GetPackageName( slot ));
         context = Dmod_LoadFromPackage( Dmod_Pck_GetPackageName( slot ), ModuleName );
+        Dmod_Hlp_FreeSearchPathList( searchNode );
         return context;
     }
     DMOD_LOG_ERROR("Cannot load module by name - module not found: %s\n", ModuleName);
     Dmod_Mgr_PrintSystemModules();
+    Dmod_Hlp_FreeSearchPathList( searchNode );
     return NULL;
 }
 
@@ -879,6 +899,30 @@ void Dmod_SetCrossplatformMode ( bool Enable )
 bool Dmod_IsCrossplatformMode ( void )
 {
     return Dmod_SystemCrossplatformMode;
+}
+
+/**
+ * @brief Force all stdio writes through Dmod_WriteKernel (see header for rationale)
+ *
+ * @param Enable If true, all subsequent stdio writes go straight to Dmod_WriteKernel
+ */
+void Dmod_SetForceKernelWrite ( bool Enable )
+{
+    // Deliberately no logging here (unlike Dmod_SetCrossplatformMode) - this can be
+    // called from interrupt/exception context with corrupted process/thread state,
+    // and DMOD_LOG_* would run through the very path this flag exists to bypass,
+    // before the flag has actually taken effect.
+    Dmod_SystemForceKernelWrite = Enable;
+}
+
+/**
+ * @brief Check whether forced raw kernel writes are active
+ *
+ * @return true if stdio writes are currently forced through Dmod_WriteKernel
+ */
+bool Dmod_IsForceKernelWrite ( void )
+{
+    return Dmod_SystemForceKernelWrite;
 }
 
 /**
