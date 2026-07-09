@@ -31,7 +31,9 @@
  */
 #define _POSIX_C_SOURCE 200809L
 #include <string.h>
+#define DMOD_PRIVATE
 #include "dmod.h"
+#include "private/dmod_ctx.h"
 #if DMOD_USE_STDLIB
 #   include <stdlib.h>
 #endif
@@ -269,10 +271,21 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Context_t*, _GetCurrentContext, 
  * Reads Context->AllocatorName off Dmod_GetCurrentContext() - a per-instance-unique string
  * generated once when the context was loaded (see Dmod_Ldr_LoadHeader), so this correctly
  * tells apart two concurrently loaded instances of the same module as long as the current
- * context can be determined at all. Falls back to Default when it cannot (e.g. no real
- * process tracking is available, so Dmod_GetCurrentContext() returns NULL).
+ * context can be determined at all.
  *
- * @param Default The default name to return if no current context is available
+ * Dmod_GetCurrentContext() resolves the context via the calling thread's associated
+ * process, which only exists for code running as a spawned module process. Built-in
+ * driver modules (e.g. dmclk, dmgpio) run their own init/create code directly - during
+ * boot, or synchronously on whatever caller's thread opened the device - with no such
+ * process/thread link, so Dmod_GetCurrentContext() returns NULL there even though the
+ * driver's own context (with its own unique AllocatorName) is registered. Default is the
+ * calling code's compile-time module name (DMOD_MODULE_NAME) in that case, so falling
+ * back to looking it up directly in the context registry still finds that module's own
+ * unique allocator name instead of leaving every instance's allocations bucketed under
+ * the bare module name.
+ *
+ * @param Default The calling module's compile-time name, used both as a fallback lookup
+ *                 key and as the final fallback value if that lookup also fails.
  *
  * @return The current allocator name, or Default if it cannot be determined
  */
@@ -283,5 +296,15 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetCurrentAllocatorName
     {
         return context->AllocatorName;
     }
+
+    if( Default != NULL )
+    {
+        Dmod_Context_t* moduleContext = Dmod_Context_Get( Default );
+        if( moduleContext != NULL && moduleContext->AllocatorName[0] != '\0' )
+        {
+            return moduleContext->AllocatorName;
+        }
+    }
+
     return Default;
 }
