@@ -37,6 +37,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <limits.h>
+#include <float.h>
 
 //==============================================================================
 //                              HELPER FUNCTIONS
@@ -442,6 +443,134 @@ static void Dmod_Print_Octal64( char** Buffer, size_t* Pos, size_t Size, uint64_
     }
 }
 
+// Formats a double without any libm/float-formatting support: the integer and
+// fractional parts are combined into one rounded uint64_t (Value * 10^Precision),
+// then split back apart and printed digit-by-digit exactly like the integer
+// conversions above. This correctly propagates rounding carry into the integer part
+// (e.g. 0.9999995 with Precision=6 becomes "1.000000", not "0.1000000"), because the
+// rounding happens once on the combined value instead of separately on each half.
+static void Dmod_Print_Float( char** Buffer, size_t* Pos, size_t Size, double Value, int Precision, int Width, bool LeftAlign, int* Count )
+{
+    if( Precision < 0 )
+    {
+        Precision = 6; // default precision, matches standard printf
+    }
+    if( Precision > 17 )
+    {
+        Precision = 17; // beyond a double's significant digits, extra digits are noise
+    }
+
+    char Out[160];
+    int OutLen = 0;
+
+    // NaN: the only value for which the IEEE754 equality comparison x != x is true.
+    if( Value != Value )
+    {
+        Out[OutLen++] = 'n'; Out[OutLen++] = 'a'; Out[OutLen++] = 'n';
+        Out[OutLen] = '\0';
+        if( Width > 0 ) { Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count ); }
+        else { Dmod_Print_String( Buffer, Pos, Size, Out, Count ); }
+        return;
+    }
+
+    bool IsNegative = ( Value < 0.0 );
+    if( IsNegative )
+    {
+        Value = -Value;
+    }
+
+    // Anything finite is at most DBL_MAX - so exceeding it (after removing the sign)
+    // only happens for +/-infinity.
+    if( Value > DBL_MAX )
+    {
+        if( IsNegative ) { Out[OutLen++] = '-'; }
+        Out[OutLen++] = 'i'; Out[OutLen++] = 'n'; Out[OutLen++] = 'f';
+        Out[OutLen] = '\0';
+        if( Width > 0 ) { Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count ); }
+        else { Dmod_Print_String( Buffer, Pos, Size, Out, Count ); }
+        return;
+    }
+
+    double scale = 1.0;
+    for( int i = 0; i < Precision; i++ )
+    {
+        scale *= 10.0;
+    }
+
+    double scaledValue = ( Value * scale ) + 0.5;
+
+    // Guard the double -> uint64_t conversion below: out-of-range float-to-integer
+    // conversions are undefined behavior in C. 1.8e19 is roughly UINT64_MAX.
+    if( scaledValue >= 18446744073709551615.0 )
+    {
+        if( IsNegative ) { Out[OutLen++] = '-'; }
+        const char* Overflow = "overflow";
+        while( *Overflow ) { Out[OutLen++] = *Overflow++; }
+        Out[OutLen] = '\0';
+        if( Width > 0 ) { Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count ); }
+        else { Dmod_Print_String( Buffer, Pos, Size, Out, Count ); }
+        return;
+    }
+
+    uint64_t scaled = (uint64_t)scaledValue;
+
+    uint64_t divisor = 1;
+    for( int i = 0; i < Precision; i++ )
+    {
+        divisor *= 10;
+    }
+
+    uint64_t intPart = scaled / divisor;
+    uint64_t fracPart = scaled % divisor;
+
+    if( IsNegative )
+    {
+        Out[OutLen++] = '-';
+    }
+
+    char IntTemp[21]; // Enough for UINT64_MAX
+    int IntLen = 0;
+    do
+    {
+        IntTemp[IntLen++] = '0' + (intPart % 10);
+        intPart /= 10;
+    } while( intPart > 0 );
+    while( IntLen > 0 )
+    {
+        Out[OutLen++] = IntTemp[--IntLen];
+    }
+
+    if( Precision > 0 )
+    {
+        Out[OutLen++] = '.';
+
+        // Build the fractional digits least-significant-first (like the integer
+        // conversions), but always for exactly Precision iterations so it comes out
+        // zero-padded (e.g. fracPart=6, Precision=3 -> "006") instead of short.
+        char FracTemp[17];
+        for( int i = 0; i < Precision; i++ )
+        {
+            FracTemp[i] = '0' + (fracPart % 10);
+            fracPart /= 10;
+        }
+        for( int i = Precision - 1; i >= 0; i-- )
+        {
+            Out[OutLen++] = FracTemp[i];
+        }
+    }
+
+    Out[OutLen] = '\0';
+
+    if( Width > 0 )
+    {
+        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count );
+    }
+    else
+    {
+        Dmod_Print_String( Buffer, Pos, Size, Out, Count );
+    }
+}
+
 //==============================================================================
 //                              PUBLIC FUNCTIONS
 //==============================================================================
@@ -488,7 +617,32 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                 Width = NewWidth;
                 Format++;
             }
-            
+
+            // Parse precision (e.g. the ".3" in "%.3f") - only meaningful for %f/%F.
+            // -1 means "not specified", so the conversion can fall back to its own
+            // default (6, matching standard printf) instead of an explicit 0.
+            int Precision = -1;
+            if( *Format == '.' )
+            {
+                Format++;
+                Precision = 0;
+                while( *Format >= '0' && *Format <= '9' )
+                {
+                    int NewPrecision = Precision * 10 + (*Format - '0');
+                    if( NewPrecision > DMOD_PRINTF_MAX_WIDTH )
+                    {
+                        Precision = DMOD_PRINTF_MAX_WIDTH;
+                        while( *Format >= '0' && *Format <= '9' )
+                        {
+                            Format++;
+                        }
+                        break;
+                    }
+                    Precision = NewPrecision;
+                    Format++;
+                }
+            }
+
             // Parse length modifier
             typedef enum {
                 LEN_NONE,    // default (int/unsigned int)
@@ -556,7 +710,15 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                     }
                     break;
                 }
-                
+
+                case 'f':
+                case 'F': {
+                    // float arguments are promoted to double when passed through '...'
+                    double Value = va_arg( Args, double );
+                    Dmod_Print_Float( BufPtr, &Pos, Size, Value, Precision, Width, LeftAlign, &Count );
+                    break;
+                }
+
                 case 'd':
                 case 'i': {
                     if( LenMod == LEN_LL )

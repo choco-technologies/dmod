@@ -64,11 +64,15 @@ extern "C" {
  * - %X: hexadecimal (uppercase)
  * - %o: octal
  * - %p: pointer
+ * - %f, %F: floating point (double; float is promoted to double through '...'),
+ *           prints "nan"/"inf" for non-finite values
  * - %%: literal %
- * 
+ *
  * Supported format modifiers:
  * - Width: Minimum field width (e.g., %30s for 30 characters)
  * - Left-align: '-' flag for left-justification (e.g., %-30s)
+ * - Precision: digits after the decimal point for %f/%F (e.g., %.3f), default 6,
+ *              capped at 17 (a double's significant-digit limit)
  * - Length modifier 'hh': char (8-bit) for d, i, u, x, X, o (e.g., %hhd, %hhu)
  * - Length modifier 'h': short (16-bit) for d, i, u, x, X, o (e.g., %hd, %hu)
  * - Length modifier 'l': long for d, i, u, x, X, o (e.g., %ld, %lu, %lx)

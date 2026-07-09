@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 #include <string.h>
 #include "dmod_sal.h"
+#include "private/dmod_prf.h"
 
 // ===============================================================
 //                  Tests for Dmod_SnPrintf and Dmod_VSnPrintf
@@ -556,7 +557,7 @@ TEST_F(DmodSnPrintfTest, SnPrintfMixedNewFormats)
 TEST_F(DmodSnPrintfTest, SnPrintfRightAlignedUnsigned)
 {
     char buffer[64];
-    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%10u", 14u);
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%10u", 14u);
 
     ASSERT_EQ(result, 10);
     ASSERT_STREQ(buffer, "        14");
@@ -568,7 +569,7 @@ TEST_F(DmodSnPrintfTest, SnPrintfRightAlignedUnsigned)
 TEST_F(DmodSnPrintfTest, SnPrintfRightAlignedSizeT)
 {
     char buffer[64];
-    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%14zu", (size_t)36924);
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%14zu", (size_t)36924);
 
     ASSERT_EQ(result, 14);
     ASSERT_STREQ(buffer, "         36924");
@@ -580,7 +581,7 @@ TEST_F(DmodSnPrintfTest, SnPrintfRightAlignedSizeT)
 TEST_F(DmodSnPrintfTest, SnPrintfRightAlignedSignedInt)
 {
     char buffer[64];
-    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%5d", -42);
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%5d", -42);
 
     ASSERT_EQ(result, 5);
     ASSERT_STREQ(buffer, "  -42");
@@ -592,7 +593,7 @@ TEST_F(DmodSnPrintfTest, SnPrintfRightAlignedSignedInt)
 TEST_F(DmodSnPrintfTest, SnPrintfLeftAlignedSignedInt)
 {
     char buffer[64];
-    int result = Dmod_SnPrintf(buffer, sizeof(buffer), "%-10d|", -42);
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%-10d|", -42);
 
     ASSERT_EQ(result, 11);
     ASSERT_STREQ(buffer, "-42       |");
@@ -607,10 +608,101 @@ TEST_F(DmodSnPrintfTest, SnPrintfTabularRowMatchesHeaderWidth)
     char header[128];
     char row[128];
 
-    Dmod_SnPrintf(header, sizeof(header), "%-32s %10s %14s", "MODULE", "BLOCKS", "BYTES");
-    Dmod_SnPrintf(row, sizeof(row), "%-32s %10zu %14zu", "dmell#0", (size_t)14, (size_t)36924);
+    Dmod_SnPrintf_Impl(header, sizeof(header), "%-32s %10s %14s", "MODULE", "BLOCKS", "BYTES");
+    Dmod_SnPrintf_Impl(row, sizeof(row), "%-32s %10zu %14zu", "dmell#0", (size_t)14, (size_t)36924);
 
     ASSERT_EQ(strlen(header), strlen(row));
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %f using the default precision (6)
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfFloatDefaultPrecision)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%f", 3.14);
+
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "3.140000");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %f and an explicit precision (%.2f)
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfFloatExplicitPrecision)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%.2f", 18.84);
+
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "18.84");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %.0f (no decimal point at all)
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfFloatZeroPrecision)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%.0f", 3.6);
+
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "4");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with a negative %f value
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfFloatNegative)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%.2f", -3.14);
+
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "-3.14");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %f rounding that carries into the integer part
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfFloatRoundingCarry)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%f", 0.9999995);
+
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "1.000000");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %f combined with width (right-aligned)
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfFloatWithWidth)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%9.2f", 3.14);
+
+    ASSERT_EQ(result, 9);
+    ASSERT_STREQ(buffer, "     3.14");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %f for NaN and +/-infinity
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfFloatNanAndInf)
+{
+    char buffer[64];
+    volatile double zero = 0.0;
+    volatile double one = 1.0;
+
+    Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%f", zero / zero);
+    ASSERT_STREQ(buffer, "nan");
+
+    Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%f", one / zero);
+    ASSERT_STREQ(buffer, "inf");
+
+    Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%f", -one / zero);
+    ASSERT_STREQ(buffer, "-inf");
 }
 
 

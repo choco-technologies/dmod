@@ -93,6 +93,19 @@ if (DEFINED DMOD_MEMORY)
 endif()
 
 # ===========================================================================
+# 						Force-build the custom printf implementation for tests
+# ===========================================================================
+# DMOD_IMPLEMENT_PRINTF defaults OFF whenever DMOD_USE_STDIO is ON (the normal case
+# for host/test builds - see dmod-defaults.cmake), which also means Dmod_Printf/
+# Dmod_SnPrintf route straight to the real libc vsnprintf rather than dmod_prf.c's
+# Dmod_VSnPrintf_Impl/Dmod_SnPrintf_Impl. Force it ON here so dmod_prf.c is compiled
+# into dmod_system and its own tests (tests_dmod_snprintf, which calls the _Impl
+# functions directly to bypass the libc-backed macro path) can actually exercise it.
+if (DMOD_BUILD_TESTS)
+	set(DMOD_IMPLEMENT_PRINTF ON CACHE BOOL "Build the custom printf implementation" FORCE)
+endif()
+
+# ===========================================================================
 # 						Checks if code coverage is possible (if gcovr is installed)
 # ===========================================================================
 if (DMOD_BUILD_TESTS)
