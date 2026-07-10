@@ -2517,37 +2517,38 @@ bool Dmod_ReadNextModule( Dmod_ModuleNode_t* outModule )
 
                 if( entry->ModuleName[0] != '\0' )
                 {
-                    // Calculate module data pointer from package buffer and offset
-                    const void* moduleData = (const uint8_t*)slot->PackageBuffer + entry->ModuleOffset;
-
-                    // Package entries may be individually DMFC-compressed. Decompressing
-                    // the whole entry just to read its header would be wasteful (module
-                    // data can be far larger than the header) - so only a small, bounded
-                    // amount of data is decompressed here, enough to cover the header plus
-                    // some slack for the LZ decompressor's variable-length literal/match
-                    // runs that may cross the header boundary.
-                    if( Dmod_IsDMFC( moduleData, entry->FileSize ) )
+                    // If the module is already loaded, its header has already been
+                    // decompressed into RAM as part of the context - reuse that instead
+                    // of touching the (possibly compressed) package data at all.
+                    Dmod_Context_t* context = Dmod_Context_Get( entry->ModuleName );
+                    if( context != NULL && context->Header != NULL )
                     {
-                        uint8_t peekBuffer[ sizeof(Dmod_ModuleHeader_t) + DMOD_DMFC_HEADER_PEEK_SLACK ];
-                        size_t decompressedSize = 0;
-
-                        if( !Dmod_FromDMFCPartial( moduleData, entry->FileSize, peekBuffer, sizeof(peekBuffer), &decompressedSize ) ||
-                            decompressedSize < sizeof(Dmod_ModuleHeader_t) )
-                        {
-                            DMOD_LOG_ERROR("Cannot read module in package - failed to decompress DMFC header: %s\n", entry->ModuleName);
-                            continue; // Try next module in same package
-                        }
-
-                        memcpy( &outModule->header, peekBuffer, sizeof(Dmod_ModuleHeader_t) );
+                        memcpy( &outModule->header, context->Header, sizeof(Dmod_ModuleHeader_t) );
                     }
                     else
                     {
-                        if( entry->FileSize < sizeof(Dmod_ModuleHeader_t) )
+                        // Calculate module data pointer from package buffer and offset
+                        const void* moduleData = (const uint8_t*)slot->PackageBuffer + entry->ModuleOffset;
+
+                        if( Dmod_IsDMFC( moduleData, entry->FileSize ) )
                         {
-                            DMOD_LOG_ERROR("Cannot read module in package - data too small: %s\n", entry->ModuleName);
-                            continue; // Try next module in same package
+                            // Not loaded and compressed in the package - decompressing it
+                            // here just to list it would mean holding the whole module
+                            // (which can be far larger than its header) in RAM. Report what
+                            // is already known without decompression instead.
+                            memset( &outModule->header, 0, sizeof(outModule->header) );
+                            Dmod_SnPrintf( outModule->header.Name, sizeof(outModule->header.Name), "%s", entry->ModuleName );
+                            Dmod_SnPrintf( outModule->header.Version, sizeof(outModule->header.Version), "%s", "compressed" );
                         }
-                        memcpy( &outModule->header, moduleData, sizeof(Dmod_ModuleHeader_t) );
+                        else
+                        {
+                            if( entry->FileSize < sizeof(Dmod_ModuleHeader_t) )
+                            {
+                                DMOD_LOG_ERROR("Cannot read module in package - data too small: %s\n", entry->ModuleName);
+                                continue; // Try next module in same package
+                            }
+                            memcpy( &outModule->header, moduleData, sizeof(Dmod_ModuleHeader_t) );
+                        }
                     }
 
                     // Build package path notation
