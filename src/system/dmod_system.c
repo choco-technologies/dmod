@@ -2520,42 +2520,34 @@ bool Dmod_ReadNextModule( Dmod_ModuleNode_t* outModule )
                     // Calculate module data pointer from package buffer and offset
                     const void* moduleData = (const uint8_t*)slot->PackageBuffer + entry->ModuleOffset;
 
-                    // Package entries may be individually DMFC-compressed - decompress
-                    // before interpreting the data as a Dmod_ModuleHeader_t, otherwise
-                    // the compressed header layout gets misread as garbage.
-                    const void* dmfData = moduleData;
-                    size_t dmfSize = entry->FileSize;
-                    bool dmfDataNeedsFree = false;
-
+                    // Package entries may be individually DMFC-compressed. Decompressing
+                    // the whole entry just to read its header would be wasteful (module
+                    // data can be far larger than the header) - so only a small, bounded
+                    // amount of data is decompressed here, enough to cover the header plus
+                    // some slack for the LZ decompressor's variable-length literal/match
+                    // runs that may cross the header boundary.
                     if( Dmod_IsDMFC( moduleData, entry->FileSize ) )
                     {
-                        void* decompressed = NULL;
+                        uint8_t peekBuffer[ sizeof(Dmod_ModuleHeader_t) + DMOD_DMFC_HEADER_PEEK_SLACK ];
                         size_t decompressedSize = 0;
-                        if( !Dmod_FromDMFC( moduleData, entry->FileSize, &decompressed, &decompressedSize ) )
+
+                        if( !Dmod_FromDMFCPartial( moduleData, entry->FileSize, peekBuffer, sizeof(peekBuffer), &decompressedSize ) ||
+                            decompressedSize < sizeof(Dmod_ModuleHeader_t) )
                         {
-                            DMOD_LOG_ERROR("Cannot read module in package - failed to decompress DMFC entry: %s\n", entry->ModuleName);
+                            DMOD_LOG_ERROR("Cannot read module in package - failed to decompress DMFC header: %s\n", entry->ModuleName);
                             continue; // Try next module in same package
                         }
-                        dmfData = decompressed;
-                        dmfSize = decompressedSize;
-                        dmfDataNeedsFree = true;
-                    }
 
-                    if( dmfSize < sizeof(Dmod_ModuleHeader_t) )
+                        memcpy( &outModule->header, peekBuffer, sizeof(Dmod_ModuleHeader_t) );
+                    }
+                    else
                     {
-                        DMOD_LOG_ERROR("Cannot read module in package - data too small: %s\n", entry->ModuleName);
-                        if( dmfDataNeedsFree )
+                        if( entry->FileSize < sizeof(Dmod_ModuleHeader_t) )
                         {
-                            Dmod_Free( (void*)dmfData );
+                            DMOD_LOG_ERROR("Cannot read module in package - data too small: %s\n", entry->ModuleName);
+                            continue; // Try next module in same package
                         }
-                        continue; // Try next module in same package
-                    }
-
-                    memcpy( &outModule->header, dmfData, sizeof(Dmod_ModuleHeader_t) );
-
-                    if( dmfDataNeedsFree )
-                    {
-                        Dmod_Free( (void*)dmfData );
+                        memcpy( &outModule->header, moduleData, sizeof(Dmod_ModuleHeader_t) );
                     }
 
                     // Build package path notation

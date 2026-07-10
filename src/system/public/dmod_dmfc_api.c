@@ -430,6 +430,93 @@ bool Dmod_FromDMFC( const void* DmfcData, size_t DmfcSize, void** outDmfData, si
 }
 
 /**
+ * @brief Partially decompress DMFC data into a caller-supplied buffer
+ *
+ * Unlike Dmod_FromDMFC, this does not allocate a buffer sized to the full original
+ * (decompressed) data. It decompresses at most MaxOutSize bytes into outBuffer, which
+ * is enough to read e.g. just the module header without paying the memory cost of
+ * decompressing (and holding in RAM) the whole - potentially much larger - module.
+ *
+ * Because the underlying LZ decompressor works in variable-length literal/match runs,
+ * asking for exactly the number of bytes needed can fail if a run would cross the
+ * requested boundary - callers should pass some slack beyond the size they actually
+ * need and treat a decompressed size at or above that size as success.
+ *
+ * @param DmfcData             DMFC data
+ * @param DmfcSize             DMFC size
+ * @param outBuffer            Caller-supplied destination buffer
+ * @param MaxOutSize           Size of outBuffer, i.e. the max number of bytes to decompress
+ * @param outDecompressedSize  Number of bytes actually decompressed into outBuffer
+ *
+ * @return true if data was decompressed successfully, false otherwise
+ */
+bool Dmod_FromDMFCPartial( const void* DmfcData, size_t DmfcSize, void* outBuffer, size_t MaxOutSize, size_t* outDecompressedSize )
+{
+    if( DmfcData == NULL || DmfcSize == 0 || outBuffer == NULL || MaxOutSize == 0 || outDecompressedSize == NULL )
+    {
+        DMOD_LOG_ERROR("Cannot partially convert from DMFC - invalid parameters\n");
+        return false;
+    }
+
+    if( DmfcSize <= sizeof(Dmod_DmfcHeader_t) )
+    {
+        DMOD_LOG_ERROR("Cannot partially convert from DMFC - DMFC size is too small\n");
+        return false;
+    }
+
+    const Dmod_DmfcHeader_t* header = (const Dmod_DmfcHeader_t*)DmfcData;
+    if( header->Signature != DMOD_DMFC_SIGNATURE )
+    {
+        DMOD_LOG_ERROR("Cannot partially convert from DMFC - invalid DMFC signature\n");
+        return false;
+    }
+
+    if( header->HeaderSize < sizeof(Dmod_DmfcHeader_t) )
+    {
+        DMOD_LOG_ERROR("Cannot partially convert from DMFC - invalid DMFC header size\n");
+        return false;
+    }
+
+    if( !DMOD_DMFC_COMPATIBLE_VERSION(header->HeaderVersion) )
+    {
+        DMOD_LOG_ERROR("Cannot partially convert from DMFC - The given DMFC header version is not compatible: 0x%04X\n", header->HeaderVersion);
+        return false;
+    }
+
+    if( header->OriginalSize == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot partially convert from DMFC - invalid DMFC original size\n");
+        return false;
+    }
+
+    if( strlen(header->Compression) > DMOD_MAX_COMPRESSION_NAME_LENGTH )
+    {
+        DMOD_LOG_ERROR("Cannot partially convert from DMFC - compression algorithm name is too long (max: %d)\n", DMOD_MAX_COMPRESSION_NAME_LENGTH);
+        return false;
+    }
+
+    if( Dmod_Compression_IsSupported( header->Compression ) == false )
+    {
+        DMOD_LOG_ERROR("Cannot partially convert from DMFC - compression algorithm '%s' is not supported\n", header->Compression);
+        return false;
+    }
+
+    const void* srcData = (const uint8_t*)DmfcData + sizeof(Dmod_DmfcHeader_t);
+    size_t srcSize = DmfcSize - sizeof(Dmod_DmfcHeader_t);
+    size_t destSize = MaxOutSize < header->OriginalSize ? MaxOutSize : header->OriginalSize;
+
+    size_t decompressedSize = Dmod_Compression_Unpack( header->Compression, outBuffer, destSize, srcData, srcSize );
+    if( decompressedSize == 0 )
+    {
+        DMOD_LOG_ERROR("Cannot partially convert from DMFC - failed to decompress data\n");
+        return false;
+    }
+
+    *outDecompressedSize = decompressedSize;
+    return true;
+}
+
+/**
  * @brief Get original size of the DMFC data
  * 
  * This function gets the original size of the DMFC data.

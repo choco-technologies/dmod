@@ -80,6 +80,16 @@ extern "C" {
 #   define DMOD_MAX_COMPRESSION_NAME_LENGTH		10
 #endif
 
+/**
+ * Extra bytes decompressed on top of a Dmod_ModuleHeader_t when only peeking at a
+ * DMFC-compressed module's header (see Dmod_FromDMFCPartial). The LZ decompressor
+ * writes in variable-length literal/match runs, so a run straddling the header
+ * boundary needs a bit of headroom to complete without hitting the output bound.
+ */
+#ifndef DMOD_DMFC_HEADER_PEEK_SLACK
+#   define DMOD_DMFC_HEADER_PEEK_SLACK		128
+#endif
+
 #ifndef DMOD_MAX_PACKAGE_NAME_LENGTH
 #   define DMOD_MAX_PACKAGE_NAME_LENGTH		32
 #endif
