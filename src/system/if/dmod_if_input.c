@@ -70,6 +70,9 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Getc, ( void ))
     {
         #if DMOD_USE_STDIO
         Result = fgetc( resolvedFile );
+        #else 
+        char c = 0;
+        Result = Dmod_FileRead(&c, 1, 1, resolvedFile);
         #endif
     }
     Dmod_UnlockStdio( DMOD_STDIN );
@@ -115,6 +118,8 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, char*, _Gets, ( char* Buffer, int Siz
     {
         #if DMOD_USE_STDIO
         Result = fgets( Buffer, Size, resolvedFile );
+        #else 
+        Result = Dmod_FileRead(Buffer, 1, Size, resolvedFile);
         #endif
     }
     Dmod_UnlockStdio( DMOD_STDIN );
