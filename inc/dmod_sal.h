@@ -177,9 +177,10 @@ DMOD_BUILTIN_API(Dmod, 1.0, int         , _FileRemove,  ( const char* Path ) );
 #define DMOD_STDERR    ((void*)3)
 #define DMOD_STDLOG    ((void*)4)
 
-DMOD_BUILTIN_API(Dmod, 1.0, void*, _GetStdLogFile, ( void ) );
-DMOD_BUILTIN_API(Dmod, 1.0, int  , _VFPrintf,      ( void* File, const char* Format, va_list Args ) );
-DMOD_BUILTIN_API(Dmod, 1.0, int  , _FPrintf,       ( void* File, const char* Format, ... ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void*, _GetStdLogFile,      ( void ) );
+DMOD_BUILTIN_API(Dmod, 1.0, void*, _GetStreamLogFile,   ( Dmod_LogLevel_t LogLevel ));
+DMOD_BUILTIN_API(Dmod, 1.0, int  , _VFPrintf,           ( void* File, const char* Format, va_list Args ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int  , _FPrintf,            ( void* File, const char* Format, ... ) );
 
 //! @}
 
@@ -292,14 +293,14 @@ DMOD_BUILTIN_API( Dmod, 1.0, const char* ,_GetStepBar,  ( int Percent ) );
 #   if defined(DMOD_MODULE_NAME) && (DMOD_MODULE_EN == ON)
 #       define DMOD_LOG(LogLevel,...)                      \
                                 if(Dmod_CheckLogLevel(LogLevel)) {\
-                                    Dmod_Printf( DMOD_LOG_MODULE_PREFIX __VA_ARGS__ );\
-                                    Dmod_Printf( "\033[0m" );\
+                                    Dmod_FPrintf( Dmod_GetStreamLogFile(LogLevel), DMOD_LOG_MODULE_PREFIX __VA_ARGS__ );\
+                                    Dmod_FPrintf( Dmod_GetStreamLogFile(LogLevel), "\033[0m" );\
                                 }
 #   else
 #       define DMOD_LOG(LogLevel,...)                      \
                                 if(Dmod_CheckLogLevel(LogLevel)) {\
-                                    Dmod_Printf( DMOD_LOG_MODULE_PREFIX __VA_ARGS__ );\
-                                    Dmod_Printf( "\033[0m" );\
+                                    Dmod_FPrintf( Dmod_GetStreamLogFile(LogLevel), DMOD_LOG_MODULE_PREFIX __VA_ARGS__ );\
+                                    Dmod_FPrintf( Dmod_GetStreamLogFile(LogLevel), "\033[0m" );\
                                 }
 #   endif
 #   define DMOD_LOG_STEP_BEGIN(...)                        \

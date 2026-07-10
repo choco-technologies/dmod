@@ -75,6 +75,27 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _GetStdLogFile, ( void ))
 }
 
 /**
+ * @brief translates log level into stream log file
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _GetStreamLogFile,   ( Dmod_LogLevel_t LogLevel ))
+{
+    void* streamFile = NULL;
+    switch(LogLevel)
+    {
+        case Dmod_LogLevel_Error:
+            streamFile = DMOD_STDERR;
+            break;
+        case Dmod_LogLevel_Warn:
+        case Dmod_LogLevel_Info:
+        case Dmod_LogLevel_Verbose:
+            streamFile = DMOD_STDLOG;
+            break;
+        }
+
+    return streamFile;
+}
+
+/**
  * @brief VFPrintf function - prints to a file using a va_list
  *
  * @param File File handle
