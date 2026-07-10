@@ -2519,15 +2519,51 @@ bool Dmod_ReadNextModule( Dmod_ModuleNode_t* outModule )
                 {
                     // Calculate module data pointer from package buffer and offset
                     const void* moduleData = (const uint8_t*)slot->PackageBuffer + entry->ModuleOffset;
-                    Dmod_ModuleHeader_t* moduleHeader = (Dmod_ModuleHeader_t*)moduleData;
-                    memcpy( &outModule->header, moduleHeader, sizeof(Dmod_ModuleHeader_t) );
-                    
+
+                    // Package entries may be individually DMFC-compressed - decompress
+                    // before interpreting the data as a Dmod_ModuleHeader_t, otherwise
+                    // the compressed header layout gets misread as garbage.
+                    const void* dmfData = moduleData;
+                    size_t dmfSize = entry->FileSize;
+                    bool dmfDataNeedsFree = false;
+
+                    if( Dmod_IsDMFC( moduleData, entry->FileSize ) )
+                    {
+                        void* decompressed = NULL;
+                        size_t decompressedSize = 0;
+                        if( !Dmod_FromDMFC( moduleData, entry->FileSize, &decompressed, &decompressedSize ) )
+                        {
+                            DMOD_LOG_ERROR("Cannot read module in package - failed to decompress DMFC entry: %s\n", entry->ModuleName);
+                            continue; // Try next module in same package
+                        }
+                        dmfData = decompressed;
+                        dmfSize = decompressedSize;
+                        dmfDataNeedsFree = true;
+                    }
+
+                    if( dmfSize < sizeof(Dmod_ModuleHeader_t) )
+                    {
+                        DMOD_LOG_ERROR("Cannot read module in package - data too small: %s\n", entry->ModuleName);
+                        if( dmfDataNeedsFree )
+                        {
+                            Dmod_Free( (void*)dmfData );
+                        }
+                        continue; // Try next module in same package
+                    }
+
+                    memcpy( &outModule->header, dmfData, sizeof(Dmod_ModuleHeader_t) );
+
+                    if( dmfDataNeedsFree )
+                    {
+                        Dmod_Free( (void*)dmfData );
+                    }
+
                     // Build package path notation
                     const char* packageName = Dmod_Pck_GetPackageName(slot);
-                    Dmod_SnPrintf( outModule->path, DMOD_MAX_PATH_LENGTH, "[%s]/%s", 
+                    Dmod_SnPrintf( outModule->path, DMOD_MAX_PATH_LENGTH, "[%s]/%s",
                              packageName ? packageName : "unknown", entry->ModuleName );
-                    
-                    DMOD_LOG_VERBOSE("Found module '%s' in package at '%s'\n", 
+
+                    DMOD_LOG_VERBOSE("Found module '%s' in package at '%s'\n",
                                    outModule->header.Name, outModule->path);
                     return true;
                 }
