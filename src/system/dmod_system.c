@@ -162,6 +162,18 @@ bool Dmod_Deinitialize(void)
 }
 
 /**
+ * @brief getter for the address of the module for GDB
+ */
+void* Dmod_GetGdbModuleAddress( Dmod_Context_t* Context )
+{
+    if(Dmod_Context_IsValid(Context))
+    {
+        return DMOD_GET_TEXT_SECTION_ADDR(Context);
+    }
+    return NULL;
+}
+
+/**
  * @brief Load module
  *
  * @param Path Path to the module
