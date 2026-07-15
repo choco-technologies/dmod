@@ -91,6 +91,9 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _GetStreamLogFile,   ( Dmod_Lo
         case Dmod_LogLevel_Verbose:
             streamFile = DMOD_STDLOG;
             break;
+        case Dmod_LogLevel_None:
+        case Dmod_LogLevel_Count:
+            break;
         }
 
     return streamFile;
