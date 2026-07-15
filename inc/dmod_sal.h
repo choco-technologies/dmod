@@ -139,6 +139,21 @@ DMOD_BUILTIN_API(Dmod, 1.0, int         , _Rename,      ( const char* OldPath, c
 DMOD_BUILTIN_API(Dmod, 1.0, int         , _RemoveDir,   ( const char* Path ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int         , _FileRemove,  ( const char* Path ) );
 
+/**
+ * @brief Issue a driver-specific ioctl on a file (including DMOD_STDIN/OUT/ERR/LOG)
+ *
+ * DMOD_STDIN/OUT/ERR/LOG are resolved to the calling process's bound stream file
+ * first, exactly like Dmod_FileRead/Dmod_FileWrite - if nothing is bound (raw
+ * kernel I/O fallback), this returns a negative error code, since there is no
+ * underlying driver to forward the ioctl to.
+ *
+ * @param File File handle, or one of DMOD_STDIN/DMOD_STDOUT/DMOD_STDERR/DMOD_STDLOG
+ * @param Command Driver-specific ioctl command
+ * @param Arg Command-specific argument
+ * @return 0 on success, negative error code on failure (including "unsupported")
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, int         , _Ioctl,       ( void* File, int Command, void* Arg ) );
+
 #ifndef DMOD_SEEK_SET
 #   define DMOD_SEEK_SET   0
 #   define DMOD_SEEK_CUR   1

@@ -42,7 +42,8 @@ DMOD_SOURCES=private/dmod_vars.c\
 		if/dmod_if_input.c\
 		if/dmod_if_proc.c\
 		if/dmod_if_time.c\
-		Dmod.cpp
+		Dmod.cpp\
+		if/dmod_prf.c
 DMOD_INC_DIRS = $(DMOD_DIR)/src/system\
 		$(DMOD_DIR)/inc\
 		$(DMOD_BUILD_DIR)\
@@ -50,7 +51,8 @@ DMOD_INC_DIRS = $(DMOD_DIR)/src/system\
 		$(DMOD_DIR)/lib/third-party/FastLZ
 DMOD_LIBS = dmod_inc\
 		dmod_common\
-		dmod_fastlz
+		dmod_fastlz\
+		pthread
 DMOD_GEN_HEADERS_IN = 
 DMOD_DEFINITIONS = 
 

@@ -35,6 +35,7 @@
 
 #define DMOD_PRIVATE
 #include "dmod_sal.h"
+#include <errno.h>
 #if DMOD_USE_STDIO
 #   include <stdio.h>
 #elif DMOD_IMPLEMENT_PRINTF
@@ -637,4 +638,19 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileRemove, ( const char* Path 
     (void)Path;
     return -1;
     #endif
+}
+
+/**
+ * @brief Issue a driver-specific ioctl on a file
+ *
+ * This is a weak implementation with no underlying driver to forward to.
+ * The real implementation (resolving DMOD_STDIN/OUT/ERR/LOG and forwarding
+ * to the bound file's driver) is provided by the dmvfs layer.
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Ioctl, ( void* File, int Command, void* Arg ))
+{
+    (void)File;
+    (void)Command;
+    (void)Arg;
+    return -ENOSYS;
 }
