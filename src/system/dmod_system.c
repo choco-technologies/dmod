@@ -2192,7 +2192,7 @@ void* Dmod_GetDifFunction( Dmod_Context_t* Context, const char* DifSignature )
         }
     }
 
-    DMOD_LOG_ERROR("Cannot get DIF function - function not found: %s in module %s\n", DifSignature, Dmod_Context_GetModuleName( Context ));
+    DMOD_LOG_INFO("No such DIF function: %s in module %s\n", DifSignature, Dmod_Context_GetModuleName( Context ));
     return NULL;
 }
 
