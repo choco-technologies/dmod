@@ -17,6 +17,12 @@ one parent directory (each repo = one module, or the core framework). There is
 no monorepo and no shared parent git tree — treat each repo you open as
 self-contained, but expect it to `FetchContent` the `dmod` repo at configure time.
 
+**Naming convention: snake_case everywhere** — module names, file names,
+functions, types (`dm_sw_ring`, `dm_sw_ring_create`, `dm_sw_ring_t`,
+`dmfmc_configure_sdram`, ...). Don't introduce camelCase or PascalCase names
+in module code (the handful of `Dmod_*`/`Pascal_Case` symbols you'll see, like
+`Dmod_Printf`, are dmod's own SAL/core API, not a pattern to copy in module code).
+
 ## The core repo: `dmod`
 
 `dmod` is the SDK and build system every other repo depends on. It provides:
@@ -49,9 +55,27 @@ self-contained, but expect it to `FetchContent` the `dmod` repo at configure tim
 
 ## Three ways modules talk to each other
 
-1. **Built-in / Module API** — direct call to another module's exported
-   function by name (`<module><function>`), via a generated
-   `<module>_defs.h`. Simplest, requires knowing the target module at compile time.
+1. **Built-in / Module API** — a module's own public functions, declared in
+   its header with the `dmod_<module>_api(version, ret, _suffix, (args))`
+   macro and defined in the `.c` file with the matching
+   `dmod_<module>_api_declaration(version, ret, _suffix, (args))` macro (both
+   auto-generated per-module into `<module>_defs.h` by the dmod core build
+   from `dmod/scripts/api.h.in` — you only follow the naming convention, never
+   hand-write the macro itself). **This is not optional boilerplate**: a
+   plain C function prototype/definition in a module's public header will
+   compile but **fail to link** (or simply never be found), because the
+   loader resolves these calls dynamically rather than through normal static
+   linkage. Use this as the default way to expose any function another module
+   (or this module's own `tests/`) should be able to call — see
+   `dm_sw_ring/include/dm_sw_ring.h` + `dm_sw_ring/src/dm_sw_ring.c` for a
+   fully worked example, and the `dmod_<module>_port_api(...)` port variant
+   described below.
+   - A `dmod_<module>_global_api(...)` / `_global_api_declaration(...)`
+     variant also exists, declaring the function in the *global* namespace
+     instead of the module's own — reserved for exceptional cases (e.g.
+     defining a `printf`-style utility meant to be called unqualified from
+     anywhere). Default to the plain `_api`/`_api_declaration` pair unless you
+     have a specific reason to go global.
 2. **MAL (Module Abstraction Layer)** — 1:1 inversion of control. One module
    defines an interface; another module implements it and registers via
    `DMOD_MAL_IMPLS` in its `CMakeLists.txt`/`Makefile`. Lets you swap an

@@ -590,6 +590,23 @@ fi
 safe_copy "${GITIGNORE_TEMPLATE}" "${MODULE_PATH}/.gitignore" || true
 
 # -----------------------------------------------------------------------------
+# .vscode/ - build tasks and editor settings, so the module can be built and
+# browsed from VSCode without extra setup (see any real module repo's
+# .vscode/ for the convention this mirrors).
+# -----------------------------------------------------------------------------
+
+echo "Generating .vscode/..."
+mkdir -p "${MODULE_PATH}/.vscode"
+safe_copy "${TEMPLATES_DIR}/vscode/tasks.json.template" "${MODULE_PATH}/.vscode/tasks.json" || true
+
+if [[ "${ADD_PORT}" == "true" ]]; then
+    SETTINGS_TEMPLATE="${TEMPLATES_DIR}/port/vscode/settings.json.template"
+else
+    SETTINGS_TEMPLATE="${TEMPLATE_SRC}/vscode/settings.json.template"
+fi
+safe_copy "${SETTINGS_TEMPLATE}" "${MODULE_PATH}/.vscode/settings.json" || true
+
+# -----------------------------------------------------------------------------
 # scripts/sync-claude.sh
 # -----------------------------------------------------------------------------
 

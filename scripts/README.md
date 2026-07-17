@@ -27,6 +27,9 @@ module repo is expected to have:
   copying needed, see `dmuart.dmr` for the real-world reference
 - `README.md` - module documentation, including a "Project Structure" section
 - `.gitignore`
+- `.vscode/tasks.json`, `.vscode/settings.json` - CMake build/clean tasks and
+  editor settings, so the module can be built from VSCode's Command Palette
+  without extra setup (mirrors the convention in every real module repo)
 - `scripts/sync-claude.sh` - copy of the Claude Code skills sync script (see below)
 - Optional: GitHub Actions workflows (`--github`) - both `.github/workflows/ci.yml`
   (build + run the generated unit test via `dmod_loader`; for a `--port` module

@@ -19,6 +19,7 @@ internal smoke-test fixture used by `dmod`'s own CI build (see
 │   ├── include/module.h.template     # -> include/<module>.h
 │   ├── docs/README.md.template       # -> docs/README.md
 │   ├── docs/api-reference.md.template
+│   ├── vscode/settings.json.template # -> .vscode/settings.json (this type's file associations)
 │   └── tests/CMakeLists.txt.template, tests/module_test.c.template
 ├── application/                      # Application module templates
 │   ├── CMakeLists.txt.template       # also sets DMOD_DMR_PATH - same packaging as library
@@ -27,6 +28,7 @@ internal smoke-test fixture used by `dmod`'s own CI build (see
 │   ├── manifest.dmm.template
 │   ├── README.md.template
 │   ├── docs/README.md.template, docs/api-reference.md.template
+│   ├── vscode/settings.json.template
 │   └── tests/CMakeLists.txt.template, tests/module_test.c.template
 ├── port/                              # Hardware port add-on (--port, library only)
 │   ├── src/port/CMakeLists.txt.template
@@ -35,8 +37,10 @@ internal smoke-test fixture used by `dmod`'s own CI build (see
 │   ├── module_port.dmr.template
 │   ├── manifest.dmm.template          # -> manifest.dmm, replaces the shared one when --port is set
 │   ├── docs/port-implementation.md.template
+│   ├── vscode/settings.json.template  # -> .vscode/settings.json, replaces library's when --port is set
 │   ├── ci.yml.template               # -> .github/workflows/ci.yml, replaces the shared one when --port is set
 │   └── release.yml.template          # -> .github/workflows/release.yml, replaces the shared one when --port is set
+├── vscode/tasks.json.template         # -> .vscode/tasks.json, shared by every type (build tasks don't vary)
 ├── module.dmr.template                # -> <module>.dmr, shared by both types (DMOD_DMR_PATH-driven packaging)
 ├── release.yml.template               # -> .github/workflows/release.yml, shared by both types (--github, no --port)
 ├── .gitignore.template                # shared by both types
