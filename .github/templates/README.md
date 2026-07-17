@@ -33,6 +33,7 @@ internal smoke-test fixture used by `dmod`'s own CI build (see
 │   ├── src/port/ARCH/config.cmake.template, port.c.template  # ARCH renamed to --port-arch
 │   ├── include/module_port.h.template
 │   ├── module_port.dmr.template
+│   ├── manifest.dmm.template          # -> manifest.dmm, replaces the shared one when --port is set
 │   ├── docs/port-implementation.md.template
 │   ├── ci.yml.template               # -> .github/workflows/ci.yml, replaces the shared one when --port is set
 │   └── release.yml.template          # -> .github/workflows/release.yml, replaces the shared one when --port is set

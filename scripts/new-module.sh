@@ -438,7 +438,15 @@ safe_copy "${TEMPLATE_SRC}/tests/module_test.c.template" "${MODULE_PATH}/tests/$
 # -----------------------------------------------------------------------------
 echo "Generating manifest.dmm..."
 MANIFEST_GENERATED=false
-if safe_copy "${TEMPLATE_SRC}/manifest.dmm.template" "${MODULE_PATH}/manifest.dmm"; then
+if [[ "${ADD_PORT}" == "true" ]]; then
+    # Self-contained: already has entries for both @MODULE_NAME@ and
+    # @MODULE_NAME@_port, using <cpu_family> throughout (see the port/
+    # template's own comment for why).
+    MANIFEST_TEMPLATE="${TEMPLATES_DIR}/port/manifest.dmm.template"
+else
+    MANIFEST_TEMPLATE="${TEMPLATE_SRC}/manifest.dmm.template"
+fi
+if safe_copy "${MANIFEST_TEMPLATE}" "${MODULE_PATH}/manifest.dmm"; then
     MANIFEST_GENERATED=true
 fi
 
@@ -508,15 +516,8 @@ if [[ "${ADD_PORT}" == "true" ]]; then
     safe_copy "${PORT_TEMPLATE_SRC}/module_port.dmr.template" "${MODULE_PATH}/${MODULE_NAME}_port.dmr" || true
     safe_copy "${PORT_TEMPLATE_SRC}/docs/port-implementation.md.template" "${MODULE_PATH}/docs/port-implementation.md" || true
 
-    if [[ "${MANIFEST_GENERATED}" == "true" ]]; then
-        # Add a manifest entry for the port package
-        cat >> "${MODULE_PATH}/manifest.dmm" << EOF
-
-# Hardware port package
-${MODULE_NAME}_port https://github.com/choco-technologies/${MODULE_NAME}/releases/download/v<version>/${MODULE_NAME}_port-v<version>-<arch_name>.zip
-EOF
-    else
-        print_warning "manifest.dmm already existed - add the ${MODULE_NAME}_port entry to it manually."
+    if [[ "${MANIFEST_GENERATED}" != "true" ]]; then
+        print_warning "manifest.dmm already existed - add a ${MODULE_NAME}_port entry (using <cpu_family>, not <arch_name>) to it manually. See .github/templates/port/manifest.dmm.template for the expected shape."
     fi
 fi
 

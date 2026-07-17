@@ -1,0 +1,10 @@
+# Include dynamically generated versions list from latest release
+$include https://github.com/choco-technologies/@MODULE_NAME@/releases/download/vlatest/versions.dmm
+
+# Module entries with version placeholder - expanded by $version-available.
+# Both the core module and the port use <cpu_family> here, not <arch_name>:
+# the release workflow packages this repo per DMOD_CPU_FAMILY, not per full
+# architecture (see dmfmc/manifest.dmm or dmuart/manifest.dmm for the
+# real-world reference).
+@MODULE_NAME@      https://github.com/choco-technologies/@MODULE_NAME@/releases/download/v<version>/@MODULE_NAME@-v<version>-<cpu_family>.zip
+@MODULE_NAME@_port https://github.com/choco-technologies/@MODULE_NAME@/releases/download/v<version>/@MODULE_NAME@_port-v<version>-<cpu_family>.zip

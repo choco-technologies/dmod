@@ -180,7 +180,11 @@ Library modules can optionally implement:
 - **DIF (DMOD Interface)** - 1:N interface, discovered dynamically at runtime
 - **MAL (Module Abstraction Layer)** - 1:1 pluggable interface implementation
 - **A hardware port** (`--port`) - split into `<module_name>` (core) and
-  `<module_name>_port` (architecture-specific), selected via `DMOD_CPU_FAMILY`
+  `<module_name>_port` (architecture-specific), selected via `DMOD_CPU_FAMILY`.
+  Because both packages are released per `DMOD_CPU_FAMILY` rather than per
+  full architecture, `manifest.dmm` gets an entry for *each* module and both
+  use the `<cpu_family>` URL placeholder (not `<arch_name>`, which plain
+  library/application modules use) - matching real `dmfmc`/`dmuart` manifests
 
 ### Application Module
 
