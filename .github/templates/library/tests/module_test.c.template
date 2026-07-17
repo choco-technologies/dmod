@@ -2,12 +2,31 @@
 #include "dmod_test.h"
 #include "@MODULE_NAME@.h"
 
-/* Optional lifecycle hooks */
-// void dmod_test_setup(void)    { /* reset state */ }
-// void dmod_test_teardown(void) { /* cleanup    */ }
+static @MODULE_NAME@_t g_handle = NULL;
 
-DMOD_TEST_STEP(example)
+void dmod_test_setup(void)
 {
-    /* Replace with real assertions once the module has behavior to test. */
-    DMOD_TEST_EXPECT_TRUE(1);
+    g_handle = @MODULE_NAME@_create();
+}
+
+void dmod_test_teardown(void)
+{
+    @MODULE_NAME@_destroy(g_handle);
+    g_handle = NULL;
+}
+
+DMOD_TEST_STEP(@MODULE_NAME@_create)
+{
+    DMOD_TEST_EXPECT_NOT_NULL(g_handle);
+}
+
+DMOD_TEST_STEP(@MODULE_NAME@_is_valid)
+{
+    DMOD_TEST_EXPECT_TRUE(@MODULE_NAME@_is_valid(g_handle));
+}
+
+DMOD_TEST_STEP(@MODULE_NAME@_destroy_null)
+{
+    /* Destroying NULL must not crash. */
+    @MODULE_NAME@_destroy(NULL);
 }

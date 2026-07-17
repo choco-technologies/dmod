@@ -1,4 +1,4 @@
-image: chocotechnologies/dmod:1.0.1
+image: chocotechnologies/dmod:1.0.4
 
 pipelines:
   default:

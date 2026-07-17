@@ -56,6 +56,7 @@ View documentation using `dmf-man @MODULE_NAME@`.
 │   └── @MODULE_NAME@_test.c
 ├── CMakeLists.txt
 ├── Makefile
+├── @MODULE_NAME@.dmr
 └── manifest.dmm
 ```
 

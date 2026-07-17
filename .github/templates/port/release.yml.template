@@ -1,0 +1,260 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  discover-cpu-families:
+    name: Discover CPU Families
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      cpu_families: ${{ steps.list-families.outputs.cpu_families }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: List available CPU families
+        id: list-families
+        run: |
+          CPU_FAMILIES=$(find src/port -mindepth 2 -maxdepth 2 -name "port.c" -type f -printf '%h\n' | \
+            xargs -n1 basename | \
+            sort | \
+            jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+          echo "Found CPU families: $CPU_FAMILIES"
+          echo "cpu_families=$CPU_FAMILIES" >> $GITHUB_OUTPUT
+
+  build-@MODULE_NAME@:
+    name: Build @MODULE_NAME@ for ${{ matrix.cpu_family }}
+    needs: discover-cpu-families
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        cpu_family: ${{ fromJson(needs.discover-cpu-families.outputs.cpu_families) }}
+
+    container:
+      image: chocotechnologies/dmod:1.0.4
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
+
+      - name: Build @MODULE_NAME@ for ${{ matrix.cpu_family }}
+        run: |
+          set -e
+          CPU_FAMILY="${{ matrix.cpu_family }}"
+          BUILD_NAME="port-${CPU_FAMILY}"
+          echo "BUILD_NAME=$BUILD_NAME" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=release-$BUILD_NAME" >> $GITHUB_ENV
+          mkdir -p build_$BUILD_NAME
+          cd build_$BUILD_NAME
+
+          # DMOD_DMR_PATH is already set for both @MODULE_NAME@ and
+          # @MODULE_NAME@_port in their respective CMakeLists.txt, so this
+          # build also assembles packages/<module>/ for every module defined
+          # in this repo (normally @MODULE_NAME@ and @MODULE_NAME@_port, but
+          # this discovers whatever is actually there).
+          cmake .. \
+            -DDMOD_MODULE_VERSION="${{ steps.get_version.outputs.version }}" \
+            -DDMOD_CPU_FAMILY="${CPU_FAMILY}"
+
+          cmake --build .
+
+          echo "Build completed for CPU family: ${CPU_FAMILY}"
+          ls -la packages/ || echo "No packages directory"
+
+      - name: Add release notes and create release archives
+        run: |
+          set -e
+          BUILD_DIR="build_$BUILD_NAME"
+          TAG="${{ github.event.release.tag_name }}"
+          CPU="${{ matrix.cpu_family }}"
+          PACKAGES_DIR="$BUILD_DIR/packages"
+
+          if [ ! -d "$PACKAGES_DIR" ] || [ -z "$(ls -A "$PACKAGES_DIR")" ]; then
+            echo "Error: no packages found in $PACKAGES_DIR"
+            exit 1
+          fi
+
+          : > package-names.txt
+          for pkg_dir in "$PACKAGES_DIR"/*/; do
+            pkg=$(basename "$pkg_dir")
+            echo "$pkg" >> package-names.txt
+
+            echo "${{ github.event.release.body }}" > "${pkg_dir}RELEASE_NOTES.txt"
+            (cd "$pkg_dir" && zip -r "${OLDPWD}/${pkg}-${TAG}-${CPU}.zip" .)
+          done
+
+          echo "Created archives:"
+          ls -lh *-"${TAG}"-"${CPU}".zip
+          echo "Packages found:"
+          cat package-names.txt
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: |
+            *.zip
+            package-names.txt
+          retention-days: 1
+
+  generate-versions-manifest:
+    name: Generate versions.dmm
+    needs: [discover-cpu-families, build-@MODULE_NAME@]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate versions.dmm
+        run: |
+          set -e
+          echo "# List of available versions for @MODULE_NAME@ modules" > versions.dmm
+          echo "# Generated automatically by CI" >> versions.dmm
+          echo "" >> versions.dmm
+
+          VERSIONS=$(git tag -l 'v*' | sed 's/^v//' | sort -V | tr '\n' ' ' | sed 's/ $//')
+          VERSIONS=$(echo $VERSIONS | sed 's/\blatest\b//g' | xargs)
+
+          if [ -z "$VERSIONS" ]; then
+            echo "Warning: No version tags found"
+            VERSIONS="${{ github.event.release.tag_name }}"
+            VERSIONS="${VERSIONS#v}"
+          fi
+
+          echo "Found versions: $VERSIONS"
+
+          PACKAGES=$(cat artifacts/release-*/package-names.txt | sort -u)
+          echo "Found packages: $PACKAGES"
+
+          for pkg in $PACKAGES; do
+            echo "\$version-available $pkg $VERSIONS" >> versions.dmm
+          done
+
+          echo "Generated versions.dmm:"
+          cat versions.dmm
+
+      - name: Upload versions.dmm as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: versions-manifest
+          path: versions.dmm
+          retention-days: 1
+
+  upload-release-assets:
+    name: Upload Release Assets
+    needs: [build-@MODULE_NAME@, generate-versions-manifest]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display artifact structure
+        run: |
+          echo "Downloaded artifacts:"
+          ls -lR artifacts/
+
+      - name: Upload release assets to versioned tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          shopt -s nullglob
+          zip_files=(artifacts/release-*/*.zip)
+
+          if [ ${#zip_files[@]} -eq 0 ]; then
+            echo "Error: No artifacts found to upload"
+            exit 1
+          fi
+
+          for zip_file in "${zip_files[@]}"; do
+            echo "Uploading $zip_file to ${{ github.event.release.tag_name }}..."
+            gh release upload ${{ github.event.release.tag_name }} \
+              "$zip_file" \
+              --repo ${{ github.repository }} \
+              --clobber
+          done
+
+          if [ -f artifacts/versions-manifest/versions.dmm ]; then
+            echo "Uploading versions.dmm to ${{ github.event.release.tag_name }}..."
+            gh release upload ${{ github.event.release.tag_name }} \
+              artifacts/versions-manifest/versions.dmm \
+              --repo ${{ github.repository }} \
+              --clobber
+          fi
+
+          echo "Successfully uploaded ${#zip_files[@]} artifact(s) to ${{ github.event.release.tag_name }}"
+
+      - name: Create or update latest release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          if gh release view vlatest --repo ${{ github.repository }} >/dev/null 2>&1; then
+            echo "Release vlatest exists, deleting it..."
+            gh release delete vlatest --repo ${{ github.repository }} --yes
+          fi
+
+          echo "Creating vlatest release..."
+          gh release create vlatest \
+            --repo ${{ github.repository }} \
+            --title "Latest Release (based on ${{ github.event.release.tag_name }})" \
+            --notes "This release always points to the latest stable version. Currently based on ${{ github.event.release.tag_name }}."
+
+      - name: Upload release assets to latest tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          shopt -s nullglob
+          zip_files=(artifacts/release-*/*.zip)
+
+          for zip_file in "${zip_files[@]}"; do
+            echo "Uploading $zip_file to vlatest..."
+            gh release upload vlatest \
+              "$zip_file" \
+              --repo ${{ github.repository }} \
+              --clobber
+          done
+
+          if [ -f artifacts/versions-manifest/versions.dmm ]; then
+            echo "Uploading versions.dmm to vlatest..."
+            gh release upload vlatest \
+              artifacts/versions-manifest/versions.dmm \
+              --repo ${{ github.repository }} \
+              --clobber
+          fi
+
+          echo "Successfully uploaded ${#zip_files[@]} artifact(s) to vlatest"

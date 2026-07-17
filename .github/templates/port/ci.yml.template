@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  build-and-test-core:
+    name: Build and Test @MODULE_NAME@ (core)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    container:
+      image: chocotechnologies/dmod:1.0.4
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build @MODULE_NAME@ core module
+        run: |
+          mkdir -p build
+          cd build
+          # @MODULE_NAME@ links against @MODULE_NAME@_port_if (headers only),
+          # not @MODULE_NAME@_port itself, so building only these two targets
+          # never touches src/port/*/port.c - safe to build natively here
+          # regardless of which CPU family the port defaults to.
+          cmake .. -DDMOD_MODE=DMOD_MODULE -DDMOD_TOOLS_NAME=arch/x86_64
+          cmake --build . --target @MODULE_NAME@ test_@MODULE_NAME@
+
+      - name: Verify module files
+        run: |
+          echo "Checking for module files..."
+          ls -lh build/dmf/
+          test -f build/dmf/@MODULE_NAME@.dmf
+          test -f build/dmf/@MODULE_NAME@_version.txt
+          test -f build/dmf/test_@MODULE_NAME@.dmf
+          echo "Module files present"
+
+      - name: Run tests with dmod_loader
+        run: |
+          export DMOD_DMF_DIR=$(pwd)/build/dmf
+          dmod_loader build/dmf/test_@MODULE_NAME@.dmf
+
+  discover-cpu-families:
+    name: Discover CPU Families
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      cpu_families: ${{ steps.list-families.outputs.cpu_families }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: List available CPU families
+        id: list-families
+        run: |
+          # Find all CPU families by looking for directories containing port.c
+          CPU_FAMILIES=$(find src/port -mindepth 2 -maxdepth 2 -name "port.c" -type f -printf '%h\n' | \
+            xargs -n1 basename | \
+            sort | \
+            jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+          echo "Found CPU families: $CPU_FAMILIES"
+          echo "cpu_families=$CPU_FAMILIES" >> $GITHUB_OUTPUT
+
+  build-@MODULE_NAME@:
+    name: Build @MODULE_NAME@ for ${{ matrix.cpu_family }}
+    needs: discover-cpu-families
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        cpu_family: ${{ fromJson(needs.discover-cpu-families.outputs.cpu_families) }}
+
+    container:
+      image: chocotechnologies/dmod:1.0.4
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build @MODULE_NAME@ for ${{ matrix.cpu_family }}
+        run: |
+          set -e
+          CPU_FAMILY="${{ matrix.cpu_family }}"
+          mkdir -p build_$CPU_FAMILY
+          cd build_$CPU_FAMILY
+
+          cmake .. -DDMOD_CPU_FAMILY="${CPU_FAMILY}"
+          cmake --build .
+
+          echo "Build completed for CPU family: ${CPU_FAMILY}"
+          ls -lh dmf/
+
+      - name: Verify @MODULE_NAME@_port module files
+        run: |
+          CPU_FAMILY="${{ matrix.cpu_family }}"
+          echo "Checking for @MODULE_NAME@_port module files for ${CPU_FAMILY}..."
+          ls -lh build_$CPU_FAMILY/dmf/
+          test -f build_$CPU_FAMILY/dmf/@MODULE_NAME@_port.dmf
+          test -f build_$CPU_FAMILY/dmf/@MODULE_NAME@_port_version.txt
+          echo "Module files present for ${CPU_FAMILY}"

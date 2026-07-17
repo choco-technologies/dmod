@@ -2,29 +2,40 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
 
 jobs:
-  build:
+  build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     container:
-      image: chocotechnologies/dmod:1.0.1
-    
+      image: chocotechnologies/dmod:1.0.4
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Build with CMake
+
+      - name: Build @MODULE_NAME@
         run: |
           mkdir -p build
           cd build
           cmake .. -DDMOD_MODE=DMOD_MODULE
           cmake --build .
-      
-      - name: Build with Make
+
+      - name: Verify module files
         run: |
-          make clean
-          make DMOD_MODE=DMOD_MODULE
+          echo "Checking for module files..."
+          ls -lh build/dmf/
+          test -f build/dmf/@MODULE_NAME@.dmf
+          test -f build/dmf/@MODULE_NAME@_version.txt
+          test -f build/dmf/test_@MODULE_NAME@.dmf
+          echo "Module files present"
+
+      - name: Run tests with dmod_loader
+        run: |
+          export DMOD_DMF_DIR=$(pwd)/build/dmf
+          dmod_loader build/dmf/test_@MODULE_NAME@.dmf

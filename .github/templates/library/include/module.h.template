@@ -1,11 +1,51 @@
 #ifndef @MODULE_NAME_UPPER@_H
 #define @MODULE_NAME_UPPER@_H
 
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include "dmod_types.h"
+#include "@MODULE_NAME@_defs.h"
+
 /**
  * Public API for the @MODULE_NAME@ module.
  *
- * Add your public types and function declarations here. Keep the
- * implementation in src/@MODULE_NAME@.c.
+ * Functions are declared with the dmod_@MODULE_NAME@_api(...) macro - dmod's
+ * standard pattern for functions callable from other modules (or from this
+ * module's own tests/), resolved dynamically by the loader rather than
+ * through normal static linkage. See dm_sw_ring/include/dm_sw_ring.h for a
+ * fully worked real-world example of the same shape.
+ *
+ * Definitions in src/@MODULE_NAME@.c use the matching
+ * dmod_@MODULE_NAME@_api_declaration(...) macro - a plain C function
+ * definition here will NOT satisfy these declarations at link time.
+ *
+ * This is an example interface using the usual "opaque handle" pattern -
+ * replace the handle, functions, and struct definition in
+ * src/@MODULE_NAME@.c with your module's real API.
  */
+
+/* Opaque handle - the real struct is defined in src/@MODULE_NAME@.c */
+typedef struct @MODULE_NAME@* @MODULE_NAME@_t;
+
+/**
+ * Create a new @MODULE_NAME@ instance.
+ *
+ * @return A valid handle on success, or NULL on allocation failure.
+ */
+dmod_@MODULE_NAME@_api(1.0, @MODULE_NAME@_t, _create, ( void ));
+
+/**
+ * Destroy an instance created by @MODULE_NAME@_create(). Safe to call with
+ * NULL.
+ */
+dmod_@MODULE_NAME@_api(1.0, void, _destroy, ( @MODULE_NAME@_t handle ));
+
+/**
+ * Example accessor - replace with your module's real API.
+ *
+ * @return true if handle is a valid, non-NULL instance.
+ */
+dmod_@MODULE_NAME@_api(1.0, bool, _is_valid, ( @MODULE_NAME@_t handle ));
 
 #endif // @MODULE_NAME_UPPER@_H

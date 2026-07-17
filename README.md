@@ -590,11 +590,11 @@ int main(void)
 
 To develop an application or library module, you need to create a **DMF (Dmod Module File)**. This file contains the compiled code of your module, as well as the metadata required for loading and unloading it dynamically.
 
-You can use templates provided in the [templates/module](templates/module/README.md) directory to create your own module. The templates include the necessary files and configurations to get started with developing a module using the **Dmod** library.
+The easiest way to start is the module generator script described below (`scripts/new-module.sh`), which scaffolds a complete module repo in one command. If you'd rather see the raw building blocks it assembles, the [templates/module](templates/module/README.md) directory contains the minimal files/configuration on their own.
 
 #### Automated Module Generation
 
-For convenience, the **Dmod** repository includes a bash script that automates the creation of new modules from templates. This script generates all necessary files (CMakeLists.txt, Makefile, source files, README, and optionally CI/CD pipelines) with minimal user input.
+For convenience, the **Dmod** repository includes a bash script that automates the creation of new modules from templates. In one command it generates everything a real module repo needs: `CMakeLists.txt`/`Makefile` (fetching `dmod` via CMake `FetchContent` - no local checkout required), `src/`/`include/`, `docs/`, `tests/`, `manifest.dmm`, `<module>.dmr`, `README.md`, `.gitignore`, and a copy of `scripts/sync-claude.sh` to pull in Claude Code skills for the ecosystem.
 
 **Quick Start:**
 ```bash
@@ -603,14 +603,18 @@ For convenience, the **Dmod** repository includes a bash script that automates t
 
 # Create an application module with GitHub Actions workflow
 ./scripts/new-module.sh --name my_app --type application --path ./modules/my_app --author "Your Name" --github
+
+# Create a driver module with a hardware port (split core/port, like dmuart/dmfmc)
+./scripts/new-module.sh --name my_driver --type library --path ./modules/my_driver --port --port-arch stm32f7
 ```
 
 The script supports:
 - **Module types**: `library` or `application`
-- **Optional parameters**: author name, license, DMOD directory path
-- **CI/CD pipelines**: GitHub Actions and Bitbucket pipelines
+- **Optional parameters**: author name, license, a local `dmod` checkout to pin the build to (`--dmod-dir`, otherwise `dmod`'s `develop` branch is fetched from GitHub)
+- **CI/CD pipelines**: GitHub Actions (`--github` generates both `ci.yml` and a full `release.yml` that builds and uploads a release package per architecture on every GitHub release) and Bitbucket pipelines (`--bitbucket`)
 - **Interfaces**: DIF and MAL interface support for library modules
-- **External modules**: Modules outside the DMOD repository tree
+- **Hardware ports** (`--port [--port-arch NAME]`): scaffolds the `<module>_port` split used by driver modules, selected at build time via `DMOD_CPU_FAMILY`
+- **Scaffolding into an already-existing repo**: `--path` may point at a directory that already exists (e.g. a repo just created on GitHub and cloned locally with only `README.md`/`LICENSE` in it) - existing files are left untouched unless `--force` is passed
 
 For detailed information about the module generator, see [scripts/README.md](scripts/README.md).
 

@@ -406,10 +406,23 @@ echo "Generating src/${MODULE_NAME}.c..."
 mkdir -p "${MODULE_PATH}/src" "${MODULE_PATH}/docs" "${MODULE_PATH}/tests"
 safe_copy "${TEMPLATE_SRC}/main.c.template" "${MODULE_PATH}/src/${MODULE_NAME}.c" || true
 
+# include/ is created for every module type, even application (which has no
+# public header of its own): module.dmr.template's "inc=./include => ..."
+# entry always has ${build_dir}/${module}_defs.h as a second origin (the
+# auto-generated per-module header), and mkdmrpkg needs a real directory to
+# merge that into - without it, packaging silently produces a stray file
+# named "include" instead of an include/ directory.
+mkdir -p "${MODULE_PATH}/include"
 if [[ "${MODULE_TYPE}" == "library" ]]; then
     echo "Generating include/${MODULE_NAME}.h..."
-    mkdir -p "${MODULE_PATH}/include"
     safe_copy "${TEMPLATE_SRC}/include/module.h.template" "${MODULE_PATH}/include/${MODULE_NAME}.h" || true
+else
+    # Application modules have no public header of their own, so include/
+    # would otherwise be empty - git doesn't track empty directories, and it
+    # must survive a commit/clone for the reason above.
+    if [[ ! -e "${MODULE_PATH}/include/.gitkeep" ]]; then
+        : > "${MODULE_PATH}/include/.gitkeep"
+    fi
 fi
 
 echo "Generating docs/..."
@@ -429,10 +442,8 @@ if safe_copy "${TEMPLATE_SRC}/manifest.dmm.template" "${MODULE_PATH}/manifest.dm
     MANIFEST_GENERATED=true
 fi
 
-if [[ "${MODULE_TYPE}" == "library" ]]; then
-    echo "Generating ${MODULE_NAME}.dmr..."
-    safe_copy "${TEMPLATE_SRC}/module.dmr.template" "${MODULE_PATH}/${MODULE_NAME}.dmr" || true
-fi
+echo "Generating ${MODULE_NAME}.dmr..."
+safe_copy "${TEMPLATES_DIR}/module.dmr.template" "${MODULE_PATH}/${MODULE_NAME}.dmr" || true
 
 # -----------------------------------------------------------------------------
 # README.md
@@ -514,19 +525,36 @@ fi
 # -----------------------------------------------------------------------------
 
 if [[ "${GENERATE_GITHUB}" == "true" ]]; then
-    echo "Generating GitHub Actions workflow..."
+    echo "Generating GitHub Actions workflows..."
     WORKFLOW_DIR="${MODULE_PATH}/.github/workflows"
     mkdir -p "${WORKFLOW_DIR}"
 
-    GITHUB_TEMPLATE="${TEMPLATES_DIR}/ci.yml.template"
+    # A hardware-port module builds/releases per DMOD_CPU_FAMILY (discovered
+    # from src/port/*/port.c) instead of the full architecture list, and
+    # packages two modules (core + port) instead of one - use the dedicated
+    # port/ workflow templates for that case.
+    if [[ "${ADD_PORT}" == "true" ]]; then
+        CI_TEMPLATE="${TEMPLATES_DIR}/port/ci.yml.template"
+        RELEASE_TEMPLATE="${TEMPLATES_DIR}/port/release.yml.template"
+    else
+        CI_TEMPLATE="${TEMPLATES_DIR}/ci.yml.template"
+        RELEASE_TEMPLATE="${TEMPLATES_DIR}/release.yml.template"
+    fi
 
-    if [[ ! -f "${GITHUB_TEMPLATE}" ]]; then
-        print_error "GitHub workflow template not found: ${GITHUB_TEMPLATE}"
+    if [[ ! -f "${CI_TEMPLATE}" ]]; then
+        print_error "GitHub CI workflow template not found: ${CI_TEMPLATE}"
+        exit 1
+    fi
+    if [[ ! -f "${RELEASE_TEMPLATE}" ]]; then
+        print_error "GitHub release workflow template not found: ${RELEASE_TEMPLATE}"
         exit 1
     fi
 
-    if safe_copy "${GITHUB_TEMPLATE}" "${WORKFLOW_DIR}/ci.yml"; then
-        print_success "GitHub Actions workflow created at ${WORKFLOW_DIR}/ci.yml"
+    if safe_copy "${CI_TEMPLATE}" "${WORKFLOW_DIR}/ci.yml"; then
+        print_success "GitHub Actions CI workflow created at ${WORKFLOW_DIR}/ci.yml"
+    fi
+    if safe_copy "${RELEASE_TEMPLATE}" "${WORKFLOW_DIR}/release.yml"; then
+        print_success "GitHub Actions release workflow created at ${WORKFLOW_DIR}/release.yml"
     fi
 fi
 

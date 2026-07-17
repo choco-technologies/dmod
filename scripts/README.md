@@ -7,16 +7,36 @@ This script automates the creation of new DMOD modules from templates, reducing 
 The `new-module.sh` script creates a new DMOD module with all the files a real
 module repo is expected to have:
 - `CMakeLists.txt` / `Makefile` - build configuration (CMake fetches `dmod` via `FetchContent` from GitHub by default)
-- `src/<module_name>.c` - source file with template code
-- `include/<module_name>.h` - public header (library modules only)
+- `src/<module_name>.c` - source file with template code. For library modules,
+  this includes a small example interface (an opaque handle with `_create`/
+  `_destroy`/`_is_valid`) implemented using dmod's `dmod_<module>_api(...)`/
+  `_api_declaration(...)` macros (dmod's Built-in API pattern - see
+  `dm_sw_ring` for a real-world equivalent) and `Dmod_Malloc`/`Dmod_Free`
+  (dmod's SAL heap functions) - **not** plain C function declarations or
+  libc's `malloc`/`free`, which won't link/aren't guaranteed to exist on an
+  embedded target. Replace the example with your module's real API.
+- `include/<module_name>.h` - public header (library modules only), declaring
+  the same example interface
 - `docs/README.md`, `docs/api-reference.md` - documentation skeleton
 - `tests/CMakeLists.txt`, `tests/<module_name>_test.c` - a `dmod_add_test()` skeleton
 - `manifest.dmm` - DMOD manifest entry
-- `<module_name>.dmr` - DMOD resource file (library modules only)
+- `<module_name>.dmr` - DMOD resource file. With `DMOD_DMR_PATH` set in
+  `CMakeLists.txt` (which the generated file always does), `dmod_add_library`/
+  `dmod_add_executable` automatically assembles a ready-to-release package in
+  `build/packages/<module_name>/` via `todmp`/`mkdmrpkg` - no manual file
+  copying needed, see `dmuart.dmr` for the real-world reference
 - `README.md` - module documentation, including a "Project Structure" section
 - `.gitignore`
 - `scripts/sync-claude.sh` - copy of the Claude Code skills sync script (see below)
-- Optional: GitHub Actions workflow (`.github/workflows/ci.yml`)
+- Optional: GitHub Actions workflows (`--github`) - both `.github/workflows/ci.yml`
+  (build + run the generated unit test via `dmod_loader`; for a `--port` module
+  this also builds and verifies the port module for every discovered
+  `DMOD_CPU_FAMILY`) and `.github/workflows/release.yml` (builds a release
+  package per architecture - or per `DMOD_CPU_FAMILY` for a `--port` module -
+  and uploads it to the GitHub release plus a rolling `vlatest`). The release
+  workflow doesn't hardcode module names: it discovers every subdirectory
+  under `build/packages/` and packages/uploads/lists each one, so it keeps
+  working if you add more modules to the repo later
 - Optional: Bitbucket pipeline (`bitbucket-pipelines.yml`)
 - Optional: a hardware port module (`<module_name>_port`, via `--port`)
 
@@ -73,7 +93,7 @@ Optional flags:
   used as the source for the Claude Code skills sync. When omitted, the
   generated module fetches `dmod` from GitHub on first configure - this is
   what every real module repo in the ecosystem does.
-- `--github` - Generate GitHub Actions workflow configuration
+- `--github` - Generate GitHub Actions workflows: `ci.yml` and `release.yml`
 - `--bitbucket` - Generate Bitbucket pipeline configuration
 - `--dif` - Add DIF (DMOD Interface) support (library modules only)
 - `--mal` - Add MAL (Module Abstraction Layer) support
@@ -171,9 +191,8 @@ An application module provides a standalone application with a main entry point.
 Application modules can optionally implement:
 - **MAL (Module Abstraction Layer)** - pluggable interface implementation
 
-No `.dmr` is generated for application modules by default, matching the
-`dmell` precedent (an application's release packaging is usually handled
-alongside its sibling command/library modules, not standalone).
+Like library modules, a `.dmr` is generated and `DMOD_DMR_PATH` is set, so
+`build/packages/<module_name>/` is assembled automatically on build.
 
 ## Claude Code skills sync (`sync-claude.sh`)
 
