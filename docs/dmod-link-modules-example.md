@@ -342,7 +342,34 @@ dmod_link_modules(${DMOD_MODULE_NAME}
 #include <dmffs.h>
 #include <logger.h>
 
-DMOD_ENTRY_POINT(my_app)
+/**
+ * @brief Module initialization function
+ * 
+ * This function is called when the module is loaded by the system.
+ * 
+ * @param Config Configuration parameters for the module
+ * @return 0 on success, non-zero on error
+ */
+int dmod_init(const Dmod_Config_t *Config)
+{
+    // Module initialization code
+    return 0;
+}
+
+/**
+ * @brief Module deinitialization function
+ * 
+ * This function is called when the module is unloaded from the system.
+ * 
+ * @return 0 on success, non-zero on error
+ */
+int dmod_deinit(void)
+{
+    // Module cleanup code
+    return 0;
+}
+
+int main(int argc, char** argv)
 {
     logger_init();
     logger_log("Application starting");
