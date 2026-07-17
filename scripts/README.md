@@ -4,14 +4,21 @@ This script automates the creation of new DMOD modules from templates, reducing 
 
 ## Overview
 
-The `new-module.sh` script creates a new DMOD module with all necessary files:
-- `CMakeLists.txt` - CMake build configuration
-- `Makefile` - Make build configuration  
-- `<module_name>.c` - Source file with template code
-- `README.md` - Module documentation
-- `.gitignore` - Git ignore rules
+The `new-module.sh` script creates a new DMOD module with all the files a real
+module repo is expected to have:
+- `CMakeLists.txt` / `Makefile` - build configuration (CMake fetches `dmod` via `FetchContent` from GitHub by default)
+- `src/<module_name>.c` - source file with template code
+- `include/<module_name>.h` - public header (library modules only)
+- `docs/README.md`, `docs/api-reference.md` - documentation skeleton
+- `tests/CMakeLists.txt`, `tests/<module_name>_test.c` - a `dmod_add_test()` skeleton
+- `manifest.dmm` - DMOD manifest entry
+- `<module_name>.dmr` - DMOD resource file (library modules only)
+- `README.md` - module documentation, including a "Project Structure" section
+- `.gitignore`
+- `scripts/sync-claude.sh` - copy of the Claude Code skills sync script (see below)
 - Optional: GitHub Actions workflow (`.github/workflows/ci.yml`)
 - Optional: Bitbucket pipeline (`bitbucket-pipelines.yml`)
+- Optional: a hardware port module (`<module_name>_port`, via `--port`)
 
 ## Native Linux Environment Setup
 
@@ -50,17 +57,33 @@ Optional flags:
 - `--type TYPE` - Type of module to create:
   - `library` - A library module that can be used by other modules
   - `application` - An application module with a main entry point
-- `--path PATH` - Path to the folder where the module should be created
+- `--path PATH` - Path to the folder where the module should be created. It
+  may already exist - e.g. a repo you just created on GitHub and cloned
+  locally, containing only `README.md`/`LICENSE`. Individual files that
+  already exist there are left untouched (a warning is printed for each);
+  only files that don't exist yet are written. Use `--force` to overwrite.
 
 ### Optional Parameters
 
 - `--author AUTHOR` - Author name (default: "John Doe")
 - `--license LICENSE` - License name (default: "MIT")
-- `--dmod-dir DIR` - Path to DMOD repository (default: `../../..` for internal modules)
+- `--dmod-dir DIR` - Path to a local dmod checkout. When set, the generated
+  `CMakeLists.txt` is pinned to it (via `FETCHCONTENT_SOURCE_DIR_DMOD`)
+  instead of fetching `dmod`'s `develop` branch from GitHub, and it is also
+  used as the source for the Claude Code skills sync. When omitted, the
+  generated module fetches `dmod` from GitHub on first configure - this is
+  what every real module repo in the ecosystem does.
 - `--github` - Generate GitHub Actions workflow configuration
 - `--bitbucket` - Generate Bitbucket pipeline configuration
-- `--dif` - Add DIF (Dynamic Interface) support (library modules only)
+- `--dif` - Add DIF (DMOD Interface) support (library modules only)
 - `--mal` - Add MAL (Module Abstraction Layer) support
+- `--port` - Add a hardware port module `<module_name>_port` (library modules
+  only) - the split-core/port pattern used by `dmuart`/`dmfmc`
+- `--port-arch NAME` - Architecture for the generated port skeleton (default:
+  `stm32f7`). Requires `--port`.
+- `--force` - Overwrite files that already exist at `--path` instead of
+  skipping them
+- `--skip-claude-sync` - Don't run `scripts/sync-claude.sh` at the end of generation
 - `--help` - Show help message
 
 ## Examples
@@ -95,13 +118,27 @@ Optional flags:
   --github
 ```
 
-### Create an External Module (Outside DMOD Repository)
+### Create a Driver Module with a Hardware Port (like dmuart/dmfmc)
 
 ```bash
 ./scripts/new-module.sh \
-  --name external_module \
+  --name mydriver \
+  --type library \
+  --path ./modules/mydriver \
+  --port \
+  --port-arch stm32f7
+```
+
+### Point a Generated Module at a Local dmod Checkout
+
+Useful for local development or CI, where you want to build against the
+checked-out `dmod` instead of `develop` on GitHub:
+
+```bash
+./scripts/new-module.sh \
+  --name my_module \
   --type application \
-  --path /path/to/external/module \
+  --path /path/to/my_module \
   --dmod-dir /path/to/dmod \
   --author "Your Name" \
   --github \
@@ -116,74 +153,51 @@ A library module provides functions and APIs that can be used by other modules. 
 - `dmod_preinit()` - Optional pre-initialization function
 - `dmod_init()` - Initialization function
 - `dmod_deinit()` - De-initialization function
+- A public header at `include/<module_name>.h`
+- A `<module_name>.dmr` resource file (enables release packaging)
 
 Library modules can optionally implement:
-- **DIF (Dynamic Interface)** - Custom interface definitions
-- **MAL (Module Abstraction Layer)** - Hardware abstraction interfaces
+- **DIF (DMOD Interface)** - 1:N interface, discovered dynamically at runtime
+- **MAL (Module Abstraction Layer)** - 1:1 pluggable interface implementation
+- **A hardware port** (`--port`) - split into `<module_name>` (core) and
+  `<module_name>_port` (architecture-specific), selected via `DMOD_CPU_FAMILY`
 
 ### Application Module
 
 An application module provides a standalone application with a main entry point. It includes:
-- `dmod_preinit()` - Optional pre-initialization function  
+- `dmod_preinit()` - Optional pre-initialization function
 - `main()` - Main application entry point
 
 Application modules can optionally implement:
-- **MAL (Module Abstraction Layer)** - Hardware abstraction interfaces
+- **MAL (Module Abstraction Layer)** - pluggable interface implementation
 
-## Generated Files
+No `.dmr` is generated for application modules by default, matching the
+`dmell` precedent (an application's release packaging is usually handled
+alongside its sibling command/library modules, not standalone).
 
-### CMakeLists.txt
+## Claude Code skills sync (`sync-claude.sh`)
 
-The generated CMakeLists.txt includes:
-- Module name, version, and author configuration
-- Appropriate `dmod_add_library()` or `dmod_add_executable()` call
-- Stack size and priority settings (for applications)
+`scripts/sync-claude.sh` copies `.claude/skills/` from the `dmod` repository
+into the current repository. It is copied into every module generated by
+`new-module.sh` and run once, explicitly, at the end of generation (unless
+`--skip-claude-sync` is passed) - the result is meant to be reviewed and
+committed like any other generated file, not silently regenerated by a build
+step.
 
-For external modules (when `--dmod-dir` is specified with a non-default path), the CMakeLists.txt includes additional setup:
-- DMOD_DIR configuration
-- External module setup call
+Run it again any time you want to pick up newer skills:
 
-### Makefile
+```bash
+./scripts/sync-claude.sh                       # clone dmod@develop
+./scripts/sync-claude.sh --dmod-dir /path/to/dmod   # use a local checkout
+./scripts/sync-claude.sh --ref v1.2.0           # pin to a tag/branch
+```
 
-The generated Makefile includes:
-- Module configuration (name, version, author)
-- Source file lists (C and C++ sources)
-- Include directories and libraries
-- DIF/MAL interface declarations (if specified)
-- Reference to DMOD build system
+It only touches `.claude/skills/` - it never overwrites `.claude/settings.json`,
+hooks, or skills you added locally under a different name.
 
-### Source File
-
-The generated source file (`<module_name>.c`) includes:
-- Template code with `dmod.h` include
-- `dmod_preinit()` function (optional)
-- `dmod_init()` function (library) or `main()` function (application)
-- `dmod_deinit()` function (library only)
-- Documentation comments
-
-### README.md
-
-The generated README includes:
-- Module name and description
-- Author and license information
-- Build instructions for CMake and Make
-- Usage instructions
-
-### CI/CD Pipelines
-
-#### GitHub Actions (--github)
-
-Generates `.github/workflows/ci.yml` with:
-- CMake build pipeline
-- Make build pipeline
-- Automatic testing on push/pull requests
-
-#### Bitbucket Pipelines (--bitbucket)
-
-Generates `bitbucket-pipelines.yml` with:
-- CMake build step
-- Make build step
-- Automatic pipeline execution
+**Run this before working with Claude Code in a module repo generated from
+this template**, so the `dmod-ecosystem` skill (architecture map, build
+system, driver+port pattern) is available.
 
 ## Building Generated Modules
 
@@ -193,11 +207,11 @@ Generates `bitbucket-pipelines.yml` with:
 cd /path/to/module
 mkdir -p build
 cd build
-cmake .. -DDMOD_MODE=DMOD_MODULE
+cmake ..
 cmake --build .
 ```
 
-The generated DMF file will be in `build/dmf/<module_name>.dmf` (internal modules) or `build/dmf/<module_name>.dmf` (external modules).
+The generated DMF file will be in `build/dmf/<module_name>.dmf`.
 
 ### Using Make
 
@@ -206,74 +220,36 @@ cd /path/to/module
 make DMOD_MODE=DMOD_MODULE
 ```
 
-The generated DMF file will be in the DMOD repository's `build/dmf/` directory.
-
-## Internal vs External Modules
-
-### Internal Modules
-
-Internal modules are part of the DMOD repository structure. They:
-- Use relative paths (`../../..`) for DMOD_DIR
-- Are typically in the `examples/` or `modules/` directory
-- Share the DMOD build directory
-
-**Example:**
-```bash
-./scripts/new-module.sh \
-  --name my_internal_module \
-  --type library \
-  --path ./examples/my_internal_module
-```
-
-### External Modules
-
-External modules are independent projects that use DMOD as a library. They:
-- Specify an absolute path to DMOD_DIR via `--dmod-dir`
-- Can be located anywhere in the filesystem
-- Have their own build directory
-- Include additional setup in CMakeLists.txt
-
-**Example:**
-```bash
-./scripts/new-module.sh \
-  --name my_external_module \
-  --type application \
-  --path ~/projects/my_module \
-  --dmod-dir /path/to/dmod
-```
-
 ## Notes
 
 - The script validates all input parameters and provides helpful error messages
 - Module names should follow C identifier rules (alphanumeric and underscores)
 - The script prevents overwriting existing directories
-- DIF interfaces are only supported for library modules
+- DIF interfaces and hardware ports are only supported for library modules
 - Generated modules include `.gitignore` to exclude build artifacts
 
 ## Troubleshooting
 
-### "Directory already exists" Error
+### "X already exists, skipping" Warning
 
-The script will not overwrite existing directories. Either:
-- Choose a different path
-- Remove the existing directory
-- Rename the existing directory
+This is expected when `--path` points at a directory that already had some
+files in it (e.g. `README.md`/`LICENSE` from GitHub's repo creation flow) -
+those files are intentionally left untouched. If you want the template's
+version instead, pass `--force`, or delete/rename the specific file first.
 
 ### "Template directory not found" Error
 
-Ensure you're running the script from the DMOD repository root or that the script can locate the templates directory.
+Ensure you're running the script from the DMOD repository root or that the script can locate the `.github/templates` directory.
 
 ### Build Errors
 
 If you encounter build errors:
-1. Verify DMOD is properly configured (see main DMOD README)
-2. Check that `tools-cfg.cmake` or `tools-cfg.mk` exists
-3. Ensure DMOD_MODE is set to DMOD_MODULE
-4. For external modules, verify the DMOD_DIR path is correct
+1. Verify network access to GitHub (CMake fetches `dmod` via `FetchContent` by default) or pass `--dmod-dir` to a local checkout
+2. Ensure `DMOD_MODE` is set to `DMOD_MODULE` when building with Make
+3. For a local `dmod` checkout, verify the `--dmod-dir` path is correct
 
 ## See Also
 
 - [DMOD Repository README](../README.md)
-- [Module Templates](../templates/module/README.md)
-- [Library Module Template](../templates/module/library/README.md)
-- [Application Module Template](../templates/module/application/README.md)
+- [CMake Functions Reference](../docs/cmake-functions.md)
+- [Module Generation Templates](../.github/templates/README.md)

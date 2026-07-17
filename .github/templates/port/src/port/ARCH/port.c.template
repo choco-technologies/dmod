@@ -1,0 +1,29 @@
+#define DMOD_ENABLE_REGISTRATION    ON
+#include "@MODULE_NAME@_port.h"
+#include "dmod.h"
+
+/* ---- DMOD lifecycle ---- */
+
+int dmod_init(const Dmod_Config_t *Config)
+{
+    Dmod_Printf("@MODULE_NAME@ port module initialized (@PORT_ARCH@)\n");
+    return 0;
+}
+
+int dmod_deinit(void)
+{
+    Dmod_Printf("@MODULE_NAME@ port module deinitialized (@PORT_ARCH@)\n");
+    return 0;
+}
+
+/* ---- API implementation ----
+ *
+ * Implement the dmod_@MODULE_NAME@_port_api_declaration(...) functions
+ * declared in include/@MODULE_NAME@_port.h here. Register an interrupt
+ * handler if needed, e.g.:
+ *
+ *   DMOD_IRQ_HANDLER(SOME_IRQn)
+ *   {
+ *       // handle interrupt
+ *   }
+ */

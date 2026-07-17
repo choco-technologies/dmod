@@ -1,0 +1,71 @@
+# @MODULE_NAME@
+
+[![License](https://img.shields.io/badge/license-@LICENSE@-blue.svg)](LICENSE)
+
+@MODULE_NAME@ DMOD library module.
+
+## Description
+
+TODO: describe what this module does.
+
+## Building
+
+### Using CMake
+
+```bash
+mkdir -p build
+cd build
+cmake ..
+cmake --build .
+```
+
+Pass `-DDMOD_DIR=/path/to/local/dmod` to build against a local dmod checkout
+instead of fetching `develop` from GitHub.
+
+### Using Make
+
+```bash
+make DMOD_MODE=DMOD_MODULE DMOD_DIR=/path/to/dmod
+```
+
+## Usage
+
+This library module provides functions that can be used by other modules:
+
+```c
+#include "@MODULE_NAME@.h"
+```
+
+## Documentation
+
+See the `docs/` directory:
+
+- **[api-reference.md](docs/api-reference.md)** - Complete API documentation
+
+View documentation using `dmf-man @MODULE_NAME@`.
+@PORT_README_BLOCK@
+## Project Structure
+
+```
+@MODULE_NAME@/
+├── docs/              # Documentation (markdown format)
+├── include/           # Public headers
+│   └── @MODULE_NAME@.h
+├── src/
+│   └── @MODULE_NAME@.c
+├── tests/
+│   ├── CMakeLists.txt
+│   └── @MODULE_NAME@_test.c
+├── CMakeLists.txt
+├── Makefile
+├── @MODULE_NAME@.dmr
+└── manifest.dmm
+```
+
+## Author
+
+@AUTHOR_NAME@
+
+## License
+
+@LICENSE@

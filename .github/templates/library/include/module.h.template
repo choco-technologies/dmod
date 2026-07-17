@@ -1,0 +1,11 @@
+#ifndef @MODULE_NAME_UPPER@_H
+#define @MODULE_NAME_UPPER@_H
+
+/**
+ * Public API for the @MODULE_NAME@ module.
+ *
+ * Add your public types and function declarations here. Keep the
+ * implementation in src/@MODULE_NAME@.c.
+ */
+
+#endif // @MODULE_NAME_UPPER@_H

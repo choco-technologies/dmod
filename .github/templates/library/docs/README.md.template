@@ -1,0 +1,20 @@
+# @MODULE_NAME@ Documentation
+
+Welcome to the @MODULE_NAME@ module documentation.
+
+## Contents
+
+- **[api-reference.md](api-reference.md)** - Complete API documentation
+
+## Quick Reference
+
+```c
+#include "@MODULE_NAME@.h"
+```
+
+View documentation using `dmf-man`:
+
+```bash
+dmf-man @MODULE_NAME@          # Main documentation
+dmf-man @MODULE_NAME@ api      # API reference
+```

@@ -1,4 +1,5 @@
 #include "dmod.h"
+#include "@MODULE_NAME@.h"
 
 /**
  * @brief Pre-initialization function for the module.
