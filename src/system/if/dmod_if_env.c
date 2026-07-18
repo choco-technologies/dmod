@@ -34,7 +34,7 @@
 #define DMOD_PRIVATE
 #include "dmod.h"
 #include "private/dmod_ctx.h"
-#if DMOD_USE_STDLIB
+#if DMOD_USE_STDLIB || DMOD_USE_GETENV
 #   include <stdlib.h>
 #endif
 
@@ -52,7 +52,7 @@
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetEnv, ( const char* Name ))
 {
     const char* value = NULL;
-#if DMOD_USE_STDLIB && DMOD_USE_GETENV
+#if DMOD_USE_GETENV
     value = getenv(Name);
 #endif
 
@@ -82,7 +82,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, const char*, _GetEnv, ( const char* N
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _SetEnv, ( const char* Name, const char* Value, int Overwrite ))
 {
-#if DMOD_USE_STDLIB && DMOD_USE_GETENV
+#if DMOD_USE_GETENV
     return setenv(Name, Value, Overwrite);
 #else
     (void)Name;
@@ -134,7 +134,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _EnvCtx_Pop, ( void ))
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _Unsetenv, ( const char* Name ))
 {
-#if DMOD_USE_STDLIB && DMOD_USE_GETENV
+#if DMOD_USE_GETENV
     return unsetenv(Name);
 #else
     (void)Name;

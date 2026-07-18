@@ -1011,15 +1011,72 @@ static void GetCurrentDmodVersion(Dmod_SemanticVersion_t* version) {
 }
 
 /**
+ * @brief Detect and strip an accidental trailing "/<module_name>" (or an
+ *        exact match) from an output directory before it's used as the
+ *        ${destination} base for .dmr resource resolution.
+ *
+ * Every .dmr resource entry already scopes its own destination by ${module}
+ * (e.g. "docs=./docs => ${destination}/${module}/docs" - see any real
+ * module's .dmr), so passing an output_dir that is *itself* already
+ * module-scoped (e.g. "<dmf_dir>/<module>/docs", built by a caller that
+ * didn't realize the .dmr does this too) makes the module name - and/or a
+ * path segment like "docs" - appear twice in the final installed path
+ * (e.g. "<dmf_dir>/<module>/docs/<module>/docs"). This guards every
+ * Dmod_Resource_Init() call site against that class of bug, regardless of
+ * how output_dir was computed by the caller.
+ *
+ * @param safe_output_dir Buffer to receive the corrected path.
+ * @param safe_output_dir_size Size of safe_output_dir.
+ * @param output_dir Original output_dir passed by the caller.
+ * @param module_name Module name to check for.
+ */
+static void NormalizeResourceOutputDir(char* safe_output_dir, size_t safe_output_dir_size,
+                                        const char* output_dir, const char* module_name) {
+    Dmod_SnPrintf(safe_output_dir, safe_output_dir_size, "%s", output_dir ? output_dir : "");
+
+    size_t dir_len = strlen(safe_output_dir);
+    size_t module_len = module_name ? strlen(module_name) : 0;
+
+    if (dir_len == 0 || module_len == 0 || dir_len < module_len) {
+        return;
+    }
+
+    // Strip a trailing slash, if any, so the suffix check below is exact
+    if (safe_output_dir[dir_len - 1] == '/') {
+        safe_output_dir[dir_len - 1] = '\0';
+        dir_len--;
+    }
+
+    bool exact_match = (dir_len == module_len) &&
+                        (strcmp(safe_output_dir, module_name) == 0);
+    bool suffix_match = (dir_len > module_len) &&
+                         (safe_output_dir[dir_len - module_len - 1] == '/') &&
+                         (strcmp(safe_output_dir + dir_len - module_len, module_name) == 0);
+
+    if (exact_match || suffix_match) {
+        DMOD_LOG_WARN("Output directory '%s' already ends with module name '%s' - "
+                      ".dmr resource entries add '%s' themselves, so this would "
+                      "duplicate it in the installed path. Stripping the "
+                      "trailing '/%s' automatically.\n",
+                      output_dir, module_name, module_name, module_name);
+        if (exact_match) {
+            safe_output_dir[0] = '\0';
+        } else {
+            safe_output_dir[dir_len - module_len - 1] = '\0';
+        }
+    }
+}
+
+/**
  * @brief Extract specific resource (headers or docs) from ZIP file
- * 
+ *
  * @param zip_path Path to the ZIP file
  * @param output_dir Directory to copy the extracted resource to
  * @param module_name Module name to search for
  * @param resource_key Resource key to extract ("inc" for headers, "docs" for documentation)
  * @return true if extraction succeeded and resource was found and copied
  */
-static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir, 
+static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
                                    const char* module_name, const char* resource_key) {
     // Create temporary extraction directory in /tmp
     char extract_dir[512];
@@ -1084,11 +1141,14 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
     char source_path[1024] = "";
     char destination_path[1024] = "";
     bool found_resource = false;
-    
+
+    char safe_output_dir[1024];
+    NormalizeResourceOutputDir(safe_output_dir, sizeof(safe_output_dir), output_dir, module_name);
+
     // Try to get resource path from .dmr file
     if (dmr_file[0] != '\0') {
         DMOD_LOG_INFO("Reading resource path from .dmr file\n");
-        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name, NULL, NULL, NULL, NULL);
+        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(safe_output_dir, module_name, NULL, NULL, NULL, NULL);
         if (res_ctx) {
             if (Dmod_Resource_ParseFile(res_ctx, dmr_file)) {
                 size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
@@ -1097,12 +1157,12 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
                     if (Dmod_Resource_GetEntry(res_ctx, i, &res_entry)) {
                         if (strcmp(res_entry.key, resource_key) == 0) {
                             // Build full source path
-                            Dmod_SnPrintf(source_path, sizeof(source_path), "%s/%s", 
+                            Dmod_SnPrintf(source_path, sizeof(source_path), "%s/%s",
                                         extract_dir, res_entry.source);
                             // Store the resolved destination from DMR
                             Dmod_SnPrintf(destination_path, sizeof(destination_path), "%s", res_entry.destination);
                             found_resource = true;
-                            DMOD_LOG_INFO("Found %s resource in .dmr: %s => %s\n", 
+                            DMOD_LOG_INFO("Found %s resource in .dmr: %s => %s\n",
                                         resource_key, res_entry.source, res_entry.destination);
                             break;
                         }
@@ -1119,7 +1179,7 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
         Dmod_SnPrintf(source_path, sizeof(source_path), "%s/%s/%s", 
                     extract_dir, module_name, resource_key);
         // Use output_dir as destination when no DMR entry found
-        Dmod_SnPrintf(destination_path, sizeof(destination_path), "%s", output_dir);
+        Dmod_SnPrintf(destination_path, sizeof(destination_path), "%s", safe_output_dir);
     }
     
     // Validate destination path for safety
@@ -1222,16 +1282,19 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
     }
     
     DMOD_LOG_INFO("Looking for configuration file: %s for module: %s\n", substituted_config_path, module_name);
-    
+
+    char safe_output_dir[DMOD_MAX_PATH_LEN];
+    NormalizeResourceOutputDir(safe_output_dir, sizeof(safe_output_dir), output_dir, module_name);
+
     // First, check if the module has a .dmr file in the output directory
     char dmr_path[DMOD_MAX_PATH_LEN];
-    Dmod_SnPrintf(dmr_path, sizeof(dmr_path), "%s/%s.dmr", output_dir, module_name);
-    
+    Dmod_SnPrintf(dmr_path, sizeof(dmr_path), "%s/%s.dmr", safe_output_dir, module_name);
+
     char config_source[DMOD_MAX_PATH_LEN] = "";
-    
+
     // Try to find config directory path from .dmr file
     if (Dmod_Access(dmr_path, DMOD_R_OK) == 0) {
-        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name, NULL, NULL, NULL, NULL);
+        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(safe_output_dir, module_name, NULL, NULL, NULL, NULL);
         if (res_ctx) {
             if (Dmod_Resource_ParseFile(res_ctx, dmr_path)) {
                 size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
@@ -1258,16 +1321,16 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
     if (config_source[0] == '\0') {
         // Try "configs" first (plural - common convention)
         char config_path_plural[DMOD_MAX_PATH_LEN];
-        Dmod_SnPrintf(config_path_plural, sizeof(config_path_plural), "%s/%s/configs/%s", 
-                    output_dir, module_name, substituted_config_path);
+        Dmod_SnPrintf(config_path_plural, sizeof(config_path_plural), "%s/%s/configs/%s",
+                    safe_output_dir, module_name, substituted_config_path);
         
         if (Dmod_Access(config_path_plural, DMOD_R_OK) == 0) {
             Dmod_SnPrintf(config_source, sizeof(config_source), "%s", config_path_plural);
             DMOD_LOG_INFO("Using default config location: %s\n", config_source);
         } else {
             // Fall back to "config" (singular)
-            Dmod_SnPrintf(config_source, sizeof(config_source), "%s/%s/config/%s", 
-                        output_dir, module_name, substituted_config_path);
+            Dmod_SnPrintf(config_source, sizeof(config_source), "%s/%s/config/%s",
+                        safe_output_dir, module_name, substituted_config_path);
             DMOD_LOG_INFO("Using default config location: %s\n", config_source);
         }
     }
@@ -1465,7 +1528,9 @@ static bool CheckLicenseAcceptance(const char* extract_dir, const char* module_n
     
     // Parse .dmr file to find license resource
     char license_source[1024] = "";
-    Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name, NULL, NULL, NULL, NULL);
+    char safe_output_dir[1024];
+    NormalizeResourceOutputDir(safe_output_dir, sizeof(safe_output_dir), output_dir, module_name);
+    Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(safe_output_dir, module_name, NULL, NULL, NULL, NULL);
     if (res_ctx) {
         if (Dmod_Resource_ParseFile(res_ctx, dmr_file)) {
             size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
@@ -1741,9 +1806,14 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
     // Process .dmr file if found
     if (dmr_file[0] != '\0') {
         DMOD_LOG_INFO("Processing resource file: %s\n", dmr_file);
-        
-        // Initialize resource parser
-        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(output_dir, module_name, NULL, NULL, NULL, NULL);
+
+        // Initialize resource parser. output_dir here is normally already
+        // the bare install root (top-level .dmf/.dmfc/.dmd above are copied
+        // straight into it) - normalize defensively in case a caller passed
+        // an already module-scoped -o.
+        char safe_output_dir[1024];
+        NormalizeResourceOutputDir(safe_output_dir, sizeof(safe_output_dir), output_dir, module_name);
+        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(safe_output_dir, module_name, NULL, NULL, NULL, NULL);
         if (!res_ctx) {
             DMOD_LOG_ERROR("Failed to initialize resource parser\n");
         } else {
@@ -3008,9 +3078,15 @@ int main(int argc, char* argv[]) {
             if (!output_dir) {
                 output_dir = Dmod_GetEnv(ENV_INC_DIR);
                 if (!output_dir) {
-                    // Default to $DMOD_DMF_DIR/<module_name>/inc
+                    // Default to $DMOD_DMF_DIR/inc - NOT $DMOD_DMF_DIR/<module_name>/inc:
+                    // the .dmr's own "inc=./include => ${destination}/${module}/include"
+                    // entry already adds "<module_name>/include" on top of this, matching
+                    // what dmod_link_modules() passes via -o in CMake (see
+                    // docs/cmake-functions.md: headers land at
+                    // ${DMOD_DMF_DIR}/inc/<module_name>/include/). Pre-adding the module
+                    // name here would duplicate it in the final installed path.
                     const char* dmf_dir = GetEnvOrDefault(ENV_DMF_DIR, DEFAULT_DMF_DIR);
-                    Dmod_SnPrintf(default_output_dir, sizeof(default_output_dir), "%s/%s/inc", dmf_dir, module_name);
+                    Dmod_SnPrintf(default_output_dir, sizeof(default_output_dir), "%s/inc", dmf_dir);
                     output_dir = default_output_dir;
                     DMOD_LOG_INFO("No output directory specified, using default: %s\n", output_dir);
                 }
@@ -3020,10 +3096,13 @@ int main(int argc, char* argv[]) {
             if (!output_dir) {
                 output_dir = Dmod_GetEnv(ENV_DOC_DIR);
                 if (!output_dir) {
-                    // Default to $DMOD_DMF_DIR/<module_name>/docs
-                    const char* dmf_dir = GetEnvOrDefault(ENV_DMF_DIR, DEFAULT_DMF_DIR);
-                    Dmod_SnPrintf(default_output_dir, sizeof(default_output_dir), "%s/%s/docs", dmf_dir, module_name);
-                    output_dir = default_output_dir;
+                    // Default to $DMOD_DMF_DIR - NOT $DMOD_DMF_DIR/<module_name>/docs:
+                    // the .dmr's own "docs=./docs => ${destination}/${module}/docs" entry
+                    // already adds "<module_name>/docs" on top of this (same convention
+                    // "dmf-get install" uses), so pre-adding it here would duplicate it in
+                    // the final installed path - see dmf-man's own lookup pattern
+                    // (<dmf_dir>/<module>/docs/<file>.md), which this must match.
+                    output_dir = GetEnvOrDefault(ENV_DMF_DIR, DEFAULT_DMF_DIR);
                     DMOD_LOG_INFO("No output directory specified, using default: %s\n", output_dir);
                 }
             }

@@ -196,6 +196,44 @@ logic in `src/port/<family>_common/` and make each `src/port/<arch>/port.c` a
 thin wrapper (lifecycle + IRQ only) — see `dmfmc/docs/port-implementation.md`
 for the exact recipe used there.
 
+## Strings: prefer the heap over fixed-size buffers
+
+The target is embedded (STM32F4/F7, ESP32-S3) — RAM is scarce and every byte
+of it matters, so default to heap-allocating rather than reserving fixed
+static/stack space "just in case". This applies to strings in general, not
+just paths: don't declare a fixed-size `char buf[N]` for a string whose
+length isn't tightly bounded — heap-allocate it instead. Beyond the general
+RAM-budget argument, fixed-size stack/static buffers silently truncate or
+overflow once a value gets longer than whoever wrote `N` expected, which is a
+real risk for anything composed at runtime (paths, module names, mount
+points under `/`, `.dmr`/`.dmm` entries, log/error messages, etc.). A static
+fixed-size array is only acceptable when you can genuinely guarantee the
+string will never exceed ~20 bytes (e.g. a short fixed enum-like tag) —
+paths and other composed/runtime strings do not qualify.
+
+When you need an owned copy of a string (not just a borrowed pointer), copy
+it with `Dmod_StrDup` rather than `malloc` + `strcpy`/`memcpy`, and `free` it
+when done.
+
+The same reasoning applies to lists: don't hand-roll a fixed-size static
+array for a collection whose size grows/shrinks at runtime. Use the `dmlist`
+module instead — pull it in with `dmod_link_modules(${DMOD_MODULE_NAME}
+dmlist)` in `CMakeLists.txt` (see `dmtty/CMakeLists.txt` for a working
+example) rather than reimplementing a dynamic list.
+
+## Never statically link libraries into a module
+
+Always link a module against another module's `_if` target dynamically
+(`dmod_link_modules`, the standard Built-in API / MAL / DIF mechanisms) —
+never statically link a library's object code directly into a module. DMOD
+modules are loaded/unloaded independently at runtime; statically linking a
+dependency into a module defeats that (bloats the `.dmf`, duplicates the
+dependency's RAM/flash footprint across every module that links it, and
+breaks the loader's ability to resolve/share a single instance of it). If
+you find yourself reaching for `target_link_libraries` with anything other
+than a module's own `_if` interface target, stop and use
+`dmod_link_modules` instead.
+
 ## When you need more detail
 
 This skill gives the map, not the territory. For a specific module's exact
