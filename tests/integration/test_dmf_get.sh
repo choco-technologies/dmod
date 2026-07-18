@@ -380,6 +380,43 @@ fi
 rm -f mainmod_with_deps.zip
 
 echo ""
+echo "Test 24: Test 'lib' command is documented in help"
+if $DMF_GET --help | grep -q "lib <module>"; then
+    echo "✓ 'lib' command documented in help"
+else
+    echo "✗ 'lib' command missing from help"
+    exit 1
+fi
+
+echo ""
+echo "Test 25: Test 'lib' command extracts a single-file static library resource"
+# Unlike docs/headers (directory => directory), a real module's 'lib' resource
+# maps a single file (e.g. "lib=./lib/libmymodule.a => .../lib/libmymodule.a").
+# Use a local file-path manifest entry so the package is actually downloaded
+# and extracted (not just recognized), exercising the file-copy path end to end.
+mkdir -p test_lib_extraction/testlib/lib
+echo "fake static library content" > test_lib_extraction/testlib/lib/libtestlib.a
+cat > test_lib_extraction/testlib.dmr << 'EOFTEST'
+lib=testlib/lib/libtestlib.a => ${destination}/${module}/lib/libtestlib.a
+EOFTEST
+(cd test_lib_extraction && zip -q testlib_pkg.zip testlib.dmr testlib/lib/libtestlib.a)
+mv test_lib_extraction/testlib_pkg.zip .
+
+cat > manifest_lib.dmm << EOF
+testlib $(pwd)/testlib_pkg.zip
+EOF
+
+OUTPUT=$($DMF_GET lib testlib -m manifest_lib.dmm -o lib_output 2>&1 || true)
+if [ -f "lib_output/testlib/lib/libtestlib.a" ] && grep -q "fake static library content" "lib_output/testlib/lib/libtestlib.a"; then
+    echo "✓ 'lib' command extracts static library file to correct destination"
+else
+    echo "✗ 'lib' command failed to extract static library correctly"
+    echo "$OUTPUT"
+    exit 1
+fi
+rm -rf test_lib_extraction testlib_pkg.zip manifest_lib.dmm lib_output
+
+echo ""
 echo "=== All dmf-get integration tests passed! ==="
 cd ..
 rm -rf "$TEST_DIR"

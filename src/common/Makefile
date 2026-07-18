@@ -16,7 +16,8 @@ endif
 #
 DMOD_LIB_NAME=libdmod_common.a
 DMOD_SOURCES=dmod_common.c
-DMOD_INC_DIRS = ../../inc\
+DMOD_INC_DIRS = $(DMOD_DIR)/src/common\
+		$(DMOD_DIR)/inc\
 		$(DMOD_BUILD_DIR)
 DMOD_LIBS = dmod_inc
 DMOD_GEN_HEADERS_IN = 

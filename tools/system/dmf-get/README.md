@@ -90,6 +90,18 @@ dmf-get headers mymodule@1.0 -o /path/to/output
 # Extract only documentation
 dmf-get docs mymodule
 dmf-get docs mymodule@1.0 -o /path/to/output
+
+# Extract only the static library
+dmf-get lib mymodule
+dmf-get lib mymodule@1.0 -o /path/to/output
+```
+
+The `lib` command extracts a module's precompiled static library (the `lib` resource from its `.dmr` file, e.g. `libmymodule.a`) to `$DMOD_LIB_DIR` or `$DMOD_DMF_DIR/lib/<module>/lib` by default.
+
+```bash
+# Extract and use the static library
+dmf-get lib mymodule
+ls $DMOD_DMF_DIR/lib/mymodule/lib/libmymodule.a
 ```
 
 The `docs` command extracts module documentation to `$DMOD_DOC_DIR` or `$DMOD_DMF_DIR/<module>/docs` by default. After extraction, you can view the documentation using the `dmf-man` tool:

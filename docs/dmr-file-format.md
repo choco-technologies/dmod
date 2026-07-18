@@ -152,6 +152,19 @@ inc=./include => ${destination}/${module}/include
 api_header=./api.h => ${destination}/${module}/include/api.h
 ```
 
+#### Static Library
+
+```dmr
+# Precompiled static library (architecture-specific build)
+lib=./lib/libmymodule.a => ${destination}/${module}/lib/libmymodule.a
+```
+
+**Note**: Unlike `docs`/`inc`, which typically map a directory to a directory,
+`lib` usually maps a single file. `dmf-get` copies the file exactly to the
+destination path (creating its parent directory as needed), rather than
+merging it into an existing directory. Static libraries can be extracted using
+`dmf-get lib <module>` — see the [dmf-get Tool](dmf-get-tool.md) documentation.
+
 #### Dependencies
 
 ```dmr
@@ -223,6 +236,9 @@ readme=./README.md => ${destination}/${module}/README.md
 
 # Header files - skipped in --mini mode
 inc=./include => ${destination}/${module}/include
+
+# Static library - skipped in --mini mode
+lib=./lib/libmymodule.a => ${destination}/${module}/lib/libmymodule.a
 
 # Examples - skipped in --mini mode
 examples=./examples => ${destination}/${module}/examples
@@ -317,6 +333,27 @@ This command:
 - If no output directory specified, uses `DMOD_DOC_DIR` or defaults to `$DMOD_DMF_DIR/<module>/docs`
 - Useful for offline documentation access
 - Documentation should be in Markdown format for console viewing
+
+#### Extract Static Library Only (`lib` command)
+
+Extract only the precompiled static library from a module package:
+
+```bash
+# Extract to specified directory
+dmf-get lib mymodule -o ./mymodule/lib
+
+# Extract to DMOD_LIB_DIR environment variable path (if set)
+# or defaults to $DMOD_DMF_DIR/lib/mymodule/lib
+dmf-get lib mymodule
+```
+
+This command:
+- Downloads the module package
+- Extracts only the `lib` resource as defined in the DMR file
+- Falls back to `<module>/lib` folder if no DMR file exists
+- If no output directory specified, uses `DMOD_LIB_DIR` or defaults to `$DMOD_DMF_DIR/lib`
+- Useful for linking against a module's static library from host tooling or tests,
+  without downloading the rest of the package
 
 ### Example Workflow
 

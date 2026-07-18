@@ -37,6 +37,7 @@
 #define ENV_MANIFEST "DMOD_MANIFEST"
 #define ENV_INC_DIR "DMOD_INC_DIR"
 #define ENV_DOC_DIR "DMOD_DOC_DIR"
+#define ENV_LIB_DIR "DMOD_LIB_DIR"
 #define ENV_CACHE_DIR "DMOD_CACHE_DIR"
 
 // Cache directories
@@ -1068,12 +1069,12 @@ static void NormalizeResourceOutputDir(char* safe_output_dir, size_t safe_output
 }
 
 /**
- * @brief Extract specific resource (headers or docs) from ZIP file
+ * @brief Extract specific resource (headers, docs, or lib) from ZIP file
  *
  * @param zip_path Path to the ZIP file
  * @param output_dir Directory to copy the extracted resource to
  * @param module_name Module name to search for
- * @param resource_key Resource key to extract ("inc" for headers, "docs" for documentation)
+ * @param resource_key Resource key to extract ("inc" for headers, "docs" for documentation, "lib" for static library)
  * @return true if extraction succeeded and resource was found and copied
  */
 static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
@@ -1202,12 +1203,28 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
         return false;
     }
     
-    // Ensure output directory exists
+    // Ensure output directory exists. When the resource is a single file (e.g. a
+    // "lib" entry pointing at a specific .a file), destination_path names the file
+    // itself, not a directory - create its parent directory instead of the file
+    // path, otherwise a directory would be created where the file should go.
+    char mkdir_target[1024];
+    if (S_ISDIR(st.st_mode)) {
+        Dmod_SnPrintf(mkdir_target, sizeof(mkdir_target), "%s", destination_path);
+    } else {
+        Dmod_SnPrintf(mkdir_target, sizeof(mkdir_target), "%s", destination_path);
+        char* last_slash = strrchr(mkdir_target, '/');
+        if (last_slash) {
+            *last_slash = '\0';
+        } else {
+            Dmod_SnPrintf(mkdir_target, sizeof(mkdir_target), ".");
+        }
+    }
+
     char mkdir_cmd[2048];
-    Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", destination_path);
+    Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", mkdir_target);
     int mkdir_result = system(mkdir_cmd);
     if (mkdir_result != 0) {
-        DMOD_LOG_ERROR("Failed to create output directory: %s\n", destination_path);
+        DMOD_LOG_ERROR("Failed to create output directory: %s\n", mkdir_target);
         // Clean up temp directory
         char rm_cmd[1024];
         Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", extract_dir);
@@ -2353,7 +2370,8 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("Commands:\n");
     Dmod_Printf("  install <module>          Download and install module (default command)\n");
     Dmod_Printf("  headers <module>          Extract module headers to output directory\n");
-    Dmod_Printf("  docs <module>             Extract module documentation to output directory\n\n");
+    Dmod_Printf("  docs <module>             Extract module documentation to output directory\n");
+    Dmod_Printf("  lib <module>              Extract module static library to output directory\n\n");
     Dmod_Printf("Options:\n");
     Dmod_Printf("  -d, --dependencies <path> Path or URL to dependencies (.dmd) file\n");
     Dmod_Printf("  -m, --manifest <path>     Path or URL to manifest file\n");
@@ -2384,6 +2402,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s      Default manifest path or URL\n", ENV_MANIFEST);
     Dmod_Printf("  %s       Include/headers output directory\n", ENV_INC_DIR);
     Dmod_Printf("  %s       Documentation output directory\n", ENV_DOC_DIR);
+    Dmod_Printf("  %s       Static library output directory\n", ENV_LIB_DIR);
     Dmod_Printf("  %s      Cache directory (default: ~/.cache/dmod/dmf-get)\n\n", ENV_CACHE_DIR);
     Dmod_Printf("Examples:\n");
     Dmod_Printf("  %s mymodule              # Download latest version\n", app_name);
@@ -2392,6 +2411,8 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s headers dmini         # Extract headers to $DMOD_INC_DIR or $DMOD_DMF_DIR/dmini/inc\n", app_name);
     Dmod_Printf("  %s docs dmini -o ./dmini/docs    # Extract docs to specified path\n", app_name);
     Dmod_Printf("  %s docs dmini            # Extract docs to $DMOD_DOC_DIR or $DMOD_DMF_DIR/dmini/docs\n", app_name);
+    Dmod_Printf("  %s lib dmlist -o ./dmlist/lib    # Extract static library to specified path\n", app_name);
+    Dmod_Printf("  %s lib dmlist            # Extract static library to $DMOD_LIB_DIR or $DMOD_DMF_DIR/lib/dmlist/lib\n", app_name);
     Dmod_Printf("  %s mymodule@1.0          # Download specific version\n", app_name);
     Dmod_Printf("  %s mymodule@>=1.0        # Download version >= 1.0\n", app_name);
     Dmod_Printf("  %s mymodule@>=1.0<=2.0   # Download version in range [1.0, 2.0]\n", app_name);
@@ -2416,8 +2437,8 @@ static void PrintVersion() {
 }
 
 /**
- * @brief Extract and install resource (headers or docs) from a module package
- * 
+ * @brief Extract and install resource (headers, docs, or lib) from a module package
+ *
  * @param module_name Module name
  * @param module_version Module version (can be NULL)
  * @param manifest_ctx Manifest context
@@ -2426,7 +2447,7 @@ static void PrintVersion() {
  * @param arch_name Architecture name for substitution
  * @param cpu_name CPU name for substitution (can be NULL)
  * @param cpu_family CPU family for substitution (can be NULL)
- * @param resource_key Resource key ("inc" for headers, "docs" for documentation)
+ * @param resource_key Resource key ("inc" for headers, "docs" for documentation, "lib" for static library)
  * @return 0 on success, non-zero on failure
  */
 static int ExtractResourceCommand(const char* module_name, const char* module_version,
@@ -2800,7 +2821,7 @@ int main(int argc, char* argv[]) {
     const char* cpu_name = NULL;
     const char* cpu_family = NULL;
     const char* preferred_type = NULL;
-    const char* command = NULL;  // Command: install (default), headers, or docs
+    const char* command = NULL;  // Command: install (default), headers, docs, or lib
     bool no_dependencies = false;
     bool ignore_missing = false;
     bool skip_arch_check = false;
@@ -2971,12 +2992,13 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         else {
-            // Handle subcommands: install, headers, docs
+            // Handle subcommands: install, headers, docs, lib
             // Check if this is a command keyword
             if (!command && !module_spec) {
-                if (strcmp(argv[i], "install") == 0 || 
-                    strcmp(argv[i], "headers") == 0 || 
-                    strcmp(argv[i], "docs") == 0) {
+                if (strcmp(argv[i], "install") == 0 ||
+                    strcmp(argv[i], "headers") == 0 ||
+                    strcmp(argv[i], "docs") == 0 ||
+                    strcmp(argv[i], "lib") == 0) {
                     // Check if there's another positional argument after this command
                     bool has_more_positional = false;
                     for (int j = i + 1; j < argc; j++) {
@@ -3026,7 +3048,8 @@ int main(int argc, char* argv[]) {
             PrintUsage(argv[0]);
             return 1;
         }
-        if (command && (strcmp(command, "headers") == 0 || strcmp(command, "docs") == 0)) {
+        if (command && (strcmp(command, "headers") == 0 || strcmp(command, "docs") == 0 ||
+                        strcmp(command, "lib") == 0)) {
             DMOD_LOG_ERROR("Error: --config cannot be used with %s command\n", command);
             PrintUsage(argv[0]);
             return 1;
@@ -3042,8 +3065,9 @@ int main(int argc, char* argv[]) {
     // Initialize curl
     curl_global_init(CURL_GLOBAL_DEFAULT);
     
-    // Handle headers and docs commands
-    if (command && (strcmp(command, "headers") == 0 || strcmp(command, "docs") == 0)) {
+    // Handle headers, docs, and lib commands
+    if (command && (strcmp(command, "headers") == 0 || strcmp(command, "docs") == 0 ||
+                     strcmp(command, "lib") == 0)) {
         if (!module_spec) {
             DMOD_LOG_ERROR("Error: No module name specified for %s command\n", command);
             PrintUsage(argv[0]);
@@ -3087,6 +3111,22 @@ int main(int argc, char* argv[]) {
                     // name here would duplicate it in the final installed path.
                     const char* dmf_dir = GetEnvOrDefault(ENV_DMF_DIR, DEFAULT_DMF_DIR);
                     Dmod_SnPrintf(default_output_dir, sizeof(default_output_dir), "%s/inc", dmf_dir);
+                    output_dir = default_output_dir;
+                    DMOD_LOG_INFO("No output directory specified, using default: %s\n", output_dir);
+                }
+            }
+        } else if (strcmp(command, "lib") == 0) {
+            resource_key = "lib";
+            if (!output_dir) {
+                output_dir = Dmod_GetEnv(ENV_LIB_DIR);
+                if (!output_dir) {
+                    // Default to $DMOD_DMF_DIR/lib - NOT $DMOD_DMF_DIR/<module_name>/lib:
+                    // the .dmr's own "lib=./lib/lib<module>.a => ${destination}/${module}/lib/..."
+                    // entry already adds "<module_name>/lib" on top of this (same convention
+                    // as the "headers" command above). Pre-adding the module name here would
+                    // duplicate it in the final installed path.
+                    const char* dmf_dir = GetEnvOrDefault(ENV_DMF_DIR, DEFAULT_DMF_DIR);
+                    Dmod_SnPrintf(default_output_dir, sizeof(default_output_dir), "%s/lib", dmf_dir);
                     output_dir = default_output_dir;
                     DMOD_LOG_INFO("No output directory specified, using default: %s\n", output_dir);
                 }

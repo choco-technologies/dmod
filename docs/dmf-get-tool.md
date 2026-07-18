@@ -214,6 +214,9 @@ docs=./docs => ${destination}/${module}/docs
 # Headers
 inc=./include => ${destination}/${module}/include
 
+# Static library
+lib=./lib/libmymodule.a => ${destination}/${module}/lib/libmymodule.a
+
 # License
 license=./LICENSE => ${destination}/${module}/LICENSE
 ```
@@ -241,6 +244,7 @@ Installs:
 - DMF/DMFC files
 - Documentation
 - Headers
+- Static libraries
 - Examples
 - Licenses
 - All other resources
