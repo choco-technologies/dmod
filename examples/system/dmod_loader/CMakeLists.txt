@@ -21,6 +21,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE dmod pthread)
 # dmlist-backed lists, or the dmosi interface) can resolve at runtime.
 dmod_link_builtin(${PROJECT_NAME}
     dmlist
+    dmosi
     dmosi-posix
     dmosi-proc
 )
