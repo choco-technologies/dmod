@@ -227,6 +227,39 @@ The `dmf-get` tool (used internally) respects the following environment variable
 - The function only downloads headers (not the full module files)
 - Visibility scopes work the same way as `target_include_directories`
 
+### `dmod_link_builtin(targetName [PRIVATE|PUBLIC|INTERFACE] modules...)`
+
+Downloads headers **and** a precompiled static library for "system modules" and statically links them into your target. Uses the `dmf-get` tool's `headers` and `lib` commands.
+
+A "system module" (e.g. `dmlist`, `dmosi-posix`) is a DMOD module that is never turned into a loadable `.dmf` file - it is distributed as a static library (the `lib` resource in its `.dmr`, see [dmf-get Tool](dmf-get-tool.md) and [DMR File Format](dmr-file-format.md)) meant to be built directly into a system-side binary: the loader itself, `dmod-boot`, or host tools/tests.
+
+**Parameters:**
+- `targetName` - Name of the target to link into (must already exist)
+- `PRIVATE|PUBLIC|INTERFACE` - Optional visibility scope (default: PRIVATE if not specified), same meaning as for `dmod_link_modules`
+- `modules...` - List of module specifications with optional versions (`module_name` or `module_name@version`)
+
+**Example:**
+```cmake
+add_executable(dmod_loader main.c)
+target_link_libraries(dmod_loader dmod pthread)
+
+dmod_link_builtin(dmod_loader
+    dmlist
+    dmosi-posix
+)
+```
+
+**How It Works:**
+
+1. Finds `dmf-get`, same as `dmod_link_modules`
+2. For each module, runs `dmf-get headers <module_spec> -o ${DMOD_DMF_DIR}/inc` and adds the resulting `${DMOD_DMF_DIR}/inc/<module_name>/include` directory to the target's include directories
+3. For each module, runs `dmf-get lib <module_spec> -o ${DMOD_DMF_DIR}/lib` to download the precompiled static library
+4. Statically links `${DMOD_DMF_DIR}/lib/<module_name>/lib/lib<module_name_snake_case>.a` into `targetName` (hyphens in the module name are converted to underscores, e.g. `dmosi-posix` -> `libdmosi_posix.a`, matching the module's own `.dmr`/CMake target naming)
+
+These libraries define their DMOD API functions in a way that always marks them as "used" to the compiler/linker, so simply linking the archive is enough to make their Built-in API available - no explicit symbol references are needed at the call site.
+
+**Important:** do **not** use this for regular DMOD modules created with `dmod_add_executable`/`dmod_add_library` - those must always link other modules dynamically via `dmod_link_modules`, since DMOD modules are loaded/unloaded independently at runtime and statically linking a dependency into one defeats that. `dmod_link_builtin` is only for system-side binaries that are not themselves loaded as `.dmf` files.
+
 ## Tool Creation Functions
 
 ### `dmod_add_tool(toolName sources...)`

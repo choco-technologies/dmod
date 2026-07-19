@@ -730,6 +730,192 @@ function(dmod_link_modules targetName)
 endfunction()
 
 #
+# Function to statically link "system modules" (precompiled static libraries)
+# into a target
+#
+# Usage:
+#   dmod_link_builtin(target_name [PRIVATE|PUBLIC|INTERFACE]
+#       module1[@version]
+#       module2[@version]
+#   )
+#
+# Some DMOD modules (e.g. dmlist, dmosi-posix) are never turned into loadable
+# .dmf files - they are "system modules", distributed as a precompiled static
+# library plus headers (the "lib" resource in dmf-get/.dmr, see
+# docs/dmf-get-tool.md and docs/dmr-file-format.md) meant to be built directly
+# into a system-side binary (the loader itself, dmod-boot, host tools/tests).
+# This function downloads both the headers and the static library for each
+# module via dmf-get, adds the headers to the target's include directories,
+# and statically links the library into targetName.
+#
+# These libraries define their dmod API functions in a way that always marks
+# them as "used" to the compiler/linker, so simply linking the archive is
+# enough to make their Built-in API available to whatever loads modules that
+# call into them - no explicit symbol references are needed at the call site.
+#
+# Do NOT use this for regular DMOD modules (created with dmod_add_executable/
+# dmod_add_library) - those must always link other modules dynamically via
+# dmod_link_modules() instead, since modules are loaded/unloaded independently
+# at runtime. This function is only for system-side binaries that are not
+# themselves loaded as .dmf files.
+#
+# The visibility scope (PRIVATE, PUBLIC, or INTERFACE) works the same way as
+# for dmod_link_modules()/target_link_libraries(). If not specified, PRIVATE
+# is used.
+#
+function(dmod_link_builtin targetName)
+    # Parse arguments for visibility scope
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs PRIVATE PUBLIC INTERFACE)
+    cmake_parse_arguments(DMOD_LINK_BUILTIN "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    # Determine visibility scope and module list
+    set(VISIBILITY "PRIVATE")
+    set(MODULE_SPECS "")
+
+    if(DMOD_LINK_BUILTIN_PRIVATE)
+        set(VISIBILITY "PRIVATE")
+        set(MODULE_SPECS ${DMOD_LINK_BUILTIN_PRIVATE})
+    elseif(DMOD_LINK_BUILTIN_PUBLIC)
+        set(VISIBILITY "PUBLIC")
+        set(MODULE_SPECS ${DMOD_LINK_BUILTIN_PUBLIC})
+    elseif(DMOD_LINK_BUILTIN_INTERFACE)
+        set(VISIBILITY "INTERFACE")
+        set(MODULE_SPECS ${DMOD_LINK_BUILTIN_INTERFACE})
+    else()
+        # No visibility keyword specified, treat all unparsed args as module specs with PRIVATE visibility
+        set(MODULE_SPECS ${DMOD_LINK_BUILTIN_UNPARSED_ARGUMENTS})
+    endif()
+
+    # Check if target exists
+    if(NOT TARGET ${targetName})
+        message(FATAL_ERROR "dmod_link_builtin: Target '${targetName}' does not exist")
+    endif()
+
+    # Find dmf-get tool
+    find_program(DMF_GET
+        dmf-get
+        HINTS ${DMOD_TOOLS_BIN_DIR}
+        PATHS ENV PATH
+    )
+
+    if(NOT DMF_GET)
+        message(WARNING "dmf-get tool not found. Skipping system library download for ${targetName}. Build the tools first with -DDMOD_BUILD_TOOLS=ON")
+        return()
+    endif()
+
+    message(STATUS "Using dmf-get: ${DMF_GET}")
+
+    # Get the default DMF directory
+    if(NOT DEFINED DMOD_DMF_DIR)
+        set(DMOD_DMF_DIR "${CMAKE_BINARY_DIR}/dmf")
+    endif()
+
+    # Prepare dmf-get command options
+    set(DMF_GET_OPTIONS "")
+
+    if(DEFINED DMOD_TOOLS_NAME)
+        list(APPEND DMF_GET_OPTIONS "-t" "${DMOD_TOOLS_NAME}")
+        message(STATUS "Using tools name: ${DMOD_TOOLS_NAME}")
+    endif()
+
+    if(DEFINED DMOD_DMM_URL)
+        list(APPEND DMF_GET_OPTIONS "-m" "${DMOD_DMM_URL}")
+        message(STATUS "Using manifest: ${DMOD_DMM_URL}")
+    endif()
+
+    if(DEFINED DMOD_CPU_NAME AND NOT "${DMOD_CPU_NAME}" STREQUAL "")
+        list(APPEND DMF_GET_OPTIONS "--cpu-name" "${DMOD_CPU_NAME}")
+        message(STATUS "Using CPU name: ${DMOD_CPU_NAME}")
+    endif()
+
+    if(DEFINED DMOD_CPU_FAMILY AND NOT "${DMOD_CPU_FAMILY}" STREQUAL "")
+        list(APPEND DMF_GET_OPTIONS "--cpu-family" "${DMOD_CPU_FAMILY}")
+        message(STATUS "Using CPU family: ${DMOD_CPU_FAMILY}")
+    endif()
+
+    # Process each module specification
+    foreach(MODULE_SPEC ${MODULE_SPECS})
+        # Parse module name and version
+        string(REGEX MATCH "^([^@]+)(@(.+))?$" MATCH_RESULT "${MODULE_SPEC}")
+        set(MODULE_NAME "${CMAKE_MATCH_1}")
+
+        if(NOT MODULE_NAME)
+            message(WARNING "Invalid module specification: ${MODULE_SPEC}")
+            continue()
+        endif()
+
+        # Download headers (same layout as dmod_link_modules())
+        set(HEADER_OUTPUT_DIR "${DMOD_DMF_DIR}/inc")
+        file(MAKE_DIRECTORY "${HEADER_OUTPUT_DIR}")
+
+        message(STATUS "Downloading headers for system module: ${MODULE_NAME} -> ${HEADER_OUTPUT_DIR}")
+
+        execute_process(
+            COMMAND ${DMF_GET} headers ${MODULE_SPEC} ${DMF_GET_OPTIONS} -o ${HEADER_OUTPUT_DIR}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            RESULT_VARIABLE DMF_GET_HEADERS_RESULT
+            ERROR_VARIABLE DMF_GET_HEADERS_ERROR
+        )
+
+        if(NOT DMF_GET_HEADERS_RESULT EQUAL 0)
+            message(WARNING "Failed to download headers for ${MODULE_SPEC}: ${DMF_GET_HEADERS_ERROR}")
+        else()
+            set(ACTUAL_HEADER_DIR "${HEADER_OUTPUT_DIR}/${MODULE_NAME}/include")
+            if(EXISTS "${ACTUAL_HEADER_DIR}")
+                target_include_directories(${targetName} ${VISIBILITY} ${ACTUAL_HEADER_DIR})
+                message(STATUS "Added include directory for ${MODULE_NAME} (${VISIBILITY}): ${ACTUAL_HEADER_DIR}")
+            else()
+                message(WARNING "Header directory does not exist after download: ${ACTUAL_HEADER_DIR}")
+            endif()
+        endif()
+
+        # Download the precompiled static library
+        set(LIB_OUTPUT_DIR "${DMOD_DMF_DIR}/lib")
+        file(MAKE_DIRECTORY "${LIB_OUTPUT_DIR}")
+
+        message(STATUS "Downloading static library for system module: ${MODULE_NAME} -> ${LIB_OUTPUT_DIR}")
+
+        execute_process(
+            COMMAND ${DMF_GET} lib ${MODULE_SPEC} ${DMF_GET_OPTIONS} -o ${LIB_OUTPUT_DIR}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            RESULT_VARIABLE DMF_GET_LIB_RESULT
+            ERROR_VARIABLE DMF_GET_LIB_ERROR
+        )
+
+        if(NOT DMF_GET_LIB_RESULT EQUAL 0)
+            message(WARNING "Failed to download static library for ${MODULE_SPEC}: ${DMF_GET_LIB_ERROR}")
+            continue()
+        endif()
+
+        # The archive file name follows the module's snake_case form (hyphens
+        # replaced with underscores, e.g. "dmosi-posix" -> "libdmosi_posix.a"),
+        # matching how these modules' own CMakeLists.txt name the CMake library
+        # target that produces them (see dmlist/CMakeLists.txt and
+        # dmosi-posix/CMakeLists.txt, and their respective .dmr "lib=" entries).
+        to_snake_case(${MODULE_NAME} MODULE_NAME_SNAKE_CASE)
+        set(ACTUAL_LIB_PATH "${LIB_OUTPUT_DIR}/${MODULE_NAME}/lib/lib${MODULE_NAME_SNAKE_CASE}.a")
+
+        if(EXISTS "${ACTUAL_LIB_PATH}")
+            # A plain link only pulls object files out of a static archive to
+            # resolve symbols someone else already references. Nothing in a
+            # system binary like dmod_loader calls these functions directly -
+            # they exist purely so a *dynamically loaded* module can resolve
+            # them later through the Built-in API - so without forcing the
+            # whole archive in, the linker drops every object file here and
+            # the symbols never make it into the binary at all.
+            target_link_libraries(${targetName} ${VISIBILITY}
+                -Wl,--whole-archive ${ACTUAL_LIB_PATH} -Wl,--no-whole-archive
+            )
+            message(STATUS "Statically linked system module ${MODULE_NAME} (${VISIBILITY}): ${ACTUAL_LIB_PATH}")
+        else()
+            message(WARNING "Static library not found after download: ${ACTUAL_LIB_PATH}")
+        endif()
+    endforeach()
+endfunction()
+
+#
 # Function to create a DMOD system
 #
 function(dmod_add_tool toolName)

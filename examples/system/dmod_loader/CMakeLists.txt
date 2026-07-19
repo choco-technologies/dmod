@@ -14,7 +14,16 @@ add_executable(${PROJECT_NAME} main.c)
 include_directories(${PROJECT_SOURCE_DIR})
 
 # Link libraries (if any)
-target_link_libraries(${PROJECT_NAME} dmod pthread)
+target_link_libraries(${PROJECT_NAME} PRIVATE dmod pthread)
+
+# Statically link system modules (built-in, not distributed as .dmf files) so
+# that modules loaded by dmod_loader which rely on their Built-in API (e.g.
+# dmlist-backed lists, or the dmosi interface) can resolve at runtime.
+dmod_link_builtin(${PROJECT_NAME}
+    dmlist
+    dmosi-posix
+    dmosi-proc
+)
 
 target_link_options(${PROJECT_NAME} PRIVATE -L ${DMOD_DIR}/scripts)
 target_link_options(${PROJECT_NAME} PRIVATE -T ${CMAKE_CURRENT_SOURCE_DIR}/main.ld)
