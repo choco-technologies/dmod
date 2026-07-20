@@ -40,7 +40,7 @@ void Dmod_Mgr_PrintSystemModules( void )
     for(size_t i = 0; i < numberOfEntries; i++)
     {
         const char* signature = Dmod_BuiltinInputApi.InputSection->Entries[i].Signature;
-        DMOD_LOG_INFO("System module: %s\n", signature);
+        DMOD_LOG_VERBOSE("System module: %s\n", signature);
     }
 }
 
