@@ -153,6 +153,30 @@ dmf-get mymodule --config boards/${BOARD}/config.ini --config-dir ./config -D BO
 - The module must be successfully installed before the configuration file is copied
 - If configuration file copying fails, the module installation still succeeds (with a warning)
 
+#### Routing Tagged Configuration Files with `--config-map`
+
+When downloading modules from a `.dmd` dependencies file, each configuration entry can be tagged by prefixing the config path with `<tag>=`. Combined with `--config-map`, this routes configuration files to different destination directories based on their tag, instead of all of them going to the single `--config-dir`.
+
+```dmd
+# project-deps.dmd
+mymodule driver=board/stm32f746g-disco.ini
+anothermodule service=generic/service.ini
+```
+
+```bash
+dmf-get -d project-deps.dmd --config-map "driver:./config/drivers;service:./config/services"
+```
+
+This copies `mymodule`'s configuration to `./config/drivers/mymodule/stm32f746g-disco.ini` and `anothermodule`'s configuration to `./config/services/anothermodule/service.ini`.
+
+**`--config-map` format:** `<tag>:<dir>;<tag2>:<dir2>;...`
+
+**Notes:**
+- `--config-map` requires `-d`/`--dependencies` (it has no effect on single-module `--config` downloads)
+- Tags are optional per `.dmd` entry; untagged entries fall back to `--config-dir`
+- If an entry's tag has no matching `--config-map` mapping, `dmf-get` falls back to `--config-dir` (with a warning) if one was given, otherwise the configuration file is skipped
+- A custom destination filename can still be combined with a tag: `driver=mcu/stm32f7.ini clk.ini`
+
 ### Command-Line Options
 
 - `-d, --dependencies <path>` - Path or URL to dependencies (.dmd) file
@@ -161,6 +185,7 @@ dmf-get mymodule --config boards/${BOARD}/config.ini --config-dir ./config -D BO
 - `--config <path>` - Configuration file to copy from module (for single module only)
 - `--config-dir <path>` - Directory where configuration files should be copied
 - `--config-dest <name>` - Custom destination filename for configuration file
+- `--config-map <map>` - Route tagged configuration files (`<tag>=path` in `.dmd`) to different directories, e.g. `"driver:./config/drivers;service:./config/services"` (requires `-d`)
 - `-D, --define <VAR=value>` - Define variable for configuration path substitution
 - `-t, --tools-name <name>` - Tools name for variable substitution
 - `-a, --arch-name <name>` - Architecture name for variable substitution

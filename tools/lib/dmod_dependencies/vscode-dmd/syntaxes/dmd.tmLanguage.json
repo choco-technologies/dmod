@@ -108,7 +108,26 @@
               ]
             },
             "6": {
-              "name": "string.unquoted.path.config.dmd"
+              "patterns": [
+                {
+                  "match": "^([a-zA-Z0-9_.-]+)(=)(.+)$",
+                  "captures": {
+                    "1": {
+                      "name": "entity.name.tag.config.dmd"
+                    },
+                    "2": {
+                      "name": "keyword.operator.assignment.dmd"
+                    },
+                    "3": {
+                      "name": "string.unquoted.path.config.dmd"
+                    }
+                  }
+                },
+                {
+                  "match": ".+",
+                  "name": "string.unquoted.path.config.dmd"
+                }
+              ]
             },
             "7": {
               "name": "string.unquoted.path.custom-name.dmd"

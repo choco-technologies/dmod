@@ -9,6 +9,9 @@
  * - Comments (lines starting with #)
  * - Module entries: module[@version] or module[@version_constraint]
  * - Version constraints: >=1.0, <=2.0, >=1.0<=2.0
+ * - Configuration files: module[@version] [<tag>=]config_path [config_dest]
+ *   The optional "<tag>=" prefix on the config path tags the configuration
+ *   entry (e.g. "driver=board/x.ini"), for routing by dmf-get's --config-map.
  * - Include directives: $include url
  * - Source directives: from: manifest_url
  */
@@ -45,6 +48,11 @@ extern "C" {
 #define DMOD_DEPENDENCIES_MAX_CONFIG_LEN 256
 
 /**
+ * @brief Maximum length for configuration tag strings
+ */
+#define DMOD_DEPENDENCIES_MAX_TAG_LEN 64
+
+/**
  * @brief Represents a single dependency entry
  */
 typedef struct {
@@ -53,6 +61,7 @@ typedef struct {
     char manifest[DMOD_DEPENDENCIES_MAX_URL_LEN];   /**< Manifest URL to use for this module */
     char config[DMOD_DEPENDENCIES_MAX_CONFIG_LEN];  /**< Configuration file path (empty if not specified) */
     char config_dest[DMOD_DEPENDENCIES_MAX_CONFIG_LEN]; /**< Custom destination filename for config (empty if not specified) */
+    char tag[DMOD_DEPENDENCIES_MAX_TAG_LEN];        /**< Configuration tag, set via "<tag>=" prefix on the config path (empty if not specified) */
     Dmod_VersionConstraint_t constraint;             /**< Parsed version constraint */
     bool has_constraint;                             /**< Whether constraint is parsed and valid */
 } Dmod_DependencyEntry_t;

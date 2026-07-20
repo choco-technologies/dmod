@@ -98,6 +98,145 @@ static const char* GetUserVariable(const char* name) {
     return NULL;
 }
 
+// Maximum number of --config-map entries
+#define MAX_CONFIG_MAP_ENTRIES 32
+
+// Structure to hold a single --config-map "<tag>:<dir>" entry
+typedef struct {
+    char tag[128];
+    char dir[DMOD_MAX_PATH_LEN];
+} ConfigMapEntry_t;
+
+// Global array of --config-map entries
+static ConfigMapEntry_t g_config_map_entries[MAX_CONFIG_MAP_ENTRIES];
+static size_t g_config_map_count = 0;
+
+/**
+ * @brief Add a --config-map entry
+ *
+ * @param tag Configuration tag
+ * @param dir Destination directory for configs with this tag
+ * @return true if added successfully, false if array is full
+ */
+static bool AddConfigMapEntry(const char* tag, const char* dir) {
+    if (g_config_map_count >= MAX_CONFIG_MAP_ENTRIES) {
+        return false;
+    }
+
+    strncpy(g_config_map_entries[g_config_map_count].tag, tag, sizeof(g_config_map_entries[0].tag) - 1);
+    g_config_map_entries[g_config_map_count].tag[sizeof(g_config_map_entries[0].tag) - 1] = '\0';
+
+    strncpy(g_config_map_entries[g_config_map_count].dir, dir, sizeof(g_config_map_entries[0].dir) - 1);
+    g_config_map_entries[g_config_map_count].dir[sizeof(g_config_map_entries[0].dir) - 1] = '\0';
+
+    g_config_map_count++;
+    return true;
+}
+
+/**
+ * @brief Get the destination directory mapped to a configuration tag
+ *
+ * @param tag Configuration tag
+ * @return Destination directory, or NULL if the tag has no mapping
+ */
+static const char* GetConfigMapDir(const char* tag) {
+    for (size_t i = 0; i < g_config_map_count; i++) {
+        if (strcmp(g_config_map_entries[i].tag, tag) == 0) {
+            return g_config_map_entries[i].dir;
+        }
+    }
+    return NULL;
+}
+
+/**
+ * @brief Parse a --config-map option value
+ *
+ * Expected format: "<tag>:<dir>;<tag2>:<dir2>;..."
+ *
+ * @param spec The --config-map option value
+ * @return true if parsed successfully, false on malformed input
+ */
+static bool ParseConfigMap(const char* spec) {
+    if (strlen(spec) >= DMOD_MAX_CMD_LEN) {
+        DMOD_LOG_ERROR("--config-map value too long\n");
+        return false;
+    }
+
+    char buffer[DMOD_MAX_CMD_LEN];
+    strncpy(buffer, spec, sizeof(buffer) - 1);
+    buffer[sizeof(buffer) - 1] = '\0';
+
+    char* saveptr = NULL;
+    char* pair = strtok_r(buffer, ";", &saveptr);
+
+    while (pair) {
+        // Trim leading whitespace
+        while (*pair == ' ' || *pair == '\t') pair++;
+
+        char* colon = strchr(pair, ':');
+        if (!colon) {
+            DMOD_LOG_ERROR("Invalid --config-map entry (expected <tag>:<dir>): %s\n", pair);
+            return false;
+        }
+
+        *colon = '\0';
+        const char* tag = pair;
+        char* dir = colon + 1;
+
+        // Trim trailing whitespace from tag
+        char* tag_end = colon - 1;
+        while (tag_end >= tag && (*tag_end == ' ' || *tag_end == '\t')) {
+            *tag_end = '\0';
+            tag_end--;
+        }
+
+        // Trim leading/trailing whitespace from dir
+        while (*dir == ' ' || *dir == '\t') dir++;
+        char* dir_end = dir + strlen(dir) - 1;
+        while (dir_end >= dir && (*dir_end == ' ' || *dir_end == '\t')) {
+            *dir_end = '\0';
+            dir_end--;
+        }
+
+        if (tag[0] == '\0' || dir[0] == '\0') {
+            DMOD_LOG_ERROR("Invalid --config-map entry (empty tag or directory)\n");
+            return false;
+        }
+
+        if (!AddConfigMapEntry(tag, dir)) {
+            DMOD_LOG_ERROR("Too many --config-map entries (max %d)\n", MAX_CONFIG_MAP_ENTRIES);
+            return false;
+        }
+
+        pair = strtok_r(NULL, ";", &saveptr);
+    }
+
+    return true;
+}
+
+/**
+ * @brief Resolve the destination directory for copying a module's configuration file
+ *
+ * If the configuration entry has a tag and that tag is present in the
+ * --config-map, the mapped directory is used. Otherwise falls back to
+ * the directory given via --config-dir (which may be NULL).
+ *
+ * @param tag Configuration tag (may be NULL or empty if not tagged)
+ * @param default_config_dir Directory from --config-dir (may be NULL)
+ * @return Destination directory to use, or NULL if configuration should not be copied
+ */
+static const char* ResolveConfigDestDir(const char* tag, const char* default_config_dir) {
+    if (tag && tag[0] != '\0') {
+        const char* mapped_dir = GetConfigMapDir(tag);
+        if (mapped_dir) {
+            return mapped_dir;
+        }
+        DMOD_LOG_WARN("No --config-map entry for tag '%s'%s\n", tag,
+                      default_config_dir ? ", falling back to --config-dir" : "");
+    }
+    return default_config_dir;
+}
+
 /**
  * @brief Substitute variables in a string
  * 
@@ -2379,6 +2518,8 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --config-dir <path>       Directory where configuration files should be copied\n");
     Dmod_Printf("  --config <path>           Configuration file to copy (for single module only)\n");
     Dmod_Printf("  --config-dest <name>      Custom destination filename for config file\n");
+    Dmod_Printf("  --config-map <map>        Route tagged configs to different directories (with -d), e.g.\n");
+    Dmod_Printf("                            \"driver:./config/drivers;service:./config/services\"\n");
     Dmod_Printf("  -D, --define <VAR=value>  Define variable for config path substitution\n");
     Dmod_Printf("  -t, --tools-name <name>   Tools name for variable substitution\n");
     Dmod_Printf("  -a, --arch-name <name>    Architecture name for variable substitution\n");
@@ -2421,6 +2562,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s -d deps.dmd --config-dir ./config -D BOARD=stm32f7  # Use variable substitution in config paths\n", app_name);
     Dmod_Printf("  %s dmclk@0.4 --config board/stm32f746g-disco.ini --config-dir ./config  # Download module with config\n", app_name);
     Dmod_Printf("  %s mymodule --config mcu/config.ini --config-dir ./cfg --config-dest my.ini  # Custom config destination\n", app_name);
+    Dmod_Printf("  %s -d deps.dmd --config-map \"driver:./config/drivers;service:./config/services\"  # Route tagged configs (.dmd: module tag=path)\n", app_name);
     Dmod_Printf("  %s -m http://... module  # Use custom manifest\n", app_name);
     Dmod_Printf("  %s --type dmfc module    # Prefer dmfc files\n", app_name);
     Dmod_Printf("  %s -a armv7-cortex-m7 module  # Use arch name directly\n", app_name);
@@ -2884,6 +3026,16 @@ int main(int argc, char* argv[]) {
             }
             config_dest_name = argv[i];
         }
+        else if (strcmp(argv[i], "--config-map") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
+                return 1;
+            }
+            if (!ParseConfigMap(argv[i])) {
+                PrintUsage(argv[0]);
+                return 1;
+            }
+        }
         else if (strcmp(argv[i], "-D") == 0 || strcmp(argv[i], "--define") == 0) {
             if (++i >= argc) {
                 DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
@@ -3061,7 +3213,13 @@ int main(int argc, char* argv[]) {
         PrintUsage(argv[0]);
         return 1;
     }
-    
+
+    if (g_config_map_count > 0 && !dependencies_path) {
+        DMOD_LOG_ERROR("Error: --config-map requires -d/--dependencies\n");
+        PrintUsage(argv[0]);
+        return 1;
+    }
+
     // Initialize curl
     curl_global_init(CURL_GLOBAL_DEFAULT);
     
@@ -3416,12 +3574,16 @@ int main(int argc, char* argv[]) {
             
             if (download_result != 0) {
                 counts.failed_count++;
-            } else if (dep_entry.config[0] != '\0' && config_dir != NULL) {
-                // If module specifies a configuration file and config_dir is provided, copy it
-                DMOD_LOG_INFO("  Configuration file specified: %s\n", dep_entry.config);
-                const char* custom_dest = (dep_entry.config_dest[0] != '\0') ? dep_entry.config_dest : NULL;
-                if (!CopyConfigurationFile(dep_entry.name, dep_entry.config, output_dir, config_dir, custom_dest)) {
-                    DMOD_LOG_WARN("  Failed to copy configuration file (module was installed successfully)\n");
+            } else if (dep_entry.config[0] != '\0') {
+                // If module specifies a configuration file, copy it to the directory
+                // resolved from --config-map (by tag) or --config-dir (default)
+                const char* dest_dir = ResolveConfigDestDir(dep_entry.tag[0] ? dep_entry.tag : NULL, config_dir);
+                if (dest_dir) {
+                    DMOD_LOG_INFO("  Configuration file specified: %s\n", dep_entry.config);
+                    const char* custom_dest = (dep_entry.config_dest[0] != '\0') ? dep_entry.config_dest : NULL;
+                    if (!CopyConfigurationFile(dep_entry.name, dep_entry.config, output_dir, dest_dir, custom_dest)) {
+                        DMOD_LOG_WARN("  Failed to copy configuration file (module was installed successfully)\n");
+                    }
                 }
             }
         }

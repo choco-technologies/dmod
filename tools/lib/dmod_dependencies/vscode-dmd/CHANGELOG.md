@@ -2,6 +2,12 @@
 
 All notable changes to the "dmod-dependencies" extension will be documented in this file.
 
+## [1.4.0] - 2026-07-20
+
+### Added
+- Support for tagged configuration paths using the `<tag>=config_path` syntax (e.g. `driver=board/x.ini`), used by `dmf-get --config-map` to route configuration files to different destination directories
+- Syntax highlighting for the tag name and `=` operator in tagged configuration paths
+
 ## [1.2.0] - 2026-02-12
 
 ### Added

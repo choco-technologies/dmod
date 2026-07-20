@@ -572,6 +572,123 @@ TEST_F(DmodDependenciesTest, ParseMultipleEntriesSameDriverDifferentConfigs) {
     EXPECT_STREQ(entry.name, "dmclk");
     EXPECT_STREQ(entry.version, "0.2");
     EXPECT_STREQ(entry.config, "mcu/high-speed.ini");
-    
+
+    Dmod_Dependencies_Free(ctx);
+}
+
+// ===============================================================
+//                  Configuration Tag Tests
+// ===============================================================
+
+TEST_F(DmodDependenciesTest, ParseModuleWithConfigTag) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+
+    const char* dependencies = "mymodule service=board/stm32f4/config.ini\n";
+
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
+    EXPECT_EQ(Dmod_Dependencies_GetEntryCount(ctx), 1);
+
+    Dmod_DependencyEntry_t entry;
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.name, "mymodule");
+    EXPECT_STREQ(entry.version, "");
+    EXPECT_STREQ(entry.config, "board/stm32f4/config.ini");
+    EXPECT_STREQ(entry.tag, "service");
+    EXPECT_STREQ(entry.config_dest, "");
+
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, ParseModuleWithVersionAndConfigTag) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+
+    const char* dependencies = "mymodule@1.0 driver=board/stm32f746g-disco.ini\n";
+
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
+    EXPECT_EQ(Dmod_Dependencies_GetEntryCount(ctx), 1);
+
+    Dmod_DependencyEntry_t entry;
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.name, "mymodule");
+    EXPECT_STREQ(entry.version, "1.0");
+    EXPECT_STREQ(entry.config, "board/stm32f746g-disco.ini");
+    EXPECT_STREQ(entry.tag, "driver");
+
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, ParseModuleWithConfigTagAndCustomDest) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+
+    const char* dependencies = "mymodule@1.0 driver=mcu/stm32f7.ini clk.ini\n";
+
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
+    EXPECT_EQ(Dmod_Dependencies_GetEntryCount(ctx), 1);
+
+    Dmod_DependencyEntry_t entry;
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.name, "mymodule");
+    EXPECT_STREQ(entry.version, "1.0");
+    EXPECT_STREQ(entry.config, "mcu/stm32f7.ini");
+    EXPECT_STREQ(entry.tag, "driver");
+    EXPECT_STREQ(entry.config_dest, "clk.ini");
+
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, ParseModuleWithConfigWithoutTagHasEmptyTag) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+
+    const char* dependencies = "dmclk@1.0 mcu/stm32f7.ini\n";
+
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
+
+    Dmod_DependencyEntry_t entry;
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.config, "mcu/stm32f7.ini");
+    EXPECT_STREQ(entry.tag, "");
+
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, ParseMultipleModulesWithDifferentTags) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+
+    const char* dependencies =
+        "mymodule driver=board/stm32f746g-disco.ini\n"
+        "anothermodule service=generic/service.ini\n";
+
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, dependencies));
+    EXPECT_EQ(Dmod_Dependencies_GetEntryCount(ctx), 2);
+
+    Dmod_DependencyEntry_t entry;
+
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &entry));
+    EXPECT_STREQ(entry.name, "mymodule");
+    EXPECT_STREQ(entry.config, "board/stm32f746g-disco.ini");
+    EXPECT_STREQ(entry.tag, "driver");
+
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 1, &entry));
+    EXPECT_STREQ(entry.name, "anothermodule");
+    EXPECT_STREQ(entry.config, "generic/service.ini");
+    EXPECT_STREQ(entry.tag, "service");
+
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, ParseModuleWithEmptyConfigPathAfterTagFails) {
+    Dmod_DependenciesContext_t* ctx = Dmod_Dependencies_Init("https://example.com/manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_NE(ctx, nullptr);
+
+    const char* dependencies = "mymodule driver=\n";
+
+    ASSERT_FALSE(Dmod_Dependencies_Parse(ctx, dependencies));
+    EXPECT_NE(Dmod_Dependencies_GetError(ctx), nullptr);
+
     Dmod_Dependencies_Free(ctx);
 }
