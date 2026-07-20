@@ -376,7 +376,7 @@ bool Dmod_Ldr_LoadInput( Dmod_Context_t* Context )
         Context->Inputs.ApiType      = Dmod_ApiType_Input;
         Context->Inputs.Crossplatform= false;
         
-        DMOD_LOG_INFO("No inputs to load\n");
+        DMOD_LOG_VERBOSE("No inputs to load\n");
         if( Context->Header->Init.Ptr == NULL && Context->Header->Main.Ptr == NULL && Context->Header->Deinit.Ptr == NULL )
         {
             DMOD_LOG_ERROR("No inputs to load and no functions to call\n");
@@ -518,7 +518,7 @@ bool Dmod_Ldr_LoadGot( Dmod_Context_t* Context )
 
     if( got->SectionStart == 0 || got->SectionSize == 0 )
     {
-        DMOD_LOG_INFO("No got to load\n");
+        DMOD_LOG_VERBOSE("No got to load\n");
         return true;
     }
 
@@ -566,7 +566,7 @@ bool Dmod_Ldr_LoadBss( Dmod_Context_t* Context )
 
     if( bss->SectionStart == 0 || bss->SectionSize == 0 )
     {
-        DMOD_LOG_INFO("No bss to load\n");
+        DMOD_LOG_VERBOSE("No bss to load\n");
         return true;
     }
 

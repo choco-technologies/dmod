@@ -203,6 +203,18 @@ Dmod_ModuleType_t Dmod_Context_GetModuleType( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Getter for the data size
+ */
+size_t Dmod_Context_GetSize( Dmod_Context_t* Context )
+{
+    if( Context == NULL || !Dmod_Context_IsValid( Context ) )
+    {
+        return Dmod_ModuleType_Unknown;
+    }
+    return Context->Size;
+}
+
+/**
  * @brief Add context
  * 
  * @param Context Context to add

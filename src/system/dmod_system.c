@@ -211,7 +211,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
                 {
                     // Use the package name from the slot (persistent pointer)
                     const char* persistentPackageName = Dmod_Pck_GetPackageName( slot );
-                    DMOD_LOG_INFO("Loading module '%s' from package '%s'\n", moduleName, persistentPackageName);
+                    DMOD_LOG_VERBOSE("Loading module '%s' from package '%s'\n", moduleName, persistentPackageName);
                     return Dmod_LoadFromPackage( persistentPackageName, moduleName );
                 }
                 else
@@ -226,7 +226,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
     if( Dmod_IsDMPFile(Path) )
     {
         uint32_t nIndex = UINT32_MAX;
-        DMOD_LOG_INFO("Module is DMP package - loading from package\n");
+        DMOD_LOG_VERBOSE("Module is DMP package - loading from package\n");
         if( !Dmod_AddPackageFile( Path, &nIndex ) )
         {
             DMOD_LOG_ERROR("Cannot load module - failed to add DMP package\n");
@@ -288,7 +288,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
     size_t dmfSize = fileSize;
     if( Dmod_IsDMFC(buffer, fileSize) )
     {
-        DMOD_LOG_INFO("Module is compressed - decompressing\n");
+        DMOD_LOG_VERBOSE("Module is compressed - decompressing\n");
         if( !Dmod_FromDMFC(buffer, fileSize, &dmfData, &dmfSize) )
         {
             DMOD_LOG_ERROR("Cannot load module - failed to convert from DMFC\n");
@@ -321,7 +321,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
     Dmod_Event_ModuleLoadingInProgress( Path, 100 );
 
     Dmod_ApplyEnvLogLevel( context );
-    DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
+    DMOD_LOG_INFO("Module loaded: %s Size: %llu B\n", Dmod_Context_GetModuleName( context ), (uint64_t)Dmod_Context_GetSize( context ));
     DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", Dmod_Context_GetModuleName( context ), DMOD_GET_TEXT_SECTION_ADDR(context));
 
     return context;
@@ -386,7 +386,7 @@ static Dmod_Context_t* Dmod_LoadBuffer( const void* Data, size_t Size, const cha
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(context), 100 );
 
     Dmod_ApplyEnvLogLevel( context );
-    DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
+    DMOD_LOG_INFO("Module loaded: %s Size: %llu\n", Dmod_Context_GetModuleName( context ), (uint64_t)Dmod_Context_GetSize( context ));
     DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", Dmod_Context_GetModuleName( context ), DMOD_GET_TEXT_SECTION_ADDR(context));
     Dmod_Event_ModuleLoaded( context );
 
@@ -412,7 +412,7 @@ Dmod_Context_t* Dmod_Load( const void* Data, size_t Size )
     if( Dmod_IsDMP(Data, Size) )
     {
         uint32_t nIndex = UINT32_MAX;
-        DMOD_LOG_INFO("Module is DMP package - loading from package\n");
+        DMOD_LOG_VERBOSE("Module is DMP package - loading from package\n");
         if( !Dmod_AddPackageBuffer( Data, Size, &nIndex ) )
         {
             DMOD_LOG_ERROR("Cannot load module - failed to add DMP package\n");
@@ -517,7 +517,7 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
     size_t dmfSize = moduleEntry->FileSize;
     if( Dmod_IsDMFC(buffer, moduleEntry->FileSize) )
     {
-        DMOD_LOG_INFO("Module is compressed - decompressing\n");
+        DMOD_LOG_VERBOSE("Module is compressed - decompressing\n");
         if( !Dmod_FromDMFC(buffer, moduleEntry->FileSize, &dmfData, &dmfSize) )
         {
             DMOD_LOG_ERROR("Cannot load module - failed to convert from DMFC\n");
@@ -551,7 +551,7 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
     Dmod_Event_ModuleLoadingInProgress( slot->FilePath, 100 );
 
     Dmod_ApplyEnvLogLevel( context );
-    DMOD_LOG_INFO("Module loaded: %s\n", Dmod_Context_GetModuleName( context ));
+    DMOD_LOG_INFO("Module loaded: %s Size: %lluB\n", Dmod_Context_GetModuleName( context ), (uint64_t)Dmod_Context_GetSize( context ));
     DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", Dmod_Context_GetModuleName( context ), DMOD_GET_TEXT_SECTION_ADDR(context));
 
     return context;
@@ -600,7 +600,7 @@ bool Dmod_FindModuleFile(const char* ModuleName, const char* ArchName, char* out
             )
             )
         {   
-            DMOD_LOG_INFO("Found module '%s' in '%s'\n", ModuleName, outFilePath);
+            DMOD_LOG_VERBOSE("Found module '%s' in '%s'\n", ModuleName, outFilePath);
             Dmod_Hlp_FreeSearchPathList( searchNode );
             return true;
         }
@@ -682,7 +682,7 @@ bool Dmod_FindMatch(const char* PartialName, char* outModuleName, size_t MaxLeng
                     {
                         memcpy(outModuleName, fileName, moduleNameLen);
                         outModuleName[moduleNameLen] = '\0';
-                        DMOD_LOG_INFO("Found matching module '%s' for partial name '%s'\n", outModuleName, PartialName);
+                        DMOD_LOG_VERBOSE("Found matching module '%s' for partial name '%s'\n", outModuleName, PartialName);
                         Dmod_CloseDir(dir);
                         Dmod_Hlp_FreeSearchPathList(searchNode);
                         return true;
@@ -713,7 +713,7 @@ bool Dmod_FindMatch(const char* PartialName, char* outModuleName, size_t MaxLeng
                         {
                             memcpy(outModuleName, entry->ModuleName, moduleNameLen);
                             outModuleName[moduleNameLen] = '\0';
-                            DMOD_LOG_INFO("Found matching module '%s' in package '%s' for partial name '%s'\n", 
+                            DMOD_LOG_VERBOSE("Found matching module '%s' in package '%s' for partial name '%s'\n", 
                                          outModuleName, Dmod_Pck_GetPackageName(slot), PartialName);
                             Dmod_Hlp_FreeSearchPathList(searchNode);
                             return true;
@@ -758,7 +758,7 @@ Dmod_Context_t* Dmod_LoadModuleByName(const char* ModuleName)
         // independent context instead of reusing this one.
         if( existing != NULL && Dmod_GetModuleType( existing ) != Dmod_ModuleType_Application )
         {
-            DMOD_LOG_INFO("Module %s is already loaded\n", ModuleName);
+            DMOD_LOG_VERBOSE("Module %s is already loaded\n", ModuleName);
             return existing;
         }
     }
@@ -785,7 +785,7 @@ Dmod_Context_t* Dmod_LoadModuleByName(const char* ModuleName)
                 )
             )
         {   
-            DMOD_LOG_INFO("Loaded module '%s' from file '%s'\n", ModuleName, filePath);
+            DMOD_LOG_VERBOSE("Loaded module '%s' from file '%s'\n", ModuleName, filePath);
             Dmod_Hlp_FreeSearchPathList( searchNode );
             return context;
         }
@@ -799,7 +799,7 @@ Dmod_Context_t* Dmod_LoadModuleByName(const char* ModuleName)
     Dmod_DmpModuleEntry_t* moduleEntry = Dmod_Pck_FindModuleEntryInPackages( ModuleName, &slot );
     if( moduleEntry != NULL && slot != NULL )
     {
-        DMOD_LOG_INFO("Using module '%s' from package '%s'\n", ModuleName, Dmod_Pck_GetPackageName( slot ));
+        DMOD_LOG_VERBOSE("Using module '%s' from package '%s'\n", ModuleName, Dmod_Pck_GetPackageName( slot ));
         context = Dmod_LoadFromPackage( Dmod_Pck_GetPackageName( slot ), ModuleName );
         Dmod_Hlp_FreeSearchPathList( searchNode );
         return context;
@@ -836,7 +836,7 @@ Dmod_Context_t* Dmod_LoadModuleFromPackage(const char* ModuleName, const char* P
         // instance's Dmod_Run() mutex.
         if( existing != NULL && Dmod_GetModuleType( existing ) != Dmod_ModuleType_Application )
         {
-            DMOD_LOG_INFO("Module %s is already loaded\n", ModuleName);
+            DMOD_LOG_VERBOSE("Module %s is already loaded\n", ModuleName);
             return existing;
         }
     }
@@ -848,7 +848,7 @@ Dmod_Context_t* Dmod_LoadModuleFromPackage(const char* ModuleName, const char* P
         return NULL;
     }
 
-    DMOD_LOG_INFO("Using module '%s' from package '%s'\n", ModuleName, PackageName);
+    DMOD_LOG_VERBOSE("Using module '%s' from package '%s'\n", ModuleName, PackageName);
     return context;
 }
 
@@ -1152,7 +1152,7 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
         return false;
     }
 
-    DMOD_LOG_INFO("Module enabled: %s\n", Dmod_Context_GetModuleName( Context ));
+    DMOD_LOG_VERBOSE("Module enabled: %s\n", Dmod_Context_GetModuleName( Context ));
     Context->Enabled = true;
 
     Dmod_Event_ModuleEnabled( Context );
@@ -1227,7 +1227,7 @@ bool Dmod_Disable( Dmod_Context_t* Context, bool Force )
         return false;
     }
 
-    DMOD_LOG_INFO("Module disabled: %s\n", Dmod_Context_GetModuleName( Context ));
+    DMOD_LOG_VERBOSE("Module disabled: %s\n", Dmod_Context_GetModuleName( Context ));
     Dmod_Event_ModuleDisabled( Context );
 
     Dmod_Mutex_Unlock(Context->Mutex);
@@ -2192,7 +2192,7 @@ void* Dmod_GetDifFunction( Dmod_Context_t* Context, const char* DifSignature )
         }
     }
 
-    DMOD_LOG_INFO("No such DIF function: %s in module %s\n", DifSignature, Dmod_Context_GetModuleName( Context ));
+    DMOD_LOG_VERBOSE("No such DIF function: %s in module %s\n", DifSignature, Dmod_Context_GetModuleName( Context ));
     return NULL;
 }
 

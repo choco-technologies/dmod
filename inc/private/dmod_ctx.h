@@ -16,6 +16,7 @@ extern bool              Dmod_Context_IsValid( Dmod_Context_t* Context );
 extern void              Dmod_Context_Delete( Dmod_Context_t* Context );
 extern const char*       Dmod_Context_GetModuleName( Dmod_Context_t* Context );
 extern Dmod_ModuleType_t Dmod_Context_GetModuleType( Dmod_Context_t* Context );
+extern size_t            Dmod_Context_GetSize( Dmod_Context_t* Context );
 
 extern bool            Dmod_Context_Add( Dmod_Context_t* Context );
 extern bool            Dmod_Context_Remove( Dmod_Context_t* Context );

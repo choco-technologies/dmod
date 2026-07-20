@@ -104,7 +104,7 @@ bool Dmod_ConnectOutputApis( Dmod_Context_t* Context )
         {
             continue;
         }
-        DMOD_LOG_INFO("Connecting API from %s to %s\n", Dmod_Context_GetModuleName( Dmod_Contexts[i] ), Dmod_Context_GetModuleName( Context ));
+        DMOD_LOG_VERBOSE("Connecting API from %s to %s\n", Dmod_Context_GetModuleName( Dmod_Contexts[i] ), Dmod_Context_GetModuleName( Context ));
 
         if( !Dmod_ConnectApi( &Context->Outputs, &Dmod_Contexts[i]->Inputs ) )
         {
@@ -154,7 +154,7 @@ bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
             continue;
         }
 
-        DMOD_LOG_INFO("Connecting API from %s to %s\n", Dmod_Context_GetModuleName( Context ), Dmod_Context_GetModuleName( Dmod_Contexts[i] ));
+        DMOD_LOG_VERBOSE("Connecting API from %s to %s\n", Dmod_Context_GetModuleName( Context ), Dmod_Context_GetModuleName( Dmod_Contexts[i] ));
 
         if( !Dmod_ConnectApi( &Dmod_Contexts[i]->Outputs, &Context->Inputs ) )
         {
