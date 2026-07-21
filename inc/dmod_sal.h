@@ -214,8 +214,10 @@ DMOD_BUILTIN_API(Dmod, 1.0, int  , _FPrintf,            ( void* File, const char
  * @addtogroup DMOD_SAL_KERNEL
  * @{
  */
-DMOD_BUILTIN_API(Dmod, 1.0, size_t, _WriteKernel, ( const void* Buffer, size_t Size ) );
-DMOD_BUILTIN_API(Dmod, 1.0, size_t, _ReadKernel,  ( void* Buffer, size_t Size ) );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t,   _WriteKernel, ( const void* Buffer, size_t Size ) );
+DMOD_BUILTIN_API(Dmod, 1.0, size_t,   _ReadKernel,  ( void* Buffer, size_t Size ) );
+DMOD_BUILTIN_API(Dmod, 1.0, int,      _SetKernelInputFlags, ( uint32_t Flags ) );
+DMOD_BUILTIN_API(Dmod, 1.0, uint32_t, _GetKernelInputFlags, ( void ) );
 
 //! @}
 

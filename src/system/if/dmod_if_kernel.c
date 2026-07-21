@@ -34,6 +34,9 @@
 #if DMOD_USE_DIRENT
 #   include <unistd.h>
 #endif
+#if DMOD_USE_TERMIOS
+#   include <termios.h>
+#endif
 
 //==============================================================================
 //                              FUNCTIONS DECLARATIONS
@@ -73,6 +76,68 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _ReadKernel, ( void* Buffer, 
     return Read < 0 ? 0 : (size_t)Read;
     #else
     DMOD_LOG_ERROR("Dmod_ReadKernel interface not implemented\n");
+    return 0;
+    #endif
+}
+
+/**
+ * @brief Set the echo/canonical flags applied to the raw kernel console path
+ *        (Dmod_ReadKernel()/Dmod_WriteKernel())
+ *
+ * @param Flags New flags (combination of DMOD_STDIN_FLAG_*)
+ *
+ * @return 0 on success, -1 on error
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _SetKernelInputFlags, ( uint32_t Flags ))
+{
+    #if DMOD_USE_TERMIOS
+    struct termios term;
+
+    if (tcgetattr(STDIN_FILENO, &term) != 0)
+    {
+        return -1;
+    }
+
+    term.c_lflag &= ~(ECHO | ICANON);
+    if (Flags & DMOD_STDIN_FLAG_ECHO)      term.c_lflag |= ECHO;
+    if (Flags & DMOD_STDIN_FLAG_CANONICAL) term.c_lflag |= ICANON;
+
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &term) != 0)
+    {
+        return -1;
+    }
+
+    return 0;
+    #else
+    (void)Flags;
+    DMOD_LOG_ERROR("Dmod_SetKernelInputFlags interface not implemented\n");
+    return -1;
+    #endif
+}
+
+/**
+ * @brief Get the current echo/canonical flags applied to the raw kernel console path
+ *        (Dmod_ReadKernel()/Dmod_WriteKernel())
+ *
+ * @return uint32_t Current flags (combination of DMOD_STDIN_FLAG_*)
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, uint32_t, _GetKernelInputFlags, ( void ))
+{
+    #if DMOD_USE_TERMIOS
+    struct termios term;
+
+    if (tcgetattr(STDIN_FILENO, &term) != 0)
+    {
+        return 0;
+    }
+
+    uint32_t flags = 0;
+    if (term.c_lflag & ECHO)   flags |= DMOD_STDIN_FLAG_ECHO;
+    if (term.c_lflag & ICANON) flags |= DMOD_STDIN_FLAG_CANONICAL;
+
+    return flags;
+    #else
+    DMOD_LOG_ERROR("Dmod_GetKernelInputFlags interface not implemented\n");
     return 0;
     #endif
 }
