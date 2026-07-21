@@ -81,11 +81,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _ReadKernel, ( void* Buffer, 
 }
 
 /**
- * @brief Fallback storage for the kernel input flags when termios is unavailable
- */
-static uint32_t g_KernelInputFlags = DMOD_STDIN_FLAG_ECHO | DMOD_STDIN_FLAG_CANONICAL;
-
-/**
  * @brief Set the echo/canonical flags applied to the raw kernel console path
  *        (Dmod_ReadKernel()/Dmod_WriteKernel())
  *
@@ -114,7 +109,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _SetKernelInputFlags, ( uint32_t
 
     return 0;
     #else
-    g_KernelInputFlags = Flags;
     return 0;
     #endif
 }
@@ -141,6 +135,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, uint32_t, _GetKernelInputFlags, ( voi
 
     return flags;
     #else
-    return g_KernelInputFlags;
+    return 0;
     #endif
 }
