@@ -168,6 +168,89 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Pid_t, _GetCurrentPid, ( void ))
 }
 
 /**
+ * @brief Per-PID foreground module table backing the weak Dmod_SetForegroundModule()/
+ * Dmod_GetForegroundModule() implementation below. A PID of 0 marks a free slot - real PIDs
+ * are never 0 (DMOD_CURRENT_PROCESS_PID is 1, and getpid() never returns 0).
+ */
+typedef struct
+{
+    Dmod_Pid_t      Pid;
+    Dmod_Context_t* Context;
+} Dmod_ForegroundEntry_t;
+
+static Dmod_ForegroundEntry_t s_foregroundModules[DMOD_MAX_MODULES];
+
+/**
+ * @brief Set the foreground module context for a given PID
+ *
+ * This is a weak implementation backed by a small fixed-size table. A real dmosi-backed
+ * implementation may store this directly on its own per-process structure instead.
+ *
+ * @param Pid Process ID to set the foreground module for
+ * @param Context Context to mark as foreground for this PID, or NULL to clear it
+ * @return 0 on success, -ENOMEM if the table is full
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _SetForegroundModule, ( Dmod_Pid_t Pid, Dmod_Context_t* Context ))
+{
+    int freeIndex = -1;
+    for( size_t i = 0; i < DMOD_MAX_MODULES; i++ )
+    {
+        if( s_foregroundModules[i].Pid == Pid )
+        {
+            if( Context == NULL )
+            {
+                /* Free the slot so it can be reused by another PID later on */
+                s_foregroundModules[i].Pid     = 0;
+                s_foregroundModules[i].Context = NULL;
+            }
+            else
+            {
+                s_foregroundModules[i].Context = Context;
+            }
+            return 0;
+        }
+        if( freeIndex < 0 && s_foregroundModules[i].Pid == 0 )
+        {
+            freeIndex = (int)i;
+        }
+    }
+
+    if( Context == NULL )
+    {
+        /* Nothing to clear - no entry existed for this Pid */
+        return 0;
+    }
+
+    if( freeIndex < 0 )
+    {
+        DMOD_LOG_ERROR("Cannot set foreground module - no free slots for PID %" PRId32 "\n", Pid);
+        return -ENOMEM;
+    }
+
+    s_foregroundModules[freeIndex].Pid     = Pid;
+    s_foregroundModules[freeIndex].Context = Context;
+    return 0;
+}
+
+/**
+ * @brief Get the foreground module context for a given PID
+ *
+ * @param Pid Process ID to get the foreground module for
+ * @return Context most recently set as foreground for this PID, or NULL if none is set
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, Dmod_Context_t*, _GetForegroundModule, ( Dmod_Pid_t Pid ))
+{
+    for( size_t i = 0; i < DMOD_MAX_MODULES; i++ )
+    {
+        if( s_foregroundModules[i].Pid == Pid )
+        {
+            return s_foregroundModules[i].Context;
+        }
+    }
+    return NULL;
+}
+
+/**
  * @brief Get the real file handle registered for one of a process's standard streams
  *
  * This is a weak implementation that always returns NULL.

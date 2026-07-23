@@ -65,5 +65,12 @@ volatile const Dmod_ApiRegistration_t dmod_test_teardown_registration
 
 int main( int argc, char* argv[] )
 {
-    return Dmod_RunTests( Dmod_GetModuleContext( Dmod_GetCurrentModuleName() ), argc, argv );
+    /* Dmod_GetCurrentModuleName()/Dmod_GetModuleContext() are not reliable here: they resolve
+     * through the OS-level process associated with the calling thread, which only reflects
+     * this test module if it was actually spawned into its own process. dmod_add_test's runner
+     * may instead run this module synchronously in the caller's own process, in which case that
+     * lookup would resolve to the caller's module. Dmod_GetForegroundModule() is set explicitly
+     * by Dmod_Main() around this very call, so it always reflects this test module's own
+     * context regardless of how it was run. */
+    return Dmod_RunTests( Dmod_GetForegroundModule( Dmod_GetCurrentPid() ), argc, argv );
 }

@@ -514,6 +514,9 @@ DMOD_BUILTIN_API(Dmod, 1.0, Dmod_Pid_t, _Spawn, ( Dmod_Context_t* Context, int a
 DMOD_BUILTIN_API(Dmod, 1.0, Dmod_Pid_t, _RunDetached, ( Dmod_Context_t* Context, int argc, char *argv[], const Dmod_StreamRedirections_t* Streams ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _GetProcessResult, ( Dmod_Pid_t Pid ) );
 DMOD_BUILTIN_API(Dmod, 1.0, Dmod_Pid_t, _GetCurrentPid, (void));
+DMOD_BUILTIN_API(Dmod, 1.0, int, _SetForegroundModule, ( Dmod_Pid_t Pid, Dmod_Context_t* Context ) );
+DMOD_BUILTIN_API(Dmod, 1.0, Dmod_Context_t*, _GetForegroundModule, ( Dmod_Pid_t Pid ) );
+
 DMOD_BUILTIN_API(Dmod, 1.0, void*, _ResolveStreamFile, ( Dmod_Pid_t Pid, void* StdHandle ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _SetStreamFilePath, ( Dmod_Pid_t Pid, void* StdHandle, const char* Path ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int, _GetStreamRedirections, ( Dmod_Pid_t Pid, Dmod_StreamRedirection_t* OutEntries, size_t MaxEntries, size_t* OutCount ) );

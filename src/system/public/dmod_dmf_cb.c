@@ -55,12 +55,19 @@ int Dmod_Init( Dmod_Context_t* Context, const Dmod_Config_t* Config )
 
 /**
  * @brief Call main function
- * 
+ *
  * @param Context Context to call main function
  * @param argc Number of arguments
  * @param argv Arguments
- * 
+ *
  * @return Return value of the main function
+ *
+ * @note While the module's Main entry point is running, Context is recorded as the
+ *       foreground module for the current PID (see Dmod_SetForegroundModule()), with the
+ *       previous foreground context restored once Main returns. This lets code running
+ *       inside Main reliably find its own Context via Dmod_GetForegroundModule() even when
+ *       the module was run synchronously in the caller's own process (no dedicated process
+ *       was spawned for it), unlike Dmod_GetCurrentModuleName()/Dmod_GetCurrentContext().
  */
 int Dmod_Main( Dmod_Context_t* Context, int argc, char *argv[] )
 {
@@ -73,9 +80,14 @@ int Dmod_Main( Dmod_Context_t* Context, int argc, char *argv[] )
             DMOD_LOG_VERBOSE("Main function not set\n");
             result = 0;
         }
-        else 
+        else
         {
+            Dmod_Pid_t pid = Dmod_GetCurrentPid();
+            Dmod_Context_t* previousForeground = Dmod_GetForegroundModule( pid );
+
+            Dmod_SetForegroundModule( pid, Context );
             result = mainFunc( argc, argv );
+            Dmod_SetForegroundModule( pid, previousForeground );
         }
     }
     return result;
