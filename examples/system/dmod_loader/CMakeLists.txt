@@ -26,6 +26,11 @@ dmod_link_builtin(${PROJECT_NAME}
     dmosi-proc
 )
 
+# Only the CMake build links dmosi/dmosi-posix/dmosi-proc above (the Makefile build has no
+# equivalent of dmod_link_builtin and does not link them) - guard the dmosi_init() call in
+# main.c behind this so it keeps building there too.
+target_compile_definitions(${PROJECT_NAME} PRIVATE DMOD_LOADER_HAS_DMOSI=1)
+
 target_link_options(${PROJECT_NAME} PRIVATE -L ${DMOD_DIR}/scripts)
 target_link_options(${PROJECT_NAME} PRIVATE -T ${CMAKE_CURRENT_SOURCE_DIR}/main.ld)
 

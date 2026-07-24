@@ -11,6 +11,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include "dmod.h"
+#ifdef DMOD_LOADER_HAS_DMOSI
+#include "dmosi.h"
+#endif
 
 // -----------------------------------------
 //
@@ -729,6 +732,20 @@ int main( int argc, char *argv[] )
         printf("Error: Failed to initialize Dmod system\n");
         return -1;
     }
+
+#ifdef DMOD_LOADER_HAS_DMOSI
+    // Start dmosi so this process is registered with it (dmosi_process_current()
+    // otherwise has no process to return for the calling thread, which breaks any
+    // Built-in API backed by it - e.g. Dmod_GetCurrentPid()/Dmod_GetForegroundModule(),
+    // used by Dmod_Main() and the dmod_add_test runner to find a module's own context).
+    // dmod-boot performs the equivalent call during firmware boot; dmod_loader must do
+    // the same since it plays that same "first thing to run" role for a host process.
+    if (!dmosi_init())
+    {
+        printf("Error: Failed to initialize dmosi\n");
+        return -1;
+    }
+#endif
 
     if( argc < 2 )
     {
