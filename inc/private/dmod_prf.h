@@ -71,6 +71,12 @@ extern "C" {
  * Supported format modifiers:
  * - Width: Minimum field width (e.g., %30s for 30 characters)
  * - Left-align: '-' flag for left-justification (e.g., %-30s)
+ * - Zero-pad: '0' flag for zero-padding numeric conversions (e.g., %02x,
+ *             %05d) instead of the width default of spaces. Ignored for
+ *             %s and for %p, and overridden by '-' when both are given
+ *             (left-aligned fields are always space-padded), matching
+ *             standard printf. A leading sign on %d/%lld/%f stays before
+ *             the zero-padding (e.g. %04d of -5 is "-005", not "00-5").
  * - Precision: digits after the decimal point for %f/%F (e.g., %.3f), default 6,
  *              capped at 17 (a double's significant-digit limit)
  * - Length modifier 'hh': char (8-bit) for d, i, u, x, X, o (e.g., %hhd, %hhu)

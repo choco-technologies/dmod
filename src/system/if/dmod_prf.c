@@ -1,18 +1,18 @@
 /**
  * MIT License
- * 
+ *
  * Copyright (c) 2024 patryk.kubiak90@gmail.com
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -20,10 +20,10 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- * 
+ *
  * @brief Minimal printf implementation for systems without stdio
  * @date 28 10 2025
- * 
+ *
  * This file provides a minimal printf/snprintf/vsnprintf implementation
  * that doesn't depend on stdio. It can be enabled with DMOD_IMPLEMENT_PRINTF.
  *
@@ -73,13 +73,23 @@ static void Dmod_Print_String( char** Buffer, size_t* Pos, size_t Size, const ch
     }
 }
 
-static void Dmod_Print_String_Width( char** Buffer, size_t* Pos, size_t Size, const char* Str, int Width, bool LeftAlign, int* Count )
+/**
+ * @brief Print Str, padded to Width using PadChar
+ *
+ * PadChar is only honored for right-aligned fields (!LeftAlign) - a
+ * left-aligned field is always space-padded on the right, matching
+ * standard printf (the '0' flag is defined to be ignored when '-' is also
+ * given). When PadChar is '0' and Str starts with a sign ('-' or '+'), the
+ * padding goes after the sign rather than before it, so e.g. -5 at width 4
+ * comes out "-005", not "00-5".
+ */
+static void Dmod_Print_String_Width( char** Buffer, size_t* Pos, size_t Size, const char* Str, int Width, bool LeftAlign, char PadChar, int* Count )
 {
     if( Str == NULL ) Str = "(null)";
-    
+
     int StrLen = Dmod_StrLen( Str );
     int PadLen = Width - StrLen;
-    
+
     // If string is longer than or equal to width, no padding needed
     if( PadLen <= 0 )
     {
@@ -89,7 +99,7 @@ static void Dmod_Print_String_Width( char** Buffer, size_t* Pos, size_t Size, co
         }
         return;
     }
-    
+
     // Left-aligned: print string first, then padding
     if( LeftAlign )
     {
@@ -105,9 +115,13 @@ static void Dmod_Print_String_Width( char** Buffer, size_t* Pos, size_t Size, co
     // Right-aligned: print padding first, then string
     else
     {
+        if( PadChar == '0' && ( *Str == '-' || *Str == '+' ) )
+        {
+            Dmod_Print_Char( Buffer, Pos, Size, *Str++, Count );
+        }
         for( int i = 0; i < PadLen; i++ )
         {
-            Dmod_Print_Char( Buffer, Pos, Size, ' ', Count );
+            Dmod_Print_Char( Buffer, Pos, Size, PadChar, Count );
         }
         while( *Str )
         {
@@ -116,7 +130,7 @@ static void Dmod_Print_String_Width( char** Buffer, size_t* Pos, size_t Size, co
     }
 }
 
-static void Dmod_Print_Int( char** Buffer, size_t* Pos, size_t Size, int32_t Value, int Width, bool LeftAlign, int* Count )
+static void Dmod_Print_Int( char** Buffer, size_t* Pos, size_t Size, int32_t Value, int Width, bool LeftAlign, bool ZeroPad, int* Count )
 {
     char Temp[12]; // Enough for -2147483648
     int i = 0;
@@ -165,7 +179,7 @@ static void Dmod_Print_Int( char** Buffer, size_t* Pos, size_t Size, int32_t Val
 
     if( Width > 0 )
     {
-        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count );
+        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, ZeroPad ? '0' : ' ', Count );
     }
     else
     {
@@ -173,7 +187,7 @@ static void Dmod_Print_Int( char** Buffer, size_t* Pos, size_t Size, int32_t Val
     }
 }
 
-static void Dmod_Print_UInt( char** Buffer, size_t* Pos, size_t Size, uint32_t Value, int Width, bool LeftAlign, int* Count )
+static void Dmod_Print_UInt( char** Buffer, size_t* Pos, size_t Size, uint32_t Value, int Width, bool LeftAlign, bool ZeroPad, int* Count )
 {
     char Temp[11]; // Enough for 4294967295
     int i = 0;
@@ -195,7 +209,7 @@ static void Dmod_Print_UInt( char** Buffer, size_t* Pos, size_t Size, uint32_t V
 
     if( Width > 0 )
     {
-        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count );
+        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, ZeroPad ? '0' : ' ', Count );
     }
     else
     {
@@ -203,7 +217,7 @@ static void Dmod_Print_UInt( char** Buffer, size_t* Pos, size_t Size, uint32_t V
     }
 }
 
-static void Dmod_Print_Hex( char** Buffer, size_t* Pos, size_t Size, uint32_t Value, bool Uppercase, int Width, bool LeftAlign, int* Count )
+static void Dmod_Print_Hex( char** Buffer, size_t* Pos, size_t Size, uint32_t Value, bool Uppercase, int Width, bool LeftAlign, bool ZeroPad, int* Count )
 {
     char Temp[9]; // Enough for 8 hex digits
     int i = 0;
@@ -226,7 +240,7 @@ static void Dmod_Print_Hex( char** Buffer, size_t* Pos, size_t Size, uint32_t Va
 
     if( Width > 0 )
     {
-        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count );
+        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, ZeroPad ? '0' : ' ', Count );
     }
     else
     {
@@ -258,9 +272,12 @@ static void Dmod_Print_Pointer( char** Buffer, size_t* Pos, size_t Size, void* P
     }
     Out[OutLen] = '\0';
 
+    // Always space-padded: zero-padding would land in front of the "0x"
+    // prefix (e.g. "000x1234"), which is not useful - %p has no reported
+    // need for it, unlike %x/%d/... above.
     if( Width > 0 )
     {
-        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count );
+        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, ' ', Count );
     }
     else
     {
@@ -268,7 +285,7 @@ static void Dmod_Print_Pointer( char** Buffer, size_t* Pos, size_t Size, void* P
     }
 }
 
-static void Dmod_Print_LongLong( char** Buffer, size_t* Pos, size_t Size, int64_t Value, int Width, bool LeftAlign, int* Count )
+static void Dmod_Print_LongLong( char** Buffer, size_t* Pos, size_t Size, int64_t Value, int Width, bool LeftAlign, bool ZeroPad, int* Count )
 {
     char Temp[21]; // Enough for -9223372036854775808
     int i = 0;
@@ -314,7 +331,7 @@ static void Dmod_Print_LongLong( char** Buffer, size_t* Pos, size_t Size, int64_
 
     if( Width > 0 )
     {
-        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count );
+        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, ZeroPad ? '0' : ' ', Count );
     }
     else
     {
@@ -322,7 +339,7 @@ static void Dmod_Print_LongLong( char** Buffer, size_t* Pos, size_t Size, int64_
     }
 }
 
-static void Dmod_Print_ULongLong( char** Buffer, size_t* Pos, size_t Size, uint64_t Value, int Width, bool LeftAlign, int* Count )
+static void Dmod_Print_ULongLong( char** Buffer, size_t* Pos, size_t Size, uint64_t Value, int Width, bool LeftAlign, bool ZeroPad, int* Count )
 {
     char Temp[21]; // Enough for 18446744073709551615
     int i = 0;
@@ -344,7 +361,7 @@ static void Dmod_Print_ULongLong( char** Buffer, size_t* Pos, size_t Size, uint6
 
     if( Width > 0 )
     {
-        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count );
+        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, ZeroPad ? '0' : ' ', Count );
     }
     else
     {
@@ -352,7 +369,7 @@ static void Dmod_Print_ULongLong( char** Buffer, size_t* Pos, size_t Size, uint6
     }
 }
 
-static void Dmod_Print_Hex64( char** Buffer, size_t* Pos, size_t Size, uint64_t Value, bool Uppercase, int Width, bool LeftAlign, int* Count )
+static void Dmod_Print_Hex64( char** Buffer, size_t* Pos, size_t Size, uint64_t Value, bool Uppercase, int Width, bool LeftAlign, bool ZeroPad, int* Count )
 {
     char Temp[17]; // Enough for 16 hex digits
     int i = 0;
@@ -375,7 +392,7 @@ static void Dmod_Print_Hex64( char** Buffer, size_t* Pos, size_t Size, uint64_t 
 
     if( Width > 0 )
     {
-        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count );
+        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, ZeroPad ? '0' : ' ', Count );
     }
     else
     {
@@ -383,7 +400,7 @@ static void Dmod_Print_Hex64( char** Buffer, size_t* Pos, size_t Size, uint64_t 
     }
 }
 
-static void Dmod_Print_Octal( char** Buffer, size_t* Pos, size_t Size, uint32_t Value, int Width, bool LeftAlign, int* Count )
+static void Dmod_Print_Octal( char** Buffer, size_t* Pos, size_t Size, uint32_t Value, int Width, bool LeftAlign, bool ZeroPad, int* Count )
 {
     char Temp[12]; // Enough for 11 octal digits (32-bit)
     int i = 0;
@@ -405,7 +422,7 @@ static void Dmod_Print_Octal( char** Buffer, size_t* Pos, size_t Size, uint32_t 
 
     if( Width > 0 )
     {
-        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count );
+        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, ZeroPad ? '0' : ' ', Count );
     }
     else
     {
@@ -413,7 +430,7 @@ static void Dmod_Print_Octal( char** Buffer, size_t* Pos, size_t Size, uint32_t 
     }
 }
 
-static void Dmod_Print_Octal64( char** Buffer, size_t* Pos, size_t Size, uint64_t Value, int Width, bool LeftAlign, int* Count )
+static void Dmod_Print_Octal64( char** Buffer, size_t* Pos, size_t Size, uint64_t Value, int Width, bool LeftAlign, bool ZeroPad, int* Count )
 {
     char Temp[23]; // Enough for 22 octal digits (64-bit)
     int i = 0;
@@ -435,7 +452,7 @@ static void Dmod_Print_Octal64( char** Buffer, size_t* Pos, size_t Size, uint64_
 
     if( Width > 0 )
     {
-        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count );
+        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, ZeroPad ? '0' : ' ', Count );
     }
     else
     {
@@ -449,7 +466,7 @@ static void Dmod_Print_Octal64( char** Buffer, size_t* Pos, size_t Size, uint64_
 // conversions above. This correctly propagates rounding carry into the integer part
 // (e.g. 0.9999995 with Precision=6 becomes "1.000000", not "0.1000000"), because the
 // rounding happens once on the combined value instead of separately on each half.
-static void Dmod_Print_Float( char** Buffer, size_t* Pos, size_t Size, double Value, int Precision, int Width, bool LeftAlign, int* Count )
+static void Dmod_Print_Float( char** Buffer, size_t* Pos, size_t Size, double Value, int Precision, int Width, bool LeftAlign, bool ZeroPad, int* Count )
 {
     if( Precision < 0 )
     {
@@ -464,11 +481,12 @@ static void Dmod_Print_Float( char** Buffer, size_t* Pos, size_t Size, double Va
     int OutLen = 0;
 
     // NaN: the only value for which the IEEE754 equality comparison x != x is true.
+    // Never zero-padded, matching standard printf - only finite numeric values are.
     if( Value != Value )
     {
         Out[OutLen++] = 'n'; Out[OutLen++] = 'a'; Out[OutLen++] = 'n';
         Out[OutLen] = '\0';
-        if( Width > 0 ) { Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count ); }
+        if( Width > 0 ) { Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, ' ', Count ); }
         else { Dmod_Print_String( Buffer, Pos, Size, Out, Count ); }
         return;
     }
@@ -486,7 +504,7 @@ static void Dmod_Print_Float( char** Buffer, size_t* Pos, size_t Size, double Va
         if( IsNegative ) { Out[OutLen++] = '-'; }
         Out[OutLen++] = 'i'; Out[OutLen++] = 'n'; Out[OutLen++] = 'f';
         Out[OutLen] = '\0';
-        if( Width > 0 ) { Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count ); }
+        if( Width > 0 ) { Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, ' ', Count ); }
         else { Dmod_Print_String( Buffer, Pos, Size, Out, Count ); }
         return;
     }
@@ -507,7 +525,7 @@ static void Dmod_Print_Float( char** Buffer, size_t* Pos, size_t Size, double Va
         const char* Overflow = "overflow";
         while( *Overflow ) { Out[OutLen++] = *Overflow++; }
         Out[OutLen] = '\0';
-        if( Width > 0 ) { Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count ); }
+        if( Width > 0 ) { Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, ' ', Count ); }
         else { Dmod_Print_String( Buffer, Pos, Size, Out, Count ); }
         return;
     }
@@ -563,7 +581,7 @@ static void Dmod_Print_Float( char** Buffer, size_t* Pos, size_t Size, double Va
 
     if( Width > 0 )
     {
-        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, Count );
+        Dmod_Print_String_Width( Buffer, Pos, Size, Out, Width, LeftAlign, ZeroPad ? '0' : ' ', Count );
     }
     else
     {
@@ -580,24 +598,39 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
     size_t Pos = 0;
     int Count = 0;
     char** BufPtr = Buffer ? &Buffer : NULL;
-    
+
     if( Format == NULL ) return 0;
     if( Size == 0 ) BufPtr = NULL;
-    
+
     while( *Format )
     {
         if( *Format == '%' )
         {
             Format++;
-            
-            // Parse flags
+
+            // Parse flags - '-' (left-align) and '0' (zero-pad) can appear
+            // in either order (e.g. both "%-05d" and "%0-5d" are accepted,
+            // like standard printf).
             bool LeftAlign = false;
-            if( *Format == '-' )
+            bool ZeroPad = false;
+            for( ;; )
             {
-                LeftAlign = true;
-                Format++;
+                if( *Format == '-' )
+                {
+                    LeftAlign = true;
+                    Format++;
+                }
+                else if( *Format == '0' )
+                {
+                    ZeroPad = true;
+                    Format++;
+                }
+                else
+                {
+                    break;
+                }
             }
-            
+
             // Parse width
             int Width = 0;
             while( *Format >= '0' && *Format <= '9' )
@@ -652,9 +685,9 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                 LEN_LL,      // long long
                 LEN_Z        // size_t
             } LengthModifier;
-            
+
             LengthModifier LenMod = LEN_NONE;
-            
+
             if( *Format == 'h' )
             {
                 if( *(Format + 1) == 'h' )
@@ -686,23 +719,24 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                 LenMod = LEN_Z;
                 Format++;
             }
-            
+
             // Handle format specifiers
             switch( *Format )
             {
                 case '%':
                     Dmod_Print_Char( BufPtr, &Pos, Size, '%', &Count );
                     break;
-                    
+
                 case 'c':
                     Dmod_Print_Char( BufPtr, &Pos, Size, (char)va_arg( Args, int ), &Count );
                     break;
-                    
+
                 case 's': {
                     const char* Str = va_arg( Args, const char* );
                     if( Width > 0 )
                     {
-                        Dmod_Print_String_Width( BufPtr, &Pos, Size, Str, Width, LeftAlign, &Count );
+                        // Zero flag is defined to have no effect on %s.
+                        Dmod_Print_String_Width( BufPtr, &Pos, Size, Str, Width, LeftAlign, ' ', &Count );
                     }
                     else
                     {
@@ -715,7 +749,7 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                 case 'F': {
                     // float arguments are promoted to double when passed through '...'
                     double Value = va_arg( Args, double );
-                    Dmod_Print_Float( BufPtr, &Pos, Size, Value, Precision, Width, LeftAlign, &Count );
+                    Dmod_Print_Float( BufPtr, &Pos, Size, Value, Precision, Width, LeftAlign, ZeroPad, &Count );
                     break;
                 }
 
@@ -724,34 +758,34 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                     if( LenMod == LEN_LL )
                     {
                         int64_t Value = va_arg( Args, int64_t );
-                        Dmod_Print_LongLong( BufPtr, &Pos, Size, Value, Width, LeftAlign, &Count );
+                        Dmod_Print_LongLong( BufPtr, &Pos, Size, Value, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else if( LenMod == LEN_L || LenMod == LEN_Z )
                     {
                         // long and size_t/ssize_t are typically same size
                         long Value = va_arg( Args, long );
                         #if LONG_MAX == INT64_MAX
-                        Dmod_Print_LongLong( BufPtr, &Pos, Size, (int64_t)Value, Width, LeftAlign, &Count );
+                        Dmod_Print_LongLong( BufPtr, &Pos, Size, (int64_t)Value, Width, LeftAlign, ZeroPad, &Count );
                         #else
-                        Dmod_Print_Int( BufPtr, &Pos, Size, (int32_t)Value, Width, LeftAlign, &Count );
+                        Dmod_Print_Int( BufPtr, &Pos, Size, (int32_t)Value, Width, LeftAlign, ZeroPad, &Count );
                         #endif
                     }
                     else if( LenMod == LEN_HH )
                     {
                         // char is promoted to int in varargs
                         int Value = va_arg( Args, int );
-                        Dmod_Print_Int( BufPtr, &Pos, Size, (int32_t)(signed char)Value, Width, LeftAlign, &Count );
+                        Dmod_Print_Int( BufPtr, &Pos, Size, (int32_t)(signed char)Value, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else if( LenMod == LEN_H )
                     {
                         // short is promoted to int in varargs
                         int Value = va_arg( Args, int );
-                        Dmod_Print_Int( BufPtr, &Pos, Size, (int32_t)(short)Value, Width, LeftAlign, &Count );
+                        Dmod_Print_Int( BufPtr, &Pos, Size, (int32_t)(short)Value, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else
                     {
                         int32_t Value = va_arg( Args, int32_t );
-                        Dmod_Print_Int( BufPtr, &Pos, Size, Value, Width, LeftAlign, &Count );
+                        Dmod_Print_Int( BufPtr, &Pos, Size, Value, Width, LeftAlign, ZeroPad, &Count );
                     }
                     break;
                 }
@@ -760,67 +794,67 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                     if( LenMod == LEN_LL )
                     {
                         uint64_t Value = va_arg( Args, uint64_t );
-                        Dmod_Print_ULongLong( BufPtr, &Pos, Size, Value, Width, LeftAlign, &Count );
+                        Dmod_Print_ULongLong( BufPtr, &Pos, Size, Value, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else if( LenMod == LEN_L || LenMod == LEN_Z )
                     {
                         // unsigned long and size_t are typically same size
                         unsigned long Value = va_arg( Args, unsigned long );
                         #if ULONG_MAX == UINT64_MAX
-                        Dmod_Print_ULongLong( BufPtr, &Pos, Size, (uint64_t)Value, Width, LeftAlign, &Count );
+                        Dmod_Print_ULongLong( BufPtr, &Pos, Size, (uint64_t)Value, Width, LeftAlign, ZeroPad, &Count );
                         #else
-                        Dmod_Print_UInt( BufPtr, &Pos, Size, (uint32_t)Value, Width, LeftAlign, &Count );
+                        Dmod_Print_UInt( BufPtr, &Pos, Size, (uint32_t)Value, Width, LeftAlign, ZeroPad, &Count );
                         #endif
                     }
                     else if( LenMod == LEN_HH )
                     {
                         // unsigned char is promoted to int in varargs
                         unsigned int Value = va_arg( Args, unsigned int );
-                        Dmod_Print_UInt( BufPtr, &Pos, Size, (uint32_t)(unsigned char)Value, Width, LeftAlign, &Count );
+                        Dmod_Print_UInt( BufPtr, &Pos, Size, (uint32_t)(unsigned char)Value, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else if( LenMod == LEN_H )
                     {
                         // unsigned short is promoted to int in varargs
                         unsigned int Value = va_arg( Args, unsigned int );
-                        Dmod_Print_UInt( BufPtr, &Pos, Size, (uint32_t)(unsigned short)Value, Width, LeftAlign, &Count );
+                        Dmod_Print_UInt( BufPtr, &Pos, Size, (uint32_t)(unsigned short)Value, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else
                     {
                         uint32_t Value = va_arg( Args, uint32_t );
-                        Dmod_Print_UInt( BufPtr, &Pos, Size, Value, Width, LeftAlign, &Count );
+                        Dmod_Print_UInt( BufPtr, &Pos, Size, Value, Width, LeftAlign, ZeroPad, &Count );
                     }
                     break;
                 }
-                
+
                 case 'x': {
                     if( LenMod == LEN_LL )
                     {
                         uint64_t Value = va_arg( Args, uint64_t );
-                        Dmod_Print_Hex64( BufPtr, &Pos, Size, Value, false, Width, LeftAlign, &Count );
+                        Dmod_Print_Hex64( BufPtr, &Pos, Size, Value, false, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else if( LenMod == LEN_L || LenMod == LEN_Z )
                     {
                         unsigned long Value = va_arg( Args, unsigned long );
                         #if ULONG_MAX == UINT64_MAX
-                        Dmod_Print_Hex64( BufPtr, &Pos, Size, (uint64_t)Value, false, Width, LeftAlign, &Count );
+                        Dmod_Print_Hex64( BufPtr, &Pos, Size, (uint64_t)Value, false, Width, LeftAlign, ZeroPad, &Count );
                         #else
-                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)Value, false, Width, LeftAlign, &Count );
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)Value, false, Width, LeftAlign, ZeroPad, &Count );
                         #endif
                     }
                     else if( LenMod == LEN_HH )
                     {
                         unsigned int Value = va_arg( Args, unsigned int );
-                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)(unsigned char)Value, false, Width, LeftAlign, &Count );
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)(unsigned char)Value, false, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else if( LenMod == LEN_H )
                     {
                         unsigned int Value = va_arg( Args, unsigned int );
-                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)(unsigned short)Value, false, Width, LeftAlign, &Count );
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)(unsigned short)Value, false, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else
                     {
                         uint32_t Value = va_arg( Args, uint32_t );
-                        Dmod_Print_Hex( BufPtr, &Pos, Size, Value, false, Width, LeftAlign, &Count );
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, Value, false, Width, LeftAlign, ZeroPad, &Count );
                     }
                     break;
                 }
@@ -829,31 +863,31 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                     if( LenMod == LEN_LL )
                     {
                         uint64_t Value = va_arg( Args, uint64_t );
-                        Dmod_Print_Hex64( BufPtr, &Pos, Size, Value, true, Width, LeftAlign, &Count );
+                        Dmod_Print_Hex64( BufPtr, &Pos, Size, Value, true, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else if( LenMod == LEN_L || LenMod == LEN_Z )
                     {
                         unsigned long Value = va_arg( Args, unsigned long );
                         #if ULONG_MAX == UINT64_MAX
-                        Dmod_Print_Hex64( BufPtr, &Pos, Size, (uint64_t)Value, true, Width, LeftAlign, &Count );
+                        Dmod_Print_Hex64( BufPtr, &Pos, Size, (uint64_t)Value, true, Width, LeftAlign, ZeroPad, &Count );
                         #else
-                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)Value, true, Width, LeftAlign, &Count );
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)Value, true, Width, LeftAlign, ZeroPad, &Count );
                         #endif
                     }
                     else if( LenMod == LEN_HH )
                     {
                         unsigned int Value = va_arg( Args, unsigned int );
-                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)(unsigned char)Value, true, Width, LeftAlign, &Count );
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)(unsigned char)Value, true, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else if( LenMod == LEN_H )
                     {
                         unsigned int Value = va_arg( Args, unsigned int );
-                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)(unsigned short)Value, true, Width, LeftAlign, &Count );
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, (uint32_t)(unsigned short)Value, true, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else
                     {
                         uint32_t Value = va_arg( Args, uint32_t );
-                        Dmod_Print_Hex( BufPtr, &Pos, Size, Value, true, Width, LeftAlign, &Count );
+                        Dmod_Print_Hex( BufPtr, &Pos, Size, Value, true, Width, LeftAlign, ZeroPad, &Count );
                     }
                     break;
                 }
@@ -862,31 +896,31 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                     if( LenMod == LEN_LL )
                     {
                         uint64_t Value = va_arg( Args, uint64_t );
-                        Dmod_Print_Octal64( BufPtr, &Pos, Size, Value, Width, LeftAlign, &Count );
+                        Dmod_Print_Octal64( BufPtr, &Pos, Size, Value, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else if( LenMod == LEN_L || LenMod == LEN_Z )
                     {
                         unsigned long Value = va_arg( Args, unsigned long );
                         #if ULONG_MAX == UINT64_MAX
-                        Dmod_Print_Octal64( BufPtr, &Pos, Size, (uint64_t)Value, Width, LeftAlign, &Count );
+                        Dmod_Print_Octal64( BufPtr, &Pos, Size, (uint64_t)Value, Width, LeftAlign, ZeroPad, &Count );
                         #else
-                        Dmod_Print_Octal( BufPtr, &Pos, Size, (uint32_t)Value, Width, LeftAlign, &Count );
+                        Dmod_Print_Octal( BufPtr, &Pos, Size, (uint32_t)Value, Width, LeftAlign, ZeroPad, &Count );
                         #endif
                     }
                     else if( LenMod == LEN_HH )
                     {
                         unsigned int Value = va_arg( Args, unsigned int );
-                        Dmod_Print_Octal( BufPtr, &Pos, Size, (uint32_t)(unsigned char)Value, Width, LeftAlign, &Count );
+                        Dmod_Print_Octal( BufPtr, &Pos, Size, (uint32_t)(unsigned char)Value, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else if( LenMod == LEN_H )
                     {
                         unsigned int Value = va_arg( Args, unsigned int );
-                        Dmod_Print_Octal( BufPtr, &Pos, Size, (uint32_t)(unsigned short)Value, Width, LeftAlign, &Count );
+                        Dmod_Print_Octal( BufPtr, &Pos, Size, (uint32_t)(unsigned short)Value, Width, LeftAlign, ZeroPad, &Count );
                     }
                     else
                     {
                         uint32_t Value = va_arg( Args, uint32_t );
-                        Dmod_Print_Octal( BufPtr, &Pos, Size, Value, Width, LeftAlign, &Count );
+                        Dmod_Print_Octal( BufPtr, &Pos, Size, Value, Width, LeftAlign, ZeroPad, &Count );
                     }
                     break;
                 }
@@ -896,11 +930,12 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
                     Dmod_Print_Pointer( BufPtr, &Pos, Size, Ptr, Width, LeftAlign, &Count );
                     break;
                 }
-                
+
                 default:
                     // Unknown format specifier, just print it
                     Dmod_Print_Char( BufPtr, &Pos, Size, '%', &Count );
                     if( LeftAlign ) Dmod_Print_Char( BufPtr, &Pos, Size, '-', &Count );
+                    if( ZeroPad ) Dmod_Print_Char( BufPtr, &Pos, Size, '0', &Count );
                     // Print width digits if any
                     if( Width > 0 )
                     {
@@ -950,13 +985,13 @@ int Dmod_VSnPrintf_Impl( char* Buffer, size_t Size, const char* Format, va_list 
             Dmod_Print_Char( BufPtr, &Pos, Size, *Format++, &Count );
         }
     }
-    
+
     // Null-terminate if buffer is provided
     if( Buffer && Size > 0 )
     {
         Buffer[Pos] = '\0';
     }
-    
+
     return Count;
 }
 

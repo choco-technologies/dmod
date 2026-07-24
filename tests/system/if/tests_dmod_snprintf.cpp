@@ -705,4 +705,109 @@ TEST_F(DmodSnPrintfTest, SnPrintfFloatNanAndInf)
     ASSERT_STREQ(buffer, "-inf");
 }
 
+/**
+ * @brief Test for Dmod_SnPrintf with %02x - the exact MAC-address-byte
+ *        pattern that motivated adding zero-pad support in the first place.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfZeroPadHexByte)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%02x:%02x:%02x:%02x:%02x:%02x", 2, 0, 0, 0, 0, 1);
+
+    ASSERT_GT(result, 0);
+    ASSERT_STREQ(buffer, "02:00:00:00:00:01");
+}
+
+/**
+ * @brief Test that a plain (non-zero) width still space-pads, i.e. the '0'
+ *        in "%02x" isn't just being silently absorbed as a width digit
+ *        with no effect on the pad character.
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfSpacePadHexByteUnaffected)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%2x", 1);
+
+    ASSERT_EQ(result, 2);
+    ASSERT_STREQ(buffer, " 1");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with %0Nd (zero-padded signed decimal)
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfZeroPadInt)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%05d", 42);
+
+    ASSERT_EQ(result, 5);
+    ASSERT_STREQ(buffer, "00042");
+}
+
+/**
+ * @brief Test that zero-padding a negative number keeps the sign leftmost
+ *        (e.g. "-005", not "00-5")
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfZeroPadNegativeIntKeepsSignLeftmost)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%04d", -5);
+
+    ASSERT_EQ(result, 4);
+    ASSERT_STREQ(buffer, "-005");
+}
+
+/**
+ * @brief Test that '-' (left-align) overrides '0' (zero-pad) regardless of
+ *        which flag appears first, matching standard printf
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfLeftAlignOverridesZeroPad)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%-05d", 42);
+
+    ASSERT_EQ(result, 5);
+    ASSERT_STREQ(buffer, "42   ");
+
+    Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%0-5d", 42);
+    ASSERT_STREQ(buffer, "42   ");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with zero-padded %llx (64-bit hex)
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfZeroPadLongLongHex)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%010llx", (unsigned long long)0xABCULL);
+
+    ASSERT_EQ(result, 10);
+    ASSERT_STREQ(buffer, "0000000abc");
+}
+
+/**
+ * @brief Test that the zero flag has no effect on %s (space-padded either way)
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfZeroFlagIgnoredForString)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%05s", "ab");
+
+    ASSERT_EQ(result, 5);
+    ASSERT_STREQ(buffer, "   ab");
+}
+
+/**
+ * @brief Test for Dmod_SnPrintf with zero-padded %f (width includes the
+ *        decimal point and fractional digits)
+ */
+TEST_F(DmodSnPrintfTest, SnPrintfZeroPadFloat)
+{
+    char buffer[64];
+    int result = Dmod_SnPrintf_Impl(buffer, sizeof(buffer), "%08.2f", 3.14);
+
+    ASSERT_EQ(result, 8);
+    ASSERT_STREQ(buffer, "00003.14");
+}
+
 
