@@ -463,6 +463,21 @@ if safe_copy "${TEMPLATE_SRC}/README.md.template" "${MODULE_PATH}/README.md"; th
 fi
 
 if [[ "${README_GENERATED}" == "true" ]]; then
+    # CI badge - only meaningful once .github/workflows/ci.yml actually exists
+    # (added below when --github is passed). All module repos live under the
+    # choco-technologies GitHub org (see manifest.dmm.template's download
+    # URLs), so the badge URL can be built from @MODULE_NAME@ alone.
+    if [[ "${GENERATE_GITHUB}" == "true" ]]; then
+        CI_BADGE_BLOCK_FILE="$(mktemp)"
+        cat > "${CI_BADGE_BLOCK_FILE}" << 'EOF'
+[![CI](https://github.com/choco-technologies/@MODULE_NAME@/actions/workflows/ci.yml/badge.svg)](https://github.com/choco-technologies/@MODULE_NAME@/actions/workflows/ci.yml)
+EOF
+        insert_block "@CI_BADGE_BLOCK@" "${CI_BADGE_BLOCK_FILE}" "${MODULE_PATH}/README.md"
+        rm -f "${CI_BADGE_BLOCK_FILE}"
+    else
+        remove_placeholder "@CI_BADGE_BLOCK@" "${MODULE_PATH}/README.md"
+    fi
+
     if [[ "${ADD_PORT}" == "true" ]]; then
         README_PORT_BLOCK_FILE="$(mktemp)"
         cat > "${README_PORT_BLOCK_FILE}" << 'EOF'

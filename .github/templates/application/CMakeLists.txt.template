@@ -69,4 +69,5 @@ dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
 #       other_module@1.0
 #   )
 
+enable_testing()
 add_subdirectory(tests)

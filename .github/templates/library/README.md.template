@@ -1,6 +1,7 @@
 # @MODULE_NAME@
 
 [![License](https://img.shields.io/badge/license-@LICENSE@-blue.svg)](LICENSE)
+@CI_BADGE_BLOCK@
 
 @MODULE_NAME@ DMOD library module.
 
@@ -28,13 +29,46 @@ instead of fetching `develop` from GitHub.
 make DMOD_MODE=DMOD_MODULE DMOD_DIR=/path/to/dmod
 ```
 
+## Testing
+
+Tests are built automatically alongside the module (see `tests/`). Once built,
+run them with `ctest`:
+
+```bash
+cd build
+ctest --output-on-failure
+```
+
+`ctest` installs the test module's dependencies with `dmf-get` and then runs
+it through `dmod_loader`. To run it manually instead:
+
+```bash
+export DMOD_DMF_DIR=$(pwd)/build/dmf
+dmf-get install -d ${DMOD_DMF_DIR}/test_@MODULE_NAME@-local.dmd -y
+dmod_loader build/dmf/test_@MODULE_NAME@.dmf
+```
+
 ## Usage
+
+<TBD>
 
 This library module provides functions that can be used by other modules:
 
 ```c
 #include "@MODULE_NAME@.h"
 ```
+
+## API
+
+| Function | Description |
+|----------|-------------|
+| `@MODULE_NAME@_create()` | Create a new `@MODULE_NAME@_t` instance. |
+| `@MODULE_NAME@_destroy()` | Destroy an instance created by `_create()`. |
+| `@MODULE_NAME@_is_valid()` | Check whether a handle is a valid instance. |
+
+See [include/@MODULE_NAME@.h](include/@MODULE_NAME@.h) for the full
+declarations and [docs/api-reference.md](docs/api-reference.md) for the
+complete reference.
 
 ## Documentation
 

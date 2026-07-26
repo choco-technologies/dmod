@@ -78,4 +78,5 @@ target_include_directories(${DMOD_MODULE_NAME}_if INTERFACE
 #       other_module@1.0
 #   )
 @PORT_LINK_BLOCK@
+enable_testing()
 add_subdirectory(tests)
