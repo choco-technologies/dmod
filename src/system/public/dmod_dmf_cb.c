@@ -252,7 +252,7 @@ int Dmod_RunTests( Dmod_Context_t* Context, int argc, char* argv[] )
     int total_steps  = 0;
     int failed_steps = 0;
 
-    Dmod_Printf( "=== DMOD Test Runner ===\n" );
+    Dmod_Printf( "\033[35;1m=== DMOD Test Runner ===\033[0m\n" );
 
     for( size_t i = 0; i < numberOfEntries; i++ )
     {
@@ -285,7 +285,7 @@ int Dmod_RunTests( Dmod_Context_t* Context, int argc, char* argv[] )
             if( !found ) { continue; }
         }
 
-        Dmod_Printf( "[ RUN  ] %s\n", name );
+        Dmod_Printf( "\033[37;1m[ \033[34;1mRUN  \033[37;1m] \033[35;1m%s\033[0m\n", name );
 
         if( pStepFailed != NULL )  { *pStepFailed = 0; }
 
@@ -299,12 +299,12 @@ int Dmod_RunTests( Dmod_Context_t* Context, int argc, char* argv[] )
         int step_failed = ( pStepFailed != NULL ) ? *pStepFailed : 0;
         if( step_failed )
         {
-            Dmod_Printf( "[FAILED] %s\n", name );
+            Dmod_Printf( "\033[37;1m[\033[31;1m FAIL \033[37;1m] \033[0m\033[31;1;5m%s\033[0m\n", name );
             failed_steps++;
         }
         else
         {
-            Dmod_Printf( "[  OK  ] %s\n", name );
+            Dmod_Printf( "\033[37;1m[\033[32;1m  OK  \033[37;1m] \033[0m\033[37m%s\033[0m\n", name );
         }
     }
 
