@@ -20,18 +20,22 @@ jobs:
 
       - name: Fetch dmod to discover architectures
         run: |
-          mkdir -p build_discovery
-          cd build_discovery
-          cmake .. -DDMOD_MODE=DMOD_MODULE
+          # A plain `git clone` here (rather than configuring @MODULE_NAME@'s
+          # own CMakeLists.txt via FetchContent, as before) so this step only
+          # ever depends on dmod itself - not on @MODULE_NAME@'s
+          # dmod_link_modules() fetches of other modules, which this step has
+          # no business needing just to list dmod's supported architectures,
+          # and which previously made this discovery job (and therefore the
+          # whole release) fail outright whenever any of those unrelated
+          # external fetches hiccuped.
+          git clone --depth 1 https://github.com/choco-technologies/dmod.git dmod_discovery
 
       - name: List available architectures
         id: list-archs
         run: |
-          DMOD_SRC_DIR=$(find build_discovery -path "*/_deps/dmod-src" -type d | head -1)
-
           # create JSON array
-          ARCHS=$(find ${DMOD_SRC_DIR}/configs/arch -name "tools-cfg.cmake" | \
-            sed "s|${DMOD_SRC_DIR}/configs/arch/||g" | \
+          ARCHS=$(find dmod_discovery/configs/arch -name "tools-cfg.cmake" | \
+            sed "s|dmod_discovery/configs/arch/||g" | \
             sed 's|/tools-cfg.cmake||g' | \
             jq -R -s -c 'split("\n") | map(select(length > 0))')
 
