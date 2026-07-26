@@ -38,4 +38,5 @@ jobs:
       - name: Run tests with dmod_loader
         run: |
           export DMOD_DMF_DIR=$(pwd)/build/dmf
+          dmf-get install -d ${DMOD_DMF_DIR}/test_@MODULE_NAME@-local.dmd -y
           dmod_loader build/dmf/test_@MODULE_NAME@.dmf
