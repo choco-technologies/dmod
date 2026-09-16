@@ -391,6 +391,27 @@ DMOD_BUILTIN_API( Dmod, 1.0, const char* ,_GetStepBar,  ( int Percent ) );
 DMOD_BUILTIN_API( Dmod, 1.0, void, _EnterCritical   , ( void ) );
 DMOD_BUILTIN_API( Dmod, 1.0, void, _ExitCritical    , ( void ) );
 
+/**
+ * @brief Check whether the caller is running in interrupt/exception context
+ *
+ * Used by the stdio path to keep Dmod_Printf/DMOD_LOG_* callable from an ISR:
+ * when this returns true, Dmod_LockStdio() skips stream resolution and routes
+ * the write straight to Dmod_WriteKernel() (the raw kernel log ring), and
+ * Dmod_VFPrintf() stays on its stack buffer instead of calling Dmod_Malloc().
+ * Both of those would otherwise take RTOS locks that are illegal from an ISR.
+ *
+ * The default weak implementation returns false, which preserves the previous
+ * behaviour on platforms that do not (or cannot) report interrupt context -
+ * they simply keep resolving streams exactly as before. Platform backends
+ * override it (e.g. dmosi-freertos maps it onto xPortIsInsideInterrupt()).
+ *
+ * Implementations must not log and must not take any lock - this is called
+ * from inside the logging path itself, so anything else recurses.
+ *
+ * @return true if the caller is inside an interrupt/exception handler
+ */
+DMOD_BUILTIN_API( Dmod, 1.0, bool, _IsInsideInterrupt, ( void ) );
+
 //! @}
 
 /**

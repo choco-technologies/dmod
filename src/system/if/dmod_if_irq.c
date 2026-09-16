@@ -43,3 +43,18 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _EnterCritical, ( void ))
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _ExitCritical, ( void ))
 {
 }
+
+/**
+ * @brief Check whether the caller is running in interrupt/exception context
+ *
+ * Default: "never in an interrupt". Platforms that can report the context
+ * override this (see dmosi-freertos), which is what makes Dmod_Printf and
+ * DMOD_LOG_* safe to call from an ISR - see the declaration in dmod_sal.h
+ * for what changes when it returns true.
+ *
+ * @return false
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _IsInsideInterrupt, ( void ))
+{
+    return false;
+}

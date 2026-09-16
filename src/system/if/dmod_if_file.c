@@ -136,6 +136,16 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _VFPrintf, ( void* File, const c
         Dmod_VSnPrintf_Impl( Buffer, Size, Format, Args );
         return (int)Dmod_FileWrite( Buffer, 1, (size_t)Len, File );
     }
+    else if( Dmod_IsInsideInterrupt() )
+    {
+        // Too long for the stack buffer, but Dmod_Malloc() is off limits here: the heap
+        // takes a lock, which from an ISR trips the RTOS (see Dmod_IsInsideInterrupt).
+        // Truncate to what fits instead - a clipped log line from an ISR is a far better
+        // outcome than halting the system to print it in full.
+        char Buffer[DMOD_VFPRINTF_STACK_BUFFER_SIZE];
+        Dmod_VSnPrintf_Impl( Buffer, sizeof(Buffer), Format, Args );
+        return (int)Dmod_FileWrite( Buffer, 1, sizeof(Buffer) - 1, File );
+    }
     else
     {
         char* Buffer = (char*)Dmod_Malloc( Size );
