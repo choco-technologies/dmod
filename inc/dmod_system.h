@@ -121,6 +121,7 @@ extern int              Dmod_RunModuleTests     ( const char* ModuleName, int ar
 
 // DMF Getters
 extern uint64_t         Dmod_GetStackSize       ( Dmod_Context_t* Context );
+extern uint32_t         Dmod_GetPriority        ( Dmod_Context_t* Context );
 extern Dmod_ModuleType_t Dmod_GetModuleType     ( Dmod_Context_t* Context );
 extern Dmod_License_t*  Dmod_GetLicense         ( Dmod_Context_t* Context );
 extern bool             Dmod_GetFileArchitecture ( const char* FilePath, char* outArch, size_t MaxLength );

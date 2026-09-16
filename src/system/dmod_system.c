@@ -1030,6 +1030,24 @@ uint64_t Dmod_GetStackSize( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief Get the module's own configured priority (DMOD_PRIORITY at build time)
+ *
+ * @param Context Context to get the priority from
+ *
+ * @return Priority as set in the module's header, 0 if Context is invalid
+ */
+uint32_t Dmod_GetPriority( Dmod_Context_t* Context )
+{
+    if( !Dmod_Context_IsValid( Context ) )
+    {
+        DMOD_LOG_ERROR("Cannot get priority - invalid context\n");
+        return 0;
+    }
+
+    return Context->Header->Priority;
+}
+
+/**
  * @brief Get module type
  * 
  * @param Context Context to get module type from
