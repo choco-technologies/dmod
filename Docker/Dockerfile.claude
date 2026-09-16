@@ -1,0 +1,17 @@
+FROM chocotechnologies/dmod:latest
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Node.js is required to run the Claude Code CLI - the base image only
+# ships the C/embedded toolchain, so we pull in a current LTS release
+# from NodeSource instead of Ubuntu 20.04's outdated apt package.
+ENV NODE_MAJOR=20
+RUN apt-get update && apt-get install -y ca-certificates curl gnupg && \
+    curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - && \
+    apt-get install -y nodejs ripgrep && \
+    rm -rf /var/lib/apt/lists/*
+
+# Installs the Claude Code CLI
+RUN npm install -g @anthropic-ai/claude-code
+
+WORKDIR /

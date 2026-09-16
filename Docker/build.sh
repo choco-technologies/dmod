@@ -11,6 +11,7 @@ THIS_DIR="$( cd "$( dirname "$THIS_SCRIPT_PATH" )" >/dev/null && pwd )"
 ROOT_DIR="$THIS_DIR/.."
 DOCKERFILE_PATH="$THIS_DIR/Dockerfile"
 DOCKERFILE_ENV_PATH="$THIS_DIR/Dockerfile.env"
+DOCKERFILE_CLAUDE_PATH="$THIS_DIR/Dockerfile.claude"
 
 #
 #   Path to the configuration file
@@ -76,8 +77,10 @@ function prepareScript()
     addCommandLineOptionalArgument 'IMAGE_VERSION' '--image-version' not_empty_string 'Version of the image to build' 'latest' ''
     addCommandLineOptionalArgument 'ENV_IMAGE_NAME' '--env-image-name' not_empty_string 'Name of the environment image to build' 'chocotechnologies/dmod-env' ''
     addCommandLineOptionalArgument 'ENV_IMAGE_VERSION' '--env-image-version' not_empty_string 'Version of the environment image to build' 'latest' ''
+    addCommandLineOptionalArgument 'CLAUDE_IMAGE_NAME' '--claude-image-name' not_empty_string 'Name of the claude image to build' 'chocotechnologies/dmod-claude' ''
+    addCommandLineOptionalArgument 'CLAUDE_IMAGE_VERSION' '--claude-image-version' not_empty_string 'Version of the claude image to build' 'latest' ''
 
-    
+
     disableConfigurationPrinting
     parseCommandLineArguments "$@"
 }
@@ -104,10 +107,22 @@ function build()
     cd "$old_pwd"
 }
 
+#
+#   Builds the claude image
+#
+function buildClaude()
+{
+    local old_pwd=$(pwd)
+    cd "$THIS_DIR/.."
+    doCommandAsStepWithSpinner "Building the claude image $CLAUDE_IMAGE_NAME:$CLAUDE_IMAGE_VERSION" docker build --squash -t "$CLAUDE_IMAGE_NAME:$CLAUDE_IMAGE_VERSION" -f "$DOCKERFILE_CLAUDE_PATH" "$ROOT_DIR"
+    cd "$old_pwd"
+}
+
 #######################################################################################
 #
 #   MAIN
 #
 prepareScript "$@"
 buildEnv
-build 
+build
+buildClaude
