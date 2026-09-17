@@ -387,12 +387,17 @@ static Dmod_Context_t* Dmod_LoadBuffer( const void* Data, size_t Size, const cha
         Dmod_Unload( context, true );
         return NULL;
     }
+    const char* moduleName = Dmod_Context_GetModuleName( context );
+    if(Dmod_GetModuleType( context ) == Dmod_ModuleType_Library)
+    {
+        Dmod_Context_ChangeAllocatorName(context, moduleName);
+    }
     Dmod_PrintAllApis( context );
-    Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(context), 100 );
+    Dmod_Event_ModuleLoadingInProgress( moduleName, 100 );
 
     Dmod_ApplyEnvLogLevel( context );
-    DMOD_LOG_INFO("Module loaded: %s Size: %llu\n", Dmod_Context_GetModuleName( context ), (uint64_t)Dmod_Context_GetSize( context ));
-    DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", Dmod_Context_GetModuleName( context ), DMOD_GET_TEXT_SECTION_ADDR(context));
+    DMOD_LOG_INFO("Module loaded: %s Size: %llu\n", moduleName, (uint64_t)Dmod_Context_GetSize( context ));
+    DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", moduleName, DMOD_GET_TEXT_SECTION_ADDR(context));
     Dmod_Event_ModuleLoaded( context );
 
     return context;
@@ -552,12 +557,17 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
         Dmod_Unload( context, true );
         return NULL;
     }
+    const char* moduleName = Dmod_Context_GetModuleName( context );
+    if(Dmod_GetModuleType( context ) == Dmod_ModuleType_Library)
+    {
+        Dmod_Context_ChangeAllocatorName(context, moduleName);
+    }
     Dmod_PrintAllApis( context );
     Dmod_Event_ModuleLoadingInProgress( slot->FilePath, 100 );
 
     Dmod_ApplyEnvLogLevel( context );
-    DMOD_LOG_INFO("Module loaded: %s Size: %lluB\n", Dmod_Context_GetModuleName( context ), (uint64_t)Dmod_Context_GetSize( context ));
-    DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", Dmod_Context_GetModuleName( context ), DMOD_GET_TEXT_SECTION_ADDR(context));
+    DMOD_LOG_INFO("Module loaded: %s Size: %lluB\n", moduleName, (uint64_t)Dmod_Context_GetSize( context ));
+    DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", moduleName, DMOD_GET_TEXT_SECTION_ADDR(context));
 
     return context;
 }
