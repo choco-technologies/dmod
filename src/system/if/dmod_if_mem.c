@@ -246,3 +246,18 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _RetagEx, ( void* Ptr, const ch
     (void)ModuleName;
     return false;
 }
+
+/**
+ * @brief Changes all allocations of the given tag to the new one 
+ * 
+ * This implementation is used to change tag of the allocators of the given name
+ * 
+ * @param OldTag        Old allocator name
+ * @param NewTag        New allocator name
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, bool, _RenameTag, ( const char* OldTag, const char* NewTag ))
+{
+    (void)OldTag;
+    (void)NewTag;
+    return false;
+}

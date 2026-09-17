@@ -317,11 +317,16 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
         Dmod_Unload( context, true );
         return NULL;
     }
+    const char* moduleName = Dmod_Context_GetModuleName( context );
+    if(Dmod_GetModuleType( context ) == Dmod_ModuleType_Library)
+    {
+        Dmod_Context_ChangeAllocatorName(context, moduleName);
+    }
     Dmod_PrintAllApis( context );
     Dmod_Event_ModuleLoadingInProgress( Path, 100 );
 
     Dmod_ApplyEnvLogLevel( context );
-    DMOD_LOG_INFO("Module loaded: %s Size: %llu B\n", Dmod_Context_GetModuleName( context ), (uint64_t)Dmod_Context_GetSize( context ));
+    DMOD_LOG_INFO("Module loaded: %s Size: %llu B\n", moduleName, (uint64_t)Dmod_Context_GetSize( context ));
     DMOD_LOG_INFO("To debug module '%s' in gdb: add-symbol-file <MODULE_ELF_FILE> %p\n", Dmod_Context_GetModuleName( context ), DMOD_GET_TEXT_SECTION_ADDR(context));
 
     return context;

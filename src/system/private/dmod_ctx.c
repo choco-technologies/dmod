@@ -215,6 +215,16 @@ size_t Dmod_Context_GetSize( Dmod_Context_t* Context )
 }
 
 /**
+ * @brief changes name of the allocator and retags the heap data
+ */
+bool Dmod_Context_ChangeAllocatorName( Dmod_Context_t* Context , const char* NewName )
+{
+    bool result = Dmod_RenameTag(Context->AllocatorName, NewName);
+    strncpy(Context->AllocatorName, NewName, sizeof(Context->AllocatorName));
+    return result;
+}
+
+/**
  * @brief Add context
  * 
  * @param Context Context to add
