@@ -67,16 +67,18 @@ extern "C" {
  * @{
  */
 #if defined(DMOD_MODULE_NAME)
-#   if defined(DMOD_MODULE_TYPE) && DMOD_MODULE_TYPE == Dmod_ModuleType_Library
+#   if defined(DMOD_LIBRARY_MODULE) && DMOD_LIBRARY_MODULE == 1
 #       define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, DMOD_MODULE_NAME)
 #       define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, DMOD_MODULE_NAME)
 #       define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, DMOD_MODULE_NAME)
 #       define Dmod_Free(Ptr)                           Dmod_FreeEx(Ptr, false)
-#   else 
+#   elif defined(DMOD_APPLICATION_MODULE) && DMOD_APPLICATION_MODULE == 1
 #       define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, Dmod_GetCurrentAllocatorName())
 #       define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, Dmod_GetCurrentAllocatorName())
 #       define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, Dmod_GetCurrentAllocatorName(DMOD_MODULE_NAME))
 #       define Dmod_Free(Ptr)                           Dmod_FreeEx(Ptr, false)
+#   else 
+#       error DMOD_LIBRARY_MODULE neither DMOD_APPLICATION_MODULE is defined
 #   endif
 #else 
     DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Malloc ,           ( size_t Size )                     );

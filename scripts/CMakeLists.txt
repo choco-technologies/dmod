@@ -170,6 +170,15 @@ function(dmod_create_module moduleName version moduleType)
     endif()
     set(DMOD_MODULE_TYPE ${moduleType})
 
+    set(DMOD_LIBRARY_MODULE 0)
+    set(DMOD_APPLICATION_MODULE 0)
+
+    if(moduleType STREQUAL "Library")
+        set(DMOD_LIBRARY_MODULE 1)
+    elseif(moduleType STREQUAL "Application")
+        set(DMOD_APPLICATION_MODULE 1)
+    endif()
+
     # check if todmfc tool is available
     find_program(TODMFC 
             todmfc
@@ -239,6 +248,8 @@ function(dmod_create_module moduleName version moduleType)
             DMOD_MODULE_NAME="${moduleName}"
             DMOD_MODULE_VERSION="${version}"
             DMOD_MODULE=1
+            DMOD_LIBRARY_MODULE=${DMOD_LIBRARY_MODULE}
+            DMOD_APPLICATION_MODULE=${DMOD_APPLICATION_MODULE}
             DMOD_SYSTEM=0
         )
 
