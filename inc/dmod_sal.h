@@ -443,6 +443,32 @@ DMOD_BUILTIN_API(Dmod, 1.0, void*, _Semaphore_New, ( uint32_t InitialValue, uint
 DMOD_BUILTIN_API(Dmod, 1.0, int  , _Semaphore_Wait, ( void* Semaphore, uint32_t Count ) );
 DMOD_BUILTIN_API(Dmod, 1.0, int  , _Semaphore_Post, ( void* Semaphore, uint32_t Count ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void , _Semaphore_Delete, ( void* Semaphore ) );
+
+/**
+ * @brief Suspend the calling thread for at least @p Milliseconds
+ *
+ * The primitive every polling loop in the system is expected to wait on -
+ * notably Dmod_ReadKernel(), which has no interrupt to block on (the host
+ * writes straight into the dmlog ring buffer over the debug probe) and so has
+ * to re-check for input periodically.
+ *
+ * Must actually take the caller off the scheduler's ready list for the
+ * requested time, not merely yield. A yield only hands the CPU to threads of
+ * *equal* priority, so a poll loop in a higher-priority thread would still
+ * starve every lower-priority one - which is precisely how a shell polling for
+ * console input can stall the service manager running underneath it.
+ *
+ * Passing 0 is a plain yield: give up the rest of the current timeslice
+ * without blocking.
+ *
+ * The default weak implementation busy-waits, which keeps bare-metal builds
+ * (no scheduler to yield to) behaving exactly as before. Platform backends
+ * override it - dmosi maps it onto dmosi_thread_sleep().
+ *
+ * @param Milliseconds Minimum time to sleep, in milliseconds; 0 yields.
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, void , _ThreadSleep, ( uint32_t Milliseconds ) );
+
 DMOD_BUILTIN_API(Dmod, 1.0, size_t, _GetLeftStackSize, ( void ) );
 
 //! @}

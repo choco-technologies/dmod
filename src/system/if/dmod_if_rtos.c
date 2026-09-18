@@ -32,6 +32,7 @@
 #   define __USE_UNIX98
 #   include <pthread.h>
 #   include <semaphore.h>
+#   include <time.h>
 #   ifdef __linux__
 /* Forward declarations for Linux-specific thread attribute functions */
 extern int pthread_getattr_np(pthread_t th, pthread_attr_t *attr);
@@ -363,6 +364,47 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Semaphore_Delete, ( void* Sema
         DMOD_LOG_WARN("Dmod_Semaphore_Delete interface not implemented\n");
     }
     #endif
+}
+
+/**
+ * @brief Suspend the calling thread for at least @p Milliseconds
+ *
+ * Default (weak) implementation, used whenever no platform backend overrides
+ * it. With pthreads it is a real sleep; without them there is no scheduler to
+ * hand the CPU over to, so it degrades to a calibration-free busy-wait - the
+ * same thing polling loops did before this primitive existed, kept so a
+ * bare-metal build behaves exactly as it used to.
+ *
+ * An RTOS backend is expected to override this with a call that actually
+ * blocks (dmosi maps it onto dmosi_thread_sleep()); see the declaration in
+ * dmod_sal.h for why a mere yield is not sufficient.
+ *
+ * @param Milliseconds Minimum time to sleep, in milliseconds; 0 yields.
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _ThreadSleep, ( uint32_t Milliseconds ))
+{
+#if DMOD_USE_PTHREAD
+    struct timespec Request;
+    Request.tv_sec  = (time_t)( Milliseconds / 1000u );
+    Request.tv_nsec = (long)( ( Milliseconds % 1000u ) * 1000000u );
+
+    /* Restart on EINTR: the caller asked for a minimum delay, and returning
+     * early on a signal would put it straight back into its poll loop. */
+    while( nanosleep( &Request, &Request ) != 0 && errno == EINTR )
+    {
+        /* retry with the remaining time nanosleep() wrote back */
+    }
+#else
+    /* No scheduler to yield to - spin. Deliberately not calibrated against the
+     * core clock: this branch exists to preserve the previous behaviour of the
+     * callers, not to provide an accurate delay. */
+    for( uint32_t Tick = 0; Tick < Milliseconds; Tick++ )
+    {
+        for( volatile uint32_t Spin = 0; Spin < 1000u; Spin++ )
+        {
+        }
+    }
+#endif
 }
 
 /**
