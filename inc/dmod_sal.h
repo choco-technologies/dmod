@@ -80,7 +80,6 @@ extern "C" {
 #   define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, DMOD_CURRENT_ALLOCATOR)
 #   define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, DMOD_CURRENT_ALLOCATOR)
 #   define Dmod_Free(Ptr)                           Dmod_FreeEx(Ptr, false)
-#   endif
 #else 
     DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Malloc ,           ( size_t Size )                     );
     DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Realloc,           ( void* Ptr, size_t Size )          );
