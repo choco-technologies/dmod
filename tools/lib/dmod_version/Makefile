@@ -25,7 +25,7 @@ DMOD_LIBS = dmod_inc\
 		dmod_common\
 		dmod_system
 DMOD_GEN_HEADERS_IN = 
-DMOD_DEFINITIONS = 
+DMOD_DEFINITIONS = DMOD_CURRENT_ALLOCATOR="dmod_version"
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths

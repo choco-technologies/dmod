@@ -3,6 +3,28 @@ if(NOT DEFINED DMOD_SCRIPTS_DIR)
 endif()
 
 #
+#   Tags every allocation a system-side target makes (Dmod_Malloc/Dmod_Free/...)
+#   with its own identity, the same way DMOD_MODULE_NAME does for modules.
+#
+#   Usage:
+#       dmod_set_current_allocator(targetName [allocatorName])
+#
+#   Defaults allocatorName to targetName itself, so calling this once per
+#   target is enough to satisfy dmod_sal.h's requirement that DMOD_CURRENT_ALLOCATOR
+#   be defined manually on the system side - no per-repo -D flag needed as long
+#   as the target goes through this function (directly, or via
+#   create_library_makefile()/dmod_add_tool(), which already call it).
+#
+function( dmod_set_current_allocator targetName )
+    if(ARGC GREATER 1)
+        set(ALLOCATOR_NAME ${ARGV1})
+    else()
+        set(ALLOCATOR_NAME ${targetName})
+    endif()
+    target_compile_definitions(${targetName} PRIVATE DMOD_CURRENT_ALLOCATOR="${ALLOCATOR_NAME}")
+endfunction()
+
+#
 #   Creates makefile for the given library.
 #
 function( create_library_makefile targetName )
@@ -10,7 +32,12 @@ function( create_library_makefile targetName )
     if(NOT DEFINED DMOD_DIR)
         message(FATAL_ERROR "DMOD_DIR is not defined. Please set DMOD_DIR variable before calling create_library_makefile function.")
     endif()
-    
+
+    # Every system-side library needs its own allocator identity (see dmod_sal.h) -
+    # set it here, before COMPILE_DEFINITIONS is read below, so it also ends up in
+    # the generated Makefile for non-CMake builds.
+    dmod_set_current_allocator(${targetName})
+
     # Configure the Makefile
     if(DMOD_MODE STREQUAL "DMOD_SYSTEM")
         set(DMOD_SYSTEM ON)
@@ -933,6 +960,8 @@ function(dmod_add_tool toolName)
     set(SOURCES ${ARGN})
 
     add_executable(${toolName} ${SOURCES})
+
+    dmod_set_current_allocator(${toolName})
 
     target_include_directories(${toolName} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 

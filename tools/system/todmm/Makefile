@@ -16,7 +16,7 @@ PROJECT_NAME    = todmm
 DMOD_SOURCES	= main.c
 DMOD_INC_DIRS 	= 
 DMOD_LIBS 	  	= 
-DEFINITIONS 	= 
+DEFINITIONS 	= DMOD_CURRENT_ALLOCATOR="todmm"
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths

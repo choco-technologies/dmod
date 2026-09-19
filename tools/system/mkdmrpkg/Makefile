@@ -16,7 +16,7 @@ PROJECT_NAME    = mkdmrpkg
 DMOD_SOURCES	= main.c
 DMOD_INC_DIRS 	= $(DMOD_DIR)/tools/lib/dmod_resource
 DMOD_LIBS 	  	= dmod_resource
-DEFINITIONS 	= 
+DEFINITIONS 	= DMOD_CURRENT_ALLOCATOR="mkdmrpkg"
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths

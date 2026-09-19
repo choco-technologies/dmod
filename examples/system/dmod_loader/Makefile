@@ -28,7 +28,7 @@ DMOD_INC_DIRS 	= $(DMOD_INC_DIR) \
 DMOD_LIBS 	  	= dmod_system\
 				  dmod_common\
 				  pthread
-DEFINITIONS 	= 
+DEFINITIONS 	= DMOD_CURRENT_ALLOCATOR="dmod_loader"
 
 ifeq ($(DMOD_USE_FASTLZ),ON)
 	DMOD_LIBS += dmod_fastlz
@@ -44,7 +44,7 @@ DMOD_OBJECTS = $(addprefix $(OUTPUT_DIR)/, $(DMOD_SOURCES:.c=.o))
 # -----------------------------------------------------------------------------
 CFLAGS_INC  = $(addprefix -I,$(DMOD_INC_DIRS))
 CFLAGS_LIB 	= $(addprefix -l,$(DMOD_LIBS)) -L $(DMOD_LIBS_DIR)
-CFLAGS_DEF  = $(addprefix -D,$(DEFINITIONS))
+CFLAGS_DEF  = $(foreach DEF,$(DEFINITIONS),-D'$(DEF)')
 CFLAGS     += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 
 # -----------------------------------------------------------------------------

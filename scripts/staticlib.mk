@@ -30,8 +30,11 @@ DMOD_GEN_HEADERS    := $(addprefix $(DMOD_BUILD_DIR)/, $(DMOD_GEN_HEADERS_IN:.in
 # -----------------------------------------------------------------------------
 CFLAGS_INC 			= $(addprefix -I,$(DMOD_INC_DIRS))
 CFLAGS_LIB 			= $(addprefix -L,$(DMOD_LIBS))
-DEFINITIONS 	   := $(foreach v,$(DMOD_DEFINITIONS),-D$(v)=$($(v)))
-CFLAGS_DEF 			= $(addprefix -D,$(DEFINITIONS))
+# Single-quoted so a definition containing embedded double quotes (e.g.
+# DMOD_CURRENT_ALLOCATOR="dmod_system") reaches the compiler intact - the
+# recipe below runs through a shell, which would otherwise strip the
+# unescaped double quotes itself.
+CFLAGS_DEF 			= $(foreach DEF,$(DMOD_DEFINITIONS),-D'$(DEF)')
 CFLAGS 			   += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 CXXFLAGS 		   += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 ifeq ($(DMOD_DEBUG),ON)

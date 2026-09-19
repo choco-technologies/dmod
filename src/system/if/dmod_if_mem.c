@@ -47,18 +47,6 @@
  * @brief Allocate memory
  * 
  * @param Size Size of memory to allocate
- * 
- * @return Pointer to allocated memory
- */
-DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _Malloc, ( size_t Size ))
-{
-    return Dmod_MallocEx(Size, NULL);
-}
-
-/**
- * @brief Allocate memory
- * 
- * @param Size Size of memory to allocate
  * @param ModuleName Name of the module requesting memory
  * 
  * @return Pointer to allocated memory
@@ -74,19 +62,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _MallocEx, ( size_t Size, cons
     DMOD_LOG_ERROR("Dmod_Malloc interface not implemented\n");
     return NULL;
 #endif
-}
-
-/**
- * @brief Reallocate memory
- * 
- * @param Ptr Pointer to memory to reallocate
- * @param Size Size of memory to allocate
- * 
- * @return Pointer to reallocated memory
- */
-DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _Realloc, ( void* Ptr, size_t Size ))
-{
-    return Dmod_ReallocEx(Ptr, Size, NULL);
 }
 
 /**
@@ -111,21 +86,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _ReallocEx, ( void* Ptr, size_
     }
     return newPtr;
 #endif
-}
-
-/**
- * @brief Allocate aligned memory
- * 
- * @param Size Size of memory to allocate
- * @param Alignment Alignment of memory
- * 
- * @return Pointer to allocated memory
- * 
- * @note Optional - set to NULL if not supported
- */
-DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _AlignedMalloc, ( size_t Size, size_t Alignment ))
-{
-    return Dmod_AlignedMallocEx(Size, Alignment, NULL);
 }
 
 /**
@@ -187,16 +147,6 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _AlignedMallocEx, ( size_t Siz
     return mem;
 }
 
-
-/**
- * @brief Free memory
- * 
- * @param ptr Pointer to memory to free
- */
-DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _Free, ( void* ptr ))
-{
-    Dmod_FreeEx(ptr, false);
-}
 
 /**
  * @brief Free memory
