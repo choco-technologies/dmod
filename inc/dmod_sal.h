@@ -68,17 +68,18 @@ extern "C" {
  */
 #if defined(DMOD_MODULE_NAME)
 #   if defined(DMOD_LIBRARY_MODULE) && DMOD_LIBRARY_MODULE == 1
-#       define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, DMOD_MODULE_NAME)
-#       define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, DMOD_MODULE_NAME)
-#       define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, DMOD_MODULE_NAME)
-#       define Dmod_Free(Ptr)                           Dmod_FreeEx(Ptr, false)
+#       define DMOD_CURRENT_ALLOCATOR                        DMOD_MODULE_NAME
 #   elif defined(DMOD_APPLICATION_MODULE) && DMOD_APPLICATION_MODULE == 1
-#       define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, Dmod_GetCurrentAllocatorName())
-#       define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, Dmod_GetCurrentAllocatorName())
-#       define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, Dmod_GetCurrentAllocatorName(DMOD_MODULE_NAME))
-#       define Dmod_Free(Ptr)                           Dmod_FreeEx(Ptr, false)
+#       define DMOD_CURRENT_ALLOCATOR                        Dmod_GetCurrentAllocatorName()
 #   else 
 #       error DMOD_LIBRARY_MODULE neither DMOD_APPLICATION_MODULE is defined
+#   endif
+#endif
+#if defined(DMOD_MODULE_NAME)
+#   define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, DMOD_CURRENT_ALLOCATOR)
+#   define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, DMOD_CURRENT_ALLOCATOR)
+#   define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, DMOD_CURRENT_ALLOCATOR)
+#   define Dmod_Free(Ptr)                           Dmod_FreeEx(Ptr, false)
 #   endif
 #else 
     DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Malloc ,           ( size_t Size )                     );
@@ -501,7 +502,29 @@ DMOD_BUILTIN_API(Dmod, 1.0, const char*, _Compression_GetNextSupported, ( const 
  * @{
  */
 
-DMOD_BUILTIN_API(Dmod, 1.0, char*     , _StrDup,        ( const char* Str ) );
+/*
+ * Dmod_StrDup() has to attribute its allocation to whoever asked for the copy,
+ * exactly the way Dmod_Malloc() above does - and it cannot work that out on its
+ * own. The implementation lives in the DMOD system, where DMOD_MODULE_NAME is
+ * not defined, so a plain Dmod_Malloc() inside it tags every duplicate with the
+ * *system's* allocator instead of the caller's.
+ *
+ * That matters because allocation tracking keys bulk-freeing on unload
+ * (Dmod_FreeModule) off exactly that tag - see Dmod_GetCurrentAllocatorName()
+ * above. A string a long-lived module still holds can therefore be reclaimed
+ * when some unrelated short-lived process exits, leaving a dangling pointer
+ * with nothing in it to trace back to a strdup.
+ *
+ * Passing the name in at the call site is what fixes it. Plain _StrDup stays
+ * declared for the system itself and for modules built against an older
+ * header, and delegates with the running context's allocator.
+ */
+#if defined(DMOD_MODULE_NAME)
+#   define Dmod_StrDup(Str)                         Dmod_StrDupEx(Str, DMOD_CURRENT_ALLOCATOR)
+#else
+    DMOD_BUILTIN_API(Dmod, 1.0, char*     , _StrDup,        ( const char* Str ) );
+#endif
+DMOD_BUILTIN_API(Dmod, 1.0, char*     , _StrDupEx,      ( const char* Str, const char* ModuleName ) );
 
 //! @}
 
