@@ -1111,7 +1111,6 @@ bool Dmod_Enable( Dmod_Context_t* Context, bool Force, const Dmod_Config_t* Conf
 
     if( Context->Enabled && !Force )
     {
-        DMOD_LOG_WARN("Module already enabled\n");
         Dmod_Mutex_Unlock(Context->Mutex);
         return true;
     }
