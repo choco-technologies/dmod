@@ -15,6 +15,8 @@ set(HEADERS
 # Create static library
 add_library(dmod_resource STATIC ${SOURCES} ${HEADERS})
 
+dmod_set_current_allocator(dmod_resource)
+
 # Include directories
 target_include_directories(dmod_resource PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}

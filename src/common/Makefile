@@ -21,7 +21,7 @@ DMOD_INC_DIRS = $(DMOD_DIR)/src/common\
 		$(DMOD_BUILD_DIR)
 DMOD_LIBS = dmod_inc
 DMOD_GEN_HEADERS_IN = 
-DMOD_DEFINITIONS = 
+DMOD_DEFINITIONS = DMOD_CURRENT_ALLOCATOR="dmod_common"
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths

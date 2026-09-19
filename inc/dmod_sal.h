@@ -71,21 +71,25 @@ extern "C" {
 #       define DMOD_CURRENT_ALLOCATOR                        DMOD_MODULE_NAME
 #   elif defined(DMOD_APPLICATION_MODULE) && DMOD_APPLICATION_MODULE == 1
 #       define DMOD_CURRENT_ALLOCATOR                        Dmod_GetCurrentAllocatorName()
-#   else 
+#   else
 #       error DMOD_LIBRARY_MODULE neither DMOD_APPLICATION_MODULE is defined
 #   endif
+#elif !defined(DMOD_CURRENT_ALLOCATOR)
+/*
+ * On the system side there is no DMOD_MODULE_NAME to fall back on, and passing
+ * NULL (as this used to do) tags every allocation as anonymous, which makes
+ * per-owner tracking (dmheap and friends) useless for whatever links this in.
+ * Every system-side library/binary must therefore define DMOD_CURRENT_ALLOCATOR
+ * itself - normally as a compiler definition set to its own name - before this
+ * header is included. dmod's create_library_makefile()/dmod_add_tool() CMake
+ * helpers do this automatically, using the CMake target's own name.
+ */
+#   error DMOD_CURRENT_ALLOCATOR must be defined manually on the system side (typically as a compiler definition, e.g. -DDMOD_CURRENT_ALLOCATOR='"<library-name>"') to the name of the library defining it
 #endif
-#if defined(DMOD_MODULE_NAME)
-#   define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, DMOD_CURRENT_ALLOCATOR)
-#   define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, DMOD_CURRENT_ALLOCATOR)
-#   define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, DMOD_CURRENT_ALLOCATOR)
-#   define Dmod_Free(Ptr)                           Dmod_FreeEx(Ptr, false)
-#else 
-    DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Malloc ,           ( size_t Size )                     );
-    DMOD_BUILTIN_API(Dmod, 1.0, void*,  _Realloc,           ( void* Ptr, size_t Size )          );
-    DMOD_BUILTIN_API(Dmod, 1.0, void ,  _Free   ,           ( void* Ptr )                       );
-    DMOD_BUILTIN_API(Dmod, 1.0, void*,  _AlignedMalloc,     ( size_t Size, size_t Alignment )   );
-#endif
+#define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, DMOD_CURRENT_ALLOCATOR)
+#define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, DMOD_CURRENT_ALLOCATOR)
+#define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, DMOD_CURRENT_ALLOCATOR)
+#define Dmod_Free(Ptr)                           Dmod_FreeEx(Ptr, false)
 DMOD_BUILTIN_API(Dmod, 1.0, void*,  _MallocEx,          ( size_t Size, const char* ModuleName ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void*,  _ReallocEx,         ( void* Ptr, size_t Size, const char* ModuleName ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void ,  _FreeEx ,           ( void* Ptr, bool Concatenate ) );

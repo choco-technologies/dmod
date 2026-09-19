@@ -5,6 +5,8 @@ add_library(dmod_dependencies STATIC
     dmod_dependencies.c
 )
 
+dmod_set_current_allocator(dmod_dependencies)
+
 # Set include directories
 target_include_directories(dmod_dependencies
     PUBLIC

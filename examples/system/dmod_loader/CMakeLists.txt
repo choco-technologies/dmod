@@ -10,6 +10,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Add the executable
 add_executable(${PROJECT_NAME} main.c)
 
+dmod_set_current_allocator(${PROJECT_NAME})
+
 # Include directories
 include_directories(${PROJECT_SOURCE_DIR})
 

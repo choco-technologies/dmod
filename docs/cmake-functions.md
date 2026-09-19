@@ -282,7 +282,18 @@ dmod_add_tool(my_tool
 
 ### `create_library_makefile(targetName)`
 
-Creates a Makefile for building a static library target. This is automatically called for library targets and is used for Make-based builds.
+Creates a Makefile for building a static library target. This is automatically called for library targets and is used for Make-based builds. Also calls `dmod_set_current_allocator(targetName)` (see below).
+
+### `dmod_set_current_allocator(targetName [allocatorName])`
+
+Defines `DMOD_CURRENT_ALLOCATOR` for `targetName` as a private compile definition, defaulting `allocatorName` to `targetName` itself. `dmod_sal.h` requires `DMOD_CURRENT_ALLOCATOR` to be defined on the system side (no `DMOD_MODULE_NAME` to fall back on there) so that `Dmod_Malloc`/`Dmod_Realloc`/`Dmod_AlignedMalloc`/`Dmod_Free` can attribute allocations to their owner, the same way they already do for modules.
+
+`create_library_makefile()` and `dmod_add_tool()` call this automatically, so any target built through them (system libraries such as `dmlist`/`dmvfs`/`dmheap`, or a tool created with `dmod_add_tool`) gets a correctly named allocator for free. Call it directly for any other raw `add_library`/`add_executable` target that includes `dmod_sal.h` on the system side:
+
+```cmake
+add_library(my_system_lib STATIC my_system_lib.c)
+dmod_set_current_allocator(my_system_lib)
+```
 
 ### `dmod_setup_external_module()`
 
