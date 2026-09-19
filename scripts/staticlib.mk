@@ -30,8 +30,7 @@ DMOD_GEN_HEADERS    := $(addprefix $(DMOD_BUILD_DIR)/, $(DMOD_GEN_HEADERS_IN:.in
 # -----------------------------------------------------------------------------
 CFLAGS_INC 			= $(addprefix -I,$(DMOD_INC_DIRS))
 CFLAGS_LIB 			= $(addprefix -L,$(DMOD_LIBS))
-DEFINITIONS 	   := $(foreach v,$(DMOD_DEFINITIONS),-D$(v)=$($(v)))
-CFLAGS_DEF 			= $(addprefix -D,$(DEFINITIONS))
+CFLAGS_DEF 			= $(addprefix -D,$(DMOD_DEFINITIONS))
 CFLAGS 			   += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 CXXFLAGS 		   += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 ifeq ($(DMOD_DEBUG),ON)

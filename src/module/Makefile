@@ -22,7 +22,7 @@ DMOD_INC_DIRS = $(DMOD_DIR)/src/module\
 		$(DMOD_BUILD_DIR)
 DMOD_LIBS = dmod_inc
 DMOD_GEN_HEADERS_IN = 
-DMOD_DEFINITIONS = 
+DMOD_DEFINITIONS = DMOD_CURRENT_ALLOCATOR="dmod_module"
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths

@@ -45,14 +45,20 @@ MockFile* mockFile = nullptr;
 extern "C"
 {
     /**
-     * @brief Allocate memory
-     * 
+     * @brief Allocate memory, attributed to an allocator name
+     *
+     * Dmod_Malloc/Dmod_Realloc/Dmod_AlignedMalloc/Dmod_Free are macros around
+     * these *Ex entry points now (see dmod_sal.h), so these mocks live
+     * directly on the *Ex names - ModuleName is ignored.
+     *
      * @param Size Size of memory to allocate
-     * 
+     * @param ModuleName Allocator name to attribute the allocation to (ignored by this mock)
+     *
      * @return Pointer to allocated memory
      */
-    void* Dmod_Malloc(size_t Size)
+    void* Dmod_MallocEx(size_t Size, const char* ModuleName)
     {
+        (void)ModuleName;
         if( mockMemory != nullptr )
         {
             return mockMemory->Malloc(Size);
@@ -61,15 +67,17 @@ extern "C"
     }
 
     /**
-     * @brief Reallocate memory
-     * 
+     * @brief Reallocate memory, attributed to an allocator name
+     *
      * @param ptr Pointer to memory to reallocate
      * @param Size Size of memory to allocate
-     * 
+     * @param ModuleName Allocator name to attribute the allocation to (ignored by this mock)
+     *
      * @return Pointer to reallocated memory
      */
-    void* Dmod_Realloc(void* ptr, size_t Size)
+    void* Dmod_ReallocEx(void* ptr, size_t Size, const char* ModuleName)
     {
+        (void)ModuleName;
         if( mockMemory != nullptr )
         {
             return mockMemory->Realloc(ptr, Size);
@@ -78,17 +86,19 @@ extern "C"
     }
 
     /**
-     * @brief Allocate aligned memory
-     * 
+     * @brief Allocate aligned memory, attributed to an allocator name
+     *
      * @param Size Size of memory to allocate
      * @param Alignment Alignment of memory
-     * 
+     * @param ModuleName Allocator name to attribute the allocation to (ignored by this mock)
+     *
      * @return Pointer to allocated memory
-     * 
+     *
      * @note Optional - set to NULL if not supported
      */
-    void* Dmod_AlignedMalloc(size_t Size, size_t Alignment)
+    void* Dmod_AlignedMallocEx(size_t Size, size_t Alignment, const char* ModuleName)
     {
+        (void)ModuleName;
         if( mockMemory != nullptr )
         {
             return mockMemory->AlignedMalloc(Size, Alignment);
@@ -97,12 +107,14 @@ extern "C"
     }
 
     /**
-     * @brief Free memory
-     * 
+     * @brief Free memory allocated via Dmod_MallocEx/Dmod_AlignedMallocEx
+     *
      * @param ptr Pointer to memory to free
+     * @param Concatenate Ignored by this mock
      */
-    void Dmod_Free(void *ptr)
+    void Dmod_FreeEx(void *ptr, bool Concatenate)
     {
+        (void)Concatenate;
         if( mockMemory != nullptr )
         {
             mockMemory->Free(ptr);

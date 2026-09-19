@@ -14,8 +14,12 @@
 //                  Memory / RTOS helpers
 // ===============================================================
 
-void* Dmod_AlignedMalloc(size_t Size, size_t Alignment)
+// Dmod_Malloc/Dmod_AlignedMalloc/Dmod_Free are macros around these *Ex entry
+// points now (see dmod_sal.h), so these mocks live directly on the *Ex names -
+// ModuleName/Concatenate is ignored.
+void* Dmod_AlignedMallocEx(size_t Size, size_t Alignment, const char* ModuleName)
 {
+    (void)ModuleName;
     size_t pagesize = sysconf(_SC_PAGESIZE);
     void* mem = aligned_alloc(pagesize, Size);
     if (mprotect(mem, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
@@ -26,13 +30,8 @@ void* Dmod_AlignedMalloc(size_t Size, size_t Alignment)
     return mem;
 }
 
-void Dmod_Free(void* ptr)   { free(ptr); }
-void* Dmod_Malloc(size_t Size) { return malloc(Size); }
-
-// Dmod_Context_New() calls these directly (it has no ambient module identity of its own)
-void* Dmod_MallocEx(size_t Size, const char* ModuleName) { (void)ModuleName; return Dmod_Malloc(Size); }
-void* Dmod_AlignedMallocEx(size_t Size, size_t Alignment, const char* ModuleName) { (void)ModuleName; return Dmod_AlignedMalloc(Size, Alignment); }
-void Dmod_FreeEx(void* ptr, bool Concatenate) { (void)Concatenate; Dmod_Free(ptr); }
+void Dmod_FreeEx(void* ptr, bool Concatenate) { (void)Concatenate; free(ptr); }
+void* Dmod_MallocEx(size_t Size, const char* ModuleName) { (void)ModuleName; return malloc(Size); }
 
 void* Dmod_Mutex_New(bool Recursive)
 {

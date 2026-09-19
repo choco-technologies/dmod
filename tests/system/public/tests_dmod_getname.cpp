@@ -14,20 +14,26 @@
 // ===============================================================
 
 /**
- * @brief Allocate aligned memory
- * 
+ * @brief Allocate aligned memory, attributed to an allocator name
+ *
+ * Dmod_Malloc/Dmod_AlignedMalloc/Dmod_Free are macros around these *Ex entry
+ * points now (see dmod_sal.h), so this mock lives directly on the *Ex names -
+ * ModuleName is ignored.
+ *
  * @param Size Size of memory to allocate
  * @param Alignment Alignment of memory
- * 
+ * @param ModuleName Allocator name to attribute the allocation to (ignored by this mock)
+ *
  * @return Pointer to allocated memory
- * 
+ *
  * @note Optional - set to NULL if not supported
  */
-void* Dmod_AlignedMalloc(size_t Size, size_t Alignment)
+void* Dmod_AlignedMallocEx(size_t Size, size_t Alignment, const char* ModuleName)
 {
+    (void)ModuleName;
     size_t pagesize = sysconf(_SC_PAGESIZE);
     void* mem = aligned_alloc(pagesize, Size);
-    if (mprotect(mem, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) 
+    if (mprotect(mem, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
     {
         DMOD_LOG_ERROR("Cannot set memory protection. Pagesize: %zu\n", pagesize);
         free(mem);
@@ -37,24 +43,28 @@ void* Dmod_AlignedMalloc(size_t Size, size_t Alignment)
 }
 
 /**
- * @brief Free memory
- * 
+ * @brief Free memory allocated via Dmod_MallocEx/Dmod_AlignedMallocEx
+ *
  * @param ptr Pointer to memory to free
+ * @param Concatenate Ignored by this mock
  */
-void Dmod_Free(void *ptr)
+void Dmod_FreeEx(void *ptr, bool Concatenate)
 {
+    (void)Concatenate;
     free(ptr);
 }
 
 /**
- * @brief Allocate memory
- * 
+ * @brief Allocate memory, attributed to an allocator name
+ *
  * @param Size Size of memory to allocate
- * 
+ * @param ModuleName Allocator name to attribute the allocation to (ignored by this mock)
+ *
  * @return Pointer to allocated memory
  */
-void* Dmod_Malloc(size_t Size)        
+void* Dmod_MallocEx(size_t Size, const char* ModuleName)
 {
+    (void)ModuleName;
     return malloc(Size);
 }
 

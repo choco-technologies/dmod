@@ -39,7 +39,7 @@ DMOD_OBJECTS = $(addprefix $(OBJ_OUTPUT_DIR)/, $(DMOD_SOURCES:.c=.o))
 # -----------------------------------------------------------------------------
 CFLAGS_INC  = $(addprefix -I,$(DMOD_INC_DIRS))
 CFLAGS_LIB 	= $(addprefix -l,$(DMOD_LIBS)) -L $(DMOD_LIBS_DIR)
-CFLAGS_DEF  = $(addprefix -D,$(DEFINITIONS))
+CFLAGS_DEF  = $(addprefix -D,$(DMOD_DEFINITIONS))
 CFLAGS     += $(CFLAGS_INC) $(CFLAGS_LIB) $(CFLAGS_DEF)
 
 # -----------------------------------------------------------------------------

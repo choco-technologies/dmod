@@ -31,70 +31,13 @@ MockMemory* mockMemory = nullptr;
 MockRtos* mockRtos = nullptr;
 
 /**
- * @brief Allocate memory
- * 
- * @param Size Size of memory to allocate
- * 
- * @return Pointer to allocated memory
- */
-void* Dmod_Malloc(size_t Size)        
-{
-    if( mockMemory != nullptr )
-    {
-        return mockMemory->Malloc(Size);
-    }
-    return malloc(Size);
-}
-
-/**
- * @brief Allocate aligned memory
- * 
- * @param Size Size of memory to allocate
- * @param Alignment Alignment of memory
- * 
- * @return Pointer to allocated memory
- * 
- * @note Optional - set to NULL if not supported
- */
-void* Dmod_AlignedMalloc(size_t Size, size_t Alignment)
-{
-    if( mockMemory != nullptr )
-    {
-        return mockMemory->AlignedMalloc(Size, Alignment);
-    }
-    size_t pagesize = Alignment;
-    pagesize = sysconf(_SC_PAGESIZE);
-    void* mem = aligned_alloc(pagesize, Size);
-    if (mprotect(mem, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) 
-    {
-        DMOD_LOG_ERROR("Cannot set memory protection. Pagesize: %d\n", pagesize);
-        free(mem);
-        return NULL;
-    }
-    return mem;
-}
-
-/**
- * @brief Free memory
- *
- * @param ptr Pointer to memory to free
- */
-void Dmod_Free(void *ptr)
-{
-    if( mockMemory != nullptr )
-    {
-        mockMemory->Free(ptr);
-        return;
-    }
-    free(ptr);
-}
-
-/**
  * @brief Allocate memory, attributed to an allocator name
  *
- * Dmod_Context_New() calls this directly (not the plain Dmod_Malloc above) since it has
- * no ambient module identity of its own - route it through the same mock so existing
- * EXPECT_CALL(*mockMemory, Malloc(...)) expectations keep working unchanged.
+ * Dmod_Malloc/Dmod_AlignedMalloc/Dmod_Free are macros around these *Ex entry
+ * points now (see dmod_sal.h), so this mock lives directly on the *Ex names -
+ * ModuleName is ignored, so existing EXPECT_CALL(*mockMemory, Malloc(...))
+ * expectations keep working unchanged regardless of which allocator name the
+ * caller's DMOD_CURRENT_ALLOCATOR resolves to.
  *
  * @param Size Size of memory to allocate
  * @param ModuleName Allocator name to attribute the allocation to (ignored by this mock)
@@ -104,7 +47,11 @@ void Dmod_Free(void *ptr)
 void* Dmod_MallocEx(size_t Size, const char* ModuleName)
 {
     (void)ModuleName;
-    return Dmod_Malloc(Size);
+    if( mockMemory != nullptr )
+    {
+        return mockMemory->Malloc(Size);
+    }
+    return malloc(Size);
 }
 
 /**
@@ -119,7 +66,20 @@ void* Dmod_MallocEx(size_t Size, const char* ModuleName)
 void* Dmod_AlignedMallocEx(size_t Size, size_t Alignment, const char* ModuleName)
 {
     (void)ModuleName;
-    return Dmod_AlignedMalloc(Size, Alignment);
+    if( mockMemory != nullptr )
+    {
+        return mockMemory->AlignedMalloc(Size, Alignment);
+    }
+    size_t pagesize = Alignment;
+    pagesize = sysconf(_SC_PAGESIZE);
+    void* mem = aligned_alloc(pagesize, Size);
+    if (mprotect(mem, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
+    {
+        DMOD_LOG_ERROR("Cannot set memory protection. Pagesize: %d\n", pagesize);
+        free(mem);
+        return NULL;
+    }
+    return mem;
 }
 
 /**
@@ -131,7 +91,12 @@ void* Dmod_AlignedMallocEx(size_t Size, size_t Alignment, const char* ModuleName
 void Dmod_FreeEx(void* ptr, bool Concatenate)
 {
     (void)Concatenate;
-    Dmod_Free(ptr);
+    if( mockMemory != nullptr )
+    {
+        mockMemory->Free(ptr);
+        return;
+    }
+    free(ptr);
 }
 
 /**
