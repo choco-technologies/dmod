@@ -19,7 +19,7 @@ PROJECT_NAME    = todmp
 DMOD_SOURCES	= main.c
 DMOD_INC_DIRS 	= 
 DMOD_LIBS 	  	= 
-DEFINITIONS 	= 
+DEFINITIONS 	= DMOD_CURRENT_ALLOCATOR="todmp"
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths

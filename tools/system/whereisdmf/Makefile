@@ -16,7 +16,7 @@ PROJECT_NAME    = whereisdmf
 DMOD_SOURCES	= main.c
 DMOD_INC_DIRS 	= 
 DMOD_LIBS 	  	= 
-DEFINITIONS 	= 
+DEFINITIONS 	= DMOD_CURRENT_ALLOCATOR="whereisdmf"
 
 # -----------------------------------------------------------------------------
 # 	Initialization of paths
