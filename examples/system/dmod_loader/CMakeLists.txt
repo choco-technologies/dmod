@@ -34,7 +34,16 @@ dmod_link_builtin(${PROJECT_NAME}
 target_compile_definitions(${PROJECT_NAME} PRIVATE DMOD_LOADER_HAS_DMOSI=1)
 
 target_link_options(${PROJECT_NAME} PRIVATE -L ${DMOD_DIR}/scripts)
-target_link_options(${PROJECT_NAME} PRIVATE -T ${CMAKE_CURRENT_SOURCE_DIR}/main.ld)
+# dmod_loader is a normal Linux host executable (statically links the dmlist/
+# dmosi* system modules, but still runs under a real OS/dynamic linker), not
+# a freestanding/embedded target - the old local main.ld (byte-identical to
+# scripts/main.ld: fixed 0x400000 origin, single combined segment, no PHDRS)
+# produced a malformed non-PIE ELF that corrupted very early in execution
+# (confirmed via gdb: SIGABRT/SIGSEGV in libc with a garbage return address).
+# scripts/tool.ld only adds the .inputs/.outputs sections (DMOD's variable
+# system) into the toolchain's own default host layout via INSERT, instead
+# of replacing it.
+target_link_options(${PROJECT_NAME} PRIVATE -T ${DMOD_DIR}/scripts/tool.ld)
 
 # ===========================================================================
 # Memory Analysis for dmod_loader

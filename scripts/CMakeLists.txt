@@ -966,7 +966,7 @@ function(dmod_add_tool toolName)
     target_include_directories(${toolName} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
     target_link_libraries(${toolName} dmod)
-    target_link_options(${toolName} PRIVATE -L ${DMOD_SCRIPTS_DIR} -T ${DMOD_SCRIPTS_DIR}/main.ld)
+    target_link_options(${toolName} PRIVATE -L ${DMOD_SCRIPTS_DIR} -T ${DMOD_SCRIPTS_DIR}/tool.ld)
 
     # Move the binary to the tools directory
     add_custom_command(

@@ -30,6 +30,12 @@
  * @version 0.1
  */
 
+/* Exposes fileno() and other POSIX stdio/termios extensions under a strict
+ * -std=c11 build; must be defined before the first system header is
+ * included. Same convention as the other POSIX-using files in this repo
+ * (e.g. dmod_if_time.c, dmod_if_rtos.c). */
+#define _POSIX_C_SOURCE 200809L
+
 #include "dmod_sal.h"
 #if DMOD_USE_STDIO
 #   include <stdio.h>
