@@ -26,10 +26,15 @@
  * 
  */
 
+/* Exposes nanosleep() and the UNIX98 pthread mutex attributes
+ * (PTHREAD_MUTEX_RECURSIVE) under a strict -std=c11 build; must be defined
+ * before the first system header is included. Same convention as the other
+ * POSIX-using files in this repo (e.g. dmod_if_time.c). */
+#define _POSIX_C_SOURCE 200809L
+
 #include <errno.h>
 #include "dmod.h"
 #if DMOD_USE_PTHREAD
-#   define __USE_UNIX98
 #   include <pthread.h>
 #   include <semaphore.h>
 #   include <time.h>
