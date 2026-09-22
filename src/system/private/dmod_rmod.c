@@ -4,6 +4,7 @@
 #include "private/dmod_mgr.h"
 #include "private/dmod_vars.h"
 #include "private/dmod_ctx.h"
+#include "private/dmod_hlp.h"
 
 #include <string.h>
 #include <stdint.h>
@@ -152,7 +153,7 @@ static bool ReadRequiredModules_Crossplatform( Dmod_Context_t* Context )
     for(size_t outputIndex = 0; outputIndex < numberOfOuptuts; outputIndex++)
     {
         Dmod_CrossPtr_t entryPtr = Context->Outputs.OutputSectionCross->Entries[outputIndex];
-        const char* apiSignature = (const char*)(uintptr_t)entryPtr;
+        const char* apiSignature = Dmod_Hlp_GetPointerCP( Context, entryPtr, "Output Entry" );
         if(apiSignature == NULL)
         {
             continue;

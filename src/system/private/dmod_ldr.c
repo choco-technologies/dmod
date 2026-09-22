@@ -185,18 +185,18 @@ static bool LoadOutput_Crossplatform( Dmod_Context_t* Context )
 
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        if( !Dmod_Hlp_InitPointerCP( Context, &outputSection->Entries[i], "Output Entry" ) )
+        const char* entrySignature = Dmod_Hlp_GetPointerCP( Context, outputSection->Entries[i], "Output Entry" );
+        if( outputSection->Entries[i] == 0 )
+        {
+            DMOD_LOG_WARN("Empty output entry at index: %d\n", i);
+        }
+        else if( entrySignature == NULL )
         {
             DMOD_LOG_ERROR("Cannot load output - cannot initialize output entry at index %d\n", i);
             return false;
         }
-        else if( outputSection->Entries[i] == 0 )
-        {
-            DMOD_LOG_WARN("Empty output entry at index: %d\n", i);
-        }
         else
         {
-            const char* entrySignature = (const char*)(uintptr_t)outputSection->Entries[i];
             if(!Dmod_ApiSignature_IsValid( entrySignature ))
             {
                 DMOD_LOG_ERROR("Cannot load output - Invalid output entry signature\n");
@@ -324,16 +324,17 @@ static bool LoadInput_Crossplatform( Dmod_Context_t* Context )
 
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        if( !Dmod_Hlp_InitPointerCP( Context, &inputSection->Entries[i].Signature, "Input Signature" ) 
-         || !Dmod_Hlp_InitPointerCP( Context, &inputSection->Entries[i].Function , "Input Function"  ) 
-            )
+        const char* signature = Dmod_Hlp_GetPointerCP( Context, inputSection->Entries[i].Signature, "Input Signature" );
+        void* function = Dmod_Hlp_GetPointerCP( Context, inputSection->Entries[i].Function, "Input Function" );
+        if( (inputSection->Entries[i].Signature != 0 && signature == NULL)
+         || (inputSection->Entries[i].Function != 0 && function == NULL) )
         {
             DMOD_LOG_ERROR("Cannot load input - cannot initialize input entry at index %d\n", i);
             return false;
         }
-        else if(!Dmod_ApiSignature_IsValid((const char*)(uintptr_t)inputSection->Entries[i].Signature))
+        else if(!Dmod_ApiSignature_IsValid(signature))
         {
-            DMOD_LOG_ERROR("Cannot load input - Invalid input entry signature: %s\n", inputSection->Entries[i].Signature);
+            DMOD_LOG_ERROR("Cannot load input - Invalid input entry signature: %s\n", signature);
             return false;
         }
     }
@@ -467,7 +468,7 @@ static bool LoadGot_Crossplatform( Dmod_Context_t* Context )
 
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        if( !Dmod_Hlp_InitPointerCP( Context, &gotSection->Entries[i], "GOT Entry" ) )
+        if( gotSection->Entries[i] != 0 && Dmod_Hlp_GetPointerCP( Context, gotSection->Entries[i], "GOT Entry" ) == NULL )
         {
             DMOD_LOG_ERROR("Cannot load got - cannot initialize got entry at index %d\n", i);
             return false;

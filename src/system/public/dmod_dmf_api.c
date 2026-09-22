@@ -2,6 +2,7 @@
 #include "dmod.h"
 #include "private/dmod_ctx.h"
 #include "private/dmod_vars.h"
+#include "private/dmod_hlp.h"
 #include <string.h>
 
 
@@ -16,6 +17,11 @@ bool Dmod_ConnectApi( Dmod_Api_t* OutputsApi, Dmod_Api_t* InputsApi )
     if( OutputsApi == NULL || InputsApi == NULL )
     {
         DMOD_LOG_ERROR("Cannot connect API - invalid API pointers\n");
+        return false;
+    }
+    if( OutputsApi->Crossplatform || InputsApi->Crossplatform )
+    {
+        DMOD_LOG_ERROR("Cannot connect APIs from a cross-platform module without native API storage\n");
         return false;
     }
     
@@ -246,16 +252,19 @@ bool Dmod_VerifyAllApisSignatures( Dmod_Context_t* Context )
     size_t numberOfOutputs = Dmod_Api_GetNumberOfEntries( &Context->Outputs );
     for(size_t i = 0; i < numberOfOutputs; i++)
     {
-        if( !Dmod_ApiSignature_IsValid( Context->Outputs.OutputSection->Entries[i] ) )
+        const char* outputSignature = Context->Outputs.Crossplatform
+            ? (const char*)Dmod_Hlp_GetPointerCP( Context, Context->Outputs.OutputSectionCross->Entries[i], "Output Entry")
+            : Context->Outputs.OutputSection->Entries[i];
+        if( !Dmod_ApiSignature_IsValid( outputSignature ) )
         {
-            const char* connectedSignature = FindConnectedFunctionSignature( Context->Outputs.OutputSection->Entries[i] );
+            const char* connectedSignature = FindConnectedFunctionSignature( outputSignature );
             if( connectedSignature != NULL )
             {
                 DMOD_LOG_VERBOSE("Output API at index %zu is already connected: %s\n", i, connectedSignature);
             }
             else
             {
-                DMOD_LOG_ERROR("Invalid API signature in output API: %s\n", (const char*)(uintptr_t)Context->Outputs.OutputSection->Entries[i]);
+                DMOD_LOG_ERROR("Invalid API signature in output API: %s\n", outputSignature);
                 result = false;
             }
         }
@@ -264,9 +273,12 @@ bool Dmod_VerifyAllApisSignatures( Dmod_Context_t* Context )
     size_t numberOfInputs = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
     for(size_t i = 0; i < numberOfInputs; i++)
     {
-        if( !Dmod_ApiSignature_IsValid( Context->Inputs.InputSection->Entries[i].Signature ) )
+        const char* inputSignature = Context->Inputs.Crossplatform
+            ? (const char*)Dmod_Hlp_GetPointerCP( Context, Context->Inputs.InputSectionCross->Entries[i].Signature, "Input Signature")
+            : Context->Inputs.InputSection->Entries[i].Signature;
+        if( !Dmod_ApiSignature_IsValid( inputSignature ) )
         {
-            DMOD_LOG_ERROR("Invalid API signature in input API: %s\n", Context->Inputs.InputSection->Entries[i].Signature);
+            DMOD_LOG_ERROR("Invalid API signature in input API: %s\n", inputSignature);
             result = false;
         }
     }
@@ -426,7 +438,7 @@ void Dmod_PrintOutputApis( Dmod_Context_t* Context )
     for(size_t i = 0; i < numberOfEntries; i++)
     {
         const char* entry = crossplatform ? 
-            (const char*)(uintptr_t)Context->Outputs.OutputSectionCross->Entries[i] : 
+            (const char*)Dmod_Hlp_GetPointerCP( Context, Context->Outputs.OutputSectionCross->Entries[i], "Output Entry") :
             (const char*)Context->Outputs.OutputSection->Entries[i];
         DMOD_LOG_VERBOSE("  %s\n", entry);
     }
@@ -450,7 +462,7 @@ void Dmod_PrintInputApis( Dmod_Context_t* Context )
     for(size_t i = 0; i < numberOfEntries; i++)
     {
         const char* entry = crossplatform ? 
-            (const char*)(uintptr_t)Context->Inputs.InputSectionCross->Entries[i].Signature : 
+            (const char*)Dmod_Hlp_GetPointerCP( Context, Context->Inputs.InputSectionCross->Entries[i].Signature, "Input Signature") :
             (const char*)Context->Inputs.InputSection->Entries[i].Signature;
         DMOD_LOG_VERBOSE("  %s\n", entry);
     }
@@ -528,7 +540,7 @@ const char* Dmod_GetOutputApiSignature( Dmod_Context_t* Context, size_t Index )
     }
     if( Context->Outputs.Crossplatform )
     {
-        return (const char*)(uintptr_t)Context->Outputs.OutputSectionCross->Entries[Index];
+        return (const char*)Dmod_Hlp_GetPointerCP( Context, Context->Outputs.OutputSectionCross->Entries[Index], "Output Entry");
     }
     return (const char*)Context->Outputs.OutputSection->Entries[Index];
 }
@@ -555,7 +567,7 @@ const char* Dmod_GetInputApiSignature( Dmod_Context_t* Context, size_t Index )
     }
     if( Context->Inputs.Crossplatform )
     {
-        return (const char*)(uintptr_t)Context->Inputs.InputSectionCross->Entries[Index].Signature;
+        return (const char*)Dmod_Hlp_GetPointerCP( Context, Context->Inputs.InputSectionCross->Entries[Index].Signature, "Input Signature");
     }
     return Context->Inputs.InputSection->Entries[Index].Signature;
 }
@@ -585,9 +597,14 @@ void* Dmod_GetFunction( Dmod_Context_t* Context, const char* Signature )
     size_t numberOfEntries = Dmod_Api_GetNumberOfEntries( &Context->Inputs );
     for(size_t i = 0; i < numberOfEntries; i++)
     {
-        if( Dmod_ApiSignature_AreCompatible( Context->Inputs.InputSection->Entries[i].Signature, Signature ) )
+        const char* entrySignature = Context->Inputs.Crossplatform
+            ? (const char*)Dmod_Hlp_GetPointerCP( Context, Context->Inputs.InputSectionCross->Entries[i].Signature, "Input Signature")
+            : Context->Inputs.InputSection->Entries[i].Signature;
+        if( Dmod_ApiSignature_AreCompatible( entrySignature, Signature ) )
         {
-            return Context->Inputs.InputSection->Entries[i].Function;
+            return Context->Inputs.Crossplatform
+                ? Dmod_Hlp_GetPointerCP( Context, Context->Inputs.InputSectionCross->Entries[i].Function, "Input Function")
+                : Context->Inputs.InputSection->Entries[i].Function;
         }
     }
 
@@ -663,4 +680,3 @@ Dmod_Context_t* Dmod_GetNextDifModule( const char* DifSignature, Dmod_Context_t*
     Dmod_ExitCritical();
     return NULL;
 }
-
