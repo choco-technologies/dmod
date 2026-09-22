@@ -192,7 +192,7 @@ bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
  *
  * @return Signature string of the matching input entry, or NULL if not found
  */
-static const char* FindConnectedFunctionSignature( void* Pointer )
+static const char* FindConnectedFunctionSignature( const void* Pointer )
 {
     if( Pointer == NULL )
     {
