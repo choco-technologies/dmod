@@ -4,36 +4,31 @@
 #include "private/dmod_hlp.h"
 
 /**
- * @brief Initialize pointer in crossplatform mode
- * 
- * @param Context       Context to initialize pointer in
- * @param PointerRef    Pointer to initialize
- * @param PointerName   Name of the pointer
- * 
- * @return Initialized pointer
+ * @brief Resolve a serialized cross-platform offset without modifying it.
+ *
+ * Cross-platform sections are stored using the module's pointer width.  On a
+ * 64-bit host Dmod_CrossPtr_t is intentionally still 32 bits, so a native
+ * host pointer must never be written back into the section.  Keep the file
+ * representation intact and return the native pointer as a temporary value.
  */
-bool Dmod_Hlp_InitPointerCP( Dmod_Context_t* Context, Dmod_CrossPtr_t* PointerRef, const char* PointerName )
+void* Dmod_Hlp_GetPointerCP( Dmod_Context_t* Context, Dmod_CrossPtr_t Pointer, const char* PointerName )
 {
-    if(PointerRef == NULL || Context == NULL)
+    if( Context == NULL )
     {
-        DMOD_LOG_ERROR("Cannot initialize pointer %s - unexpected NULL\n", PointerName);
-        return false;
-    }
-    Dmod_CrossPtr_t pointer = *PointerRef;
-    if( pointer == 0 )
-    {
-        return true;
-    }
-
-    size_t offset = (size_t)pointer;
-    if( offset == 0 || offset > Context->Size )
-    {
-        DMOD_LOG_ERROR("Cannot initialize pointer %s - invalid offset: 0x%08X\n", PointerName, offset);
+        DMOD_LOG_ERROR("Cannot resolve pointer %s - unexpected NULL context\n", PointerName);
         return NULL;
     }
-
-    *PointerRef = (Dmod_CrossPtr_t)( (size_t)Context->Data + offset );
-    return true;
+    size_t offset = (size_t)Pointer;
+    if( offset == 0 )
+    {
+        return NULL;
+    }
+    if( offset > Context->Size )
+    {
+        DMOD_LOG_ERROR("Cannot resolve pointer %s - invalid offset: 0x%08X\n", PointerName, offset);
+        return NULL;
+    }
+    return (char*)Context->Data + offset;
 }
 
 /**
