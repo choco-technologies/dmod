@@ -68,10 +68,10 @@ TEST_F(DmodFile64Test, RoundTripsOffsetsAndSizesAboveFourGiB)
     ASSERT_EQ(stat.Size, (Dmod_FileSize_t)(offset + 1));
 }
 
-TEST(DmodFile64ContractTest, ReportsErrorsWithExplicitSentinels)
+TEST(DmodFile64ContractTest, UsesDocumentedFailureValues)
 {
     ASSERT_EQ(Dmod_FileTell(nullptr), DMOD_FILE_OFFSET_ERROR);
-    ASSERT_EQ(Dmod_FileSize(nullptr), DMOD_FILE_SIZE_ERROR);
+    ASSERT_EQ(Dmod_FileSize(nullptr), 0u);
 }
 
 TEST(DmodFile64ContractTest, RegistersMajorVersionTwo)

@@ -21,10 +21,11 @@ Dmod_FileSize_t Dmod_FileSize(void* file);
 int Dmod_FileStat(const char* path, Dmod_FileStat_t* stat);
 ```
 
-`Dmod_FileTell()` returns `DMOD_FILE_OFFSET_ERROR` on failure and
-`Dmod_FileSize()` returns `DMOD_FILE_SIZE_ERROR`. `Dmod_FileSize()` preserves
-the current file position. `Dmod_FileStat()` returns zero on success and `-1`
-on failure, following the C/POSIX stat convention.
+`Dmod_FileTell()` returns `DMOD_FILE_OFFSET_ERROR` on failure.
+`Dmod_FileSize()` returns zero for an empty file or on failure and preserves the
+current file position. Call `Dmod_FileStat()` when the caller must distinguish
+an empty file from an error; it returns zero on success and `-1` on failure,
+following the C/POSIX stat convention.
 
 ## Platform boundary
 

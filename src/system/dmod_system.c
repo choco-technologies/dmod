@@ -262,8 +262,7 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
 
     Dmod_FileSize_t fileSize64 = Dmod_FileSize( file );
     size_t fileSize = 0;
-    if( fileSize64 == 0 || fileSize64 == DMOD_FILE_SIZE_ERROR
-        || !Dmod_FileSizeToSizeT(fileSize64, &fileSize) )
+    if( fileSize64 == 0 || !Dmod_FileSizeToSizeT(fileSize64, &fileSize) )
     {
         DMOD_LOG_ERROR("Cannot load module - file is empty or too large\n");
         Dmod_FileClose( file );
@@ -1569,8 +1568,7 @@ bool Dmod_ReadModuleHeader(const char* FilePath, Dmod_ModuleHeader_t* Header)
     // Get file size
     Dmod_FileSize_t fileSize64 = Dmod_FileSize( file );
     size_t fileSize = 0;
-    if( fileSize64 == 0 || fileSize64 == DMOD_FILE_SIZE_ERROR
-        || !Dmod_FileSizeToSizeT(fileSize64, &fileSize) )
+    if( fileSize64 == 0 || !Dmod_FileSizeToSizeT(fileSize64, &fileSize) )
     {
         DMOD_LOG_ERROR("Cannot read module header - file is empty or too large\n");
         Dmod_FileClose( file );
@@ -2649,4 +2647,3 @@ void Dmod_CloseModules( Dmod_ModuleNode_t* outModule )
     Dmod_Free( state );
     outModule->_Data = NULL;
 }
-

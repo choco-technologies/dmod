@@ -85,8 +85,7 @@ bool Dmod_AddPackageFile( const char* FilePath, uint32_t* outIndex )
 
     Dmod_FileSize_t fileSize64 = Dmod_FileSize( file );
     size_t fileSize = 0;
-    if( fileSize64 == 0 || fileSize64 == DMOD_FILE_SIZE_ERROR
-        || !Dmod_FileSizeToSizeT(fileSize64, &fileSize) )
+    if( fileSize64 == 0 || !Dmod_FileSizeToSizeT(fileSize64, &fileSize) )
     {
         DMOD_LOG_ERROR("Cannot add package file '%s', file is empty\n", FilePath);
         Dmod_FileClose( file );
@@ -427,7 +426,7 @@ bool Dmod_ToDMPFile( const char* PackageName, const char* InputDir, const char* 
         Dmod_FileSize_t fileSize = Dmod_FileSize( file );
         Dmod_FileClose( file );
 
-        if( fileSize == DMOD_FILE_SIZE_ERROR || fileSize > UINT32_MAX
+        if( fileSize == 0 || fileSize > UINT32_MAX
             || dataOffset > (Dmod_FileSize_t)UINT32_MAX - fileSize )
         {
             DMOD_LOG_ERROR("Cannot create DMP file - module file '%s' is too large\n", filePath);
@@ -550,8 +549,7 @@ bool Dmod_ToDMPFile( const char* PackageName, const char* InputDir, const char* 
 
         Dmod_FileSize_t fileSize64 = Dmod_FileSize( file );
         size_t fileSize = 0;
-        if( fileSize64 == DMOD_FILE_SIZE_ERROR
-            || !Dmod_FileSizeToSizeT(fileSize64, &fileSize) )
+        if( fileSize64 == 0 || !Dmod_FileSizeToSizeT(fileSize64, &fileSize) )
         {
             DMOD_LOG_ERROR("Cannot create DMP file - module file '%s' is too large\n", filePath);
             Dmod_FileClose( file );

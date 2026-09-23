@@ -71,7 +71,7 @@ static void Dmod_InitMockMemory(void)
             if (g_MockMemoryRegions[index].file != NULL) { \
                 g_MockMemoryRegions[index].size = Dmod_FileSize(g_MockMemoryRegions[index].file); \
                 g_MockMemoryRegions[index].initialized = \
-                    g_MockMemoryRegions[index].size != DMOD_FILE_SIZE_ERROR; \
+                    g_MockMemoryRegions[index].size > 0; \
                 DMOD_LOG_INFO("Mock memory region %d: address=0x%lx, size=%llu, file=%s\n", \
                     index, (unsigned long)g_MockMemoryRegions[index].address, \
                     (unsigned long long)g_MockMemoryRegions[index].size, file_macro); \

@@ -169,10 +169,6 @@ DMOD_BUILTIN_API(Dmod, 1.0, int         , _Ioctl,       ( void* File, int Comman
 #ifndef DMOD_FILE_OFFSET_ERROR
 #   define DMOD_FILE_OFFSET_ERROR ((Dmod_FileOffset_t)-1)
 #endif
-#ifndef DMOD_FILE_SIZE_ERROR
-#   define DMOD_FILE_SIZE_ERROR ((Dmod_FileSize_t)UINT64_MAX)
-#endif
-
 /** Checked conversion for APIs that must allocate an address-space-sized buffer. */
 static inline bool Dmod_FileSizeToSizeT(Dmod_FileSize_t FileSize, size_t* outSize)
 {

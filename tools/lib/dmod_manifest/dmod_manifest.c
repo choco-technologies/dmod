@@ -695,7 +695,7 @@ bool Dmod_Manifest_ParseFile(Dmod_ManifestContext_t* ctx, const char* file_path)
     // Get file size
     Dmod_FileSize_t file_size = Dmod_FileSize(file);
     
-    if (file_size == DMOD_FILE_SIZE_ERROR || file_size > 1024 * 1024) { // Limit to 1MB
+    if (file_size > 1024 * 1024) { // Limit to 1MB
         Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "File too large: %s", file_path);
         Dmod_FileClose(file);
         return false;

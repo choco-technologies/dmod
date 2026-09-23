@@ -95,6 +95,36 @@ static Dmod_FileOffset_t Dmod_FileTellStdio(FILE* File)
 #endif
 }
 #endif
+
+static int Dmod_GetFileSize(void* File, Dmod_FileSize_t* outSize)
+{
+    if( File == NULL || outSize == NULL )
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    Dmod_FileOffset_t current = Dmod_FileTell( File );
+    if( current == DMOD_FILE_OFFSET_ERROR || Dmod_FileSeek( File, 0, DMOD_SEEK_END ) != 0 )
+    {
+        return -1;
+    }
+
+    Dmod_FileOffset_t end = Dmod_FileTell( File );
+    int savedErrno = errno;
+    if( Dmod_FileSeek( File, current, DMOD_SEEK_SET ) != 0 )
+    {
+        return -1;
+    }
+    if( end < 0 )
+    {
+        errno = savedErrno;
+        return -1;
+    }
+
+    *outSize = (Dmod_FileSize_t)end;
+    return 0;
+}
 #if DMOD_USE_DIRENT
 #   include <dirent.h>
 #   include <sys/stat.h>
@@ -376,30 +406,8 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 2.0, Dmod_FileOffset_t, _FileTell, ( void*
  */
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 2.0, Dmod_FileSize_t, _FileSize, ( void* File ))
 {
-    if( File == NULL )
-    {
-        errno = EINVAL;
-        return DMOD_FILE_SIZE_ERROR;
-    }
-
-    Dmod_FileOffset_t current = Dmod_FileTell( File );
-    if( current == DMOD_FILE_OFFSET_ERROR || Dmod_FileSeek( File, 0, DMOD_SEEK_END ) != 0 )
-    {
-        return DMOD_FILE_SIZE_ERROR;
-    }
-
-    Dmod_FileOffset_t end = Dmod_FileTell( File );
-    int savedErrno = errno;
-    if( Dmod_FileSeek( File, current, DMOD_SEEK_SET ) != 0 )
-    {
-        return DMOD_FILE_SIZE_ERROR;
-    }
-    if( end < 0 )
-    {
-        errno = savedErrno;
-        return DMOD_FILE_SIZE_ERROR;
-    }
-    return (Dmod_FileSize_t)end;
+    Dmod_FileSize_t size = 0;
+    return Dmod_GetFileSize(File, &size) == 0 ? size : 0;
 }
 
 /**
@@ -434,9 +442,10 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 2.0, int, _FileStat, ( const char* Path, D
     {
         return -1;
     }
-    Dmod_FileSize_t size = Dmod_FileSize(file);
+    Dmod_FileSize_t size = 0;
+    int result = Dmod_GetFileSize(file, &size);
     Dmod_FileClose(file);
-    if( size == DMOD_FILE_SIZE_ERROR )
+    if( result != 0 )
     {
         return -1;
     }
