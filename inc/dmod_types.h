@@ -57,6 +57,19 @@ typedef enum
  */
 typedef uint64_t Dmod_Timestamp_t;
 
+/** Signed byte offset used by the 2.0 file SAL. */
+typedef int64_t Dmod_FileOffset_t;
+
+/** Unsigned file or device size used by the 2.0 file SAL. */
+typedef uint64_t Dmod_FileSize_t;
+
+/** Portable file metadata returned by Dmod_FileStat. */
+typedef struct
+{
+    Dmod_FileSize_t Size;  //!< File size in bytes
+    uint32_t Mode;         //!< Platform mode/permission bits
+} Dmod_FileStat_t;
+
 /**
  * @brief Process ID type
  * 

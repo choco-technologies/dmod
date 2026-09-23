@@ -83,8 +83,10 @@ bool Dmod_AddPackageFile( const char* FilePath, uint32_t* outIndex )
         return false;   
     }
 
-    size_t fileSize = Dmod_FileSize( file );
-    if( fileSize == 0 )
+    Dmod_FileSize_t fileSize64 = Dmod_FileSize( file );
+    size_t fileSize = 0;
+    if( fileSize64 == 0 || fileSize64 == DMOD_FILE_SIZE_ERROR
+        || !Dmod_FileSizeToSizeT(fileSize64, &fileSize) )
     {
         DMOD_LOG_ERROR("Cannot add package file '%s', file is empty\n", FilePath);
         Dmod_FileClose( file );
@@ -386,8 +388,16 @@ bool Dmod_ToDMPFile( const char* PackageName, const char* InputDir, const char* 
 
     uint32_t currentIndex = 0;
     uint32_t mainIndex = 0;
-    size_t dataOffset = sizeof(Dmod_DmpHeader_t) + moduleCount * sizeof(Dmod_DmpModuleEntry_t);
-    size_t totalSize = dataOffset;
+    Dmod_FileSize_t dataOffset = sizeof(Dmod_DmpHeader_t)
+        + (Dmod_FileSize_t)moduleCount * sizeof(Dmod_DmpModuleEntry_t);
+
+    if( dataOffset > UINT32_MAX )
+    {
+        DMOD_LOG_ERROR("Cannot create DMP file - module table is too large\n");
+        Dmod_CloseDir( dir );
+        Dmod_Free( moduleEntries );
+        return false;
+    }
 
     while( (fileName = Dmod_ReadDir( dir )) != NULL )
     {
@@ -414,8 +424,17 @@ bool Dmod_ToDMPFile( const char* PackageName, const char* InputDir, const char* 
             return false;
         }
 
-        size_t fileSize = Dmod_FileSize( file );
+        Dmod_FileSize_t fileSize = Dmod_FileSize( file );
         Dmod_FileClose( file );
+
+        if( fileSize == DMOD_FILE_SIZE_ERROR || fileSize > UINT32_MAX
+            || dataOffset > (Dmod_FileSize_t)UINT32_MAX - fileSize )
+        {
+            DMOD_LOG_ERROR("Cannot create DMP file - module file '%s' is too large\n", filePath);
+            Dmod_CloseDir( dir );
+            Dmod_Free( moduleEntries );
+            return false;
+        }
 
         // Extract module name from file name (without extension)
         char moduleName[DMOD_MAX_MODULE_NAME_LENGTH];
@@ -440,7 +459,6 @@ bool Dmod_ToDMPFile( const char* PackageName, const char* InputDir, const char* 
         }
 
         dataOffset += fileSize;
-        totalSize += fileSize;
         currentIndex++;
     }
     Dmod_CloseDir( dir );
@@ -530,7 +548,18 @@ bool Dmod_ToDMPFile( const char* PackageName, const char* InputDir, const char* 
             return false;
         }
 
-        size_t fileSize = Dmod_FileSize( file );
+        Dmod_FileSize_t fileSize64 = Dmod_FileSize( file );
+        size_t fileSize = 0;
+        if( fileSize64 == DMOD_FILE_SIZE_ERROR
+            || !Dmod_FileSizeToSizeT(fileSize64, &fileSize) )
+        {
+            DMOD_LOG_ERROR("Cannot create DMP file - module file '%s' is too large\n", filePath);
+            Dmod_FileClose( file );
+            Dmod_CloseDir( dir );
+            Dmod_FileClose( outFile );
+            Dmod_Free( moduleEntries );
+            return false;
+        }
         void* buffer = Dmod_Malloc( fileSize );
         if( buffer == NULL )
         {
@@ -573,5 +602,3 @@ bool Dmod_ToDMPFile( const char* PackageName, const char* InputDir, const char* 
 
     return true;
 }
-
-

@@ -32,9 +32,9 @@ public:
     MOCK_METHOD(void*, FileOpen, (const char* Path, const char* Mode));
     MOCK_METHOD(size_t, FileRead, (void* Buffer, size_t Size, size_t Count, void* File));
     MOCK_METHOD(size_t, FileWrite, (const void* Buffer, size_t Size, size_t Count, void* File));
-    MOCK_METHOD(int, FileSeek, (void* File, long Offset, int Origin));
-    MOCK_METHOD(size_t, FileTell, (void* File));
-    MOCK_METHOD(size_t, FileSize, (void* File));
+    MOCK_METHOD(int, FileSeek, (void* File, Dmod_FileOffset_t Offset, int Origin));
+    MOCK_METHOD(Dmod_FileOffset_t, FileTell, (void* File));
+    MOCK_METHOD(Dmod_FileSize_t, FileSize, (void* File));
     MOCK_METHOD(void, FileClose, (void* File));
 };
 
@@ -319,13 +319,13 @@ extern "C"
      * 
      * @return 0 on success, non-zero on failure
      */
-    int Dmod_FileSeek(void* File, long Offset, int Origin)
+    int Dmod_FileSeek(void* File, Dmod_FileOffset_t Offset, int Origin)
     {
         if( mockFile != nullptr )
         {
             return mockFile->FileSeek(File, Offset, Origin);
         }
-        return fseek((FILE*)File, Offset, Origin);
+        return fseeko((FILE*)File, (off_t)Offset, Origin);
     }
 
     /**
@@ -335,13 +335,13 @@ extern "C"
      * 
      * @return Current position in file
      */
-    size_t Dmod_FileTell(void* File)
+    Dmod_FileOffset_t Dmod_FileTell(void* File)
     {
         if( mockFile != nullptr )
         {
             return mockFile->FileTell(File);
         }
-        return ftell((FILE*)File);
+        return (Dmod_FileOffset_t)ftello((FILE*)File);
     }
 
     /**
@@ -351,20 +351,20 @@ extern "C"
      * 
      * @return File size
      */
-    size_t Dmod_FileSize(void* File)
+    Dmod_FileSize_t Dmod_FileSize(void* File)
     {
         if( mockFile != nullptr )
         {
             return mockFile->FileSize(File);
         }
-        size_t current = ftell((FILE*)File);
-        fseek((FILE*)File,
+        Dmod_FileOffset_t current = (Dmod_FileOffset_t)ftello((FILE*)File);
+        fseeko((FILE*)File,
                 0,
                 SEEK_END);
 
-        size_t size = ftell((FILE*)File);
-        fseek((FILE*)File,
-                current,
+        Dmod_FileSize_t size = (Dmod_FileSize_t)ftello((FILE*)File);
+        fseeko((FILE*)File,
+                (off_t)current,
                 SEEK_SET);
         return size;
     }

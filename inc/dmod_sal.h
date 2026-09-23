@@ -115,9 +115,10 @@ DMOD_BUILTIN_API(Dmod, 1.0, size_t, _WriteMemory,       ( uintptr_t Address, con
 DMOD_BUILTIN_API(Dmod, 1.0, void*       , _FileOpen,    ( const char* Path, const char* Mode ) );
 DMOD_BUILTIN_API(Dmod, 1.0, size_t      , _FileRead,    ( void* Buffer, size_t Size, size_t Count, void* File ) );
 DMOD_BUILTIN_API(Dmod, 1.0, size_t      , _FileWrite,   ( const void* Buffer, size_t Size, size_t Count, void* File ) );
-DMOD_BUILTIN_API(Dmod, 1.0, int         , _FileSeek,    ( void* File, long Offset, int Origin ) );
-DMOD_BUILTIN_API(Dmod, 1.0, size_t      , _FileTell,    ( void* File ) );
-DMOD_BUILTIN_API(Dmod, 1.0, size_t      , _FileSize,    ( void* File ) );
+DMOD_BUILTIN_API(Dmod, 2.0, int               , _FileSeek, ( void* File, Dmod_FileOffset_t Offset, int Origin ) );
+DMOD_BUILTIN_API(Dmod, 2.0, Dmod_FileOffset_t , _FileTell, ( void* File ) );
+DMOD_BUILTIN_API(Dmod, 2.0, Dmod_FileSize_t   , _FileSize, ( void* File ) );
+DMOD_BUILTIN_API(Dmod, 2.0, int               , _FileStat, ( const char* Path, Dmod_FileStat_t* Stat ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void        , _FileClose,   ( void* File ) );
 DMOD_BUILTIN_API(Dmod, 1.0, const char* , _GetRepoDir,  ( void ) );
 DMOD_BUILTIN_API(Dmod, 1.0, bool        , _FileAvailable, ( const char* Path ) );
@@ -165,6 +166,23 @@ DMOD_BUILTIN_API(Dmod, 1.0, int         , _Ioctl,       ( void* File, int Comman
 #ifndef DMOD_EOF
 #   define DMOD_EOF    (-1)
 #endif
+#ifndef DMOD_FILE_OFFSET_ERROR
+#   define DMOD_FILE_OFFSET_ERROR ((Dmod_FileOffset_t)-1)
+#endif
+#ifndef DMOD_FILE_SIZE_ERROR
+#   define DMOD_FILE_SIZE_ERROR ((Dmod_FileSize_t)UINT64_MAX)
+#endif
+
+/** Checked conversion for APIs that must allocate an address-space-sized buffer. */
+static inline bool Dmod_FileSizeToSizeT(Dmod_FileSize_t FileSize, size_t* outSize)
+{
+    if( outSize == NULL || FileSize > (Dmod_FileSize_t)SIZE_MAX )
+    {
+        return false;
+    }
+    *outSize = (size_t)FileSize;
+    return true;
+}
 #ifndef EOF
 #   define EOF        DMOD_EOF
 #endif

@@ -21,7 +21,7 @@
 //                              LOCAL FUNCTION PROTOTYPES
 //==============================================================================
 
-static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* File, long FilePos );
+static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* File, Dmod_FileOffset_t FilePos );
 static bool IsAllApiConnected( Dmod_Context_t* Context );
 static bool PrepareModulePath( const char* RepoDir, const char* ModuleName, bool Compressed, char* Path, size_t MaxLength );
 static bool CheckModuleArchitecture( const char* FilePath, const char* ExpectedArch );
@@ -260,10 +260,12 @@ Dmod_Context_t* Dmod_LoadFile( const char* Path )
         return NULL;
     }
 
-    size_t fileSize = Dmod_FileSize( file );
-    if( fileSize == 0 )
+    Dmod_FileSize_t fileSize64 = Dmod_FileSize( file );
+    size_t fileSize = 0;
+    if( fileSize64 == 0 || fileSize64 == DMOD_FILE_SIZE_ERROR
+        || !Dmod_FileSizeToSizeT(fileSize64, &fileSize) )
     {
-        DMOD_LOG_ERROR("Cannot load module - file is empty\n");
+        DMOD_LOG_ERROR("Cannot load module - file is empty or too large\n");
         Dmod_FileClose( file );
         return NULL;
     }
@@ -1565,10 +1567,12 @@ bool Dmod_ReadModuleHeader(const char* FilePath, Dmod_ModuleHeader_t* Header)
     }
 
     // Get file size
-    size_t fileSize = Dmod_FileSize( file );
-    if( fileSize == 0 )
+    Dmod_FileSize_t fileSize64 = Dmod_FileSize( file );
+    size_t fileSize = 0;
+    if( fileSize64 == 0 || fileSize64 == DMOD_FILE_SIZE_ERROR
+        || !Dmod_FileSizeToSizeT(fileSize64, &fileSize) )
     {
-        DMOD_LOG_ERROR("Cannot read module header - file is empty\n");
+        DMOD_LOG_ERROR("Cannot read module header - file is empty or too large\n");
         Dmod_FileClose( file );
         return false;
     }
@@ -2243,7 +2247,7 @@ void* Dmod_GetDifFunction( Dmod_Context_t* Context, const char* DifSignature )
  * 
  * @return True if file was read successfully, false otherwise
  */
-static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* File, long FilePos  )
+static bool ReadFile( const char* ModuleName, void* Data, size_t Size, void* File, Dmod_FileOffset_t FilePos  )
 {
     if( Data == NULL || File == NULL )
     {
@@ -2645,5 +2649,4 @@ void Dmod_CloseModules( Dmod_ModuleNode_t* outModule )
     Dmod_Free( state );
     outModule->_Data = NULL;
 }
-
 
