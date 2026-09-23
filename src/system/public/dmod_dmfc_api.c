@@ -102,7 +102,7 @@ bool Dmod_IsDMPFile( const char* Path )
         return false;
     }
 
-    size_t fileSize = Dmod_FileSize( file );
+    Dmod_FileSize_t fileSize = Dmod_FileSize( file );
     if( fileSize == 0 )
     {
         Dmod_FileClose( file );
@@ -144,7 +144,7 @@ bool Dmod_IsDMFCFile( const char* Path )
         return false;
     }
 
-    size_t fileSize = Dmod_FileSize( file );
+    Dmod_FileSize_t fileSize = Dmod_FileSize( file );
     if( fileSize == 0 )
     {
         Dmod_FileClose( file );
@@ -276,8 +276,9 @@ bool Dmod_ToDMFCFile( const char* CompressionName, int Level, const char* DmfPat
         return false;
     }
 
-    size_t fileSize = Dmod_FileSize( fileIn );
-    if( fileSize == 0 )
+    Dmod_FileSize_t fileSize64 = Dmod_FileSize( fileIn );
+    size_t fileSize = 0;
+    if( fileSize64 == 0 || !Dmod_FileSizeToSizeT(fileSize64, &fileSize) )
     {
         Dmod_FileClose( fileIn );
         DMOD_LOG_ERROR("Cannot convert to DMFC file - failed to get DMF file size\n");

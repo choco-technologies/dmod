@@ -487,14 +487,14 @@ static void PrintDmfcInfo( const char* filePath )
         Dmod_FileClose( file );
         return;
     }
-    size_t fileSize = Dmod_FileSize( file );
+    Dmod_FileSize_t fileSize = Dmod_FileSize( file );
     Dmod_FileClose( file );
 
     printf("DMFC Compressed Module Information:\n");
     printf("  Name:              %s\n",     dmfcHeader.Name);
     printf("  Compression:       %s\n",     dmfcHeader.Compression);
     printf("  Original Size:     %u bytes\n", dmfcHeader.OriginalSize);
-    printf("  Compressed Size:   %zu bytes\n", fileSize);
+    printf("  Compressed Size:   %llu bytes\n", (unsigned long long)fileSize);
     printf("  Header Version:    0x%04X\n", dmfcHeader.HeaderVersion);
     printf("  Header Size:       %u bytes\n", dmfcHeader.HeaderSize);
     printf("\n");
@@ -1063,4 +1063,3 @@ int main( int argc, char *argv[] )
         return -1;
     }
 }
-

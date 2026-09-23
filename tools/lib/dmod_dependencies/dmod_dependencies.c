@@ -552,10 +552,11 @@ bool Dmod_Dependencies_ParseFile(Dmod_DependenciesContext_t* ctx, const char* fi
     
     // Get file size
     Dmod_FileSeek(file, 0, DMOD_SEEK_END);
-    long size = Dmod_FileTell(file);
+    Dmod_FileOffset_t file_size = Dmod_FileTell(file);
     Dmod_FileSeek(file, 0, DMOD_SEEK_SET);
     
-    if (size < 0) {
+    size_t size = 0;
+    if (file_size < 0 || !Dmod_FileSizeToSizeT((Dmod_FileSize_t)file_size, &size)) {
         SetError(ctx, "Cannot get file size: %s", file_path);
         Dmod_FileClose(file);
         return false;

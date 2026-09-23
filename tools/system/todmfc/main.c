@@ -122,16 +122,15 @@ int main( int argc, char *argv[] )
         return -1;
     }
 
-    size_t dmfSize = Dmod_FileSize( dmfFile );
-    size_t dmfcSize = Dmod_FileSize( dmfcFile );
+    Dmod_FileSize_t dmfSize = Dmod_FileSize( dmfFile );
+    Dmod_FileSize_t dmfcSize = Dmod_FileSize( dmfcFile );
 
     Dmod_FileClose( dmfFile );
     Dmod_FileClose( dmfcFile );
 
-    printf("Original file size: %lu bytes\n", dmfSize);
-    printf("Compressed file size: %lu bytes\n", dmfcSize);
+    printf("Original file size: %llu bytes\n", (unsigned long long)dmfSize);
+    printf("Compressed file size: %llu bytes\n", (unsigned long long)dmfcSize);
     printf("Compression ratio: %.2f%%\n", (float)dmfcSize / dmfSize * 100.0f);
 
     return 0;
 }
-

@@ -693,13 +693,14 @@ bool Dmod_Manifest_ParseFile(Dmod_ManifestContext_t* ctx, const char* file_path)
     }
     
     // Get file size
-    size_t size = Dmod_FileSize(file);
+    Dmod_FileSize_t file_size = Dmod_FileSize(file);
     
-    if (size > 1024 * 1024) { // Limit to 1MB
+    if (file_size > 1024 * 1024) { // Limit to 1MB
         Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "File too large: %s", file_path);
         Dmod_FileClose(file);
         return false;
     }
+    size_t size = (size_t)file_size;
     
     // Read file content
     char* content = Dmod_Malloc(size + 1);

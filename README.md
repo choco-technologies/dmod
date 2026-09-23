@@ -699,6 +699,7 @@ This function:
 
 For more details and examples, see:
 - [CMake Functions Reference](docs/cmake-functions.md)
+- [64-bit File I/O](docs/file-io.md)
 - [dmod_link_modules Example](docs/dmod-link-modules-example.md)
 
 Once this file is created, you can build the module using the following commands:

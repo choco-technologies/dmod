@@ -407,26 +407,27 @@ bool Dmod_Resource_ParseFile(Dmod_ResourceContext_t* ctx, const char* file_path)
     
     // Get file size
     Dmod_FileSeek(file, 0, DMOD_SEEK_END);
-    long file_size = Dmod_FileTell(file);
+    Dmod_FileOffset_t file_size = Dmod_FileTell(file);
     Dmod_FileSeek(file, 0, DMOD_SEEK_SET);
     
     if (file_size < 0 || file_size > 1024 * 1024) {
         Dmod_SnPrintf(ctx->error, sizeof(ctx->error), 
-                     "Invalid file size: %ld", file_size);
+                     "Invalid file size: %lld", (long long)file_size);
         Dmod_FileClose(file);
         return false;
     }
     
     // Read content
-    char* content = (char*)Dmod_Malloc(file_size + 1);
+    size_t native_size = (size_t)file_size;
+    char* content = (char*)Dmod_Malloc(native_size + 1);
     if (!content) {
         Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Out of memory");
         Dmod_FileClose(file);
         return false;
     }
     
-    size_t read_size = Dmod_FileRead(content, 1, file_size, file);
-    if (read_size > (size_t)file_size) {
+    size_t read_size = Dmod_FileRead(content, 1, native_size, file);
+    if (read_size > native_size) {
         Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Read size exceeds file size");
         Dmod_Free(content);
         Dmod_FileClose(file);

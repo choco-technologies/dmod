@@ -33,14 +33,98 @@
  * 
  */
 
+#if !defined(_WIN32) && !defined(_FILE_OFFSET_BITS)
+#   define _FILE_OFFSET_BITS 64
+#endif
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#   define _POSIX_C_SOURCE 200112L
+#endif
+
 #define DMOD_PRIVATE
 #include "dmod_sal.h"
 #include <errno.h>
+#include <limits.h>
 #if DMOD_USE_STDIO
 #   include <stdio.h>
+#   if defined(__unix__) || defined(__APPLE__) || defined(__linux__)
+#       include <sys/types.h>
+#   endif
 #elif DMOD_IMPLEMENT_PRINTF
 #   include "private/dmod_prf.h"
 #endif
+
+#if DMOD_USE_STDIO
+static int Dmod_FileSeekStdio(FILE* File, Dmod_FileOffset_t Offset, int Origin)
+{
+#if defined(_WIN32)
+    return _fseeki64(File, Offset, Origin);
+#elif defined(__unix__) || defined(__APPLE__) || defined(__linux__)
+    off_t stdioOffset = (off_t)Offset;
+    if( (Dmod_FileOffset_t)stdioOffset != Offset )
+    {
+        errno = EOVERFLOW;
+        return -1;
+    }
+    return fseeko(File, stdioOffset, Origin);
+#else
+    if( Offset < (Dmod_FileOffset_t)LONG_MIN || Offset > (Dmod_FileOffset_t)LONG_MAX )
+    {
+        errno = EOVERFLOW;
+        return -1;
+    }
+    return fseek(File, (long)Offset, Origin);
+#endif
+}
+
+static Dmod_FileOffset_t Dmod_FileTellStdio(FILE* File)
+{
+#if defined(_WIN32)
+    return (Dmod_FileOffset_t)_ftelli64(File);
+#elif defined(__unix__) || defined(__APPLE__) || defined(__linux__)
+    off_t position = ftello(File);
+    Dmod_FileOffset_t result = (Dmod_FileOffset_t)position;
+    if( position >= 0 && (off_t)result != position )
+    {
+        errno = EOVERFLOW;
+        return DMOD_FILE_OFFSET_ERROR;
+    }
+    return result;
+#else
+    long position = ftell(File);
+    return position < 0 ? DMOD_FILE_OFFSET_ERROR : (Dmod_FileOffset_t)position;
+#endif
+}
+#endif
+
+static int Dmod_GetFileSize(void* File, Dmod_FileSize_t* outSize)
+{
+    if( File == NULL || outSize == NULL )
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    Dmod_FileOffset_t current = Dmod_FileTell( File );
+    if( current == DMOD_FILE_OFFSET_ERROR || Dmod_FileSeek( File, 0, DMOD_SEEK_END ) != 0 )
+    {
+        return -1;
+    }
+
+    Dmod_FileOffset_t end = Dmod_FileTell( File );
+    int savedErrno = errno;
+    if( Dmod_FileSeek( File, current, DMOD_SEEK_SET ) != 0 )
+    {
+        return -1;
+    }
+    if( end < 0 )
+    {
+        errno = savedErrno;
+        return -1;
+    }
+
+    *outSize = (Dmod_FileSize_t)end;
+    return 0;
+}
 #if DMOD_USE_DIRENT
 #   include <dirent.h>
 #   include <sys/stat.h>
@@ -272,7 +356,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileWrite, ( const void* Buf
  * 
  * @return 0 on success, -1 on error
  */
-DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileSeek, ( void* File, long Offset, int Origin ))
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 2.0, int, _FileSeek, ( void* File, Dmod_FileOffset_t Offset, int Origin ))
 {
     #if DMOD_USE_STDIO
     void* resolvedFile = Dmod_ResolveStreamFile( Dmod_GetCurrentPid(), File );
@@ -282,7 +366,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileSeek, ( void* File, long Of
         // meaning on the raw kernel I/O fallback used by Dmod_FileRead/Dmod_FileWrite.
         return -1;
     }
-    return fseek(resolvedFile, Offset, Origin);
+    return Dmod_FileSeekStdio((FILE*)resolvedFile, Offset, Origin);
     #else
     DMOD_LOG_ERROR("Dmod_FileSeek interface not implemented\n");
     return -1;
@@ -296,7 +380,7 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, int, _FileSeek, ( void* File, long Of
  * 
  * @return Current position in file
  */
-DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileTell, ( void* File ))
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 2.0, Dmod_FileOffset_t, _FileTell, ( void* File ))
 {
     #if DMOD_USE_STDIO
     void* resolvedFile = Dmod_ResolveStreamFile( Dmod_GetCurrentPid(), File );
@@ -304,12 +388,12 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileTell, ( void* File ))
     {
         // No real file bound for the current process/stream slot: there is no
         // position to report on the raw kernel I/O fallback.
-        return 0;
+        return DMOD_FILE_OFFSET_ERROR;
     }
-    return ftell(resolvedFile);
+    return Dmod_FileTellStdio((FILE*)resolvedFile);
     #else
     DMOD_LOG_ERROR("Dmod_FileTell interface not implemented\n");
-    return 0;
+    return DMOD_FILE_OFFSET_ERROR;
     #endif
 }
 
@@ -320,23 +404,58 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileTell, ( void* File ))
  * 
  * @return Size of file
  */
-DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _FileSize, ( void* File ))
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 2.0, Dmod_FileSize_t, _FileSize, ( void* File ))
 {
-    if( File == NULL )
+    Dmod_FileSize_t size = 0;
+    return Dmod_GetFileSize(File, &size) == 0 ? size : 0;
+}
+
+/**
+ * @brief Get metadata for a file path without opening it.
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 2.0, int, _FileStat, ( const char* Path, Dmod_FileStat_t* Stat ))
+{
+    if( Path == NULL || Stat == NULL )
     {
-        return 0;
+        errno = EINVAL;
+        return -1;
     }
 
-    // Seek to end of file
-    Dmod_FileSeek( File, 0, DMOD_SEEK_END );
-
-    // Get current position
-    size_t size = Dmod_FileTell( File );
-
-    // Seek back to start
-    Dmod_FileSeek( File, 0, DMOD_SEEK_SET );
-
-    return size;
+#if DMOD_USE_DIRENT
+    struct stat nativeStat;
+    if( stat(Path, &nativeStat) != 0 || nativeStat.st_size < 0 )
+    {
+        return -1;
+    }
+    uint32_t mode = (uint32_t)nativeStat.st_mode;
+    if( (mode_t)mode != nativeStat.st_mode )
+    {
+        errno = EOVERFLOW;
+        return -1;
+    }
+    Stat->Size = (Dmod_FileSize_t)nativeStat.st_size;
+    Stat->Mode = mode;
+    return 0;
+#elif DMOD_USE_STDIO
+    void* file = Dmod_FileOpen(Path, "rb");
+    if( file == NULL )
+    {
+        return -1;
+    }
+    Dmod_FileSize_t size = 0;
+    int result = Dmod_GetFileSize(file, &size);
+    Dmod_FileClose(file);
+    if( result != 0 )
+    {
+        return -1;
+    }
+    Stat->Size = size;
+    Stat->Mode = 0;
+    return 0;
+#else
+    errno = ENOSYS;
+    return -1;
+#endif
 }
 
 /**

@@ -47,7 +47,7 @@
 
 typedef struct {
     void* file;
-    size_t size;
+    Dmod_FileSize_t size;
     uintptr_t address;
     bool initialized;
 } Dmod_MockMemoryRegion_t;
@@ -70,10 +70,11 @@ static void Dmod_InitMockMemory(void)
             g_MockMemoryRegions[index].file = Dmod_FileOpen(file_macro, "r+b"); \
             if (g_MockMemoryRegions[index].file != NULL) { \
                 g_MockMemoryRegions[index].size = Dmod_FileSize(g_MockMemoryRegions[index].file); \
-                g_MockMemoryRegions[index].initialized = true; \
-                DMOD_LOG_INFO("Mock memory region %d: address=0x%lx, size=%zu, file=%s\n", \
+                g_MockMemoryRegions[index].initialized = \
+                    g_MockMemoryRegions[index].size > 0; \
+                DMOD_LOG_INFO("Mock memory region %d: address=0x%lx, size=%llu, file=%s\n", \
                     index, (unsigned long)g_MockMemoryRegions[index].address, \
-                    g_MockMemoryRegions[index].size, file_macro); \
+                    (unsigned long long)g_MockMemoryRegions[index].size, file_macro); \
             } else { \
                 DMOD_LOG_ERROR("Failed to open mock memory file: %s\n", file_macro); \
             } \
@@ -103,12 +104,15 @@ static Dmod_MockMemoryRegion_t* Dmod_FindMockMemoryRegion(uintptr_t Address)
 {
     for (int i = 0; i < DMOD_MEMORY_MOCK_COUNT && i < DMOD_MAX_MOCK_MEMORY_REGIONS; i++)
     {
-        if (g_MockMemoryRegions[i].initialized && 
-            g_MockMemoryRegions[i].file != NULL &&
-            Address >= g_MockMemoryRegions[i].address && 
-            Address < (g_MockMemoryRegions[i].address + g_MockMemoryRegions[i].size))
+        if (g_MockMemoryRegions[i].initialized
+            && g_MockMemoryRegions[i].file != NULL
+            && Address >= g_MockMemoryRegions[i].address)
         {
-            return &g_MockMemoryRegions[i];
+            Dmod_FileSize_t offset = (Dmod_FileSize_t)(Address - g_MockMemoryRegions[i].address);
+            if( offset < g_MockMemoryRegions[i].size )
+            {
+                return &g_MockMemoryRegions[i];
+            }
         }
     }
     return NULL;
@@ -142,9 +146,14 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _ReadMemory, ( uintptr_t Addr
     Dmod_MockMemoryRegion_t* region = Dmod_FindMockMemoryRegion(Address);
     if (region != NULL)
     {
-        uintptr_t offset = Address - region->address;
-        size_t available = region->size - offset;
-        size_t toRead = (Size < available) ? Size : available;
+        Dmod_FileSize_t offset = (Dmod_FileSize_t)(Address - region->address);
+        Dmod_FileSize_t available = region->size - offset;
+        size_t toRead = available < (Dmod_FileSize_t)Size ? (size_t)available : Size;
+
+        if( offset > INT64_MAX )
+        {
+            return 0;
+        }
         
         // Seek to the offset in the file
         if (Dmod_FileSeek(region->file, offset, DMOD_SEEK_SET) != 0)
@@ -186,9 +195,14 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _WriteMemory, ( uintptr_t Add
     Dmod_MockMemoryRegion_t* region = Dmod_FindMockMemoryRegion(Address);
     if (region != NULL)
     {
-        uintptr_t offset = Address - region->address;
-        size_t available = region->size - offset;
-        size_t toWrite = (Size < available) ? Size : available;
+        Dmod_FileSize_t offset = (Dmod_FileSize_t)(Address - region->address);
+        Dmod_FileSize_t available = region->size - offset;
+        size_t toWrite = available < (Dmod_FileSize_t)Size ? (size_t)available : Size;
+
+        if( offset > INT64_MAX )
+        {
+            return 0;
+        }
         
         // Seek to the offset in the file
         if (Dmod_FileSeek(region->file, offset, DMOD_SEEK_SET) != 0)
