@@ -60,6 +60,14 @@ else()
         add_dependencies(coverage check)
     endif()
 endif()
+if(DMOD_COVERAGE AND NOT TARGET check)
+    # No DMF to run the tests with - still build the tests first, so the .gcno files exist before gcovr runs
+    # Nothing ran the tests, so any .gcda files are leftovers from build-time tools and do not match the rebuilt .gcno files
+    add_custom_target(coverage_clean_gcda
+        COMMAND ${CMAKE_COMMAND} -DDIR=${DMOD_BUILD_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/../scripts/remove_gcda.cmake)
+    add_dependencies(coverage_clean_gcda ${TEST_FILES})
+    add_dependencies(coverage coverage_clean_gcda)
+endif()
 if(DMFC_FILE_FOUND)
     add_definitions(-DDMOD_TEST_DMFC_FILE="${DMOD_TEST_DMFC_FILE}")
 endif()
