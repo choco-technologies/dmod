@@ -786,7 +786,7 @@ static bool DownloadWithCurl(const char* url, char** buffer, size_t* size, void*
     if (g_cache_enabled && GetCachePath(url, true, cache_path, sizeof(cache_path))) {
         if (IsCached(cache_path)) {
             if (LoadFromCache(cache_path, buffer, size)) {
-                DMOD_LOG_INFO("Using cached manifest: %s\n", url);
+                DMOD_LOG_VERBOSE("Using cached manifest: %s\n", url);
                 return true;
             } else {
                 DMOD_LOG_VERBOSE("Failed to load from cache, downloading...\n");
@@ -929,7 +929,7 @@ static bool DownloadFile(const char* url, const char* output_path) {
     
     if (use_cache && IsCached(cache_path)) {
         if (LoadFromCache(cache_path, &buffer, &size)) {
-            DMOD_LOG_INFO("Using cached package: %s\n", url);
+            DMOD_LOG_VERBOSE("Using cached package: %s\n", url);
         } else {
             DMOD_LOG_VERBOSE("Failed to load from cache, downloading...\n");
             buffer = NULL;
@@ -1250,7 +1250,7 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
         return false;
     }
     
-    DMOD_LOG_INFO("Extracted ZIP to temporary directory\n");
+    DMOD_LOG_VERBOSE("Extracted ZIP to temporary directory\n");
     
     // Look for .dmr file first
     char dmr_file[512] = "";
