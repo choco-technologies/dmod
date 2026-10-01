@@ -305,7 +305,7 @@ dmf-get [options] [install] <module_name>[@version]
 - `-a, --arch-name <name>` - Architecture name for variable substitution (e.g., `armv7-cortex-m7`)
 - `--cpu-name <name>` - CPU name for variable substitution (e.g., `stm32f746ngh6`)
 - `--cpu-family <name>` - CPU family for variable substitution (e.g., `stm32f7`)
-- `--type <dmf|dmfc>` - Prefer dmf or dmfc file type
+- `--type <dmf|dmfc>` - Prefer dmf or dmfc file type (default: `dmfc`, falls back to `dmf` when the package has no `.dmfc`). Only the selected file type is installed.
 
 #### Installation Options
 

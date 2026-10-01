@@ -417,6 +417,76 @@ fi
 rm -rf test_lib_extraction testlib_pkg.zip manifest_lib.dmm lib_output
 
 echo ""
+echo "Test 26: Test only the preferred module type (dmfc by default) is installed"
+mkdir -p test_type_both test_type_dmf_only
+echo "fake dmf content" > test_type_both/typemod.dmf
+echo "fake dmfc content" > test_type_both/typemod.dmfc
+cat > test_type_both/typemod.dmr << 'EOFTEST'
+dmf=./${module}.dmf => ${destination}/${module}.dmf
+dmfc=./${module}.dmfc => ${destination}/${module}.dmfc
+EOFTEST
+(cd test_type_both && zip -q ../typemod.zip typemod.dmf typemod.dmfc typemod.dmr)
+echo "fake dmf content" > test_type_dmf_only/dmfonly.dmf
+(cd test_type_dmf_only && zip -q ../dmfonly.zip dmfonly.dmf)
+
+cat > manifest_type.dmm << EOF
+typemod $(pwd)/typemod.zip
+dmfonly $(pwd)/dmfonly.zip
+EOF
+
+DMF_GET_TYPE_ARGS="-m manifest_type.dmm --no-fallback --skip-arch-check --no-dependencies -y"
+OUTPUT=$($DMF_GET $DMF_GET_TYPE_ARGS -o type_output typemod 2>&1 || true)
+if [ -f "type_output/typemod.dmfc" ] && [ ! -f "type_output/typemod.dmf" ]; then
+    echo "✓ Only .dmfc installed by default when package contains both"
+else
+    echo "✗ Expected only typemod.dmfc to be installed by default"
+    echo "$OUTPUT"
+    exit 1
+fi
+
+OUTPUT=$($DMF_GET $DMF_GET_TYPE_ARGS -o type_output dmfonly 2>&1 || true)
+if [ -f "type_output/dmfonly.dmf" ]; then
+    echo "✓ Falls back to .dmf when package has no .dmfc"
+else
+    echo "✗ Expected dmfonly.dmf to be installed as fallback"
+    echo "$OUTPUT"
+    exit 1
+fi
+
+OUTPUT=$($DMF_GET $DMF_GET_TYPE_ARGS --type dmf -o type_output_dmf typemod 2>&1 || true)
+if [ -f "type_output_dmf/typemod.dmf" ] && [ ! -f "type_output_dmf/typemod.dmfc" ]; then
+    echo "✓ Only .dmf installed with --type dmf"
+else
+    echo "✗ Expected only typemod.dmf to be installed with --type dmf"
+    echo "$OUTPUT"
+    exit 1
+fi
+
+# Package without .dmr: whole package is copied to <output>/<module>/, where
+# bundled modules should also be kept in the preferred type only
+mkdir -p test_type_nodmr/tools
+echo "fake dmfc content" > test_type_nodmr/nodmr.dmfc
+echo "fake dmf content" > test_type_nodmr/nodmr.dmf
+echo "fake dmf content" > test_type_nodmr/tools/both.dmf
+echo "fake dmfc content" > test_type_nodmr/tools/both.dmfc
+echo "fake dmf content" > test_type_nodmr/tools/onlydmf.dmf
+(cd test_type_nodmr && zip -q -r ../nodmr.zip nodmr.dmf nodmr.dmfc tools)
+echo "nodmr $(pwd)/nodmr.zip" >> manifest_type.dmm
+
+OUTPUT=$($DMF_GET $DMF_GET_TYPE_ARGS -o type_output nodmr 2>&1 || true)
+if [ -f "type_output/nodmr.dmfc" ] && [ ! -f "type_output/nodmr.dmf" ] \
+   && [ -f "type_output/nodmr/tools/both.dmfc" ] && [ ! -f "type_output/nodmr/tools/both.dmf" ] \
+   && [ -f "type_output/nodmr/tools/onlydmf.dmf" ]; then
+    echo "✓ Package without .dmr keeps only .dmfc where available"
+else
+    echo "✗ Package without .dmr installed unexpected module file types"
+    echo "$OUTPUT"
+    find type_output -type f
+    exit 1
+fi
+rm -rf test_type_both test_type_dmf_only test_type_nodmr typemod.zip dmfonly.zip nodmr.zip manifest_type.dmm type_output type_output_dmf
+
+echo ""
 echo "=== All dmf-get integration tests passed! ==="
 cd ..
 rm -rf "$TEST_DIR"
