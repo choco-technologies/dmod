@@ -1735,6 +1735,33 @@ static bool CheckLicenseAcceptance(const char* extract_dir, const char* module_n
 }
 
 /**
+ * @brief Remove module files of the non-selected type from a directory tree
+ * 
+ * A file of the skipped type (e.g. "cat.dmf") is removed only when its
+ * counterpart of the selected type (e.g. "cat.dmfc") exists next to it, so
+ * modules provided in only one form are kept.
+ * 
+ * @param dir Directory to clean up (searched recursively)
+ * @param selected_type Module file type to keep ("dmf" or "dmfc")
+ * @param skipped_type Module file type to remove ("dmf" or "dmfc")
+ */
+static void RemoveSkippedModuleFiles(const char* dir, const char* selected_type, const char* skipped_type) {
+    if (!IsPathSafe(dir)) {
+        DMOD_LOG_WARN("Invalid directory path (contains unsafe characters): %s\n", dir);
+        return;
+    }
+    
+    char find_cmd[2048];
+    Dmod_SnPrintf(find_cmd, sizeof(find_cmd),
+                  "find \"%s\" -type f -name '*.%s' -exec sh -c "
+                  "'for f; do [ -f \"${f%%.%s}.%s\" ] && rm -f \"$f\"; done; true' sh {} +",
+                  dir, skipped_type, skipped_type, selected_type);
+    if (system(find_cmd) != 0) {
+        DMOD_LOG_WARN("Failed to remove .%s files from: %s\n", skipped_type, dir);
+    }
+}
+
+/**
  * @brief Extract ZIP file and find DMF/DMFC file
  * 
  * @param zip_path Path to the ZIP file
@@ -1914,6 +1941,14 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
         filename = selected_temp_file;
     }
     
+    // Only the selected module file type is installed - the other one (if the
+    // package ships both .dmf and .dmfc) is skipped below.
+    size_t filename_len = strlen(filename);
+    bool selected_is_dmfc = (filename_len > 5 && strcmp(filename + filename_len - 5, ".dmfc") == 0);
+    const char* selected_type = selected_is_dmfc ? "dmfc" : "dmf";
+    const char* skipped_type  = selected_is_dmfc ? "dmf"  : "dmfc";
+    DMOD_LOG_INFO("Selected module file: %s\n", filename);
+    
     // Build destination path directly in output_dir
     char dest_path[512];
     Dmod_SnPrintf(dest_path, sizeof(dest_path), "%s/%s", output_dir, filename);
@@ -1993,6 +2028,13 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                     // In mini mode, only install dmf/dmfc resources
                     if (mini_mode && !res_entry.is_dmf_dmfc) {
                         DMOD_LOG_INFO("  Skipping resource '%s' (mini mode)\n", res_entry.key);
+                        continue;
+                    }
+                    
+                    // Install only the selected module file type (dmf or dmfc)
+                    if (res_entry.is_dmf_dmfc && strcmp(res_entry.key, selected_type) != 0) {
+                        DMOD_LOG_INFO("  Skipping resource '%s' (installing %s only)\n", 
+                               res_entry.key, selected_type);
                         continue;
                     }
                     
@@ -2084,6 +2126,8 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                 int cp_result = system(cp_all_cmd);
                 
                 if (cp_result == 0) {
+                    // Drop module files of the non-selected type (dmf or dmfc)
+                    RemoveSkippedModuleFiles(module_dir, selected_type, skipped_type);
                     DMOD_LOG_INFO("Package contents copied to: %s\n", module_dir);
                 } else {
                     DMOD_LOG_WARN("Failed to copy package contents to module directory\n");
@@ -2525,7 +2569,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  -a, --arch-name <name>    Architecture name for variable substitution\n");
     Dmod_Printf("  --cpu-name <name>         CPU name for variable substitution (e.g., stm32f746ngh6)\n");
     Dmod_Printf("  --cpu-family <name>       CPU family for variable substitution (e.g., stm32f7)\n");
-    Dmod_Printf("  --type <dmf|dmfc>         Prefer dmf or dmfc file type\n");
+    Dmod_Printf("  --type <dmf|dmfc>         Prefer dmf or dmfc file type (default: dmfc)\n");
     Dmod_Printf("  --no-dependencies         Don't download dependencies\n");
     Dmod_Printf("  --ignore-missing          Ignore missing dependencies and continue\n");
     Dmod_Printf("  --skip-arch-check         Skip architecture compatibility check\n");
@@ -2564,7 +2608,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s mymodule --config mcu/config.ini --config-dir ./cfg --config-dest my.ini  # Custom config destination\n", app_name);
     Dmod_Printf("  %s -d deps.dmd --config-map \"driver:./config/drivers;service:./config/services\"  # Route tagged configs (.dmd: module tag=path)\n", app_name);
     Dmod_Printf("  %s -m http://... module  # Use custom manifest\n", app_name);
-    Dmod_Printf("  %s --type dmfc module    # Prefer dmfc files\n", app_name);
+    Dmod_Printf("  %s --type dmf module     # Prefer dmf files over dmfc\n", app_name);
     Dmod_Printf("  %s -a armv7-cortex-m7 module  # Use arch name directly\n", app_name);
     Dmod_Printf("  %s --cpu-name stm32f746ngh6 --cpu-family stm32f7 module  # Use CPU-specific module\n", app_name);
     Dmod_Printf("  %s --clear-cache         # Clear all cached manifests and packages\n", app_name);
@@ -2962,7 +3006,7 @@ int main(int argc, char* argv[]) {
     const char* arch_name = NULL;
     const char* cpu_name = NULL;
     const char* cpu_family = NULL;
-    const char* preferred_type = NULL;
+    const char* preferred_type = "dmfc";  // Prefer compressed modules, fall back to dmf
     const char* command = NULL;  // Command: install (default), headers, docs, or lib
     bool no_dependencies = false;
     bool ignore_missing = false;

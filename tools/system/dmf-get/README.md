@@ -189,7 +189,7 @@ This copies `mymodule`'s configuration to `./config/drivers/mymodule/stm32f746g-
 - `-D, --define <VAR=value>` - Define variable for configuration path substitution
 - `-t, --tools-name <name>` - Tools name for variable substitution
 - `-a, --arch-name <name>` - Architecture name for variable substitution
-- `--type <dmf|dmfc>` - Prefer dmf or dmfc file type
+- `--type <dmf|dmfc>` - Prefer dmf or dmfc file type (default: `dmfc`, falls back to `dmf` when the package has no `.dmfc`). Only the selected file type is installed.
 - `--no-dependencies` - Don't download dependencies automatically
 - `--no-fallback` - Don't fall back to the public manifest if the module is not found in the provided manifest
 - `-y, --yes` - Automatic yes to license prompts (non-interactive mode)
