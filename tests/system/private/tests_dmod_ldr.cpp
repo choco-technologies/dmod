@@ -789,6 +789,59 @@ TEST_F(DmodLdrTest, LoadOutputNoFooter)
 /**
  * @brief Test for Dmod_Ldr_LoadOutput
  * 
+ * The test checks that a module without an output section gets an empty,
+ * native output API - whatever the context held before - so its API can be
+ * connected.
+ */
+TEST_F(DmodLdrTest, LoadOutputWithoutOutputSection)
+{
+    size_t fileSize = 0;
+    void* data = nullptr;
+    EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
+    ASSERT_NE(context, nullptr);
+
+    ASSERT_TRUE(Dmod_Ldr_LoadHeader(context));
+    ASSERT_TRUE(Dmod_Ldr_LoadFooter(context));
+    context->Footer->Outputs.SectionStart = 0;
+    context->Footer->Outputs.SectionSize  = 0;
+
+    /* What an allocation may have left there */
+    memset(&context->Outputs, 0xA5, sizeof(context->Outputs));
+
+    ASSERT_TRUE(Dmod_Ldr_LoadOutput(context));
+    EXPECT_EQ(context->Outputs.OutputSection, nullptr);
+    EXPECT_EQ(context->Outputs.SectionSize, 0u);
+    EXPECT_EQ(context->Outputs.ApiType, Dmod_ApiType_Output);
+    EXPECT_FALSE(context->Outputs.Crossplatform);
+
+    Dmod_Context_Delete(context);
+}
+
+/**
+ * @brief Test for Dmod_Context_New
+ * 
+ * The test checks that a new context has no API set up by chance.
+ */
+TEST_F(DmodLdrTest, NewContextStartsEmpty)
+{
+    size_t fileSize = 0;
+    void* data = nullptr;
+    EXPECT_TRUE(LoadDmfTestFile(&data, &fileSize));
+    Dmod_Context_t* context = Dmod_Context_New(data, fileSize, NULL);
+    ASSERT_NE(context, nullptr);
+
+    EXPECT_FALSE(context->Outputs.Crossplatform);
+    EXPECT_FALSE(context->Inputs.Crossplatform);
+    EXPECT_EQ(context->Outputs.OutputSection, nullptr);
+    EXPECT_EQ(context->Inputs.InputSection, nullptr);
+
+    Dmod_Context_Delete(context);
+}
+
+/**
+ * @brief Test for Dmod_Ldr_LoadOutput
+ * 
  * The test checks if the function fails to load the output with an invalid output section.
  */
 TEST_F(DmodLdrTest, LoadOutputInvalidOutputSection)

@@ -43,6 +43,9 @@ Dmod_Context_t* Dmod_Context_New( void* Data, size_t FileSize, const char* Modul
         DMOD_LOG_ERROR("Cannot create new context - cannot allocate memory\n");
         return NULL;
     }
+    /* Every field starts defined - what the loader does not fill in for a
+     * module (an API section it has not got) must not be left to the heap */
+    memset( Context, 0, sizeof( Dmod_Context_t ) );
 
     Context->Signature  = DMOD_CONTEXT_SIGNATURE;
     Context->Header     = NULL;

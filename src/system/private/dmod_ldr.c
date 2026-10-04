@@ -252,7 +252,16 @@ bool Dmod_Ldr_LoadOutput( Dmod_Context_t* Context )
 
     if( output->SectionStart == 0 || output->SectionSize == 0 )
     {
-        DMOD_LOG_WARN("Cannot load output - missing output section\n");
+        /* A module without outputs - as LoadInput does for one without
+         * inputs, the API is set up empty: left as it was allocated, the
+         * context's garbage would decide whether it is "cross-platform"
+         * and whether its API can be connected */
+        Context->Outputs.OutputSection  = NULL;
+        Context->Outputs.SectionSize    = 0;
+        Context->Outputs.ApiType        = Dmod_ApiType_Output;
+        Context->Outputs.Crossplatform  = false;
+
+        DMOD_LOG_VERBOSE("No outputs to load\n");
         return true;
     }
 
