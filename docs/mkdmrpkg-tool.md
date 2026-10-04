@@ -39,6 +39,7 @@ mkdmrpkg <file.dmr> [options]
 | `--dmf-dir <dir>` | Value for `${dmf_dir}` variable substitution |
 | `--dmfc-dir <dir>` | Value for `${dmfc_dir}` variable substitution |
 | `-b <build_dir>` | Value for `${build_dir}` variable substitution |
+| `--views-dir <dir>` | Value for `${views_dir}` variable substitution. Entries with `${views_dir}` in an `[origin]` are skipped when it is not given |
 
 ## Examples
 
@@ -127,6 +128,7 @@ The following variables are substituted in path expressions within the `.dmr` fi
 | `${dmf_dir}` | `--dmf-dir <dir>` | Directory containing built DMF files |
 | `${dmfc_dir}` | `--dmfc-dir <dir>` | Directory containing built DMFC files |
 | `${build_dir}` | `-b <build_dir>` | Build output directory |
+| `${views_dir}` | `--views-dir <dir>` | Directory with converted views (`.dmv`) |
 
 Any environment variable can also be referenced with `${VAR_NAME}`.
 

@@ -99,6 +99,7 @@ Two variables are automatically substituted in URLs:
 - `DMOD_DMF_DIR` - Default output directory for DMF files
 - `DMOD_DMFC_DIR` - Default output directory for DMFC files
 - `DMOD_MANIFEST` - Default manifest path or URL
+- `DMOD_VIEWS_DIR` - Default views directory (same as `--views-dir`)
 
 ### Version Matching
 
@@ -227,6 +228,7 @@ Three special variables are available:
 - `${destination}` - Installation destination (from `-o` flag or `DMOD_DMF_DIR`)
 - `${module}` - Module name being installed
 - `${DMOD_DMF_DIR}` - DMF directory from environment
+- `${views_dir}` - The module's own views directory: `<views base>/<module>`, where the base is `--views-dir`, `DMOD_VIEWS_DIR` or `<output dir>/views` (e.g. `$DMOD_DMF_DIR/views/<module>`)
 
 Any environment variable can also be used: `${HOME}`, `${USER}`, etc.
 
@@ -298,6 +300,10 @@ dmf-get [options] [install] <module_name>[@version]
 #### Output Options
 
 - `-o, --output-dir <path>` - Output directory for downloaded modules (default: `./dmf` or `DMOD_DMF_DIR`)
+
+#### Views Options
+
+- `--views-dir <path>` - Directory where views (`.dmv`) of the installed applications are placed (default: `DMOD_VIEWS_DIR`, otherwise `views` inside the output directory, e.g. `$DMOD_DMF_DIR/views`). Every module gets its own subdirectory `<path>/<module>`, which is what `${views_dir}` resolves to in `.dmr` files (e.g. `views=./views => ${views_dir}`), so views of different modules never overwrite each other. The contents of the `views` directory are copied into it (a reinstall overwrites them). The `views` resource is installed also with `--mini`.
 
 #### Configuration Options
 

@@ -174,6 +174,128 @@ function(to_snake_case INPUT_STRING OUTPUT_VARIABLE)
     set(${OUTPUT_VARIABLE} "${SNAKE_CASE_STRING}" PARENT_SCOPE)
 endfunction()
 
+# ===========================================================================
+# Views (.dmvs -> .dmv) conversion
+# ===========================================================================
+#
+# DMOD_FIXTURES_PATHS - list of directories with view sources (*.dmvs).
+# When it is set, the first module created in a project downloads the todmv
+# tool with dmf-get (at configure time) and every *.dmvs found in those
+# directories is converted into a *.dmv file placed in DMOD_VIEWS_DIR
+# (default: <build>/views). DMOD_VIEWS_DIR is then available to .dmr files as
+# ${views_dir} (see mkdmrpkg --views-dir).
+#
+# Related variables:
+#   DMOD_VIEWS_DIR         output directory for the converted views
+#   DMOD_VIEWS_TOOLS_NAME  tools name used to download todmv (host tools,
+#                          default: arch/x86_64)
+#   DMOD_LOADER            dmod_loader executable that runs todmv.dmf
+#                          (default: searched in tools dir and PATH)
+#
+# Sets DMOD_VIEWS_ENABLED (parent scope) to TRUE when views are converted.
+#
+function(dmod_setup_views moduleName)
+    set(DMOD_VIEWS_ENABLED FALSE PARENT_SCOPE)
+    if(NOT DEFINED DMOD_FIXTURES_PATHS OR "${DMOD_FIXTURES_PATHS}" STREQUAL "")
+        return()
+    endif()
+
+    if(NOT DEFINED DMOD_VIEWS_DIR OR "${DMOD_VIEWS_DIR}" STREQUAL "")
+        set(DMOD_VIEWS_DIR "${CMAKE_BINARY_DIR}/views")
+    endif()
+    set(DMOD_VIEWS_DIR "${DMOD_VIEWS_DIR}" PARENT_SCOPE)
+
+    # The views are converted once per project - later modules only depend on the target
+    get_property(VIEWS_TARGET_READY GLOBAL PROPERTY DMOD_VIEWS_TARGET_READY)
+    if(VIEWS_TARGET_READY)
+        set(DMOD_VIEWS_ENABLED TRUE PARENT_SCOPE)
+        add_dependencies(${moduleName} dmod_views)
+        return()
+    endif()
+
+    # Collect the view sources
+    set(VIEW_SOURCES "")
+    foreach(FIXTURES_PATH ${DMOD_FIXTURES_PATHS})
+        if(NOT IS_ABSOLUTE "${FIXTURES_PATH}")
+            set(FIXTURES_PATH "${CMAKE_SOURCE_DIR}/${FIXTURES_PATH}")
+        endif()
+        if(NOT IS_DIRECTORY "${FIXTURES_PATH}")
+            message(WARNING "DMOD_FIXTURES_PATHS: '${FIXTURES_PATH}' is not a directory")
+            continue()
+        endif()
+        file(GLOB FOUND_VIEWS "${FIXTURES_PATH}/*.dmvs")
+        list(APPEND VIEW_SOURCES ${FOUND_VIEWS})
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${FIXTURES_PATH}")
+    endforeach()
+    if(NOT VIEW_SOURCES)
+        message(STATUS "DMOD_FIXTURES_PATHS: no .dmvs files found in ${DMOD_FIXTURES_PATHS}")
+        return()
+    endif()
+
+    find_program(DMF_GET dmf-get HINTS ${DMOD_TOOLS_BIN_DIR} PATHS ENV PATH)
+    if(NOT DMF_GET)
+        message(WARNING "dmf-get not found - views from DMOD_FIXTURES_PATHS will not be converted. Build the tools first with -DDMOD_BUILD_TOOLS=ON")
+        return()
+    endif()
+
+    # Download todmv (it is a dmf application, run by dmod_loader on the build host)
+    if(NOT DEFINED DMOD_VIEWS_TOOLS_NAME OR "${DMOD_VIEWS_TOOLS_NAME}" STREQUAL "")
+        set(DMOD_VIEWS_TOOLS_NAME "arch/x86_64")
+    endif()
+    set(TODMV_DIR "${CMAKE_BINARY_DIR}/todmv")
+    set(TODMV_DMF "${TODMV_DIR}/todmv.dmf")
+    if(NOT EXISTS "${TODMV_DMF}")
+        set(TODMV_GET_OPTIONS -t ${DMOD_VIEWS_TOOLS_NAME} --type dmf -y)
+        if(DEFINED DMOD_DMM_URL)
+            list(APPEND TODMV_GET_OPTIONS -m ${DMOD_DMM_URL})
+        endif()
+        message(STATUS "Downloading todmv with dmf-get to ${TODMV_DIR}")
+        file(MAKE_DIRECTORY "${TODMV_DIR}")
+        execute_process(
+            COMMAND ${DMF_GET} todmv ${TODMV_GET_OPTIONS} -o ${TODMV_DIR}
+            RESULT_VARIABLE TODMV_GET_RESULT
+            OUTPUT_VARIABLE TODMV_GET_OUTPUT
+            ERROR_VARIABLE TODMV_GET_ERROR
+        )
+        if(NOT TODMV_GET_RESULT EQUAL 0 OR NOT EXISTS "${TODMV_DMF}")
+            message(WARNING "Failed to download todmv: ${TODMV_GET_ERROR}${TODMV_GET_OUTPUT} - views will not be converted")
+            return()
+        endif()
+    endif()
+
+    if(NOT DMOD_LOADER)
+        find_program(DMOD_LOADER dmod_loader
+            HINTS ${DMOD_TOOLS_BIN_DIR} ${CMAKE_BINARY_DIR}/examples/system/dmod_loader
+            PATHS ENV PATH)
+    endif()
+    if(NOT DMOD_LOADER)
+        message(WARNING "dmod_loader not found (set DMOD_LOADER) - views from DMOD_FIXTURES_PATHS will not be converted")
+        return()
+    endif()
+
+    file(MAKE_DIRECTORY "${DMOD_VIEWS_DIR}")
+    set(VIEW_OUTPUTS "")
+    foreach(VIEW_SOURCE ${VIEW_SOURCES})
+        get_filename_component(VIEW_NAME "${VIEW_SOURCE}" NAME_WE)
+        set(VIEW_OUTPUT "${DMOD_VIEWS_DIR}/${VIEW_NAME}.dmv")
+        add_custom_command(
+            OUTPUT "${VIEW_OUTPUT}"
+            COMMAND ${CMAKE_COMMAND} -E env DMOD_DMF_DIR=${TODMV_DIR}
+                    ${DMOD_LOADER} ${TODMV_DMF} --args -o ${VIEW_OUTPUT} ${VIEW_SOURCE}
+            DEPENDS "${VIEW_SOURCE}"
+            COMMENT "Converting view ${VIEW_NAME}.dmvs to ${VIEW_NAME}.dmv"
+            VERBATIM
+        )
+        list(APPEND VIEW_OUTPUTS "${VIEW_OUTPUT}")
+    endforeach()
+
+    add_custom_target(dmod_views ALL DEPENDS ${VIEW_OUTPUTS})
+    set_property(GLOBAL PROPERTY DMOD_VIEWS_TARGET_READY TRUE)
+    add_dependencies(${moduleName} dmod_views)
+    message(STATUS "Views: converting ${VIEW_SOURCES} to ${DMOD_VIEWS_DIR}")
+    set(DMOD_VIEWS_ENABLED TRUE PARENT_SCOPE)
+endfunction()
+
 #
 # Function to create a DMOD module
 #
@@ -463,6 +585,12 @@ function(dmod_create_module moduleName version moduleType)
             HINTS ${DMOD_TOOLS_BIN_DIR}
         )
 
+        dmod_setup_views(${moduleName})
+        set(MKDMRPKG_VIEWS_ARGS "")
+        if(DMOD_VIEWS_ENABLED)
+            set(MKDMRPKG_VIEWS_ARGS --views-dir "${DMOD_VIEWS_DIR}")
+        endif()
+
         if(MKDMRPKG)
             set(DMOD_PACKAGES_DIR "${CMAKE_BINARY_DIR}/packages")
             set(DMOD_PKG_OUT_DIR "${DMOD_PACKAGES_DIR}/${moduleName}")
@@ -480,6 +608,7 @@ function(dmod_create_module moduleName version moduleType)
                     -r "${CMAKE_SOURCE_DIR}"
                     -b "${CMAKE_BINARY_DIR}"
                     --dmf-dir "${DMOD_DMF_DIR}"
+                    ${MKDMRPKG_VIEWS_ARGS}
                     -o "${DMOD_PKG_OUT_DIR}"
                 COMMAND ${CMAKE_COMMAND} -E chdir "${DMOD_PKG_OUT_DIR}"
                     ${CMAKE_COMMAND} -E tar "cf" "${DMOD_PKG_ZIP_PATH}" --format=zip -- .

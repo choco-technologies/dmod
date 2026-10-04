@@ -335,6 +335,7 @@ The following variables should be set before calling `dmod_add_executable` or `d
 - `DMOD_MAL_IMPLS` - List of MAL (Module Abstraction Layer) interfaces implemented
 - `DMOD_DIF_IMPLS` - List of DIF (Device Interface) implementations
 - `DMOD_COMPRESSION_METHOD` - Compression method for DMFC files (default: "fastlz")
+- `DMOD_FIXTURES_PATHS` - List of directories with view sources (`*.dmvs`). When set, `dmf-get` downloads the `todmv` tool at configure time and every `.dmvs` is converted to `.dmv` into `DMOD_VIEWS_DIR` (default: `<build>/views`) by the `dmod_views` target, which the module depends on. The directory is passed to `mkdmrpkg` as `--views-dir`, so a `.dmr` can use `${views_dir}` to put the views into the package, e.g. `views=./views => ${views_dir} [origin=${views_dir}]` (`dmf-get` installs them into a per-module directory). Other settings: `DMOD_VIEWS_TOOLS_NAME` (tools name used to fetch `todmv`, default `arch/x86_64`) and `DMOD_LOADER` (path to `dmod_loader`, which runs `todmv.dmf`; searched in the tools dir and `PATH` by default).
 - `DMOD_DMR_PATH` - Path to the `.dmr` resource file. When set, a release package is created in `build/packages/<moduleName>/` and zipped to `build/packages/<moduleName>.zip` after the build. Requires the `mkdmrpkg` tool (build with `-DDMOD_BUILD_TOOLS=ON`).
 
 ## See Also

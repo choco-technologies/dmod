@@ -311,6 +311,8 @@ static void PrintHelp( const char* AppName )
     printf("  -r <repo_dir>         Value for ${repo_dir} variable substitution\n");
     printf("  --dmf-dir <dir>       Value for ${dmf_dir} variable substitution\n");
     printf("  --dmfc-dir <dir>      Value for ${dmfc_dir} variable substitution\n");
+    printf("  --views-dir <dir>     Value for ${views_dir} variable substitution\n");
+    printf("                        (entries using ${views_dir} are skipped when not set)\n");
     printf("  -b <build_dir>        Value for ${build_dir} variable substitution\n");
     printf("\nArguments:\n");
     printf("  <file.dmr>            Path to the .dmr resource file\n");
@@ -362,6 +364,7 @@ int main( int argc, char *argv[] )
     const char* dmfDir       = NULL;
     const char* dmfcDir      = NULL;
     const char* buildDir     = NULL;
+    const char* viewsDir     = NULL;
 
     const char* additionalFiles[MKDMRPKG_MAX_ADDITIONAL_FILES];
     int additionalFileCount = 0;
@@ -486,6 +489,19 @@ int main( int argc, char *argv[] )
                 return -1;
             }
         }
+        else if( strcmp( argv[i], "--views-dir" ) == 0 )
+        {
+            if( i + 1 < argc )
+            {
+                viewsDir = argv[++i];
+            }
+            else
+            {
+                printf("Error: --views-dir option requires a value\n");
+                PrintUsage( argv[0] );
+                return -1;
+            }
+        }
         else if( strcmp( argv[i], "-b" ) == 0 )
         {
             if( i + 1 < argc )
@@ -533,6 +549,8 @@ int main( int argc, char *argv[] )
         return -1;
     }
 
+    Dmod_Resource_SetViewsDir( ctx, viewsDir );
+
     // Parse the .dmr file
     if( !Dmod_Resource_ParseFile( ctx, dmrPath ) )
     {
@@ -570,6 +588,24 @@ int main( int argc, char *argv[] )
         if( entry.origin_count == 0 )
         {
             DMOD_LOG_VERBOSE("  Skipping entry '%s' (no [origin] directive)\n", entry.key);
+            skippedEntries++;
+            continue;
+        }
+
+        // An origin that still refers to ${views_dir} could not be resolved
+        // (no --views-dir given, i.e. the project has no views) - skip it.
+        bool unresolved = false;
+        for( size_t j = 0; j < entry.origin_count; j++ )
+        {
+            if( strstr( entry.origins[j], "${views_dir}" ) != NULL )
+            {
+                unresolved = true;
+                break;
+            }
+        }
+        if( unresolved )
+        {
+            DMOD_LOG_VERBOSE("  Skipping entry '%s' (${views_dir} not set)\n", entry.key);
             skippedEntries++;
             continue;
         }
