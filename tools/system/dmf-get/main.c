@@ -1152,8 +1152,10 @@ static void GetCurrentDmodVersion(Dmod_SemanticVersion_t* version) {
 }
 
 /**
- * Directory for views (set by --views-dir or DMOD_VIEWS_DIR). Used to resolve
- * ${views_dir} in .dmr files; when NULL the views go to <output_dir>/views.
+ * Base directory for views (set by --views-dir or DMOD_VIEWS_DIR); when NULL
+ * the views go to <output_dir>/views. ${views_dir} in a .dmr file resolves to
+ * <base>/<module>, so every module gets its own directory and views of
+ * different modules never overwrite each other.
  */
 static const char* g_views_dir = NULL;
 
@@ -1164,17 +1166,15 @@ static const char* g_views_dir = NULL;
 static Dmod_ResourceContext_t* InitInstallResourceContext(const char* output_dir, const char* module_name) {
     Dmod_ResourceContext_t* ctx = Dmod_Resource_Init(output_dir, module_name, NULL, NULL, NULL, NULL);
     if (ctx) {
+        char module_views_dir[DMOD_RESOURCE_MAX_PATH_LEN];
         if (g_views_dir) {
-            Dmod_Resource_SetViewsDir(ctx, g_views_dir);
+            Dmod_SnPrintf(module_views_dir, sizeof(module_views_dir), "%s/%s", g_views_dir, module_name);
+        } else if (output_dir[0] != '\0') {
+            Dmod_SnPrintf(module_views_dir, sizeof(module_views_dir), "%s/views/%s", output_dir, module_name);
         } else {
-            char default_views_dir[DMOD_RESOURCE_MAX_PATH_LEN];
-            if (output_dir[0] != '\0') {
-                Dmod_SnPrintf(default_views_dir, sizeof(default_views_dir), "%s/views", output_dir);
-            } else {
-                Dmod_SnPrintf(default_views_dir, sizeof(default_views_dir), "views");
-            }
-            Dmod_Resource_SetViewsDir(ctx, default_views_dir);
+            Dmod_SnPrintf(module_views_dir, sizeof(module_views_dir), "views/%s", module_name);
         }
+        Dmod_Resource_SetViewsDir(ctx, module_views_dir);
     }
     return ctx;
 }
@@ -2118,7 +2118,13 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                     
                     // Copy the resource
                     char cp_res_cmd[2048];
-                    if (S_ISDIR(st.st_mode)) {
+                    if (S_ISDIR(st.st_mode) && is_views) {
+                        // Views land in the module's own directory - copy the contents,
+                        // so a reinstall overwrites them instead of nesting views/views
+                        Dmod_SnPrintf(cp_res_cmd, sizeof(cp_res_cmd),
+                                     "mkdir -p \"%s\" && cp -r \"%s/.\" \"%s/\"",
+                                     res_entry.destination, full_source, res_entry.destination);
+                    } else if (S_ISDIR(st.st_mode)) {
                         Dmod_SnPrintf(cp_res_cmd, sizeof(cp_res_cmd), 
                                      "cp -r \"%s\" \"%s\"", full_source, res_entry.destination);
                     } else {
@@ -2597,9 +2603,9 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --config-dest <name>      Custom destination filename for config file\n");
     Dmod_Printf("  --config-map <map>        Route tagged configs to different directories (with -d), e.g.\n");
     Dmod_Printf("                            \"driver:./config/drivers;service:./config/services\"\n");
-    Dmod_Printf("  --views-dir <path>        Directory where views of the installed applications are placed\n");
-    Dmod_Printf("                            (resolves ${views_dir} in .dmr files; default: $DMOD_VIEWS_DIR,\n");
-    Dmod_Printf("                            otherwise <output-dir>/views)\n");
+    Dmod_Printf("  --views-dir <path>        Directory where views of the installed applications are placed,\n");
+    Dmod_Printf("                            each module in its own <path>/<module> (= ${views_dir} in .dmr)\n");
+    Dmod_Printf("                            (default: $DMOD_VIEWS_DIR, otherwise <output-dir>/views)\n");
     Dmod_Printf("  -D, --define <VAR=value>  Define variable for config path substitution\n");
     Dmod_Printf("  -t, --tools-name <name>   Tools name for variable substitution\n");
     Dmod_Printf("  -a, --arch-name <name>    Architecture name for variable substitution\n");
