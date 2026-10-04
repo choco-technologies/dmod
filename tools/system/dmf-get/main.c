@@ -1153,7 +1153,7 @@ static void GetCurrentDmodVersion(Dmod_SemanticVersion_t* version) {
 
 /**
  * Directory for views (set by --views-dir or DMOD_VIEWS_DIR). Used to resolve
- * ${views_dir} in .dmr files; NULL when views are not requested.
+ * ${views_dir} in .dmr files; when NULL the views go to <output_dir>/views.
  */
 static const char* g_views_dir = NULL;
 
@@ -1164,7 +1164,17 @@ static const char* g_views_dir = NULL;
 static Dmod_ResourceContext_t* InitInstallResourceContext(const char* output_dir, const char* module_name) {
     Dmod_ResourceContext_t* ctx = Dmod_Resource_Init(output_dir, module_name, NULL, NULL, NULL, NULL);
     if (ctx) {
-        Dmod_Resource_SetViewsDir(ctx, g_views_dir);
+        if (g_views_dir) {
+            Dmod_Resource_SetViewsDir(ctx, g_views_dir);
+        } else {
+            char default_views_dir[DMOD_RESOURCE_MAX_PATH_LEN];
+            if (output_dir[0] != '\0') {
+                Dmod_SnPrintf(default_views_dir, sizeof(default_views_dir), "%s/views", output_dir);
+            } else {
+                Dmod_SnPrintf(default_views_dir, sizeof(default_views_dir), "views");
+            }
+            Dmod_Resource_SetViewsDir(ctx, default_views_dir);
+        }
     }
     return ctx;
 }
@@ -2047,14 +2057,6 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                     
                     bool is_views = strcmp(res_entry.key, "views") == 0;
 
-                    // Entries that need ${views_dir} are installed only when a views
-                    // directory was given (--views-dir / DMOD_VIEWS_DIR)
-                    if (strstr(res_entry.destination, "${views_dir}") != NULL) {
-                        DMOD_LOG_INFO("  Skipping resource '%s' (no views directory given, use --views-dir)\n",
-                               res_entry.key);
-                        continue;
-                    }
-
                     // In mini mode, only install dmf/dmfc resources (and views, which
                     // the application needs at runtime)
                     if (mini_mode && !res_entry.is_dmf_dmfc && !is_views) {
@@ -2596,7 +2598,8 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --config-map <map>        Route tagged configs to different directories (with -d), e.g.\n");
     Dmod_Printf("                            \"driver:./config/drivers;service:./config/services\"\n");
     Dmod_Printf("  --views-dir <path>        Directory where views of the installed applications are placed\n");
-    Dmod_Printf("                            (resolves ${views_dir} in .dmr files; default: $DMOD_VIEWS_DIR)\n");
+    Dmod_Printf("                            (resolves ${views_dir} in .dmr files; default: $DMOD_VIEWS_DIR,\n");
+    Dmod_Printf("                            otherwise <output-dir>/views)\n");
     Dmod_Printf("  -D, --define <VAR=value>  Define variable for config path substitution\n");
     Dmod_Printf("  -t, --tools-name <name>   Tools name for variable substitution\n");
     Dmod_Printf("  -a, --arch-name <name>    Architecture name for variable substitution\n");

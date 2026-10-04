@@ -228,7 +228,7 @@ Three special variables are available:
 - `${destination}` - Installation destination (from `-o` flag or `DMOD_DMF_DIR`)
 - `${module}` - Module name being installed
 - `${DMOD_DMF_DIR}` - DMF directory from environment
-- `${views_dir}` - Views directory (from `--views-dir` or `DMOD_VIEWS_DIR`); entries whose destination uses it are skipped when it is not given
+- `${views_dir}` - Views directory (from `--views-dir` or `DMOD_VIEWS_DIR`, otherwise `<output dir>/views`, e.g. `$DMOD_DMF_DIR/views`)
 
 Any environment variable can also be used: `${HOME}`, `${USER}`, etc.
 
@@ -303,7 +303,7 @@ dmf-get [options] [install] <module_name>[@version]
 
 #### Views Options
 
-- `--views-dir <path>` - Directory where views (`.dmv`) of the installed applications are placed (default: `DMOD_VIEWS_DIR`). It resolves `${views_dir}` in `.dmr` files, e.g. `views=./views => ${views_dir}/${module}`. The `views` resource is installed also with `--mini`.
+- `--views-dir <path>` - Directory where views (`.dmv`) of the installed applications are placed (default: `DMOD_VIEWS_DIR`, otherwise `views` inside the output directory, e.g. `$DMOD_DMF_DIR/views`). It resolves `${views_dir}` in `.dmr` files, e.g. `views=./views => ${views_dir}/${module}`. The `views` resource is installed also with `--mini`.
 
 #### Configuration Options
 
