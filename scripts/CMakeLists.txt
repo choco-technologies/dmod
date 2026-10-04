@@ -175,7 +175,7 @@ function(to_snake_case INPUT_STRING OUTPUT_VARIABLE)
 endfunction()
 
 # ===========================================================================
-# Assets conversion: views (.dmvs -> .dmv), images (-> .dmvi)
+# Assets conversion: views (.dmvs -> .dmv), images (-> .dmvi), fonts (-> .dmvf)
 # ===========================================================================
 #
 # DMOD_ASSETS_PATHS - list of directories with the sources of a module's
@@ -188,9 +188,11 @@ endfunction()
 #   images (DMOD_IMAGE_EXTENSIONS) todmvi -> <name>.dmvi, with the dmimg
 #                                           decoder of each extension
 #                                           (dmimg_png, dmimg_jpeg, ...)
+#   fonts (DMOD_FONT_EXTENSIONS) todmvf   -> <section>.dmvf for each size in
+#                                           its .ini
 #
 # Everything is placed in DMOD_VIEWS_DIR (default: <build>/views) - images
-# next to the views, so a view finds them by their names. DMOD_VIEWS_DIR is
+# and fonts next to the views, so a view finds them by their names. DMOD_VIEWS_DIR is
 # then available to .dmr files as ${views_dir} (see mkdmrpkg --views-dir).
 #
 # An image's conversion is set by an optional <image>.ini next to it (e.g.
@@ -203,6 +205,15 @@ endfunction()
 #   compression = fastlz | ... | none
 #   dither      = on | off
 #
+# A font needs its <font>.ini (e.g. Roboto-Regular.ttf.ini), the same way:
+# a font is made for one pixel size, so each output has one - each
+# [section] a size, <section>.dmvf (without sections: <name>.dmvf). A font
+# without an .ini is left out (with a warning):
+#
+#   size        = pixel size (em), 4 ... 127 - required
+#   chars       = codepoint ranges, e.g. 0x20-0x7E,0x104 (default: printable
+#                 ASCII, Latin-1, Latin Extended-A)
+#
 # Related variables:
 #   DMOD_VIEWS_DIR          output directory of the converted assets
 #   DMOD_VIEWS_TOOLS_NAME   tools name used to download the tools (host
@@ -213,6 +224,7 @@ endfunction()
 #                           jfif bmp qoi gif tif tiff)
 #   DMOD_IMAGE_DECODERS     decoder modules to download (default:
 #                           dmimg_<format> of each extension found)
+#   DMOD_FONT_EXTENSIONS    font file extensions (default: ttf otf ttc)
 #
 # DMOD_FIXTURES_PATHS is the old name of DMOD_ASSETS_PATHS - still read, with
 # a warning, when DMOD_ASSETS_PATHS is not set.
@@ -279,14 +291,34 @@ function(_dmod_image_option iniPath key value outVar)
     set(${outVar} "${ARGS}" PARENT_SCOPE)
 endfunction()
 
-# The outputs of an image - <prefix>_NAMES, and <prefix>_ARGS_<name> - from
-# its .ini (see above), or one output with the defaults
-function(_dmod_image_outputs source prefix)
+# todmvf arguments of one font ini key (size is handled by _dmod_asset_outputs)
+function(_dmod_font_option iniPath key value outVar)
+    set(ARGS "")
+    if(key STREQUAL "chars")
+        set(ARGS -c ${value})
+    else()
+        message(SEND_ERROR "${iniPath}: unknown key '${key}' (size, chars)")
+    endif()
+    set(${outVar} "${ARGS}" PARENT_SCOPE)
+endfunction()
+
+# The outputs of an asset of a kind (image, font) - <prefix>_NAMES, and
+# <prefix>_ARGS_<name>, for fonts also <prefix>_SIZE_<name> - from its .ini
+# (see above). Without an .ini: one output with the defaults (an image), or
+# none (a font - it has no size).
+function(_dmod_asset_outputs kind source prefix)
     get_filename_component(NAME "${source}" NAME_WE)
     set(INI "${source}.ini")
     set(COMMON "")
+    set(COMMON_SIZE "")
     set(SECTIONS "")
-    if(EXISTS "${INI}")
+    set(${prefix}_NAMES "" PARENT_SCOPE)
+    if(NOT EXISTS "${INI}")
+        if(kind STREQUAL "font")
+            message(WARNING "${source}: no ${INI} with its sizes - the font is left out")
+            return()
+        endif()
+    else()
         set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${INI}")
         file(STRINGS "${INI}" LINES)
         set(SECTION "")
@@ -299,8 +331,24 @@ function(_dmod_image_outputs source prefix)
                 set(SECTION "${CMAKE_MATCH_1}")
                 list(APPEND SECTIONS "${SECTION}")
                 set(ARGS_${SECTION} "")
+                set(SIZE_${SECTION} "")
             elseif(LINE MATCHES "^([A-Za-z_]+)[ \t]*=[ \t]*(.*)$")
-                _dmod_image_option("${INI}" "${CMAKE_MATCH_1}" "${CMAKE_MATCH_2}" OPTION_ARGS)
+                set(KEY "${CMAKE_MATCH_1}")
+                set(VALUE "${CMAKE_MATCH_2}")
+                set(OPTION_ARGS "")
+                if(kind STREQUAL "font" AND KEY STREQUAL "size")
+                    if(NOT VALUE MATCHES "^[0-9]+$" OR VALUE LESS 4 OR VALUE GREATER 127)
+                        message(SEND_ERROR "${INI}: size is 4 ... 127, not '${VALUE}'")
+                    elseif(SECTION STREQUAL "")
+                        set(COMMON_SIZE "${VALUE}")
+                    else()
+                        set(SIZE_${SECTION} "${VALUE}")
+                    endif()
+                elseif(kind STREQUAL "font")
+                    _dmod_font_option("${INI}" "${KEY}" "${VALUE}" OPTION_ARGS)
+                else()
+                    _dmod_image_option("${INI}" "${KEY}" "${VALUE}" OPTION_ARGS)
+                endif()
                 if(SECTION STREQUAL "")
                     list(APPEND COMMON ${OPTION_ARGS})
                 else()
@@ -314,9 +362,20 @@ function(_dmod_image_outputs source prefix)
     if(NOT SECTIONS)
         set(SECTIONS "${NAME}")
         set(ARGS_${NAME} "")
+        set(SIZE_${NAME} "")
     endif()
     foreach(SECTION ${SECTIONS})
         set(${prefix}_ARGS_${SECTION} ${COMMON} ${ARGS_${SECTION}} PARENT_SCOPE)
+        if(kind STREQUAL "font")
+            set(SIZE "${SIZE_${SECTION}}")
+            if(SIZE STREQUAL "")
+                set(SIZE "${COMMON_SIZE}")
+            endif()
+            if(SIZE STREQUAL "")
+                message(SEND_ERROR "${INI}: [${SECTION}] has no size")
+            endif()
+            set(${prefix}_SIZE_${SECTION} "${SIZE}" PARENT_SCOPE)
+        endif()
     endforeach()
     set(${prefix}_NAMES ${SECTIONS} PARENT_SCOPE)
 endfunction()
@@ -346,6 +405,9 @@ function(dmod_setup_assets moduleName)
     if(NOT DEFINED DMOD_IMAGE_EXTENSIONS OR "${DMOD_IMAGE_EXTENSIONS}" STREQUAL "")
         set(DMOD_IMAGE_EXTENSIONS png jpg jpeg jpe jfif bmp qoi gif tif tiff)
     endif()
+    if(NOT DEFINED DMOD_FONT_EXTENSIONS OR "${DMOD_FONT_EXTENSIONS}" STREQUAL "")
+        set(DMOD_FONT_EXTENSIONS ttf otf ttc)
+    endif()
 
     # The assets are converted once per project - later modules only depend on the target
     get_property(VIEWS_TARGET_READY GLOBAL PROPERTY DMOD_ASSETS_TARGET_READY)
@@ -358,6 +420,7 @@ function(dmod_setup_assets moduleName)
     # Collect the sources
     set(VIEW_SOURCES "")
     set(IMAGE_SOURCES "")
+    set(FONT_SOURCES "")
     foreach(ASSETS_PATH ${DMOD_ASSETS_PATHS})
         if(NOT IS_ABSOLUTE "${ASSETS_PATH}")
             set(ASSETS_PATH "${CMAKE_SOURCE_DIR}/${ASSETS_PATH}")
@@ -373,13 +436,17 @@ function(dmod_setup_assets moduleName)
             get_filename_component(EXT "${FOUND}" LAST_EXT)
             string(TOLOWER "${EXT}" EXT)
             string(REGEX REPLACE "^\\." "" EXT "${EXT}")
-            if(NOT IS_DIRECTORY "${FOUND}" AND EXT IN_LIST DMOD_IMAGE_EXTENSIONS)
+            if(IS_DIRECTORY "${FOUND}")
+                continue()
+            elseif(EXT IN_LIST DMOD_IMAGE_EXTENSIONS)
                 list(APPEND IMAGE_SOURCES "${FOUND}")
+            elseif(EXT IN_LIST DMOD_FONT_EXTENSIONS)
+                list(APPEND FONT_SOURCES "${FOUND}")
             endif()
         endforeach()
         set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${ASSETS_PATH}")
     endforeach()
-    if(NOT VIEW_SOURCES AND NOT IMAGE_SOURCES)
+    if(NOT VIEW_SOURCES AND NOT IMAGE_SOURCES AND NOT FONT_SOURCES)
         message(STATUS "DMOD_ASSETS_PATHS: no assets found in ${DMOD_ASSETS_PATHS}")
         return()
     endif()
@@ -458,7 +525,7 @@ function(dmod_setup_assets moduleName)
         if(EXISTS "${IMAGE_SOURCE}.ini")
             list(APPEND IMAGE_DEPENDS "${IMAGE_SOURCE}.ini")
         endif()
-        _dmod_image_outputs("${IMAGE_SOURCE}" IMAGE)
+        _dmod_asset_outputs(image "${IMAGE_SOURCE}" IMAGE)
         foreach(OUTPUT_NAME ${IMAGE_NAMES})
             set(IMAGE_OUTPUT "${DMOD_VIEWS_DIR}/${OUTPUT_NAME}.dmvi")
             add_custom_command(
@@ -470,6 +537,33 @@ function(dmod_setup_assets moduleName)
                 VERBATIM
             )
             list(APPEND OUTPUTS "${IMAGE_OUTPUT}")
+        endforeach()
+    endforeach()
+
+    # Fonts: todmvf
+    if(FONT_SOURCES)
+        set(TODMVF_DIR "${CMAKE_BINARY_DIR}/todmvf")
+        _dmod_assets_tool(todmvf "${TODMVF_DIR}" TODMVF_DMF)
+        if(NOT TODMVF_DMF)
+            message(WARNING "Fonts will not be converted")
+            set(FONT_SOURCES "")
+        endif()
+    endif()
+    foreach(FONT_SOURCE ${FONT_SOURCES})
+        get_filename_component(FONT_FILE "${FONT_SOURCE}" NAME)
+        _dmod_asset_outputs(font "${FONT_SOURCE}" FONT)
+        foreach(OUTPUT_NAME ${FONT_NAMES})
+            set(FONT_OUTPUT "${DMOD_VIEWS_DIR}/${OUTPUT_NAME}.dmvf")
+            add_custom_command(
+                OUTPUT "${FONT_OUTPUT}"
+                COMMAND ${CMAKE_COMMAND} -E env DMOD_DMF_DIR=${TODMVF_DIR}
+                        ${DMOD_LOADER} ${TODMVF_DMF} --args -q ${FONT_ARGS_${OUTPUT_NAME}} -o ${FONT_OUTPUT}
+                        ${FONT_SOURCE} ${FONT_SIZE_${OUTPUT_NAME}}
+                DEPENDS "${FONT_SOURCE}" "${FONT_SOURCE}.ini"
+                COMMENT "Converting font ${FONT_FILE} to ${OUTPUT_NAME}.dmvf"
+                VERBATIM
+            )
+            list(APPEND OUTPUTS "${FONT_OUTPUT}")
         endforeach()
     endforeach()
 
@@ -488,7 +582,7 @@ function(dmod_setup_assets moduleName)
     add_custom_target(dmod_assets ALL DEPENDS ${OUTPUTS})
     set_property(GLOBAL PROPERTY DMOD_ASSETS_TARGET_READY TRUE)
     add_dependencies(${moduleName} dmod_assets)
-    message(STATUS "Assets: converting ${VIEW_SOURCES} ${IMAGE_SOURCES} to ${DMOD_VIEWS_DIR}")
+    message(STATUS "Assets: converting ${VIEW_SOURCES} ${IMAGE_SOURCES} ${FONT_SOURCES} to ${DMOD_VIEWS_DIR}")
     set(DMOD_VIEWS_ENABLED TRUE PARENT_SCOPE)
 endfunction()
 
