@@ -607,11 +607,19 @@ bool Dmod_Ldr_Load( Dmod_Context_t* Context )
         return false;
     }
 
-    return Dmod_Ldr_LoadHeader( Context ) 
-        && Dmod_Ldr_LoadFooter( Context )
-        && Dmod_Ldr_LoadOutput( Context )
-        && Dmod_Ldr_LoadInput( Context )
-        && Dmod_Ldr_LoadGot( Context )
-        && Dmod_Ldr_LoadBss( Context )
-        && Dmod_RMod_ReadRequiredModules( Context );
+    if( !Dmod_Ldr_LoadHeader( Context )
+     || !Dmod_Ldr_LoadFooter( Context )
+     || !Dmod_Ldr_LoadOutput( Context )
+     || !Dmod_Ldr_LoadInput( Context )
+     || !Dmod_Ldr_LoadGot( Context )
+     || !Dmod_Ldr_LoadBss( Context ) )
+    {
+        return false;
+    }
+
+    /* The module is in place and relocated: what was written must reach
+     * the instruction fetch before any of it runs */
+    Dmod_SyncCode( Context->Data, Context->Size );
+
+    return Dmod_RMod_ReadRequiredModules( Context );
 }

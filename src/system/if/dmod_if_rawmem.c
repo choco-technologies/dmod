@@ -182,6 +182,13 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _ReadMemory, ( uintptr_t Addr
  * 
  * @return Number of bytes successfully written
  */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _SyncCode, ( const void* Address, size_t Size ))
+{
+    /* No caches to keep coherent - see dmod_sal.h */
+    (void)Address;
+    (void)Size;
+}
+
 DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, size_t, _WriteMemory, ( uintptr_t Address, const void* Buffer, size_t Size ))
 {
     if (Buffer == NULL || Size == 0) 
