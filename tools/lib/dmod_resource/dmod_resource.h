@@ -10,7 +10,7 @@
  * - Comments (lines starting with #)
  * - Resource entries: key=source_path => destination_path [origin=path] ...
  * - Environment variable substitution: ${VAR_NAME}
- * - Special variables: ${destination}, ${module}, ${repo_dir}, ${dmf_dir}, ${dmfc_dir}, ${build_dir}
+ * - Special variables: ${destination}, ${module}, ${repo_dir}, ${dmf_dir}, ${dmfc_dir}, ${build_dir}, ${views_dir}
  * - Origin directives: [origin=path] specifying where files come from for package creation
  */
 
@@ -75,6 +75,17 @@ Dmod_ResourceContext_t* Dmod_Resource_Init(
     const char* dmfc_dir,
     const char* build_dir
 );
+
+/**
+ * @brief Set the directory used for ${views_dir} substitution
+ *
+ * Must be called before parsing. When not set (or set to NULL) ${views_dir}
+ * is left unresolved, which lets a tool skip entries that need it.
+ *
+ * @param ctx Resource context
+ * @param views_dir The views directory path (may be NULL to unset)
+ */
+void Dmod_Resource_SetViewsDir(Dmod_ResourceContext_t* ctx, const char* views_dir);
 
 /**
  * @brief Free a resource context and all associated resources

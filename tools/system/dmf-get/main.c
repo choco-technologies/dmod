@@ -38,6 +38,7 @@
 #define ENV_INC_DIR "DMOD_INC_DIR"
 #define ENV_DOC_DIR "DMOD_DOC_DIR"
 #define ENV_LIB_DIR "DMOD_LIB_DIR"
+#define ENV_VIEWS_DIR "DMOD_VIEWS_DIR"
 #define ENV_CACHE_DIR "DMOD_CACHE_DIR"
 
 // Cache directories
@@ -1151,6 +1152,25 @@ static void GetCurrentDmodVersion(Dmod_SemanticVersion_t* version) {
 }
 
 /**
+ * Directory for views (set by --views-dir or DMOD_VIEWS_DIR). Used to resolve
+ * ${views_dir} in .dmr files; NULL when views are not requested.
+ */
+static const char* g_views_dir = NULL;
+
+/**
+ * Create a resource context for installing a module and hand it the views
+ * directory, so that .dmr entries using ${views_dir} resolve.
+ */
+static Dmod_ResourceContext_t* InitInstallResourceContext(const char* output_dir, const char* module_name) {
+    Dmod_ResourceContext_t* ctx = Dmod_Resource_Init(output_dir, module_name, NULL, NULL, NULL, NULL);
+    if (ctx) {
+        Dmod_Resource_SetViewsDir(ctx, g_views_dir);
+    }
+    return ctx;
+}
+
+
+/**
  * @brief Detect and strip an accidental trailing "/<module_name>" (or an
  *        exact match) from an output directory before it's used as the
  *        ${destination} base for .dmr resource resolution.
@@ -1288,7 +1308,7 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
     // Try to get resource path from .dmr file
     if (dmr_file[0] != '\0') {
         DMOD_LOG_INFO("Reading resource path from .dmr file\n");
-        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(safe_output_dir, module_name, NULL, NULL, NULL, NULL);
+        Dmod_ResourceContext_t* res_ctx = InitInstallResourceContext(safe_output_dir, module_name);
         if (res_ctx) {
             if (Dmod_Resource_ParseFile(res_ctx, dmr_file)) {
                 size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
@@ -1450,7 +1470,7 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
 
     // Try to find config directory path from .dmr file
     if (Dmod_Access(dmr_path, DMOD_R_OK) == 0) {
-        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(safe_output_dir, module_name, NULL, NULL, NULL, NULL);
+        Dmod_ResourceContext_t* res_ctx = InitInstallResourceContext(safe_output_dir, module_name);
         if (res_ctx) {
             if (Dmod_Resource_ParseFile(res_ctx, dmr_path)) {
                 size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
@@ -1686,7 +1706,7 @@ static bool CheckLicenseAcceptance(const char* extract_dir, const char* module_n
     char license_source[1024] = "";
     char safe_output_dir[1024];
     NormalizeResourceOutputDir(safe_output_dir, sizeof(safe_output_dir), output_dir, module_name);
-    Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(safe_output_dir, module_name, NULL, NULL, NULL, NULL);
+    Dmod_ResourceContext_t* res_ctx = InitInstallResourceContext(safe_output_dir, module_name);
     if (res_ctx) {
         if (Dmod_Resource_ParseFile(res_ctx, dmr_file)) {
             size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
@@ -2004,7 +2024,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
         // an already module-scoped -o.
         char safe_output_dir[1024];
         NormalizeResourceOutputDir(safe_output_dir, sizeof(safe_output_dir), output_dir, module_name);
-        Dmod_ResourceContext_t* res_ctx = Dmod_Resource_Init(safe_output_dir, module_name, NULL, NULL, NULL, NULL);
+        Dmod_ResourceContext_t* res_ctx = InitInstallResourceContext(safe_output_dir, module_name);
         if (!res_ctx) {
             DMOD_LOG_ERROR("Failed to initialize resource parser\n");
         } else {
@@ -2025,8 +2045,19 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                         continue;
                     }
                     
-                    // In mini mode, only install dmf/dmfc resources
-                    if (mini_mode && !res_entry.is_dmf_dmfc) {
+                    bool is_views = strcmp(res_entry.key, "views") == 0;
+
+                    // Entries that need ${views_dir} are installed only when a views
+                    // directory was given (--views-dir / DMOD_VIEWS_DIR)
+                    if (strstr(res_entry.destination, "${views_dir}") != NULL) {
+                        DMOD_LOG_INFO("  Skipping resource '%s' (no views directory given, use --views-dir)\n",
+                               res_entry.key);
+                        continue;
+                    }
+
+                    // In mini mode, only install dmf/dmfc resources (and views, which
+                    // the application needs at runtime)
+                    if (mini_mode && !res_entry.is_dmf_dmfc && !is_views) {
                         DMOD_LOG_INFO("  Skipping resource '%s' (mini mode)\n", res_entry.key);
                         continue;
                     }
@@ -2564,6 +2595,8 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --config-dest <name>      Custom destination filename for config file\n");
     Dmod_Printf("  --config-map <map>        Route tagged configs to different directories (with -d), e.g.\n");
     Dmod_Printf("                            \"driver:./config/drivers;service:./config/services\"\n");
+    Dmod_Printf("  --views-dir <path>        Directory where views of the installed applications are placed\n");
+    Dmod_Printf("                            (resolves ${views_dir} in .dmr files; default: $DMOD_VIEWS_DIR)\n");
     Dmod_Printf("  -D, --define <VAR=value>  Define variable for config path substitution\n");
     Dmod_Printf("  -t, --tools-name <name>   Tools name for variable substitution\n");
     Dmod_Printf("  -a, --arch-name <name>    Architecture name for variable substitution\n");
@@ -2588,6 +2621,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s       Include/headers output directory\n", ENV_INC_DIR);
     Dmod_Printf("  %s       Documentation output directory\n", ENV_DOC_DIR);
     Dmod_Printf("  %s       Static library output directory\n", ENV_LIB_DIR);
+    Dmod_Printf("  %s     Views output directory (same as --views-dir)\n", ENV_VIEWS_DIR);
     Dmod_Printf("  %s      Cache directory (default: ~/.cache/dmod/dmf-get)\n\n", ENV_CACHE_DIR);
     Dmod_Printf("Examples:\n");
     Dmod_Printf("  %s mymodule              # Download latest version\n", app_name);
@@ -3056,6 +3090,13 @@ int main(int argc, char* argv[]) {
             }
             config_dir = argv[i];
         }
+        else if (strcmp(argv[i], "--views-dir") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: --views-dir requires an argument\n");
+                return 1;
+            }
+            g_views_dir = argv[i];
+        }
         else if (strcmp(argv[i], "--config") == 0) {
             if (++i >= argc) {
                 DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
@@ -3217,6 +3258,10 @@ int main(int argc, char* argv[]) {
             }
             module_spec = argv[i];
         }
+    }
+
+    if (!g_views_dir) {
+        g_views_dir = Dmod_GetEnv(ENV_VIEWS_DIR);
     }
     
     if (!module_spec && !dependencies_path) {

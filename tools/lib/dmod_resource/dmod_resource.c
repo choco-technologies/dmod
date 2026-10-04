@@ -23,6 +23,7 @@ struct Dmod_ResourceContext {
     char dmf_dir[DMOD_RESOURCE_MAX_PATH_LEN];
     char dmfc_dir[DMOD_RESOURCE_MAX_PATH_LEN];
     char build_dir[DMOD_RESOURCE_MAX_PATH_LEN];
+    char views_dir[DMOD_RESOURCE_MAX_PATH_LEN];
     Dmod_ResourceEntry_t entries[MAX_ENTRIES];
     size_t entry_count;
     char error[MAX_ERROR_LEN];
@@ -104,6 +105,8 @@ static bool SubstituteVariables(Dmod_ResourceContext_t* ctx, const char* input,
                 value = ctx->dmfc_dir[0] != '\0' ? ctx->dmfc_dir : NULL;
             } else if (strcmp(var_name, "build_dir") == 0) {
                 value = ctx->build_dir[0] != '\0' ? ctx->build_dir : NULL;
+            } else if (strcmp(var_name, "views_dir") == 0) {
+                value = ctx->views_dir[0] != '\0' ? ctx->views_dir : NULL;
             } else {
                 // Try environment variable
                 value = Dmod_GetEnv(var_name);
@@ -341,6 +344,18 @@ Dmod_ResourceContext_t* Dmod_Resource_Init(const char* destination_path,
     }
     
     return ctx;
+}
+
+void Dmod_Resource_SetViewsDir(Dmod_ResourceContext_t* ctx, const char* views_dir) {
+    if (!ctx) {
+        return;
+    }
+    if (views_dir) {
+        strncpy(ctx->views_dir, views_dir, sizeof(ctx->views_dir) - 1);
+        ctx->views_dir[sizeof(ctx->views_dir) - 1] = '\0';
+    } else {
+        ctx->views_dir[0] = '\0';
+    }
 }
 
 void Dmod_Resource_Free(Dmod_ResourceContext_t* ctx) {

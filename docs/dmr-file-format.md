@@ -69,6 +69,7 @@ Six special variables are automatically set by `dmf-get` (or the tool initializi
 - **`${dmf_dir}`**: Path to the directory containing built DMF files (for package creation workflows)
 - **`${dmfc_dir}`**: Path to the directory containing built DMFC files (for package creation workflows)
 - **`${build_dir}`**: Path to the build output directory (for package creation workflows)
+- **`${views_dir}`**: Directory with views (`.dmv`). When packaging it is the directory with the views converted from `DMOD_FIXTURES_PATHS`; when installing it is given to `dmf-get` with `--views-dir`/`DMOD_VIEWS_DIR`. Entries using it are skipped when it is not set. Example: `views=./views => ${views_dir}/${module} [origin=${views_dir}]`
 
 #### Environment Variables
 
