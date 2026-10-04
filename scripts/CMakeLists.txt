@@ -175,11 +175,11 @@ function(to_snake_case INPUT_STRING OUTPUT_VARIABLE)
 endfunction()
 
 # ===========================================================================
-# Fixtures conversion: views (.dmvs -> .dmv), images (-> .dmvi)
+# Assets conversion: views (.dmvs -> .dmv), images (-> .dmvi)
 # ===========================================================================
 #
-# DMOD_FIXTURES_PATHS - list of directories with the sources of a module's
-# fixtures. When it is set, the first module created in a project converts
+# DMOD_ASSETS_PATHS - list of directories with the sources of a module's
+# assets. When it is set, the first module created in a project converts
 # them, with tools it downloads with dmf-get at configure time (dmf
 # applications, run by dmod_loader on the build host) - only the tools for
 # the kinds of files found:
@@ -204,7 +204,7 @@ endfunction()
 #   dither      = on | off
 #
 # Related variables:
-#   DMOD_VIEWS_DIR          output directory of the converted fixtures
+#   DMOD_VIEWS_DIR          output directory of the converted assets
 #   DMOD_VIEWS_TOOLS_NAME   tools name used to download the tools (host
 #                           tools, default: arch/x86_64)
 #   DMOD_LOADER             dmod_loader executable that runs the tools
@@ -214,12 +214,15 @@ endfunction()
 #   DMOD_IMAGE_DECODERS     decoder modules to download (default:
 #                           dmimg_<format> of each extension found)
 #
-# Sets DMOD_VIEWS_ENABLED (parent scope) to TRUE when fixtures are converted.
+# DMOD_FIXTURES_PATHS is the old name of DMOD_ASSETS_PATHS - still read, with
+# a warning, when DMOD_ASSETS_PATHS is not set.
+#
+# Sets DMOD_VIEWS_ENABLED (parent scope) to TRUE when assets are converted.
 #
 
 # Download a tool (a dmf application and its dependencies) into dir; sets
 # outVar to its .dmf, or to "" when it cannot be downloaded
-function(_dmod_fixtures_tool toolName dir outVar)
+function(_dmod_assets_tool toolName dir outVar)
     set(${outVar} "" PARENT_SCOPE)
     set(TOOL_DMF "${dir}/${toolName}.dmf")
     if(NOT EXISTS "${TOOL_DMF}")
@@ -318,9 +321,18 @@ function(_dmod_image_outputs source prefix)
     set(${prefix}_NAMES ${SECTIONS} PARENT_SCOPE)
 endfunction()
 
-function(dmod_setup_views moduleName)
+function(dmod_setup_assets moduleName)
     set(DMOD_VIEWS_ENABLED FALSE PARENT_SCOPE)
-    if(NOT DEFINED DMOD_FIXTURES_PATHS OR "${DMOD_FIXTURES_PATHS}" STREQUAL "")
+    if((NOT DEFINED DMOD_ASSETS_PATHS OR "${DMOD_ASSETS_PATHS}" STREQUAL "") AND
+       DEFINED DMOD_FIXTURES_PATHS AND NOT "${DMOD_FIXTURES_PATHS}" STREQUAL "")
+        get_property(FIXTURES_WARNED GLOBAL PROPERTY DMOD_FIXTURES_PATHS_WARNED)
+        if(NOT FIXTURES_WARNED)
+            message(WARNING "DMOD_FIXTURES_PATHS is deprecated - set DMOD_ASSETS_PATHS instead")
+            set_property(GLOBAL PROPERTY DMOD_FIXTURES_PATHS_WARNED TRUE)
+        endif()
+        set(DMOD_ASSETS_PATHS "${DMOD_FIXTURES_PATHS}")
+    endif()
+    if(NOT DEFINED DMOD_ASSETS_PATHS OR "${DMOD_ASSETS_PATHS}" STREQUAL "")
         return()
     endif()
 
@@ -335,28 +347,28 @@ function(dmod_setup_views moduleName)
         set(DMOD_IMAGE_EXTENSIONS png jpg jpeg jpe jfif bmp qoi gif tif tiff)
     endif()
 
-    # The fixtures are converted once per project - later modules only depend on the target
-    get_property(VIEWS_TARGET_READY GLOBAL PROPERTY DMOD_VIEWS_TARGET_READY)
+    # The assets are converted once per project - later modules only depend on the target
+    get_property(VIEWS_TARGET_READY GLOBAL PROPERTY DMOD_ASSETS_TARGET_READY)
     if(VIEWS_TARGET_READY)
         set(DMOD_VIEWS_ENABLED TRUE PARENT_SCOPE)
-        add_dependencies(${moduleName} dmod_views)
+        add_dependencies(${moduleName} dmod_assets)
         return()
     endif()
 
     # Collect the sources
     set(VIEW_SOURCES "")
     set(IMAGE_SOURCES "")
-    foreach(FIXTURES_PATH ${DMOD_FIXTURES_PATHS})
-        if(NOT IS_ABSOLUTE "${FIXTURES_PATH}")
-            set(FIXTURES_PATH "${CMAKE_SOURCE_DIR}/${FIXTURES_PATH}")
+    foreach(ASSETS_PATH ${DMOD_ASSETS_PATHS})
+        if(NOT IS_ABSOLUTE "${ASSETS_PATH}")
+            set(ASSETS_PATH "${CMAKE_SOURCE_DIR}/${ASSETS_PATH}")
         endif()
-        if(NOT IS_DIRECTORY "${FIXTURES_PATH}")
-            message(WARNING "DMOD_FIXTURES_PATHS: '${FIXTURES_PATH}' is not a directory")
+        if(NOT IS_DIRECTORY "${ASSETS_PATH}")
+            message(WARNING "DMOD_ASSETS_PATHS: '${ASSETS_PATH}' is not a directory")
             continue()
         endif()
-        file(GLOB FOUND_VIEWS "${FIXTURES_PATH}/*.dmvs")
+        file(GLOB FOUND_VIEWS "${ASSETS_PATH}/*.dmvs")
         list(APPEND VIEW_SOURCES ${FOUND_VIEWS})
-        file(GLOB FOUND_FILES "${FIXTURES_PATH}/*")
+        file(GLOB FOUND_FILES "${ASSETS_PATH}/*")
         foreach(FOUND ${FOUND_FILES})
             get_filename_component(EXT "${FOUND}" LAST_EXT)
             string(TOLOWER "${EXT}" EXT)
@@ -365,16 +377,16 @@ function(dmod_setup_views moduleName)
                 list(APPEND IMAGE_SOURCES "${FOUND}")
             endif()
         endforeach()
-        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${FIXTURES_PATH}")
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${ASSETS_PATH}")
     endforeach()
     if(NOT VIEW_SOURCES AND NOT IMAGE_SOURCES)
-        message(STATUS "DMOD_FIXTURES_PATHS: no fixtures found in ${DMOD_FIXTURES_PATHS}")
+        message(STATUS "DMOD_ASSETS_PATHS: no assets found in ${DMOD_ASSETS_PATHS}")
         return()
     endif()
 
     find_program(DMF_GET dmf-get HINTS ${DMOD_TOOLS_BIN_DIR} PATHS ENV PATH)
     if(NOT DMF_GET)
-        message(WARNING "dmf-get not found - fixtures from DMOD_FIXTURES_PATHS will not be converted. Build the tools first with -DDMOD_BUILD_TOOLS=ON")
+        message(WARNING "dmf-get not found - assets from DMOD_ASSETS_PATHS will not be converted. Build the tools first with -DDMOD_BUILD_TOOLS=ON")
         return()
     endif()
     if(NOT DMOD_LOADER)
@@ -383,7 +395,7 @@ function(dmod_setup_views moduleName)
             PATHS ENV PATH)
     endif()
     if(NOT DMOD_LOADER)
-        message(WARNING "dmod_loader not found (set DMOD_LOADER) - fixtures from DMOD_FIXTURES_PATHS will not be converted")
+        message(WARNING "dmod_loader not found (set DMOD_LOADER) - assets from DMOD_ASSETS_PATHS will not be converted")
         return()
     endif()
 
@@ -393,7 +405,7 @@ function(dmod_setup_views moduleName)
     # Views
     if(VIEW_SOURCES)
         set(TODMV_DIR "${CMAKE_BINARY_DIR}/todmv")
-        _dmod_fixtures_tool(todmv "${TODMV_DIR}" TODMV_DMF)
+        _dmod_assets_tool(todmv "${TODMV_DIR}" TODMV_DMF)
         if(NOT TODMV_DMF)
             message(WARNING "Views will not be converted")
             set(VIEW_SOURCES "")
@@ -416,7 +428,7 @@ function(dmod_setup_views moduleName)
     # Images: todmvi, and the decoders it needs
     if(IMAGE_SOURCES)
         set(TODMVI_DIR "${CMAKE_BINARY_DIR}/todmvi")
-        _dmod_fixtures_tool(todmvi "${TODMVI_DIR}" TODMVI_DMF)
+        _dmod_assets_tool(todmvi "${TODMVI_DIR}" TODMVI_DMF)
         set(DECODERS "${DMOD_IMAGE_DECODERS}")
         if(NOT DECODERS)
             foreach(IMAGE_SOURCE ${IMAGE_SOURCES})
@@ -429,7 +441,7 @@ function(dmod_setup_views moduleName)
         endif()
         foreach(DECODER ${DECODERS})
             if(TODMVI_DMF)
-                _dmod_fixtures_tool(${DECODER} "${TODMVI_DIR}" DECODER_DMF)
+                _dmod_assets_tool(${DECODER} "${TODMVI_DIR}" DECODER_DMF)
                 if(NOT DECODER_DMF)
                     message(WARNING "No ${DECODER} - images it decodes will not be converted")
                 endif()
@@ -465,7 +477,7 @@ function(dmod_setup_views moduleName)
     set(SEEN "")
     foreach(OUTPUT ${OUTPUTS})
         if(OUTPUT IN_LIST SEEN)
-            message(SEND_ERROR "DMOD_FIXTURES_PATHS: ${OUTPUT} is made from two sources - rename one (or its .ini section)")
+            message(SEND_ERROR "DMOD_ASSETS_PATHS: ${OUTPUT} is made from two sources - rename one (or its .ini section)")
         endif()
         list(APPEND SEEN "${OUTPUT}")
     endforeach()
@@ -473,10 +485,10 @@ function(dmod_setup_views moduleName)
         return()
     endif()
 
-    add_custom_target(dmod_views ALL DEPENDS ${OUTPUTS})
-    set_property(GLOBAL PROPERTY DMOD_VIEWS_TARGET_READY TRUE)
-    add_dependencies(${moduleName} dmod_views)
-    message(STATUS "Fixtures: converting ${VIEW_SOURCES} ${IMAGE_SOURCES} to ${DMOD_VIEWS_DIR}")
+    add_custom_target(dmod_assets ALL DEPENDS ${OUTPUTS})
+    set_property(GLOBAL PROPERTY DMOD_ASSETS_TARGET_READY TRUE)
+    add_dependencies(${moduleName} dmod_assets)
+    message(STATUS "Assets: converting ${VIEW_SOURCES} ${IMAGE_SOURCES} to ${DMOD_VIEWS_DIR}")
     set(DMOD_VIEWS_ENABLED TRUE PARENT_SCOPE)
 endfunction()
 
@@ -769,7 +781,7 @@ function(dmod_create_module moduleName version moduleType)
             HINTS ${DMOD_TOOLS_BIN_DIR}
         )
 
-        dmod_setup_views(${moduleName})
+        dmod_setup_assets(${moduleName})
         set(MKDMRPKG_VIEWS_ARGS "")
         if(DMOD_VIEWS_ENABLED)
             set(MKDMRPKG_VIEWS_ARGS --views-dir "${DMOD_VIEWS_DIR}")
