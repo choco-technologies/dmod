@@ -99,6 +99,21 @@ DMOD_BUILTIN_API(Dmod, 1.0, bool,   _RetagEx,           ( void* Ptr, const char*
 DMOD_BUILTIN_API(Dmod, 1.0, bool,   _RenameTag,         ( const char* OldTag, const char* NewTag ) );
 DMOD_BUILTIN_API(Dmod, 1.0, size_t, _ReadMemory,        ( uintptr_t Address, void* Buffer, size_t Size ) );
 DMOD_BUILTIN_API(Dmod, 1.0, size_t, _WriteMemory,       ( uintptr_t Address, const void* Buffer, size_t Size ) );
+
+/**
+ * @brief Make code just written to memory safe to execute
+ *
+ * Called by the module loader once a module is loaded and relocated: on a
+ * core with caches, the code may still sit in the data cache, and the
+ * instruction cache may hold what was at these addresses before (a module
+ * unloaded from there). The system cleans the data cache for the range and
+ * invalidates the instruction cache. The default weak implementation does
+ * nothing - right for cores without caches and for hosts.
+ *
+ * @param Address Start of the code
+ * @param Size    Its size in bytes
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, void,   _SyncCode,          ( const void* Address, size_t Size ) );
 //! @}
 
 /**
