@@ -1,6 +1,6 @@
 # Debian package
 
-DMOD can build a single native Debian package named `dmod`, containing:
+DMOD builds a native Debian package named `dmod`, containing:
 
 - `dmod_loader`
 - `dmf-get`, `dmf-man`, `whereisdmf`
@@ -9,6 +9,11 @@ DMOD can build a single native Debian package named `dmod`, containing:
 Executables are installed in `/usr/bin`, with the license and these instructions
 in `/usr/share/doc/dmod`. SDK headers, static libraries and example modules are
 not included. Ordinary CMake installation still defaults to `/usr/local`.
+
+The same build also produces `dmod-dev_<version>_all.deb`, containing the
+target-neutral module SDK. Install it alongside `dmod` to build modules with
+`find_package(dmod CONFIG REQUIRED)` without a source checkout. See
+[the development package guide](development-package.md).
 
 ## Build
 

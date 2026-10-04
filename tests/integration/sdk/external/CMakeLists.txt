@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.18)
+project(sdk_external LANGUAGES C CXX)
+find_package(dmod 1.0 CONFIG REQUIRED)
+configure_file(../main.c main.c COPYONLY)
+dmod_add_executable(sdk_external "0.1" "${CMAKE_CURRENT_BINARY_DIR}/main.c")
+dmod_link_modules(sdk_external sdk_math@0.1)

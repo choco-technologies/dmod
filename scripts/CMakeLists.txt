@@ -38,6 +38,11 @@ function( create_library_makefile targetName )
     # the generated Makefile for non-CMake builds.
     dmod_set_current_allocator(${targetName})
 
+    # Installed SDK sources are read-only and only used by CMake consumers.
+    if(DEFINED DMOD_GENERATE_MAKEFILES AND NOT DMOD_GENERATE_MAKEFILES)
+        return()
+    endif()
+
     # Configure the Makefile
     if(DMOD_MODE STREQUAL "DMOD_SYSTEM")
         set(DMOD_SYSTEM ON)
