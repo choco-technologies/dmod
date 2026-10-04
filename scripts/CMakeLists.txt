@@ -213,6 +213,8 @@ endfunction()
 #   size        = pixel size (em), 4 ... 127 - required
 #   chars       = codepoint ranges, e.g. 0x20-0x7E,0x104 (default: printable
 #                 ASCII, Latin-1, Latin Extended-A)
+#   tracking    = letter spacing added to every advance, pixels, e.g. -2.4
+#                 (CSS letter-spacing; default 0)
 #
 # Related variables:
 #   DMOD_VIEWS_DIR          output directory of the converted assets
@@ -296,8 +298,13 @@ function(_dmod_font_option iniPath key value outVar)
     set(ARGS "")
     if(key STREQUAL "chars")
         set(ARGS -c ${value})
+    elseif(key STREQUAL "tracking")
+        if(NOT value MATCHES "^[-+]?[0-9]+(\\.[0-9]+)?$")
+            message(SEND_ERROR "${iniPath}: tracking must be a number of pixels, e.g. -2.4 (got '${value}')")
+        endif()
+        set(ARGS -t ${value})
     else()
-        message(SEND_ERROR "${iniPath}: unknown key '${key}' (size, chars)")
+        message(SEND_ERROR "${iniPath}: unknown key '${key}' (size, chars, tracking)")
     endif()
     set(${outVar} "${ARGS}" PARENT_SCOPE)
 endfunction()
