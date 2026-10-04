@@ -69,7 +69,7 @@ Six special variables are automatically set by `dmf-get` (or the tool initializi
 - **`${dmf_dir}`**: Path to the directory containing built DMF files (for package creation workflows)
 - **`${dmfc_dir}`**: Path to the directory containing built DMFC files (for package creation workflows)
 - **`${build_dir}`**: Path to the build output directory (for package creation workflows)
-- **`${views_dir}`**: Directory with views (`.dmv`). When packaging it is the directory with the views converted from `DMOD_FIXTURES_PATHS`; when installing (`dmf-get`) it is the module's own directory `<views base>/<module>`, where the base is `--views-dir`/`DMOD_VIEWS_DIR` or `views` inside the install directory (e.g. `$DMOD_DMF_DIR/views/<module>`) - views of different modules never land in the same directory. `mkdmrpkg` skips entries whose `[origin]` uses it when it is not set (the project has no views). Example: `views=./views => ${views_dir} [origin=${views_dir}]`
+- **`${views_dir}`**: Directory with views (`.dmv`). When packaging it is the directory with the views (and the images they show) converted from `DMOD_ASSETS_PATHS`; when installing (`dmf-get`) it is the module's own directory `<views base>/<module>`, where the base is `--views-dir`/`DMOD_VIEWS_DIR` or `views` inside the install directory (e.g. `$DMOD_DMF_DIR/views/<module>`) - views of different modules never land in the same directory. `mkdmrpkg` skips entries whose `[origin]` uses it when it is not set (the project has no views). Example: `views=./views => ${views_dir} [origin=${views_dir}]`
 
 #### Environment Variables
 
