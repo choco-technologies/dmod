@@ -13,6 +13,11 @@ if [[ ${1:-} == --cross ]]; then
     shift
     set -- "-DCMAKE_TOOLCHAIN_FILE=$work/source/arm-toolchain.cmake" "$@"
     package_args+=("-Ddmod_DIR=$prefix/share/cmake/dmod")
+elif [[ ${1:-} == --cross-profile ]]; then
+    cross=true
+    profile=$2
+    shift 2
+    set -- "-DDMOD_TOOLS_NAME=$profile" "$@"
 fi
 
 cmake -S "$work/source" -B "$work/build" \
@@ -46,5 +51,8 @@ if ! $cross; then
     "$prefix/bin/dmod_loader" "$work/build/dmfc/sdk_app.dmfc"
     "$prefix/bin/dmod_loader" "$work/build/dmf/sdk_test.dmf"
     "$prefix/bin/dmod_loader" "$work/external-build/dmf/sdk_external.dmf"
+fi
+if [[ -d "$work/assets-tools" ]]; then
+    python3 "$work/source/assets/run.py" "$prefix" "$work" "${package_args[@]}" "$@"
 fi
 echo "Installed SDK test passed (cross=$cross)"

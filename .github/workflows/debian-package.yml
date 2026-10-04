@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential cmake dpkg-dev libcurl4-openssl-dev unzip bubblewrap python3
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake dpkg-dev libcurl4-openssl-dev unzip bubblewrap python3 fonts-dejavu-core
       - name: Bootstrap host tools
         run: |
           cmake -S . -B build-deb -DDMOD_TOOLS_NAME=arch/x86_64 \
@@ -44,11 +44,13 @@ jobs:
           sudo apt-get install -y ./build-deb/dmod_*.deb ./build-deb/dmod-dev_*.deb
           /usr/bin/dmod_loader --help
           /usr/bin/dmf-get --help
-          sudo bash tests/integration/test_installed_sdk.sh /usr
+          DMOD_CACHE_DIR="$RUNNER_TEMP/asset-cache" bash tests/integration/prepare_sdk_assets.sh /usr "$RUNNER_TEMP/asset-tools" arch/x86_64
+          sudo env DMOD_SDK_TEST_ASSETS="$RUNNER_TEMP/asset-tools" bash tests/integration/test_installed_sdk.sh /usr -DDMOD_TOOLS_NAME=arch/x86_64
       - name: Cross compile with the installed SDK
         if: matrix.examples == 'OFF'
         run: |
-          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi
+          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi gdb-multiarch
+          sudo env DMOD_SDK_TEST_ASSETS="$RUNNER_TEMP/asset-tools" bash tests/integration/test_installed_sdk.sh /usr --cross-profile arch/armv7/cortex-m7
           sudo bash tests/integration/test_installed_sdk.sh /usr --cross
       - name: Remove packages
         run: |

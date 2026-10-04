@@ -14,6 +14,8 @@ dpkg-deb --extract "$2" "$root"
 for file in include/dmod/dmod.h include/dmod/Dmod.hpp \
     share/cmake/dmod/dmodConfig.cmake share/cmake/dmod/dmodConfigVersion.cmake \
     share/dmod/scripts/module.ld share/dmod/scripts/api.h.in \
+    share/dmod/configs/arch/armv7/cortex-m7/tools-cfg.cmake \
+    share/dmod/configs/arch/x86_64/tools-cfg.cmake \
     share/dmod/src/module/dmod_module.c share/dmod/src/module/dmod_test_main.c \
     share/doc/dmod-dev/copyright share/doc/dmod-dev/copyright.FastLZ; do
     test -s "$root/usr/$file"

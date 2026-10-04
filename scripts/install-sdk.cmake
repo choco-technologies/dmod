@@ -35,6 +35,11 @@ install(DIRECTORY "${DMOD_DIR}/scripts/"
     PATTERN "memory_analysis.cmake")
 install(DIRECTORY "${DMOD_DIR}/cmake/runtime"
     DESTINATION "${DMOD_SDK_INSTALL_DIR}/cmake" COMPONENT development)
+install(FILES "${DMOD_DIR}/cmake/select-profile.cmake"
+    DESTINATION "${DMOD_SDK_INSTALL_DIR}/cmake" COMPONENT development)
+install(DIRECTORY "${DMOD_DIR}/configs/"
+    DESTINATION "${DMOD_SDK_INSTALL_DIR}/configs" COMPONENT development
+    FILES_MATCHING PATTERN "*.cmake")
 install(FILES "${DMOD_DIR}/license.md"
     DESTINATION share/doc/dmod-dev RENAME copyright COMPONENT development)
 install(FILES "${DMOD_DIR}/lib/third-party/FastLZ/LICENSE.MIT"

@@ -1,4 +1,8 @@
 # Build only the module-side runtime, using the consumer's compiler and flags.
+if(NOT CMAKE_C_COMPILER_LOADED)
+    # Mirrors the nested project used by FetchContent_MakeAvailable(dmod).
+    project(dmod_sdk LANGUAGES C CXX)
+endif()
 set(DMOD_GENERATE_MAKEFILES OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_compile_definitions(DMOD_MODULE ON=1 OFF=0)

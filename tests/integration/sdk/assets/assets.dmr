@@ -1,0 +1,2 @@
+dmf=./${module}.dmf => ${destination}/${module}.dmf [origin=${dmf_dir}/${module}.dmf]
+views=./views => ${destination}/${module}/views [origin=${views_dir}]

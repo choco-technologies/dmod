@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
-project(sdk_consumer LANGUAGES C CXX)
 find_package(dmod 1.0 CONFIG REQUIRED)
+project(sdk_consumer LANGUAGES C CXX)
 # Finding the same package twice must not create duplicate runtime targets.
 find_package(dmod 1.0 CONFIG REQUIRED)
 

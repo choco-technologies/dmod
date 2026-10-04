@@ -13,6 +13,9 @@ set_and_check(DMOD_INC_DIR "@PACKAGE_DMOD_SDK_INCLUDE_DIR@")
 set(DMOD_SCRIPTS_DIR "${DMOD_DIR}/scripts")
 set(DMOD_SRC_DIR "${DMOD_DIR}/src")
 set(DMOD_TOOLS_BIN_DIR "${PACKAGE_PREFIX_DIR}/bin")
+set(DMOD_CONFIGS_DIR "${DMOD_DIR}/configs")
+# Like the source build, select the compiler/profile before enabling languages.
+include("${DMOD_DIR}/cmake/select-profile.cmake")
 set(DMOD_MODULE_HEADER_SOURCE_IN_FILE_PATH "${DMOD_SCRIPTS_DIR}/dmod_header.c.in")
 set(DMOD_VERSION_IN_FILE_PATH "${DMOD_SCRIPTS_DIR}/version.txt.in")
 set(dmod_VERSION_MAJOR @PROJECT_VERSION_MAJOR@)
@@ -34,6 +37,7 @@ find_program(TODMD todmd HINTS "${DMOD_TOOLS_BIN_DIR}" NO_CMAKE_FIND_ROOT_PATH R
 find_program(TODMM todmm HINTS "${DMOD_TOOLS_BIN_DIR}" NO_CMAKE_FIND_ROOT_PATH REQUIRED)
 find_program(MKDMRPKG mkdmrpkg HINTS "${DMOD_TOOLS_BIN_DIR}" NO_CMAKE_FIND_ROOT_PATH REQUIRED)
 find_program(DMF_GET dmf-get HINTS "${DMOD_TOOLS_BIN_DIR}" NO_CMAKE_FIND_ROOT_PATH REQUIRED)
+find_program(DMOD_LOADER dmod_loader HINTS "${DMOD_TOOLS_BIN_DIR}" NO_CMAKE_FIND_ROOT_PATH REQUIRED)
 
 if(NOT TARGET dmod)
     add_subdirectory("${DMOD_DIR}/cmake/runtime" "${DMOD_BUILD_DIR}")
