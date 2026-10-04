@@ -36,6 +36,29 @@ project (dmod
 	VERSION ${dmod_VERSION_MAJOR}.${dmod_VERSION_MINOR}
 	DESCRIPTION "Library for managing of dynamic modules")
 
+option(DMOD_BUILD_DEB "Enable Debian packaging of the host tools and loader" OFF)
+if(DMOD_BUILD_DEB)
+	if(NOT CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+		message(FATAL_ERROR "DMOD_BUILD_DEB requires a standalone DMOD build")
+	endif()
+	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_CROSSCOMPILING)
+		message(FATAL_ERROR "DMOD_BUILD_DEB requires a native Linux build")
+	endif()
+	if(NOT DMOD_MODE STREQUAL "DMOD_SYSTEM" OR NOT DMOD_BUILD_TOOLS)
+		message(FATAL_ERROR "DMOD_BUILD_DEB requires DMOD_MODE=DMOD_SYSTEM and DMOD_BUILD_TOOLS=ON")
+	endif()
+	find_program(DMOD_DPKG_DEB dpkg-deb REQUIRED)
+	find_program(DMOD_DPKG_SHLIBDEPS dpkg-shlibdeps REQUIRED)
+	# Keep installed tools independent of the build tree. Match dmf-get's
+	# working-directory defaults, while preserving explicitly customized paths.
+	if(DMOD_REPO_DIR STREQUAL DMOD_DMF_DIR)
+		set(DMOD_REPO_DIR "./dmf")
+	endif()
+	if(DMOD_REPO_PATHS STREQUAL "${DMOD_DMF_DIR}${DMOD_ARRAY_SEP}${DMOD_DMFC_DIR}")
+		set(DMOD_REPO_PATHS "./dmf${DMOD_ARRAY_SEP}./dmfc")
+	endif()
+endif()
+
 # ===========================================================================
 # 						Configuration file
 # ===========================================================================
@@ -174,6 +197,9 @@ if (DMOD_BUILD_TESTS)
 endif()
 if (DMOD_BUILD_EXAMPLES)
 	add_subdirectory(examples)
+elseif(DMOD_BUILD_DEB)
+	# The loader is part of the host package even when examples are disabled.
+	add_subdirectory(examples/system/dmod_loader)
 endif()
 if (DMOD_BUILD_TOOLS)
 	add_subdirectory(tools)
@@ -253,4 +279,8 @@ if(DMOD_MODULE AND DEFINED DMOD_PACKAGE_NAME AND NOT "${DMOD_PACKAGE_NAME}" STRE
     else()
         message(WARNING "todmp not found, DMP packages will not be created")
     endif()
+endif()
+
+if(DMOD_BUILD_DEB)
+	include(scripts/debian-package.cmake)
 endif()

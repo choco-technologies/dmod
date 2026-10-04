@@ -782,6 +782,11 @@ cmake --build build/
 
 Dmod includes utility tools like `todmfc` (DMF Compressor) and `todmp` (DMP Package Creator) that can be installed to your system for easy access.
 
+On Debian and Ubuntu, you can also build a single `.deb` containing all host
+tools and `dmod_loader` using `DMOD_BUILD_DEB=ON` and CMake's `package` target.
+See [Building and installing the Debian package](docs/debian-package.md) for
+prerequisites, clean-build commands and installation instructions.
+
 #### Installing with CMake
 
 To install the tools using CMake, build the project in SYSTEM mode with tools enabled, then use the install target:

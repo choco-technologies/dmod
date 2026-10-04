@@ -1,0 +1,50 @@
+name: Debian package
+
+on:
+  push:
+    branches: [develop, master]
+  pull_request:
+    branches: [develop, master, 'feature/*']
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        examples: ['OFF', 'ON']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake dpkg-dev libcurl4-openssl-dev unzip
+      - name: Bootstrap host tools
+        run: |
+          cmake -S . -B build-deb -DDMOD_TOOLS_NAME=arch/x86_64 \
+            -DDMOD_MODE=DMOD_SYSTEM -DDMOD_BUILD_TOOLS=ON \
+            -DDMOD_BUILD_TESTS=OFF -DDMOD_BUILD_EXAMPLES=OFF -DDMOD_BUILD_TEMPLATES=OFF
+          cmake --build build-deb --parallel 2
+          test ! -e build-deb/CPackConfig.cmake
+      - name: Build Debian package
+        run: |
+          cmake -S . -B build-deb -DDMOD_BUILD_DEB=ON \
+            -DDMOD_BUILD_EXAMPLES=${{ matrix.examples }} \
+            -DDMF_GET="$PWD/build-deb/bin/tools/dmf-get"
+          cmake --build build-deb --target package --parallel 2
+      - name: Build a module for the packaged loader
+        run: |
+          cmake -S . -B build-modules -DDMOD_TOOLS_NAME=arch/x86_64 \
+            -DDMOD_MODE=DMOD_MODULE -DDMOD_BUILD_EXAMPLES=ON \
+            -DDMOD_BUILD_TESTS=OFF -DDMOD_BUILD_TOOLS=OFF -DDMOD_BUILD_TEMPLATES=OFF
+          cmake --build build-modules --target example_app dmodex --parallel 2
+      - name: Validate package
+        run: bash tests/integration/test_debian_package.sh build-deb/dmod_*.deb build-modules/dmf/example_app.dmf
+      - name: Install and remove package
+        run: |
+          sudo apt-get install -y ./build-deb/dmod_*.deb
+          /usr/bin/dmod_loader --help
+          /usr/bin/dmf-get --help
+          sudo apt-get remove -y dmod
+          test ! -e /usr/bin/dmod_loader
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dmod-deb-examples-${{ matrix.examples }}
+          path: build-deb/dmod_*.deb

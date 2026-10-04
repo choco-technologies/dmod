@@ -10,9 +10,8 @@ set(DMOD_USE_STDIO  	        ON )
 set(DMOD_USE_ASSERT 	        ON )
 set(DMOD_USE_PTHREAD            ON )
 set(DMOD_USE_MMAN   	        ON )
-set(DMOD_BUILD_TESTS            ON )
-set(DMOD_BUILD_EXAMPLES         ON )
-set(DMOD_BUILD_TOOLS            ON )
+# Build selection comes from dmod-cfg.cmake/the caller. In particular, preserve
+# explicit OFF values when bootstrapping tools for a Debian package.
 
 #
 #	Toolchain configuration
