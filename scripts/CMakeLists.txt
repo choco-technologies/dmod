@@ -175,25 +175,149 @@ function(to_snake_case INPUT_STRING OUTPUT_VARIABLE)
 endfunction()
 
 # ===========================================================================
-# Views (.dmvs -> .dmv) conversion
+# Fixtures conversion: views (.dmvs -> .dmv), images (-> .dmvi)
 # ===========================================================================
 #
-# DMOD_FIXTURES_PATHS - list of directories with view sources (*.dmvs).
-# When it is set, the first module created in a project downloads the todmv
-# tool with dmf-get (at configure time) and every *.dmvs found in those
-# directories is converted into a *.dmv file placed in DMOD_VIEWS_DIR
-# (default: <build>/views). DMOD_VIEWS_DIR is then available to .dmr files as
-# ${views_dir} (see mkdmrpkg --views-dir).
+# DMOD_FIXTURES_PATHS - list of directories with the sources of a module's
+# fixtures. When it is set, the first module created in a project converts
+# them, with tools it downloads with dmf-get at configure time (dmf
+# applications, run by dmod_loader on the build host) - only the tools for
+# the kinds of files found:
+#
+#   *.dmvs                       todmv    -> <name>.dmv
+#   images (DMOD_IMAGE_EXTENSIONS) todmvi -> <name>.dmvi, with the dmimg
+#                                           decoder of each extension
+#                                           (dmimg_png, dmimg_jpeg, ...)
+#
+# Everything is placed in DMOD_VIEWS_DIR (default: <build>/views) - images
+# next to the views, so a view finds them by their names. DMOD_VIEWS_DIR is
+# then available to .dmr files as ${views_dir} (see mkdmrpkg --views-dir).
+#
+# An image's conversion is set by an optional <image>.ini next to it (e.g.
+# logo.png.ini): keys before any section apply to every output; without
+# sections there is one output, <name>.dmvi; each [section] is an output
+# <section>.dmvi of its own:
+#
+#   format      = auto | rgb565 | rgb565a8 | argb8888 | i8 | a8 | a4
+#   size        = WIDTHxHEIGHT (scaled down to fit), WIDTHx, xHEIGHT
+#   compression = fastlz | ... | none
+#   dither      = on | off
 #
 # Related variables:
-#   DMOD_VIEWS_DIR         output directory for the converted views
-#   DMOD_VIEWS_TOOLS_NAME  tools name used to download todmv (host tools,
-#                          default: arch/x86_64)
-#   DMOD_LOADER            dmod_loader executable that runs todmv.dmf
-#                          (default: searched in tools dir and PATH)
+#   DMOD_VIEWS_DIR          output directory of the converted fixtures
+#   DMOD_VIEWS_TOOLS_NAME   tools name used to download the tools (host
+#                           tools, default: arch/x86_64)
+#   DMOD_LOADER             dmod_loader executable that runs the tools
+#                           (default: searched in tools dir and PATH)
+#   DMOD_IMAGE_EXTENSIONS   image file extensions (default: png jpg jpeg jpe
+#                           jfif bmp qoi gif tif tiff)
+#   DMOD_IMAGE_DECODERS     decoder modules to download (default:
+#                           dmimg_<format> of each extension found)
 #
-# Sets DMOD_VIEWS_ENABLED (parent scope) to TRUE when views are converted.
+# Sets DMOD_VIEWS_ENABLED (parent scope) to TRUE when fixtures are converted.
 #
+
+# Download a tool (a dmf application and its dependencies) into dir; sets
+# outVar to its .dmf, or to "" when it cannot be downloaded
+function(_dmod_fixtures_tool toolName dir outVar)
+    set(${outVar} "" PARENT_SCOPE)
+    set(TOOL_DMF "${dir}/${toolName}.dmf")
+    if(NOT EXISTS "${TOOL_DMF}")
+        set(GET_OPTIONS -t ${DMOD_VIEWS_TOOLS_NAME} --type dmf -y)
+        if(DEFINED DMOD_DMM_URL)
+            list(APPEND GET_OPTIONS -m ${DMOD_DMM_URL})
+        endif()
+        message(STATUS "Downloading ${toolName} with dmf-get to ${dir}")
+        file(MAKE_DIRECTORY "${dir}")
+        execute_process(
+            COMMAND ${DMF_GET} ${toolName} ${GET_OPTIONS} -o ${dir}
+            RESULT_VARIABLE GET_RESULT
+            OUTPUT_VARIABLE GET_OUTPUT
+            ERROR_VARIABLE GET_ERROR
+        )
+        if(NOT GET_RESULT EQUAL 0 OR NOT EXISTS "${TOOL_DMF}")
+            message(WARNING "Failed to download ${toolName}: ${GET_ERROR}${GET_OUTPUT}")
+            return()
+        endif()
+    endif()
+    set(${outVar} "${TOOL_DMF}" PARENT_SCOPE)
+endfunction()
+
+# The dmimg decoder module of an image extension (the aliases of dmimg)
+function(_dmod_image_decoder extension outVar)
+    string(TOLOWER "${extension}" EXT)
+    if(EXT STREQUAL "jpg" OR EXT STREQUAL "jpe" OR EXT STREQUAL "jfif")
+        set(EXT "jpeg")
+    elseif(EXT STREQUAL "tif")
+        set(EXT "tiff")
+    endif()
+    set(${outVar} "dmimg_${EXT}" PARENT_SCOPE)
+endfunction()
+
+# todmvi arguments of one ini key
+function(_dmod_image_option iniPath key value outVar)
+    set(ARGS "")
+    if(key STREQUAL "format")
+        set(ARGS -f ${value})
+    elseif(key STREQUAL "size")
+        set(ARGS -s ${value})
+    elseif(key STREQUAL "compression")
+        set(ARGS -c ${value})
+    elseif(key STREQUAL "dither")
+        string(TOLOWER "${value}" V)
+        if(V MATCHES "^(off|no|false|0)$")
+            set(ARGS --no-dither)
+        elseif(NOT V MATCHES "^(on|yes|true|1)$")
+            message(SEND_ERROR "${iniPath}: dither is on or off, not '${value}'")
+        endif()
+    else()
+        message(SEND_ERROR "${iniPath}: unknown key '${key}' (format, size, compression, dither)")
+    endif()
+    set(${outVar} "${ARGS}" PARENT_SCOPE)
+endfunction()
+
+# The outputs of an image - <prefix>_NAMES, and <prefix>_ARGS_<name> - from
+# its .ini (see above), or one output with the defaults
+function(_dmod_image_outputs source prefix)
+    get_filename_component(NAME "${source}" NAME_WE)
+    set(INI "${source}.ini")
+    set(COMMON "")
+    set(SECTIONS "")
+    if(EXISTS "${INI}")
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${INI}")
+        file(STRINGS "${INI}" LINES)
+        set(SECTION "")
+        foreach(LINE ${LINES})
+            string(REGEX REPLACE "[;#].*$" "" LINE "${LINE}")
+            string(STRIP "${LINE}" LINE)
+            if(LINE STREQUAL "")
+                continue()
+            elseif(LINE MATCHES "^\\[([A-Za-z0-9_.-]+)\\]$")
+                set(SECTION "${CMAKE_MATCH_1}")
+                list(APPEND SECTIONS "${SECTION}")
+                set(ARGS_${SECTION} "")
+            elseif(LINE MATCHES "^([A-Za-z_]+)[ \t]*=[ \t]*(.*)$")
+                _dmod_image_option("${INI}" "${CMAKE_MATCH_1}" "${CMAKE_MATCH_2}" OPTION_ARGS)
+                if(SECTION STREQUAL "")
+                    list(APPEND COMMON ${OPTION_ARGS})
+                else()
+                    list(APPEND ARGS_${SECTION} ${OPTION_ARGS})
+                endif()
+            else()
+                message(SEND_ERROR "${INI}: cannot read '${LINE}'")
+            endif()
+        endforeach()
+    endif()
+    if(NOT SECTIONS)
+        set(SECTIONS "${NAME}")
+        set(ARGS_${NAME} "")
+    endif()
+    foreach(SECTION ${SECTIONS})
+        set(${prefix}_ARGS_${SECTION} ${COMMON} ${ARGS_${SECTION}} PARENT_SCOPE)
+    endforeach()
+    set(${prefix}_NAMES ${SECTIONS} PARENT_SCOPE)
+endfunction()
+
 function(dmod_setup_views moduleName)
     set(DMOD_VIEWS_ENABLED FALSE PARENT_SCOPE)
     if(NOT DEFINED DMOD_FIXTURES_PATHS OR "${DMOD_FIXTURES_PATHS}" STREQUAL "")
@@ -204,8 +328,14 @@ function(dmod_setup_views moduleName)
         set(DMOD_VIEWS_DIR "${CMAKE_BINARY_DIR}/views")
     endif()
     set(DMOD_VIEWS_DIR "${DMOD_VIEWS_DIR}" PARENT_SCOPE)
+    if(NOT DEFINED DMOD_VIEWS_TOOLS_NAME OR "${DMOD_VIEWS_TOOLS_NAME}" STREQUAL "")
+        set(DMOD_VIEWS_TOOLS_NAME "arch/x86_64")
+    endif()
+    if(NOT DEFINED DMOD_IMAGE_EXTENSIONS OR "${DMOD_IMAGE_EXTENSIONS}" STREQUAL "")
+        set(DMOD_IMAGE_EXTENSIONS png jpg jpeg jpe jfif bmp qoi gif tif tiff)
+    endif()
 
-    # The views are converted once per project - later modules only depend on the target
+    # The fixtures are converted once per project - later modules only depend on the target
     get_property(VIEWS_TARGET_READY GLOBAL PROPERTY DMOD_VIEWS_TARGET_READY)
     if(VIEWS_TARGET_READY)
         set(DMOD_VIEWS_ENABLED TRUE PARENT_SCOPE)
@@ -213,8 +343,9 @@ function(dmod_setup_views moduleName)
         return()
     endif()
 
-    # Collect the view sources
+    # Collect the sources
     set(VIEW_SOURCES "")
+    set(IMAGE_SOURCES "")
     foreach(FIXTURES_PATH ${DMOD_FIXTURES_PATHS})
         if(NOT IS_ABSOLUTE "${FIXTURES_PATH}")
             set(FIXTURES_PATH "${CMAKE_SOURCE_DIR}/${FIXTURES_PATH}")
@@ -225,56 +356,49 @@ function(dmod_setup_views moduleName)
         endif()
         file(GLOB FOUND_VIEWS "${FIXTURES_PATH}/*.dmvs")
         list(APPEND VIEW_SOURCES ${FOUND_VIEWS})
+        file(GLOB FOUND_FILES "${FIXTURES_PATH}/*")
+        foreach(FOUND ${FOUND_FILES})
+            get_filename_component(EXT "${FOUND}" LAST_EXT)
+            string(TOLOWER "${EXT}" EXT)
+            string(REGEX REPLACE "^\\." "" EXT "${EXT}")
+            if(NOT IS_DIRECTORY "${FOUND}" AND EXT IN_LIST DMOD_IMAGE_EXTENSIONS)
+                list(APPEND IMAGE_SOURCES "${FOUND}")
+            endif()
+        endforeach()
         set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${FIXTURES_PATH}")
     endforeach()
-    if(NOT VIEW_SOURCES)
-        message(STATUS "DMOD_FIXTURES_PATHS: no .dmvs files found in ${DMOD_FIXTURES_PATHS}")
+    if(NOT VIEW_SOURCES AND NOT IMAGE_SOURCES)
+        message(STATUS "DMOD_FIXTURES_PATHS: no fixtures found in ${DMOD_FIXTURES_PATHS}")
         return()
     endif()
 
     find_program(DMF_GET dmf-get HINTS ${DMOD_TOOLS_BIN_DIR} PATHS ENV PATH)
     if(NOT DMF_GET)
-        message(WARNING "dmf-get not found - views from DMOD_FIXTURES_PATHS will not be converted. Build the tools first with -DDMOD_BUILD_TOOLS=ON")
+        message(WARNING "dmf-get not found - fixtures from DMOD_FIXTURES_PATHS will not be converted. Build the tools first with -DDMOD_BUILD_TOOLS=ON")
         return()
     endif()
-
-    # Download todmv (it is a dmf application, run by dmod_loader on the build host)
-    if(NOT DEFINED DMOD_VIEWS_TOOLS_NAME OR "${DMOD_VIEWS_TOOLS_NAME}" STREQUAL "")
-        set(DMOD_VIEWS_TOOLS_NAME "arch/x86_64")
-    endif()
-    set(TODMV_DIR "${CMAKE_BINARY_DIR}/todmv")
-    set(TODMV_DMF "${TODMV_DIR}/todmv.dmf")
-    if(NOT EXISTS "${TODMV_DMF}")
-        set(TODMV_GET_OPTIONS -t ${DMOD_VIEWS_TOOLS_NAME} --type dmf -y)
-        if(DEFINED DMOD_DMM_URL)
-            list(APPEND TODMV_GET_OPTIONS -m ${DMOD_DMM_URL})
-        endif()
-        message(STATUS "Downloading todmv with dmf-get to ${TODMV_DIR}")
-        file(MAKE_DIRECTORY "${TODMV_DIR}")
-        execute_process(
-            COMMAND ${DMF_GET} todmv ${TODMV_GET_OPTIONS} -o ${TODMV_DIR}
-            RESULT_VARIABLE TODMV_GET_RESULT
-            OUTPUT_VARIABLE TODMV_GET_OUTPUT
-            ERROR_VARIABLE TODMV_GET_ERROR
-        )
-        if(NOT TODMV_GET_RESULT EQUAL 0 OR NOT EXISTS "${TODMV_DMF}")
-            message(WARNING "Failed to download todmv: ${TODMV_GET_ERROR}${TODMV_GET_OUTPUT} - views will not be converted")
-            return()
-        endif()
-    endif()
-
     if(NOT DMOD_LOADER)
         find_program(DMOD_LOADER dmod_loader
             HINTS ${DMOD_TOOLS_BIN_DIR} ${CMAKE_BINARY_DIR}/examples/system/dmod_loader
             PATHS ENV PATH)
     endif()
     if(NOT DMOD_LOADER)
-        message(WARNING "dmod_loader not found (set DMOD_LOADER) - views from DMOD_FIXTURES_PATHS will not be converted")
+        message(WARNING "dmod_loader not found (set DMOD_LOADER) - fixtures from DMOD_FIXTURES_PATHS will not be converted")
         return()
     endif()
 
     file(MAKE_DIRECTORY "${DMOD_VIEWS_DIR}")
-    set(VIEW_OUTPUTS "")
+    set(OUTPUTS "")
+
+    # Views
+    if(VIEW_SOURCES)
+        set(TODMV_DIR "${CMAKE_BINARY_DIR}/todmv")
+        _dmod_fixtures_tool(todmv "${TODMV_DIR}" TODMV_DMF)
+        if(NOT TODMV_DMF)
+            message(WARNING "Views will not be converted")
+            set(VIEW_SOURCES "")
+        endif()
+    endif()
     foreach(VIEW_SOURCE ${VIEW_SOURCES})
         get_filename_component(VIEW_NAME "${VIEW_SOURCE}" NAME_WE)
         set(VIEW_OUTPUT "${DMOD_VIEWS_DIR}/${VIEW_NAME}.dmv")
@@ -286,13 +410,73 @@ function(dmod_setup_views moduleName)
             COMMENT "Converting view ${VIEW_NAME}.dmvs to ${VIEW_NAME}.dmv"
             VERBATIM
         )
-        list(APPEND VIEW_OUTPUTS "${VIEW_OUTPUT}")
+        list(APPEND OUTPUTS "${VIEW_OUTPUT}")
     endforeach()
 
-    add_custom_target(dmod_views ALL DEPENDS ${VIEW_OUTPUTS})
+    # Images: todmvi, and the decoders it needs
+    if(IMAGE_SOURCES)
+        set(TODMVI_DIR "${CMAKE_BINARY_DIR}/todmvi")
+        _dmod_fixtures_tool(todmvi "${TODMVI_DIR}" TODMVI_DMF)
+        set(DECODERS "${DMOD_IMAGE_DECODERS}")
+        if(NOT DECODERS)
+            foreach(IMAGE_SOURCE ${IMAGE_SOURCES})
+                get_filename_component(EXT "${IMAGE_SOURCE}" LAST_EXT)
+                string(REGEX REPLACE "^\\." "" EXT "${EXT}")
+                _dmod_image_decoder("${EXT}" DECODER)
+                list(APPEND DECODERS ${DECODER})
+            endforeach()
+            list(REMOVE_DUPLICATES DECODERS)
+        endif()
+        foreach(DECODER ${DECODERS})
+            if(TODMVI_DMF)
+                _dmod_fixtures_tool(${DECODER} "${TODMVI_DIR}" DECODER_DMF)
+                if(NOT DECODER_DMF)
+                    message(WARNING "No ${DECODER} - images it decodes will not be converted")
+                endif()
+            endif()
+        endforeach()
+        if(NOT TODMVI_DMF)
+            message(WARNING "Images will not be converted")
+            set(IMAGE_SOURCES "")
+        endif()
+    endif()
+    foreach(IMAGE_SOURCE ${IMAGE_SOURCES})
+        get_filename_component(IMAGE_FILE "${IMAGE_SOURCE}" NAME)
+        set(IMAGE_DEPENDS "${IMAGE_SOURCE}")
+        if(EXISTS "${IMAGE_SOURCE}.ini")
+            list(APPEND IMAGE_DEPENDS "${IMAGE_SOURCE}.ini")
+        endif()
+        _dmod_image_outputs("${IMAGE_SOURCE}" IMAGE)
+        foreach(OUTPUT_NAME ${IMAGE_NAMES})
+            set(IMAGE_OUTPUT "${DMOD_VIEWS_DIR}/${OUTPUT_NAME}.dmvi")
+            add_custom_command(
+                OUTPUT "${IMAGE_OUTPUT}"
+                COMMAND ${CMAKE_COMMAND} -E env DMOD_DMF_DIR=${TODMVI_DIR}
+                        ${DMOD_LOADER} ${TODMVI_DMF} --args -q ${IMAGE_ARGS_${OUTPUT_NAME}} -o ${IMAGE_OUTPUT} ${IMAGE_SOURCE}
+                DEPENDS ${IMAGE_DEPENDS}
+                COMMENT "Converting image ${IMAGE_FILE} to ${OUTPUT_NAME}.dmvi"
+                VERBATIM
+            )
+            list(APPEND OUTPUTS "${IMAGE_OUTPUT}")
+        endforeach()
+    endforeach()
+
+    # Two sources of one output
+    set(SEEN "")
+    foreach(OUTPUT ${OUTPUTS})
+        if(OUTPUT IN_LIST SEEN)
+            message(SEND_ERROR "DMOD_FIXTURES_PATHS: ${OUTPUT} is made from two sources - rename one (or its .ini section)")
+        endif()
+        list(APPEND SEEN "${OUTPUT}")
+    endforeach()
+    if(NOT OUTPUTS)
+        return()
+    endif()
+
+    add_custom_target(dmod_views ALL DEPENDS ${OUTPUTS})
     set_property(GLOBAL PROPERTY DMOD_VIEWS_TARGET_READY TRUE)
     add_dependencies(${moduleName} dmod_views)
-    message(STATUS "Views: converting ${VIEW_SOURCES} to ${DMOD_VIEWS_DIR}")
+    message(STATUS "Fixtures: converting ${VIEW_SOURCES} ${IMAGE_SOURCES} to ${DMOD_VIEWS_DIR}")
     set(DMOD_VIEWS_ENABLED TRUE PARENT_SCOPE)
 endfunction()
 
