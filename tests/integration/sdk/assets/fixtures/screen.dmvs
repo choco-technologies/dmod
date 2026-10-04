@@ -1,0 +1,6 @@
+.view screen
+.entry draw
+draw:
+    FILL #123456
+    RECT 1, 2, 3, 4, #FFFFFF
+    RET

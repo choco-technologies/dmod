@@ -281,6 +281,10 @@ if(DMOD_MODULE AND DEFINED DMOD_PACKAGE_NAME AND NOT "${DMOD_PACKAGE_NAME}" STRE
     endif()
 endif()
 
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR AND DMOD_SYSTEM)
+	include(scripts/install-sdk.cmake)
+endif()
+
 if(DMOD_BUILD_DEB)
 	include(scripts/debian-package.cmake)
 endif()

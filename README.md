@@ -787,6 +787,11 @@ tools and `dmod_loader` using `DMOD_BUILD_DEB=ON` and CMake's `package` target.
 See [Building and installing the Debian package](docs/debian-package.md) for
 prerequisites, clean-build commands and installation instructions.
 
+The same build produces a `dmod-dev` SDK package. With both packages installed,
+module projects can use `find_package(dmod CONFIG REQUIRED)` followed by
+`dmod_add_library` or `dmod_add_executable`, without fetching the DMOD sources.
+See [Building modules with dmod-dev](docs/development-package.md).
+
 #### Installing with CMake
 
 To install the tools using CMake, build the project in SYSTEM mode with tools enabled, then use the install target:

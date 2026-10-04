@@ -1,0 +1,3 @@
+dmf=./${module}.dmf => ${destination}/${module}.dmf [origin=${dmf_dir}/${module}.dmf]
+inc=./include => ${destination}/${module}/include [origin=${repo_dir}/include] [origin=${build_dir}/${module}_defs.h]
+dmr=./${module}.dmr => ${destination}/${module}/${module}.dmr [origin=${repo_dir}/sdk_math.dmr]

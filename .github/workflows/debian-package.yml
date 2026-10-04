@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential cmake dpkg-dev libcurl4-openssl-dev unzip
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake dpkg-dev libcurl4-openssl-dev unzip bubblewrap python3 fonts-dejavu-core
       - name: Bootstrap host tools
         run: |
           cmake -S . -B build-deb -DDMOD_TOOLS_NAME=arch/x86_64 \
@@ -36,15 +36,28 @@ jobs:
             -DDMOD_BUILD_TESTS=OFF -DDMOD_BUILD_TOOLS=OFF -DDMOD_BUILD_TEMPLATES=OFF
           cmake --build build-modules --target example_app dmodex --parallel 2
       - name: Validate package
-        run: bash tests/integration/test_debian_package.sh build-deb/dmod_*.deb build-modules/dmf/example_app.dmf
-      - name: Install and remove package
         run: |
-          sudo apt-get install -y ./build-deb/dmod_*.deb
+          bash tests/integration/test_debian_package.sh build-deb/dmod_*.deb build-modules/dmf/example_app.dmf
+          bash tests/integration/test_development_package.sh build-deb/dmod_*.deb build-deb/dmod-dev_*.deb
+      - name: Install both packages and test the SDK without a checkout
+        run: |
+          sudo apt-get install -y ./build-deb/dmod_*.deb ./build-deb/dmod-dev_*.deb
           /usr/bin/dmod_loader --help
           /usr/bin/dmf-get --help
-          sudo apt-get remove -y dmod
+          DMOD_CACHE_DIR="$RUNNER_TEMP/asset-cache" bash tests/integration/prepare_sdk_assets.sh /usr "$RUNNER_TEMP/asset-tools" arch/x86_64
+          sudo env DMOD_SDK_TEST_ASSETS="$RUNNER_TEMP/asset-tools" bash tests/integration/test_installed_sdk.sh /usr -DDMOD_TOOLS_NAME=arch/x86_64
+      - name: Cross compile with the installed SDK
+        if: matrix.examples == 'OFF'
+        run: |
+          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi gdb-multiarch
+          sudo env DMOD_SDK_TEST_ASSETS="$RUNNER_TEMP/asset-tools" bash tests/integration/test_installed_sdk.sh /usr --cross-profile arch/armv7/cortex-m7
+          sudo bash tests/integration/test_installed_sdk.sh /usr --cross
+      - name: Remove packages
+        run: |
+          sudo apt-get remove -y dmod-dev dmod
           test ! -e /usr/bin/dmod_loader
+          test ! -e /usr/share/cmake/dmod/dmodConfig.cmake
       - uses: actions/upload-artifact@v4
         with:
           name: dmod-deb-examples-${{ matrix.examples }}
-          path: build-deb/dmod_*.deb
+          path: build-deb/*.deb
