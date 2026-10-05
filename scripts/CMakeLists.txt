@@ -209,6 +209,7 @@ endfunction()
 #   size        = WIDTHxHEIGHT (scaled down to fit), WIDTHx, xHEIGHT
 #   compression = fastlz | ... | none
 #   dither      = on | off
+#   blur        = pixels - a Gaussian blur of that standard deviation, after scaling
 #
 # A font needs its <font>.ini (e.g. Roboto-Regular.ttf.ini), the same way:
 # a font is made for one pixel size, so each output has one - each
@@ -228,7 +229,7 @@ endfunction()
 #   DMOD_LOADER             dmod_loader executable that runs the tools
 #                           (default: searched in tools dir and PATH)
 #   DMOD_IMAGE_EXTENSIONS   image file extensions (default: png jpg jpeg jpe
-#                           jfif bmp qoi gif tif tiff)
+#                           jfif bmp qoi gif tif tiff svg)
 #   DMOD_IMAGE_DECODERS     decoder modules to download (default:
 #                           dmimg_<format> of each extension found)
 #   DMOD_FONT_EXTENSIONS    font file extensions (default: ttf otf ttc)
@@ -285,6 +286,11 @@ function(_dmod_image_option iniPath key value outVar)
         set(ARGS -s ${value})
     elseif(key STREQUAL "compression")
         set(ARGS -c ${value})
+    elseif(key STREQUAL "blur")
+        if(NOT value MATCHES "^[0-9]+$")
+            message(SEND_ERROR "${iniPath}: blur is a number of pixels, e.g. 8 (got '${value}')")
+        endif()
+        set(ARGS -b ${value})
     elseif(key STREQUAL "dither")
         string(TOLOWER "${value}" V)
         if(V MATCHES "^(off|no|false|0)$")
@@ -293,7 +299,7 @@ function(_dmod_image_option iniPath key value outVar)
             message(SEND_ERROR "${iniPath}: dither is on or off, not '${value}'")
         endif()
     else()
-        message(SEND_ERROR "${iniPath}: unknown key '${key}' (format, size, compression, dither)")
+        message(SEND_ERROR "${iniPath}: unknown key '${key}' (format, size, compression, dither, blur)")
     endif()
     set(${outVar} "${ARGS}" PARENT_SCOPE)
 endfunction()
@@ -415,7 +421,7 @@ function(dmod_setup_assets moduleName)
         set(DMOD_VIEWS_TOOLS_NAME "arch/x86_64")
     endif()
     if(NOT DEFINED DMOD_IMAGE_EXTENSIONS OR "${DMOD_IMAGE_EXTENSIONS}" STREQUAL "")
-        set(DMOD_IMAGE_EXTENSIONS png jpg jpeg jpe jfif bmp qoi gif tif tiff)
+        set(DMOD_IMAGE_EXTENSIONS png jpg jpeg jpe jfif bmp qoi gif tif tiff svg)
     endif()
     if(NOT DEFINED DMOD_FONT_EXTENSIONS OR "${DMOD_FONT_EXTENSIONS}" STREQUAL "")
         set(DMOD_FONT_EXTENSIONS ttf otf ttc)
