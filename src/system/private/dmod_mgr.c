@@ -53,12 +53,14 @@ void Dmod_Mgr_PrintSystemModules( void )
  */
 bool Dmod_Mgr_IsLoaded( const char* ModuleName )
 {
-    if(Dmod_Mgr_IsSystemModule( ModuleName ))
+    /* Loaded modules first: a lookup in the context table is cheap, while
+     * Dmod_Mgr_IsSystemModule() checks the signature of every built-in API. */
+    if(Dmod_Context_Get( ModuleName ) != NULL)
     {
-        return true; 
+        return true;
     }
 
-    return Dmod_Context_Get( ModuleName ) != NULL;
+    return Dmod_Mgr_IsSystemModule( ModuleName );
 }
 
 /**
@@ -70,10 +72,12 @@ bool Dmod_Mgr_IsLoaded( const char* ModuleName )
  */
 bool Dmod_Mgr_IsEnabled( const char* ModuleName )
 {
-    if(Dmod_Mgr_IsSystemModule( ModuleName ))
-    {
-        return true; 
-    }
+    /* See Dmod_Mgr_IsLoaded() for why loaded modules are checked first */
     Dmod_Context_t* context = Dmod_Context_Get( ModuleName );
-    return context != NULL && Dmod_IsEnabled( context );
+    if(context != NULL && Dmod_IsEnabled( context ))
+    {
+        return true;
+    }
+
+    return Dmod_Mgr_IsSystemModule( ModuleName );
 }
