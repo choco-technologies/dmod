@@ -147,6 +147,10 @@ bool Dmod_Initialize( size_t NumIrqs, size_t MaxHandlersPerIrq )
     {
         return false;
     }
+    if( !Dmod_Mgr_BuildSystemModuleList() )
+    {
+        DMOD_LOG_WARN("Cannot build the list of system modules - built-in APIs will be checked one by one\n");
+    }
     return Dmod_BuiltinInputApi.InputSection != NULL && Dmod_BuiltinOutputApi.OutputSection != NULL;
 }
 
@@ -157,6 +161,7 @@ bool Dmod_Initialize( size_t NumIrqs, size_t MaxHandlersPerIrq )
  */
 bool Dmod_Deinitialize(void)
 {
+    Dmod_Mgr_FreeSystemModuleList();
     Dmod_Irq_Deinit();
     return true;
 }

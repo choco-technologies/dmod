@@ -64,6 +64,63 @@ TEST_F(DmodMgrTest, IsNullModule)
     ASSERT_FALSE(Dmod_Mgr_IsSystemModule(NULL));
 }
 
+/**
+ * @brief Test for Dmod_Mgr_BuildSystemModuleList
+ *
+ * The test checks if the list of the system modules can be built more than
+ * once, and if the result of Dmod_Mgr_IsSystemModule does not change with it.
+ */
+TEST_F(DmodMgrTest, BuildSystemModuleList)
+{
+    ASSERT_TRUE(Dmod_Mgr_BuildSystemModuleList());
+    ASSERT_TRUE(Dmod_Mgr_BuildSystemModuleList());
+    ASSERT_TRUE(Dmod_Mgr_IsSystemModule("Dmod"));
+    ASSERT_FALSE(Dmod_Mgr_IsSystemModule("Test"));
+}
+
+/**
+ * @brief Test for Dmod_Mgr_FreeSystemModuleList
+ *
+ * The test checks if Dmod_Mgr_IsSystemModule builds the list of the system
+ * modules again when it has been freed.
+ */
+TEST_F(DmodMgrTest, IsSystemModuleAfterFreeingList)
+{
+    Dmod_Mgr_FreeSystemModuleList();
+    ASSERT_TRUE(Dmod_Mgr_IsSystemModule("Dmod"));
+    ASSERT_FALSE(Dmod_Mgr_IsSystemModule("Test"));
+}
+
+/**
+ * @brief Test for Dmod_Mgr_IsSystemModule
+ *
+ * The test checks if every module named by a built-in API signature is
+ * reported as a system module.
+ */
+TEST_F(DmodMgrTest, IsSystemModuleForEveryBuiltinApi)
+{
+    Dmod_BuiltinInputApi.SectionSize = (size_t)((uint8_t*)&__dmod_inputs_end - (uint8_t*)&__dmod_inputs_start);
+    size_t numberOfEntries = Dmod_Api_GetNumberOfEntries(&Dmod_BuiltinInputApi);
+    ASSERT_GT(numberOfEntries, 0u);
+    size_t checked = 0;
+    for(size_t i = 0; i < numberOfEntries; i++)
+    {
+        const char* signature = Dmod_BuiltinInputApi.InputSection->Entries[i].Signature;
+        char moduleName[DMOD_MAX_MODULE_NAME_LENGTH] = {0};
+        if(!Dmod_ApiSignature_IsValid(signature)
+        || Dmod_ApiSignature_IsTest(signature)
+        || strncmp(signature, DMOD_IRQ_SIGNATURE_PREFIX, sizeof(DMOD_IRQ_SIGNATURE_PREFIX) - 1) == 0
+        || !Dmod_ApiSignature_ReadModuleName(signature, moduleName, sizeof(moduleName) - 1)
+        || moduleName[0] == '\0')
+        {
+            continue;
+        }
+        EXPECT_TRUE(Dmod_Mgr_IsSystemModule(moduleName)) << moduleName;
+        checked++;
+    }
+    ASSERT_GT(checked, 0u);
+}
+
 // ===============================================================
 //                  Tests for Dmod_Mgr_IsLoaded
 // ===============================================================
