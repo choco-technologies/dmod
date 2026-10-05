@@ -9,7 +9,7 @@
  * @brief Names of the system modules - the modules the built-in input APIs belong to
  *
  * Packed one after another, each terminated with '\0', the list itself with an
- * empty name. Built once (see Dmod_Mgr_InitSystemModules), so that
+ * empty name. Built once (see Dmod_Mgr_BuildSystemModuleList), so that
  * Dmod_Mgr_IsSystemModule() does not have to check the signature of every
  * built-in API on each call.
  */
@@ -96,7 +96,7 @@ static char* AddSystemModuleName( char* Names, size_t* Size, const char* ModuleN
  *
  * @return True if the list is available
  */
-bool Dmod_Mgr_InitSystemModules( void )
+bool Dmod_Mgr_BuildSystemModuleList( void )
 {
     if( SystemModuleNames != NULL )
     {
@@ -130,7 +130,7 @@ bool Dmod_Mgr_InitSystemModules( void )
 /**
  * @brief Free the list of the system module names
  */
-void Dmod_Mgr_DeinitSystemModules( void )
+void Dmod_Mgr_FreeSystemModuleList( void )
 {
     Dmod_Free( SystemModuleNames );
     SystemModuleNames = NULL;
@@ -173,7 +173,7 @@ bool Dmod_Mgr_IsSystemModule( const char* ModuleName )
         DMOD_LOG_ERROR("Cannot check if module is system module - invalid module name (empty or NULL)\n");
         return false;
     }
-    if( !Dmod_Mgr_InitSystemModules() )
+    if( !Dmod_Mgr_BuildSystemModuleList() )
     {
         return IsSystemModuleInApis( ModuleName );
     }

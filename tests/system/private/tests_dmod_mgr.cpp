@@ -65,28 +65,28 @@ TEST_F(DmodMgrTest, IsNullModule)
 }
 
 /**
- * @brief Test for Dmod_Mgr_InitSystemModules
+ * @brief Test for Dmod_Mgr_BuildSystemModuleList
  *
  * The test checks if the list of the system modules can be built more than
  * once, and if the result of Dmod_Mgr_IsSystemModule does not change with it.
  */
-TEST_F(DmodMgrTest, InitSystemModules)
+TEST_F(DmodMgrTest, BuildSystemModuleList)
 {
-    ASSERT_TRUE(Dmod_Mgr_InitSystemModules());
-    ASSERT_TRUE(Dmod_Mgr_InitSystemModules());
+    ASSERT_TRUE(Dmod_Mgr_BuildSystemModuleList());
+    ASSERT_TRUE(Dmod_Mgr_BuildSystemModuleList());
     ASSERT_TRUE(Dmod_Mgr_IsSystemModule("Dmod"));
     ASSERT_FALSE(Dmod_Mgr_IsSystemModule("Test"));
 }
 
 /**
- * @brief Test for Dmod_Mgr_DeinitSystemModules
+ * @brief Test for Dmod_Mgr_FreeSystemModuleList
  *
  * The test checks if Dmod_Mgr_IsSystemModule builds the list of the system
  * modules again when it has been freed.
  */
-TEST_F(DmodMgrTest, IsSystemModuleAfterDeinit)
+TEST_F(DmodMgrTest, IsSystemModuleAfterFreeingList)
 {
-    Dmod_Mgr_DeinitSystemModules();
+    Dmod_Mgr_FreeSystemModuleList();
     ASSERT_TRUE(Dmod_Mgr_IsSystemModule("Dmod"));
     ASSERT_FALSE(Dmod_Mgr_IsSystemModule("Test"));
 }
