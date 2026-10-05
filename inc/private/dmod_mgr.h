@@ -9,6 +9,8 @@ extern "C" {
 #   error "This is private DMOD header. Don't include this outside DMOD library"
 #endif
 
+extern bool Dmod_Mgr_InitSystemModules( void );
+extern void Dmod_Mgr_DeinitSystemModules( void );
 extern bool Dmod_Mgr_IsSystemModule( const char* ModuleName );
 extern void Dmod_Mgr_PrintSystemModules( void );
 extern bool Dmod_Mgr_IsLoaded( const char* ModuleName );
