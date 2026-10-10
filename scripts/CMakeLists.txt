@@ -210,6 +210,8 @@ endfunction()
 #   compression = fastlz | ... | none
 #   dither      = on | off
 #   blur        = pixels - a Gaussian blur of that standard deviation, after scaling
+#   crop        = X,Y,W,H - only that of it (after scaling and blurring): what a box shows
+#   radius      = pixels - its corners rounded (after crop), transparent outside them
 #
 # A font needs its <font>.ini (e.g. Roboto-Regular.ttf.ini), the same way:
 # a font is made for one pixel size, so each output has one - each
@@ -291,6 +293,16 @@ function(_dmod_image_option iniPath key value outVar)
             message(SEND_ERROR "${iniPath}: blur is a number of pixels, e.g. 8 (got '${value}')")
         endif()
         set(ARGS -b ${value})
+    elseif(key STREQUAL "crop")
+        if(NOT value MATCHES "^[0-9]+,[0-9]+,[0-9]+,[0-9]+$")
+            message(SEND_ERROR "${iniPath}: crop is X,Y,W,H in pixels, e.g. 0,22,88,88 (got '${value}')")
+        endif()
+        set(ARGS -k ${value})
+    elseif(key STREQUAL "radius")
+        if(NOT value MATCHES "^[0-9]+$")
+            message(SEND_ERROR "${iniPath}: radius is a number of pixels, e.g. 30 (got '${value}')")
+        endif()
+        set(ARGS -r ${value})
     elseif(key STREQUAL "dither")
         string(TOLOWER "${value}" V)
         if(V MATCHES "^(off|no|false|0)$")
@@ -299,7 +311,7 @@ function(_dmod_image_option iniPath key value outVar)
             message(SEND_ERROR "${iniPath}: dither is on or off, not '${value}'")
         endif()
     else()
-        message(SEND_ERROR "${iniPath}: unknown key '${key}' (format, size, compression, dither, blur)")
+        message(SEND_ERROR "${iniPath}: unknown key '${key}' (format, size, compression, dither, blur, crop, radius)")
     endif()
     set(${outVar} "${ARGS}" PARENT_SCOPE)
 endfunction()
