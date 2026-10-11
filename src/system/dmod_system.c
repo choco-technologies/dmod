@@ -1384,7 +1384,18 @@ int Dmod_Run( Dmod_Context_t* Context, int argc, char *argv[] )
         return -ENOEXEC;
     }
 
+    // Not held while main() runs: what the module does may take as long as it
+    // runs, and whoever asks the module something meanwhile (Dmod_BeginUsage(),
+    // Dmod_Enable(), ...) would wait that long - lending it its priority all
+    // that time (a mutex's priority inheritance), so a service started by a
+    // high-priority manager kept that priority for good. `Running` keeps a
+    // second Dmod_Run() out, and Dmod_Unload() refuses a running module.
+    Dmod_Mutex_Unlock(Context->Mutex);
     result = Dmod_Main( Context, argc, argv );
+    if( Dmod_Mutex_Lock(Context->Mutex) != 0 )
+    {
+        DMOD_LOG_ERROR("Module %s: cannot lock its mutex after main()\n", Dmod_Context_GetModuleName( Context ));
+    }
     Dmod_Event_ModuleStopped( Context );
     Context->Running = false;
 
