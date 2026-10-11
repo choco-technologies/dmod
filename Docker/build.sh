@@ -12,6 +12,7 @@ ROOT_DIR="$THIS_DIR/.."
 DOCKERFILE_PATH="$THIS_DIR/Dockerfile"
 DOCKERFILE_ENV_PATH="$THIS_DIR/Dockerfile.env"
 DOCKERFILE_CLAUDE_PATH="$THIS_DIR/Dockerfile.claude"
+DOCKERFILE_OPENCODE_PATH="$THIS_DIR/Dockerfile.opencode"
 
 #
 #   Path to the configuration file
@@ -79,10 +80,27 @@ function prepareScript()
     addCommandLineOptionalArgument 'ENV_IMAGE_VERSION' '--env-image-version' not_empty_string 'Version of the environment image to build' 'latest' ''
     addCommandLineOptionalArgument 'CLAUDE_IMAGE_NAME' '--claude-image-name' not_empty_string 'Name of the claude image to build' 'chocotechnologies/dmod-claude' ''
     addCommandLineOptionalArgument 'CLAUDE_IMAGE_VERSION' '--claude-image-version' not_empty_string 'Version of the claude image to build' 'latest' ''
-
+    addCommandLineOptionalArgument 'OPENCODE_IMAGE_NAME' '--opencode-image-name' not_empty_string 'Name of the opencode image to build' 'chocotechnologies/dmod-opencode' ''
+    addCommandLineOptionalArgument 'OPENCODE_IMAGE_VERSION' '--opencode-image-version' not_empty_string 'Version of the epencode image to build' 'latest' ''
+    addCommandLineOptionalArgument 'TARGETS' '--targets' not_empty_string 'Comma-separated list of images to build: env, dmod, claude (e.g. "dmod" builds only the main image)' 'env,dmod,claude,opencode' ''
+    addCommandLineOptionalArgument 'NO_CACHE' '--no-cache' not_empty_string 'Set to "true" to build without the docker layer cache (forces rebuilding of the dmod tools)' 'false' ''
 
     disableConfigurationPrinting
     parseCommandLineArguments "$@"
+
+    DOCKER_BUILD_OPTS=(--squash)
+    if [ "$NO_CACHE" == "true" ]
+    then
+        DOCKER_BUILD_OPTS+=(--no-cache)
+    fi
+}
+
+#
+#   Checks if the given image is selected in --targets
+#
+function isTargetSelected()
+{
+    [[ ",$TARGETS," == *",$1,"* ]]
 }
 
 #
@@ -92,7 +110,7 @@ function buildEnv()
 {
     local old_pwd=$(pwd)
     cd "$THIS_DIR/.."
-    doCommandAsStepWithSpinner "Building the environment image $ENV_IMAGE_NAME:$ENV_IMAGE_VERSION" docker build --squash -t "$ENV_IMAGE_NAME:$ENV_IMAGE_VERSION" -f "$DOCKERFILE_ENV_PATH" "$ROOT_DIR"
+    doCommandAsStepWithSpinner "Building the environment image $ENV_IMAGE_NAME:$ENV_IMAGE_VERSION" docker build "${DOCKER_BUILD_OPTS[@]}" -t "$ENV_IMAGE_NAME:$ENV_IMAGE_VERSION" -f "$DOCKERFILE_ENV_PATH" "$ROOT_DIR"
     cd "$old_pwd"
 }
 
@@ -103,7 +121,7 @@ function build()
 {
     local old_pwd=$(pwd)
     cd "$THIS_DIR/.."
-    doCommandAsStepWithSpinner "Building the image $IMAGE_NAME:$IMAGE_VERSION" docker build --squash -t "$IMAGE_NAME:$IMAGE_VERSION" -f "$DOCKERFILE_PATH" "$ROOT_DIR"
+    doCommandAsStepWithSpinner "Building the image $IMAGE_NAME:$IMAGE_VERSION" docker build "${DOCKER_BUILD_OPTS[@]}" -t "$IMAGE_NAME:$IMAGE_VERSION" -f "$DOCKERFILE_PATH" "$ROOT_DIR"
     cd "$old_pwd"
 }
 
@@ -114,7 +132,18 @@ function buildClaude()
 {
     local old_pwd=$(pwd)
     cd "$THIS_DIR/.."
-    doCommandAsStepWithSpinner "Building the claude image $CLAUDE_IMAGE_NAME:$CLAUDE_IMAGE_VERSION" docker build --squash -t "$CLAUDE_IMAGE_NAME:$CLAUDE_IMAGE_VERSION" -f "$DOCKERFILE_CLAUDE_PATH" "$ROOT_DIR"
+    doCommandAsStepWithSpinner "Building the claude image $CLAUDE_IMAGE_NAME:$CLAUDE_IMAGE_VERSION" docker build "${DOCKER_BUILD_OPTS[@]}" -t "$CLAUDE_IMAGE_NAME:$CLAUDE_IMAGE_VERSION" -f "$DOCKERFILE_CLAUDE_PATH" "$ROOT_DIR"
+    cd "$old_pwd"
+}
+
+#
+#   Builds opencode image
+#
+function buildOpencode()
+{
+    local old_pwd=$(pwd)
+    cd "$THIS_DIR/.."
+    doCommandAsStepWithSpinner "Building the claude image $CLAUDE_IMAGE_NAME:$CLAUDE_IMAGE_VERSION" docker build "${DOCKER_BUILD_OPTS[@]}" -t "$OPENCODE_IMAGE_NAME:$OPENCODE_IMAGE_VERSION" -f "$DOCKERFILE_OPENCODE_PATH" "$ROOT_DIR"
     cd "$old_pwd"
 }
 
@@ -123,6 +152,7 @@ function buildClaude()
 #   MAIN
 #
 prepareScript "$@"
-buildEnv
-build
-buildClaude
+isTargetSelected env && buildEnv
+isTargetSelected dmod && build
+isTargetSelected claude && buildClaude
+isTargetSelected opencode && buildOpencode
