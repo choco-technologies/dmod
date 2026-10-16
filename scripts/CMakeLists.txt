@@ -1,3 +1,8 @@
+# Enable SDK-generated relocations for absolute pointers in module constants.
+function(dmod_enable_pointer_relocations)
+    set(DMOD_RELOCATE_ABSOLUTE_POINTERS ON PARENT_SCOPE)
+endfunction()
+
 if(NOT DEFINED DMOD_SCRIPTS_DIR)
     set(DMOD_SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE STRING "Path to the scripts directory")
 endif()
@@ -768,6 +773,17 @@ function(dmod_create_module moduleName version moduleType)
     target_link_options(${moduleName} PRIVATE -L ${DMOD_SCRIPTS_DIR} -pie -nostartfiles -nostdlib -Xlinker --discard-all -Wl,--gc-sections,--undefined=ModuleHeader )
     target_link_options(${moduleName} PRIVATE -T ${DMOD_SCRIPTS_DIR}/module.ld  -static)
     
+    # Static initializers can contain absolute pointers outside the GOT,
+    # including compiler-generated aggregate constants and third-party tables.
+    # Opt in until all deployed loaders understand the extended header.
+    if(DMOD_RELOCATE_ABSOLUTE_POINTERS)
+        find_package(Python3 REQUIRED COMPONENTS Interpreter)
+        target_compile_definitions(${moduleName} PRIVATE DMOD_RELOCATE_ABSOLUTE_POINTERS=1)
+        target_link_options(${moduleName} PRIVATE -Wl,--emit-relocs,--no-relax)
+        set_property(TARGET ${moduleName} APPEND PROPERTY LINK_DEPENDS
+            ${DMOD_SCRIPTS_DIR}/relocate_pointers.py)
+    endif()
+
     set(ELF_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${moduleName}")
     set(DMF_OUTPUT "${DMOD_DMF_DIR}/${moduleName}.dmf")
     set(DMFC_OUTPUT "${DMOD_DMFC_DIR}/${moduleName}.dmfc")
@@ -780,6 +796,13 @@ function(dmod_create_module moduleName version moduleType)
         COMMAND ${CMAKE_OBJCOPY} -O binary ${ELF_OUTPUT} ${DMF_OUTPUT}
         COMMENT "Converting ELF to binary"
     )
+
+    if(DMOD_RELOCATE_ABSOLUTE_POINTERS)
+        add_custom_command(TARGET ${moduleName} POST_BUILD
+            COMMAND ${Python3_EXECUTABLE} ${DMOD_SCRIPTS_DIR}/relocate_pointers.py
+                ${ELF_OUTPUT} ${DMF_OUTPUT}
+            COMMENT "Recording absolute pointer relocations" VERBATIM)
+    endif()
 
     if(TODMFC)
         add_custom_command(

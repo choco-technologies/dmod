@@ -62,3 +62,9 @@ volatile const Dmod_ModuleHeader_t ModuleHeader DMOD_SECTION(".header") DMOD_USE
 };
 
 volatile const Dmod_ModuleHeader_t* DMOD_Header DMOD_GLOBAL_POINTER = &ModuleHeader;
+#if defined(DMOD_RELOCATE_ABSOLUTE_POINTERS) && DMOD_RELOCATE_ABSOLUTE_POINTERS
+volatile const Dmod_PointerRelocations_t Dmod_PointerRelocations
+    DMOD_SECTION(".header.relocations") DMOD_USED = {
+        DMOD_POINTER_RELOCATIONS_MAGIC, DMOD_POINTER_RELOCATIONS_VERSION, 0, 0
+    };
+#endif

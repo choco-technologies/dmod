@@ -175,6 +175,18 @@ typedef struct
     bool                ManualLoad;  
 } Dmod_ModuleHeader_t;
 
+/* Optional extension, immediately following the legacy module header. Older
+ * loaders reject the larger HeaderSize instead of executing unrelocated code.
+ * Records are sorted uint32_t offsets of pointer-sized module-relative values. */
+#define DMOD_POINTER_RELOCATIONS_MAGIC 0x524C4F43u
+#define DMOD_POINTER_RELOCATIONS_VERSION 1u
+typedef struct {
+    uint32_t Magic;
+    uint32_t Version;
+    uint32_t Offset;
+    uint32_t Count;
+} Dmod_PointerRelocations_t;
+
 /**
  * @brief DMFC Header
  * 

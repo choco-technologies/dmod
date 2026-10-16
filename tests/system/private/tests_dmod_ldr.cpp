@@ -1206,3 +1206,93 @@ TEST_F(DmodLdrTest, LoadInvalidContext)
     Dmod_Context_t* context = nullptr;
     ASSERT_FALSE(Dmod_Ldr_Load(context));
 }
+TEST_F(DmodLdrTest, AbsolutePointersRelocateDataAndCallbackWithoutChangingIntegers)
+{
+    alignas(uintptr_t) unsigned char image[512] = {};
+    auto* header = reinterpret_cast<Dmod_ModuleHeader_t*>(image);
+    header->HeaderSize = sizeof(*header) + sizeof(Dmod_PointerRelocations_t);
+    header->PointerSize = sizeof(uintptr_t);
+    Dmod_PointerRelocations_t ext = {DMOD_POINTER_RELOCATIONS_MAGIC, 1, 480, 2};
+    memcpy(image + sizeof(*header), &ext, sizeof(ext));
+    uintptr_t data = 400, callback = 401, integer = 17;
+    memcpy(image + 352, &data, sizeof(data));
+    memcpy(image + 368, &callback, sizeof(callback));
+    memcpy(image + 384, &integer, sizeof(integer));
+    uint32_t offsets[] = {352, 368};
+    memcpy(image + 480, offsets, sizeof(offsets));
+    Dmod_Context_t context = {};
+    context.Data = image; context.Size = sizeof(image); context.Header = header;
+    Dmod_SystemCrossplatformMode = false;
+    ASSERT_TRUE(Dmod_Ldr_LoadPointerRelocations(&context));
+    memcpy(&data, image + 352, sizeof(data));
+    memcpy(&callback, image + 368, sizeof(callback));
+    memcpy(&integer, image + 384, sizeof(integer));
+    EXPECT_EQ(data, reinterpret_cast<uintptr_t>(image) + 400);
+    EXPECT_EQ(callback, reinterpret_cast<uintptr_t>(image) + 401);
+    EXPECT_EQ(integer, 17u);
+}
+
+TEST_F(DmodLdrTest, AbsolutePointersRejectMalformedTablesBeforeAnyMutation)
+{
+    alignas(uintptr_t) unsigned char image[512] = {};
+    auto* header = reinterpret_cast<Dmod_ModuleHeader_t*>(image);
+    header->HeaderSize = sizeof(*header) + sizeof(Dmod_PointerRelocations_t);
+    header->PointerSize = sizeof(uintptr_t);
+    Dmod_Context_t context = {};
+    context.Data = image; context.Size = sizeof(image); context.Header = header;
+    Dmod_SystemCrossplatformMode = false;
+    struct Invalid { uint32_t magic, version, offset, count, first, second; } cases[] = {
+        {0, 1, 480, 1, 352, 0},
+        {DMOD_POINTER_RELOCATIONS_MAGIC, 2, 480, 1, 352, 0},
+        {DMOD_POINTER_RELOCATIONS_MAGIC, 1, 513, 0, 352, 0},
+        {DMOD_POINTER_RELOCATIONS_MAGIC, 1, 480, UINT32_MAX, 352, 0},
+        {DMOD_POINTER_RELOCATIONS_MAGIC, 1, 480, 2, 352, 352},
+        {DMOD_POINTER_RELOCATIONS_MAGIC, 1, 480, 2, 352, 353},
+        {DMOD_POINTER_RELOCATIONS_MAGIC, 1, 480, 2, 352, 479},
+        {DMOD_POINTER_RELOCATIONS_MAGIC, 1, 480, 1, 8, 0},
+    };
+    for(auto test : cases) {
+        Dmod_PointerRelocations_t ext = {test.magic, test.version, test.offset, test.count};
+        memcpy(image + sizeof(*header), &ext, sizeof(ext));
+        uintptr_t value = 400;
+        memcpy(image + 352, &value, sizeof(value));
+        uint32_t offsets[] = {test.first, test.second};
+        memcpy(image + 480, offsets, sizeof(offsets));
+        EXPECT_FALSE(Dmod_Ldr_LoadPointerRelocations(&context));
+        uintptr_t after;
+        memcpy(&after, image + 352, sizeof(after));
+        EXPECT_EQ(after, value);
+    }
+}
+
+TEST_F(DmodLdrTest, AbsolutePointersAllowLegacyImages)
+{
+    Dmod_ModuleHeader_t header = {};
+    header.HeaderSize = sizeof(header);
+    Dmod_Context_t context = {};
+    context.Header = &header;
+    EXPECT_TRUE(Dmod_Ldr_LoadPointerRelocations(&context));
+    EXPECT_FALSE(Dmod_Ldr_LoadPointerRelocations(nullptr));
+}
+
+TEST_F(DmodLdrTest, CrossplatformInspectionValidatesEveryRecordWithoutRelocating)
+{
+    unsigned char image[512] = {};
+    auto* header = reinterpret_cast<Dmod_ModuleHeader_t*>(image);
+    header->HeaderSize = sizeof(*header) + sizeof(Dmod_PointerRelocations_t);
+    header->PointerSize = 4;
+    Dmod_PointerRelocations_t ext = {DMOD_POINTER_RELOCATIONS_MAGIC, 1, 480, 1};
+    memcpy(image + sizeof(*header), &ext, sizeof(ext));
+    uint32_t offset=352, value=400;
+    memcpy(image+480,&offset,sizeof(offset));
+    memcpy(image+352,&value,sizeof(value));
+    Dmod_Context_t context = {};
+    context.Data=image;context.Size=sizeof(image);context.Header=header;
+    Dmod_SystemCrossplatformMode=true;
+    EXPECT_TRUE(Dmod_Ldr_LoadPointerRelocations(&context));
+    uint32_t after=0;memcpy(&after,image+352,sizeof(after));
+    EXPECT_EQ(after,value);
+    offset=511;memcpy(image+480,&offset,sizeof(offset));
+    EXPECT_FALSE(Dmod_Ldr_LoadPointerRelocations(&context));
+    Dmod_SystemCrossplatformMode=false;
+}

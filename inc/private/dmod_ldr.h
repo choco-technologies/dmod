@@ -16,9 +16,11 @@ extern bool Dmod_Ldr_LoadFooter( Dmod_Context_t* Context );
 extern bool Dmod_Ldr_LoadOutput( Dmod_Context_t* Context );
 extern bool Dmod_Ldr_LoadInput( Dmod_Context_t* Context );
 extern bool Dmod_Ldr_LoadGot( Dmod_Context_t* Context );
+extern bool Dmod_Ldr_LoadPointerRelocations(Dmod_Context_t* Context);
 extern bool Dmod_Ldr_LoadBss( Dmod_Context_t* Context );
 
 #ifdef __cplusplus
 }
 #endif
+
 #endif // DMOD_LDR_H

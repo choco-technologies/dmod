@@ -363,3 +363,13 @@ jobs:
       - name: Test external module with dmod_loader
         run: |
           ${GITHUB_WORKSPACE}/build/examples/system/dmod_loader ${GITHUB_WORKSPACE}/build/dmf/external_test_make.dmf
+  arm-pointer-relocations:
+    name: ARM absolute pointer relocation metadata
+    runs-on: ubuntu-latest
+    container:
+      image: chocotechnologies/dmod:1.0.4
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          command -v arm-none-eabi-gcc
+          python3 tests/integration/test_arm_pointer_relocations.py

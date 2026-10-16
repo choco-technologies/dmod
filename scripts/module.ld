@@ -17,6 +17,7 @@ SECTIONS
     {
         __header_start = .;
         *(.header)
+        KEEP(*(.header.relocations))
         __header_end = .;
     } : header
 

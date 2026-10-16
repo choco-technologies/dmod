@@ -31,7 +31,7 @@ install(DIRECTORY "${DMOD_DIR}/lib/third-party/FastLZ"
     PATTERN "LICENSE.MIT")
 install(DIRECTORY "${DMOD_DIR}/scripts/"
     DESTINATION "${DMOD_SDK_INSTALL_DIR}/scripts" COMPONENT development
-    FILES_MATCHING PATTERN "CMakeLists.txt" PATTERN "*.in" PATTERN "*.ld"
+    FILES_MATCHING PATTERN "CMakeLists.txt" PATTERN "*.in" PATTERN "*.ld" PATTERN "*.py"
     PATTERN "memory_analysis.cmake")
 install(DIRECTORY "${DMOD_DIR}/cmake/runtime"
     DESTINATION "${DMOD_SDK_INSTALL_DIR}/cmake" COMPONENT development)

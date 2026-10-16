@@ -40,7 +40,8 @@ bool Dmod_Ldr_LoadHeader( Dmod_Context_t* Context )
     }
 
     // check header size
-    if( header->HeaderSize != sizeof( Dmod_ModuleHeader_t ) )
+    if( header->HeaderSize != sizeof( Dmod_ModuleHeader_t )
+     && header->HeaderSize != sizeof(Dmod_ModuleHeader_t) + sizeof(Dmod_PointerRelocations_t) )
     {
         DMOD_LOG_ERROR("Cannot load header - invalid header size: %d != %d\n", header->HeaderSize, sizeof( Dmod_ModuleHeader_t ) );
         return false;
@@ -151,7 +152,7 @@ bool Dmod_Ldr_LoadFooter( Dmod_Context_t* Context )
 
     Dmod_ModuleFooter_t* footer = Context->Header->Footer.Ptr;
     
-    if( footer->Header.SectionStart != 0 || footer->Header.SectionSize != sizeof( Dmod_ModuleHeader_t ) )
+    if( footer->Header.SectionStart != 0 || footer->Header.SectionSize != Context->Header->HeaderSize )
     {
         DMOD_LOG_ERROR("Cannot load footer - invalid header section\n");
         return false;
@@ -593,6 +594,50 @@ bool Dmod_Ldr_LoadBss( Dmod_Context_t* Context )
     return true;
 }
 
+/* Validate the whole table before applying any fixup. Do not trust counts,
+ * offsets or pointer alignment from a downloaded module. */
+bool Dmod_Ldr_LoadPointerRelocations(Dmod_Context_t* Context)
+{
+    if(Context == NULL || Context->Header == NULL) return false;
+    if(Context->Header->HeaderSize == sizeof(Dmod_ModuleHeader_t)) return true;
+    if(Context->Header->HeaderSize != sizeof(Dmod_ModuleHeader_t) + sizeof(Dmod_PointerRelocations_t)
+       || Context->Size < Context->Header->HeaderSize) return false;
+    Dmod_PointerRelocations_t extension;
+    memcpy(&extension, (uint8_t*)Context->Data + sizeof(Dmod_ModuleHeader_t), sizeof(extension));
+    if(extension.Magic != DMOD_POINTER_RELOCATIONS_MAGIC
+       || extension.Version != DMOD_POINTER_RELOCATIONS_VERSION
+       || extension.Offset < Context->Header->HeaderSize
+       || extension.Offset > Context->Size
+       || extension.Count > (Context->Size - extension.Offset) / sizeof(uint32_t)) return false;
+    /* Both native loading and crossplatform inspection validate every record.
+     * Only native loading applies the already validated pointer fixups. */
+    size_t width = Context->Header->PointerSize;
+    if(width != 4 && width != 8) return false;
+    if(!Dmod_SystemCrossplatformMode && width != sizeof(uintptr_t)) return false;
+    uint32_t previous = 0;
+    for(size_t i = 0; i < extension.Count; ++i) {
+        uint32_t offset;
+        memcpy(&offset, (uint8_t*)Context->Data + extension.Offset + i * sizeof(offset), sizeof(offset));
+        if(offset < Context->Header->HeaderSize || offset > extension.Offset
+           || width > extension.Offset - offset || (i && (offset <= previous || offset - previous < width))) return false;
+        uint64_t value = 0;
+        memcpy(&value, (uint8_t*)Context->Data + offset, width);
+        if(value >= extension.Offset) return false;
+        if(!Dmod_SystemCrossplatformMode && value > UINTPTR_MAX - (uintptr_t)Context->Data) return false;
+        previous = offset;
+    }
+    if(!Dmod_SystemCrossplatformMode) {
+        for(size_t i = 0; i < extension.Count; ++i) {
+            uint32_t offset; uintptr_t value;
+            memcpy(&offset, (uint8_t*)Context->Data + extension.Offset + i * sizeof(offset), sizeof(offset));
+            memcpy(&value, (uint8_t*)Context->Data + offset, width);
+            value += (uintptr_t)Context->Data;
+            memcpy((uint8_t*)Context->Data + offset, &value, width);
+        }
+    }
+    return true;
+}
+
 /**
  * @brief Load module
  * 
@@ -612,7 +657,8 @@ bool Dmod_Ldr_Load( Dmod_Context_t* Context )
      || !Dmod_Ldr_LoadOutput( Context )
      || !Dmod_Ldr_LoadInput( Context )
      || !Dmod_Ldr_LoadGot( Context )
-     || !Dmod_Ldr_LoadBss( Context ) )
+     || !Dmod_Ldr_LoadBss( Context )
+     || !Dmod_Ldr_LoadPointerRelocations( Context ) )
     {
         return false;
     }
