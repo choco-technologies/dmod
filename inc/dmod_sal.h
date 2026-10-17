@@ -89,11 +89,29 @@ extern "C" {
 #define Dmod_Malloc(Size)                        Dmod_MallocEx(Size, DMOD_CURRENT_ALLOCATOR)
 #define Dmod_Realloc(Ptr, Size)                  Dmod_ReallocEx(Ptr, Size, DMOD_CURRENT_ALLOCATOR)
 #define Dmod_AlignedMalloc(Size, Alignment)      Dmod_AlignedMallocEx(Size, Alignment, DMOD_CURRENT_ALLOCATOR)
+#define Dmod_MallocTagged(Tags, Size)            Dmod_MallocTaggedEx(Tags, Size, DMOD_CURRENT_ALLOCATOR)
 #define Dmod_Free(Ptr)                           Dmod_FreeEx(Ptr, false)
 DMOD_BUILTIN_API(Dmod, 1.0, void*,  _MallocEx,          ( size_t Size, const char* ModuleName ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void*,  _ReallocEx,         ( void* Ptr, size_t Size, const char* ModuleName ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void ,  _FreeEx ,           ( void* Ptr, bool Concatenate ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void*,  _AlignedMallocEx,   ( size_t Size, size_t Alignment, const char* ModuleName ) );
+/**
+ * @brief Allocate memory of a kind - the system's heaps tagged with it - else the default memory.
+ *
+ * Tags is a list of the kinds wanted, separated by commas, the preferred one first: "fast"
+ * (internal RAM worth giving to what is worked on all the time), "dma" (memory DMA reaches
+ * without cache maintenance), ... - as the system tags its heaps (dmheap: a heap's name is
+ * the list of its tags). A kind the system does not have, or one without room: the next one,
+ * at last what Dmod_MallocEx() gives - so a module asks for what it gains from and still works
+ * everywhere. Freed with Dmod_Free(). The default implementation is Dmod_MallocEx().
+ *
+ * @param Tags       The kinds of memory, preferred first (NULL or "": the default memory)
+ * @param Size       Size of memory to allocate
+ * @param ModuleName Allocation owner, as Dmod_MallocEx() understands it
+ *
+ * @return Pointer to the allocated memory, NULL when there is none
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, void*,  _MallocTaggedEx,    ( const char* Tags, size_t Size, const char* ModuleName ) );
 DMOD_BUILTIN_API(Dmod, 1.0, void,   _FreeModule,        ( const char* ModuleName )          );
 DMOD_BUILTIN_API(Dmod, 1.0, bool,   _RetagEx,           ( void* Ptr, const char* ModuleName ) );
 DMOD_BUILTIN_API(Dmod, 1.0, bool,   _RenameTag,         ( const char* OldTag, const char* NewTag ) );
