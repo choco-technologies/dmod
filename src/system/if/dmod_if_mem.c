@@ -65,6 +65,23 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _MallocEx, ( size_t Size, cons
 }
 
 /**
+ * @brief Allocate memory of a kind (see dmod_sal.h)
+ *
+ * Without heaps of kinds (dmheap provides them on a device): the default memory.
+ *
+ * @param Tags Kinds of memory wanted, preferred first - not used here
+ * @param Size Size of memory to allocate
+ * @param ModuleName Name of the module requesting memory
+ *
+ * @return Pointer to allocated memory
+ */
+DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void*, _MallocTaggedEx, ( const char* Tags, size_t Size, const char* ModuleName ))
+{
+    (void)Tags;
+    return Dmod_MallocEx(Size, ModuleName);
+}
+
+/**
  * @brief Reallocate memory
  * 
  * @param Ptr Pointer to memory to reallocate
