@@ -42,6 +42,7 @@ DMOD_SOURCES=private/dmod_vars.c\
 		if/dmod_if_input.c\
 		if/dmod_if_proc.c\
 		if/dmod_if_power.c\
+		if/dmod_if_secret.c\
 		if/dmod_if_time.c\
 		Dmod.cpp\
 		if/dmod_prf.c

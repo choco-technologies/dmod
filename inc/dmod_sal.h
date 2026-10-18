@@ -674,6 +674,39 @@ DMOD_BUILTIN_API(Dmod, 1.0, int, _Reboot, ( void ) );
 
 //! @}
 
+/**
+ * @defgroup DMOD_SAL_SECRET Device Secret Interface
+ * @ingroup DMOD_SAL
+ * @{
+ */
+
+/**
+ * @brief Hands out the device secret: a few bytes unique to this device (or this
+ * firmware build), known to the platform that boots the system.
+ *
+ * It is the root of whatever the system keeps encrypted at rest (a store of
+ * secrets, a vault): the module that owns the policy - in DMOD's own system the
+ * device file system, which serves it under a node with permissions - takes it
+ * once at start and never gives it out raw; other modules ask that module.
+ *
+ * The default (weak) implementation returns -ENOSYS: a platform without a secret
+ * (the host, tests) has none, and callers must cope. A platform overrides this
+ * function; it is meant to be a TAKE: the first call gets the secret, later calls
+ * return -EACCES (the platform cannot wipe a secret held in flash, but it can stop
+ * handing it out).
+ *
+ * @param Buffer where the secret is copied
+ * @param Size   the size of Buffer
+ *
+ * @return the length of the secret in bytes (it was copied), -ENOSPC when Buffer is
+ *         smaller than the secret (nothing copied, and the secret is not consumed),
+ *         -EACCES when it was taken already, -ENOSYS when the platform has none,
+ *         -EINVAL for a NULL Buffer.
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, int, _TakeDeviceSecret, ( void* Buffer, size_t Size ) );
+
+//! @}
+
 #ifdef __cplusplus
 }
 #endif
