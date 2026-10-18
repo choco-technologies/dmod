@@ -15,5 +15,6 @@ set(TEST_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_uptime.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_module_log_level.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_log_step.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_reboot.cpp
         PARENT_SCOPE
         )
