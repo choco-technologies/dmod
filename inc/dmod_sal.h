@@ -652,6 +652,28 @@ DMOD_BUILTIN_API(Dmod, 1.0, Dmod_Timestamp_t, _GetUptime, ( void ) );
 
 //! @}
 
+/**
+ * @defgroup DMOD_SAL_POWER System Power Interface
+ * @ingroup DMOD_SAL
+ * @{
+ */
+
+/**
+ * @brief Immediately restart the system running the module.
+ *
+ * A successful restart does not return. On failure, returns a negative errno
+ * value; the default weak implementation returns -ENOSYS and has no side effects.
+ * Platforms override this function to provide their system reset mechanism.
+ * This is an immediate reset: callers must finish any required shutdown or
+ * persistence operations before calling it. No module or filesystem cleanup
+ * is implied.
+ *
+ * @return Negative errno value if the system could not be restarted.
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, int, _Reboot, ( void ) );
+
+//! @}
+
 #ifdef __cplusplus
 }
 #endif
