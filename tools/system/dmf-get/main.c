@@ -39,6 +39,7 @@
 #define ENV_DOC_DIR "DMOD_DOC_DIR"
 #define ENV_LIB_DIR "DMOD_LIB_DIR"
 #define ENV_VIEWS_DIR "DMOD_VIEWS_DIR"
+#define ENV_LICENSE_DIR "DMOD_LICENSE_DIR"
 #define ENV_CACHE_DIR "DMOD_CACHE_DIR"
 
 // Cache directories
@@ -1159,6 +1160,10 @@ static void GetCurrentDmodVersion(Dmod_SemanticVersion_t* version) {
  */
 static const char* g_views_dir = NULL;
 
+// Optional base directory for license resources, shared by all dependencies.
+// When unset, preserve the destinations declared by the package's .dmr file.
+static const char* g_license_dir = NULL;
+
 /**
  * Create a resource context for installing a module and hand it the views
  * directory, so that .dmr entries using ${views_dir} resolve.
@@ -2024,6 +2029,8 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
         }
     }
     
+    bool license_install_failed = false;
+
     // Process .dmr file if found
     if (dmr_file[0] != '\0') {
         DMOD_LOG_INFO("Processing resource file: %s\n", dmr_file);
@@ -2057,9 +2064,10 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                     
                     bool is_views = strcmp(res_entry.key, "views") == 0;
 
-                    // In mini mode, only install dmf/dmfc resources (and views, which
-                    // the application needs at runtime)
-                    if (mini_mode && !res_entry.is_dmf_dmfc && !is_views) {
+                    bool redirect_license = g_license_dir && strcmp(res_entry.key, "license") == 0;
+
+                    // Keep runtime views and explicitly requested licenses in mini mode.
+                    if (mini_mode && !res_entry.is_dmf_dmfc && !is_views && !redirect_license) {
                         DMOD_LOG_INFO("  Skipping resource '%s' (mini mode)\n", res_entry.key);
                         continue;
                     }
@@ -2071,6 +2079,28 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                         continue;
                     }
                     
+                    if (redirect_license) {
+                        // Keep each module's licenses separate and preserve source names.
+                        // Strip trailing slashes so directory resources also have a basename.
+                        char source_name[DMOD_RESOURCE_MAX_PATH_LEN];
+                        Dmod_SnPrintf(source_name, sizeof(source_name), "%s", res_entry.source);
+                        size_t source_len = strlen(source_name);
+                        while (source_len > 0 && source_name[source_len - 1] == '/') {
+                            source_name[--source_len] = '\0';
+                        }
+                        const char* basename = strrchr(source_name, '/');
+                        basename = basename ? basename + 1 : source_name;
+                        int path_len = Dmod_SnPrintf(res_entry.destination, sizeof(res_entry.destination),
+                                                    "%s/%s/%s", g_license_dir, module_name, basename);
+                        if (basename[0] == '\0' || strcmp(basename, ".") == 0 ||
+                            strcmp(basename, "..") == 0 || path_len < 0 ||
+                            (size_t)path_len >= sizeof(res_entry.destination)) {
+                            DMOD_LOG_ERROR("  Invalid or too long license destination\n");
+                            license_install_failed = true;
+                            continue;
+                        }
+                    }
+
                     DMOD_LOG_INFO("  Installing resource '%s': %s => %s\n", 
                            res_entry.key, res_entry.source, res_entry.destination);
                     
@@ -2082,6 +2112,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                     // Validate paths for safety
                     if (!IsPathSafe(full_source) || !IsPathSafe(res_entry.destination)) {
                         DMOD_LOG_ERROR("  Invalid path detected (contains unsafe characters)\n");
+                        if (redirect_license) license_install_failed = true;
                         continue;
                     }
                     
@@ -2089,6 +2120,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                     struct stat st;
                     if (stat(full_source, &st) != 0) {
                         DMOD_LOG_WARN("  Resource source not found: %s\n", full_source);
+                        if (redirect_license) license_install_failed = true;
                         continue;
                     }
                     
@@ -2104,6 +2136,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                         // Validate parent path
                         if (!IsPathSafe(dest_parent)) {
                             DMOD_LOG_ERROR("  Invalid destination path (contains unsafe characters)\n");
+                            if (redirect_license) license_install_failed = true;
                             continue;
                         }
                         
@@ -2112,15 +2145,15 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                         int mkdir_result = system(mkdir_cmd);
                         if (mkdir_result != 0) {
                             DMOD_LOG_ERROR("  Failed to create destination directory: %s\n", dest_parent);
+                            if (redirect_license) license_install_failed = true;
                             continue;
                         }
                     }
                     
                     // Copy the resource
                     char cp_res_cmd[2048];
-                    if (S_ISDIR(st.st_mode) && is_views) {
-                        // Views land in the module's own directory - copy the contents,
-                        // so a reinstall overwrites them instead of nesting views/views
+                    if (S_ISDIR(st.st_mode) && (is_views || redirect_license)) {
+                        // Copy directory contents so repeated installs do not nest them.
                         Dmod_SnPrintf(cp_res_cmd, sizeof(cp_res_cmd),
                                      "mkdir -p \"%s\" && cp -r \"%s/.\" \"%s/\"",
                                      res_entry.destination, full_source, res_entry.destination);
@@ -2137,6 +2170,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                         DMOD_LOG_INFO("  Resource installed successfully\n");
                     } else {
                         DMOD_LOG_ERROR("  Failed to install resource\n");
+                        if (redirect_license) license_install_failed = true;
                     }
                 }
                 
@@ -2186,6 +2220,9 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
     Dmod_SnPrintf(rm_temp_cmd, sizeof(rm_temp_cmd), "rm -rf \"%s\"", extract_dir);
     system(rm_temp_cmd);
     
+    if (license_install_failed) {
+        return false;
+    }
     DMOD_LOG_INFO("Module installed to: %s\n", output_file);
     return true;
 }
@@ -2606,6 +2643,9 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --views-dir <path>        Directory where views of the installed applications are placed,\n");
     Dmod_Printf("                            each module in its own <path>/<module> (= ${views_dir} in .dmr)\n");
     Dmod_Printf("                            (default: $DMOD_VIEWS_DIR, otherwise <output-dir>/views)\n");
+    Dmod_Printf("  --license-dir <path>      Install .dmr license resources to <path>/<module>/<source-name>\n");
+    Dmod_Printf("                            (default: $DMOD_LICENSE_DIR, otherwise the .dmr destination)\n");
+    Dmod_Printf("                            Also installs licenses in --mini mode\n");
     Dmod_Printf("  -D, --define <VAR=value>  Define variable for config path substitution\n");
     Dmod_Printf("  -t, --tools-name <name>   Tools name for variable substitution\n");
     Dmod_Printf("  -a, --arch-name <name>    Architecture name for variable substitution\n");
@@ -2616,7 +2656,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --ignore-missing          Ignore missing dependencies and continue\n");
     Dmod_Printf("  --skip-arch-check         Skip architecture compatibility check\n");
     Dmod_Printf("  --skip-dmod-ver-check     Skip DMOD version compatibility check\n");
-    Dmod_Printf("  --mini                    Install only dmf/dmfc files (skip other resources from .dmr)\n");
+    Dmod_Printf("  --mini                    Install module files, views and explicitly requested licenses\n");
     Dmod_Printf("  --no-fallback             Don't fall back to public manifest if module not found in provided manifest\n");
     Dmod_Printf("  -y, --yes                 Automatic yes to license prompts (non-interactive mode)\n");
     Dmod_Printf("  -c, --clear-cache         Clear downloaded manifests and packages cache\n");
@@ -2631,6 +2671,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s       Documentation output directory\n", ENV_DOC_DIR);
     Dmod_Printf("  %s       Static library output directory\n", ENV_LIB_DIR);
     Dmod_Printf("  %s     Views output directory (same as --views-dir)\n", ENV_VIEWS_DIR);
+    Dmod_Printf("  %s   License output directory (same as --license-dir)\n", ENV_LICENSE_DIR);
     Dmod_Printf("  %s      Cache directory (default: ~/.cache/dmod/dmf-get)\n\n", ENV_CACHE_DIR);
     Dmod_Printf("Examples:\n");
     Dmod_Printf("  %s mymodule              # Download latest version\n", app_name);
@@ -3106,6 +3147,13 @@ int main(int argc, char* argv[]) {
             }
             g_views_dir = argv[i];
         }
+        else if (strcmp(argv[i], "--license-dir") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: --license-dir requires an argument\n");
+                return 1;
+            }
+            g_license_dir = argv[i];
+        }
         else if (strcmp(argv[i], "--config") == 0) {
             if (++i >= argc) {
                 DMOD_LOG_ERROR("Error: %s requires an argument\n", argv[i-1]);
@@ -3271,6 +3319,18 @@ int main(int argc, char* argv[]) {
 
     if (!g_views_dir) {
         g_views_dir = Dmod_GetEnv(ENV_VIEWS_DIR);
+    }
+    if (!g_license_dir) {
+        g_license_dir = Dmod_GetEnv(ENV_LICENSE_DIR);
+        if (g_license_dir && g_license_dir[0] == '\0') {
+            g_license_dir = NULL;
+        }
+    }
+    if (g_license_dir && (g_license_dir[0] == '\0' || !IsPathSafe(g_license_dir) ||
+                          strlen(g_license_dir) >= DMOD_RESOURCE_MAX_PATH_LEN)) {
+        DMOD_LOG_ERROR("Error: --license-dir requires a non-empty, safe path shorter than %d characters\n",
+                       DMOD_RESOURCE_MAX_PATH_LEN);
+        return 1;
     }
     
     if (!module_spec && !dependencies_path) {

@@ -182,6 +182,7 @@ This copies `mymodule`'s configuration to `./config/drivers/mymodule/stm32f746g-
 - `-d, --dependencies <path>` - Path or URL to dependencies (.dmd) file
 - `-m, --manifest <path>` - Path or URL to manifest file
 - `-o, --output-dir <path>` - Output directory for downloaded modules
+- `--license-dir <path>` - Install `.dmr` license resources to `<path>/<module>/<source-name>`, including dependencies. Defaults to `DMOD_LICENSE_DIR`; otherwise uses the package destination. Also collects licenses with `--mini`.
 - `--config <path>` - Configuration file to copy from module (for single module only)
 - `--config-dir <path>` - Directory where configuration files should be copied
 - `--config-dest <name>` - Custom destination filename for configuration file
@@ -291,6 +292,27 @@ dmf-get -y -d dependencies.dmd -o ./output
 ```
 
 **Note**: Modules without license files will install normally without any prompts.
+
+### License Installation Directory
+
+Use `--license-dir` to collect licenses separately from module files:
+
+```bash
+dmf-get -o ./dmf --license-dir ./licenses mymodule
+dmf-get --mini --license-dir ./licenses -y -d dependencies.dmd
+```
+
+A `.dmr` entry such as `license=./LICENSE => ${destination}/${module}/LICENSE`
+is installed to `./licenses/mymodule/LICENSE`. The option applies to dependencies
+as well, with a separate directory for each module. Relative paths are resolved
+from the current working directory. Directory resources preserve their source
+name and contents; repeated installs update them without nesting directories.
+
+`DMOD_LICENSE_DIR` supplies the default; `--license-dir` takes precedence. Without
+either setting, the destinations declared in `.dmr` files remain unchanged and
+mini mode skips licenses. Specifying a directory includes licenses in mini mode
+but does not accept their terms automatically (use `-y` for that). Packages
+without a `.dmr` license entry retain their existing behavior.
 
 ## Dependencies File Format (.dmd)
 

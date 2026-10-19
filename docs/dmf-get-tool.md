@@ -99,6 +99,7 @@ Two variables are automatically substituted in URLs:
 - `DMOD_DMF_DIR` - Default output directory for DMF files
 - `DMOD_DMFC_DIR` - Default output directory for DMFC files
 - `DMOD_MANIFEST` - Default manifest path or URL
+- `DMOD_LICENSE_DIR` - Default base directory for license resources (overridden by `--license-dir`)
 - `DMOD_VIEWS_DIR` - Default views directory (same as `--views-dir`)
 
 ### Version Matching
@@ -253,14 +254,16 @@ Installs:
 
 #### Mini Installation
 
-Only DMF and DMFC resources are installed (skips docs, headers, etc.):
+Module files and runtime views are installed (skips docs, headers, etc.). Licenses are also installed when `--license-dir` or `DMOD_LICENSE_DIR` is set:
 
 ```bash
 dmf-get --mini mymodule
 ```
 
 Installs:
-- DMF/DMFC files only
+- DMF/DMFC files
+- Views
+- Licenses, when a license directory is specified
 
 Use mini mode for:
 - Production deployments
@@ -301,6 +304,20 @@ dmf-get [options] [install] <module_name>[@version]
 
 - `-o, --output-dir <path>` - Output directory for downloaded modules (default: `./dmf` or `DMOD_DMF_DIR`)
 
+#### License Options
+
+- `--license-dir <path>` - Install resources whose `.dmr` key is `license` under `<path>/<module>/<source-name>`, overriding their declared destination. Paths may be absolute or relative to the current working directory. Each module (including dependencies) gets its own directory; source filenames are preserved. Directory resources are copied recursively, and reinstalling updates their contents without adding another directory level.
+- Defaults to `DMOD_LICENSE_DIR` when set and non-empty; the command-line option takes precedence. With neither set, the original `.dmr` destinations are used.
+- When a license directory is specified, licenses are also installed with `--mini`. License acceptance still requires confirmation or `-y`. Packages without a `.dmr` license entry keep their existing behavior.
+
+```bash
+# Install modules into ./dmf and collect their licenses separately
+dmf-get --license-dir ./licenses -o ./dmf mymodule
+
+# Collect licenses while skipping documentation, headers and examples
+dmf-get --mini --license-dir ./licenses -y -d dependencies.dmd
+```
+
 #### Views Options
 
 - `--views-dir <path>` - Directory where views (`.dmv`) of the installed applications are placed (default: `DMOD_VIEWS_DIR`, otherwise `views` inside the output directory, e.g. `$DMOD_DMF_DIR/views`). Every module gets its own subdirectory `<path>/<module>`, which is what `${views_dir}` resolves to in `.dmr` files (e.g. `views=./views => ${views_dir}`), so views of different modules never overwrite each other. The contents of the `views` directory are copied into it (a reinstall overwrites them). The `views` resource is installed also with `--mini`.
@@ -315,7 +332,7 @@ dmf-get [options] [install] <module_name>[@version]
 
 #### Installation Options
 
-- `--mini` - Install only DMF/DMFC files (skip docs, headers, examples, etc.)
+- `--mini` - Install module files and views; also install licenses when `--license-dir` or `DMOD_LICENSE_DIR` is set (skip docs, headers, examples, etc.)
 - `--no-dependencies` - Don't download module dependencies
 - `--ignore-missing` - Ignore missing dependencies and continue
 - `--skip-arch-check` - Skip architecture compatibility check
@@ -333,6 +350,7 @@ dmf-get [options] [install] <module_name>[@version]
 - `DMOD_DMF_DIR` - Default DMF output directory
 - `DMOD_DMFC_DIR` - Default DMFC output directory
 - `DMOD_MANIFEST` - Default manifest path or URL
+- `DMOD_LICENSE_DIR` - Default base directory for license resources (overridden by `--license-dir`)
 
 ### Examples
 

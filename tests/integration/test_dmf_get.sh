@@ -3,6 +3,8 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 echo "=== dmf-get Integration Tests ==="
 
 # Get the build directory (passed as first argument or default to ../build)
@@ -487,6 +489,8 @@ fi
 rm -rf test_type_both test_type_dmf_only test_type_nodmr typemod.zip dmfonly.zip nodmr.zip manifest_type.dmm type_output type_output_dmf
 
 echo ""
+bash "$SCRIPT_DIR/test_dmf_get_licenses.sh" "$BUILD_DIR"
+
 echo "=== All dmf-get integration tests passed! ==="
 cd ..
 rm -rf "$TEST_DIR"
