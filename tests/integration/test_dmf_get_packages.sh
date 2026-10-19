@@ -30,6 +30,7 @@ dmf=./parent.dmf => ${destination}/${module}.dmf
 dmfc=./parent.dmfc => ${destination}/${module}.dmfc
 dmfc=./tools/helper.dmfc => ${destination}/${module}/tools/helper.dmfc
 docs=./docs => ${destination}/${module}/docs
+examples=./optional-examples => ${destination}/${module}/examples
 config=./settings => ${destination}/custom-config/${module}
 views=./views => ${views_dir}
 license=./LICENSE => ${destination}/${module}/LICENSE
@@ -63,6 +64,7 @@ check_packages() {
     cmp parent/tools/helper.dmfc "$binaries/helper.dmfc"
     cmp child/child.dmf "$binaries/child.dmf"
     cmp parent/docs/README "$packages/parent/docs/README"
+    test ! -e "$packages/parent/examples"
     cmp parent/settings/board.ini "$packages/custom-config/parent/board.ini"
     cmp parent/views/main.dmv "$packages/views/parent/main.dmv"
     cmp parent/LICENSE "$packages/parent/LICENSE"

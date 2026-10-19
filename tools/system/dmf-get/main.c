@@ -2172,7 +2172,11 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                     struct stat st;
                     if (stat(full_source, &st) != 0) {
                         DMOD_LOG_WARN("  Resource source not found: %s\n", full_source);
-                        if (redirect_license || g_package_dir) resource_install_failed = true;
+                        // Packages can declare optional resources (e.g. docs) that
+                        // are absent from a release. Keep skipping those as before.
+                        if (redirect_license || (g_package_dir && res_entry.is_dmf_dmfc)) {
+                            resource_install_failed = true;
+                        }
                         continue;
                     }
                     
