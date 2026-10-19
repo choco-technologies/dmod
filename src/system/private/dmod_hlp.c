@@ -2,9 +2,7 @@
 #include <string.h>
 #include "dmod.h"
 #include "private/dmod_hlp.h"
-
-static Dmod_SearchNode_t* SearchPaths = NULL;
-static void* SearchPathsMutex = NULL;
+#include "private/dmod_vars.h"
 
 static Dmod_SearchNode_t* ExpandSearchPath( Dmod_SearchNode_t* Tail, const char* Path );
 
@@ -109,11 +107,11 @@ void Dmod_Hlp_FreeSearchPathList( Dmod_SearchNode_t* Tail )
     {
         return;
     }
-    if( SearchPathsMutex != NULL )
+    if( Dmod_SearchPathsMutex != NULL )
     {
-        Dmod_Mutex_Lock( SearchPathsMutex );
+        Dmod_Mutex_Lock( Dmod_SearchPathsMutex );
         bool shared = Tail->References != 0 && --Tail->References != 0;
-        Dmod_Mutex_Unlock( SearchPathsMutex );
+        Dmod_Mutex_Unlock( Dmod_SearchPathsMutex );
         if( shared )
         {
             return;
@@ -185,14 +183,14 @@ Dmod_SearchNode_t* Dmod_Hlp_PrepareSearchNodes( Dmod_SearchNode_t* Tail, const c
  */
 Dmod_SearchNode_t* Dmod_Hlp_PrepareModulesSearchNodes( void )
 {
-    if( SearchPathsMutex != NULL )
+    if( Dmod_SearchPathsMutex != NULL )
     {
-        Dmod_Mutex_Lock( SearchPathsMutex );
-        if( SearchPaths != NULL )
+        Dmod_Mutex_Lock( Dmod_SearchPathsMutex );
+        if( Dmod_SearchPaths != NULL )
         {
-            ++SearchPaths->References;
-            Dmod_SearchNode_t* tail = SearchPaths;
-            Dmod_Mutex_Unlock( SearchPathsMutex );
+            ++Dmod_SearchPaths->References;
+            Dmod_SearchNode_t* tail = Dmod_SearchPaths;
+            Dmod_Mutex_Unlock( Dmod_SearchPathsMutex );
             return tail;
         }
     }
@@ -210,11 +208,11 @@ Dmod_SearchNode_t* Dmod_Hlp_PrepareModulesSearchNodes( void )
     tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetEnv("DMOD_DMFC_DIR") );
     tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetEnv("DMOD_DMF_DIR") );
 
-    if( SearchPathsMutex != NULL )
+    if( Dmod_SearchPathsMutex != NULL )
     {
-        SearchPaths = tail;
+        Dmod_SearchPaths = tail;
         if( tail != NULL ) tail->References = 2; /* Cache and caller. */
-        Dmod_Mutex_Unlock( SearchPathsMutex );
+        Dmod_Mutex_Unlock( Dmod_SearchPathsMutex );
     }
     return tail;
 }
@@ -223,29 +221,29 @@ Dmod_SearchNode_t* Dmod_Hlp_PrepareModulesSearchNodes( void )
  * rest of the system lifecycle. Without a SAL mutex, searches remain uncached. */
 void Dmod_Hlp_InitSearchCache( void )
 {
-    if( SearchPathsMutex == NULL )
+    if( Dmod_SearchPathsMutex == NULL )
     {
-        SearchPathsMutex = Dmod_Mutex_New( false );
+        Dmod_SearchPathsMutex = Dmod_Mutex_New( false );
     }
 }
 
 void Dmod_Hlp_DeinitSearchCache( void )
 {
     Dmod_InvalidateModuleSearchPaths();
-    if( SearchPathsMutex != NULL )
+    if( Dmod_SearchPathsMutex != NULL )
     {
-        Dmod_Mutex_Delete( SearchPathsMutex );
-        SearchPathsMutex = NULL;
+        Dmod_Mutex_Delete( Dmod_SearchPathsMutex );
+        Dmod_SearchPathsMutex = NULL;
     }
 }
 
 void Dmod_InvalidateModuleSearchPaths( void )
 {
-    if( SearchPathsMutex == NULL ) return;
-    Dmod_Mutex_Lock( SearchPathsMutex );
-    Dmod_SearchNode_t* old = SearchPaths;
-    SearchPaths = NULL;
-    Dmod_Mutex_Unlock( SearchPathsMutex );
+    if( Dmod_SearchPathsMutex == NULL ) return;
+    Dmod_Mutex_Lock( Dmod_SearchPathsMutex );
+    Dmod_SearchNode_t* old = Dmod_SearchPaths;
+    Dmod_SearchPaths = NULL;
+    Dmod_Mutex_Unlock( Dmod_SearchPathsMutex );
     Dmod_Hlp_FreeSearchPathList( old );
 }
 
