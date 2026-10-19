@@ -161,6 +161,7 @@ bool Dmod_Initialize( size_t NumIrqs, size_t MaxHandlersPerIrq )
  */
 bool Dmod_Deinitialize(void)
 {
+    Dmod_InvalidateModuleSearchPaths();
     Dmod_Mgr_FreeSystemModuleList();
     Dmod_Irq_Deinit();
     return true;
