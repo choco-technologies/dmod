@@ -19,6 +19,8 @@ extern Dmod_Api_t Dmod_BuiltinInputApi;
 extern Dmod_Api_t Dmod_BuiltinOutputApi;
 extern Dmod_Context_t* Dmod_Contexts[DMOD_MAX_MODULES];
 extern Dmod_PackageSlot_t Dmod_Packages[DMOD_MAX_NUMBER_OF_PACKAGES];
+extern Dmod_SearchNode_t* Dmod_SearchPaths;
+extern void* Dmod_SearchPathsMutex;
 extern bool Dmod_SystemCrossplatformMode;
 extern Dmod_LogLevel_t Dmod_LogLevel;
 extern bool Dmod_SystemForceKernelWrite;

@@ -111,6 +111,11 @@ DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsModuleEnabled, (const char* ModuleN
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _IsModuleRequired, (const char* ModuleName, const char* RequiredModuleName) );
 DMOD_BUILTIN_API( Dmod, 1.0, const char*, _GetModuleVersion, (const char* ModuleName) );
 DMOD_BUILTIN_API( Dmod, 1.0, Dmod_Context_t*, _LoadModule, (const char* FilePath) );
+/** Invalidate cached module search directories after mount/unmount. Task context only.
+ * Existing readers retain their snapshots; the next lookup rebuilds lazily.
+ * Call this also after changing the module search path configuration.
+ */
+DMOD_BUILTIN_API( Dmod, 1.0, void       , _InvalidateModuleSearchPaths, (void) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _FindModuleFile, (const char* ModuleName, const char* ArchName, char* outFilePath, size_t MaxLength) );
 DMOD_BUILTIN_API( Dmod, 1.0, bool       , _FindMatch, (const char* PartialName, char* outModuleName, size_t MaxLength) );
 DMOD_BUILTIN_API( Dmod, 1.0, Dmod_Context_t*, _LoadModuleByName, (const char* ModuleName) );

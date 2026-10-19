@@ -2,6 +2,9 @@
 #include <string.h>
 #include "dmod.h"
 #include "private/dmod_hlp.h"
+#include "private/dmod_vars.h"
+
+static Dmod_SearchNode_t* ExpandSearchPath( Dmod_SearchNode_t* Tail, const char* Path );
 
 /**
  * @brief Resolve a serialized cross-platform offset without modifying it.
@@ -89,6 +92,7 @@ Dmod_SearchNode_t* Dmod_Hlp_AddSearchNode( Dmod_SearchNode_t* Tail, const char* 
     }
     strcpy( newNode->Path, Path );
     newNode->Prev = Tail;
+    newNode->References = 0;
     return newNode;
 }
 
@@ -99,6 +103,20 @@ Dmod_SearchNode_t* Dmod_Hlp_AddSearchNode( Dmod_SearchNode_t* Tail, const char* 
  */
 void Dmod_Hlp_FreeSearchPathList( Dmod_SearchNode_t* Tail )
 {
+    if( Tail == NULL )
+    {
+        return;
+    }
+    if( Dmod_SearchPathsMutex != NULL )
+    {
+        Dmod_Mutex_Lock( Dmod_SearchPathsMutex );
+        bool shared = Tail->References != 0 && --Tail->References != 0;
+        Dmod_Mutex_Unlock( Dmod_SearchPathsMutex );
+        if( shared )
+        {
+            return;
+        }
+    }
     Dmod_SearchNode_t* current = Tail;
     while( current != NULL )
     {
@@ -132,11 +150,26 @@ Dmod_SearchNode_t* Dmod_Hlp_PrepareSearchNodes( Dmod_SearchNode_t* Tail, const c
     }
     strcpy( pathsCopy, Paths );
 
-    char* token = strtok( pathsCopy, DMOD_ARRAY_SEP );
-    while( token != NULL )
+    /* Keep tokenization local: directory callbacks may also parse strings. */
+    char* token = pathsCopy;
+    while( *token != '\0' )
     {
-        Tail = Dmod_Hlp_AddSearchNode( Tail, token );
-        token = strtok( NULL, DMOD_ARRAY_SEP );
+        token += strspn( token, DMOD_ARRAY_SEP );
+        if( *token == '\0' ) break;
+        char* end = token + strcspn( token, DMOD_ARRAY_SEP );
+        char separator = *end;
+        *end = '\0';
+        if( strchr( token, '*' ) != NULL )
+        {
+            Tail = ExpandSearchPath( Tail, token );
+        }
+        else
+        {
+            Dmod_SearchNode_t* node = Dmod_Hlp_AddSearchNode( Tail, token );
+            if( node != NULL ) Tail = node;
+        }
+        if( separator == '\0' ) break;
+        token = end + 1;
     }
 
     Dmod_Free( pathsCopy );
@@ -150,6 +183,17 @@ Dmod_SearchNode_t* Dmod_Hlp_PrepareSearchNodes( Dmod_SearchNode_t* Tail, const c
  */
 Dmod_SearchNode_t* Dmod_Hlp_PrepareModulesSearchNodes( void )
 {
+    if( Dmod_SearchPathsMutex != NULL )
+    {
+        Dmod_Mutex_Lock( Dmod_SearchPathsMutex );
+        if( Dmod_SearchPaths != NULL )
+        {
+            ++Dmod_SearchPaths->References;
+            Dmod_SearchNode_t* tail = Dmod_SearchPaths;
+            Dmod_Mutex_Unlock( Dmod_SearchPathsMutex );
+            return tail;
+        }
+    }
     Dmod_SearchNode_t* tail = NULL;
     tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetEnv("PATH") );
     #ifdef DMOD_DMF_DIR
@@ -164,5 +208,84 @@ Dmod_SearchNode_t* Dmod_Hlp_PrepareModulesSearchNodes( void )
     tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetEnv("DMOD_DMFC_DIR") );
     tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetEnv("DMOD_DMF_DIR") );
 
+    if( Dmod_SearchPathsMutex != NULL )
+    {
+        Dmod_SearchPaths = tail;
+        if( tail != NULL ) tail->References = 2; /* Cache and caller. */
+        Dmod_Mutex_Unlock( Dmod_SearchPathsMutex );
+    }
     return tail;
+}
+
+/* Initialization and deinitialization require quiescent callers, as does the
+ * rest of the system lifecycle. Without a SAL mutex, searches remain uncached. */
+void Dmod_Hlp_InitSearchCache( void )
+{
+    if( Dmod_SearchPathsMutex == NULL )
+    {
+        Dmod_SearchPathsMutex = Dmod_Mutex_New( false );
+    }
+}
+
+void Dmod_Hlp_DeinitSearchCache( void )
+{
+    Dmod_InvalidateModuleSearchPaths();
+    if( Dmod_SearchPathsMutex != NULL )
+    {
+        Dmod_Mutex_Delete( Dmod_SearchPathsMutex );
+        Dmod_SearchPathsMutex = NULL;
+    }
+}
+
+void Dmod_InvalidateModuleSearchPaths( void )
+{
+    if( Dmod_SearchPathsMutex == NULL ) return;
+    Dmod_Mutex_Lock( Dmod_SearchPathsMutex );
+    Dmod_SearchNode_t* old = Dmod_SearchPaths;
+    Dmod_SearchPaths = NULL;
+    Dmod_Mutex_Unlock( Dmod_SearchPathsMutex );
+    Dmod_Hlp_FreeSearchPathList( old );
+}
+
+/* Expand a single complete '*' component, in a mount path. Only the matched
+ * directory must exist; bin may arrive later with an upload. */
+static Dmod_SearchNode_t* ExpandSearchPath( Dmod_SearchNode_t* Tail, const char* Path )
+{
+    const char* star = strchr( Path, '*' );
+    if( Path[0] != '/' || star == Path || star[-1] != '/' ||
+        (star[1] != '/' && star[1] != '\0') || strchr( star + 1, '*' ) != NULL )
+    {
+        DMOD_LOG_WARN("Unsupported module search wildcard: %s\n", Path);
+        return Tail;
+    }
+
+    size_t prefixLength = (size_t)(star - Path);
+    char* parent = Dmod_StrDup( Path );
+    if( parent == NULL ) return Tail;
+    parent[prefixLength] = '\0';
+    void* dir = Dmod_OpenDir( parent );
+    Dmod_Free( parent );
+    if( dir == NULL ) return Tail;
+
+    const char* name;
+    while( (name = Dmod_ReadDir( dir )) != NULL )
+    {
+        if( strcmp( name, "." ) == 0 || strcmp( name, ".." ) == 0 ) continue;
+        size_t nameLength = strlen( name );
+        char* path = Dmod_Malloc( prefixLength + nameLength + strlen( star + 1 ) + 1 );
+        if( path == NULL ) break;
+        memcpy( path, Path, prefixLength );
+        memcpy( path + prefixLength, name, nameLength + 1 );
+        void* child = Dmod_OpenDir( path );
+        if( child != NULL )
+        {
+            Dmod_CloseDir( child );
+            strcpy( path + prefixLength + nameLength, star + 1 );
+            Dmod_SearchNode_t* node = Dmod_Hlp_AddSearchNode( Tail, path );
+            if( node != NULL ) Tail = node;
+        }
+        Dmod_Free( path );
+    }
+    Dmod_CloseDir( dir );
+    return Tail;
 }

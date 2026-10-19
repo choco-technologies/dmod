@@ -14,6 +14,8 @@ Dmod_Api_t Dmod_BuiltinOutputApi = {
 };
 Dmod_Context_t* Dmod_Contexts[DMOD_MAX_MODULES] = {0};
 Dmod_PackageSlot_t Dmod_Packages[DMOD_MAX_NUMBER_OF_PACKAGES] = {0};
+Dmod_SearchNode_t* Dmod_SearchPaths = NULL;
+void* Dmod_SearchPathsMutex = NULL;
 bool Dmod_SystemCrossplatformMode = false;
 bool Dmod_SystemForceKernelWrite = false;
 Dmod_LogLevel_t Dmod_LogLevel =

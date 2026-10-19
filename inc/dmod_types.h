@@ -358,6 +358,7 @@ typedef struct Dmod_SearchNode
 {
     char*                   Path;   //!< Path to the repository directory
     struct Dmod_SearchNode* Prev;   //!< Pointer to the prev node
+    size_t                  References; //!< Cache + readers; used only on the cached tail
 } Dmod_SearchNode_t;
 
 /**
