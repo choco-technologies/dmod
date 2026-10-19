@@ -182,6 +182,7 @@ This copies `mymodule`'s configuration to `./config/drivers/mymodule/stm32f746g-
 - `-d, --dependencies <path>` - Path or URL to dependencies (.dmd) file
 - `-m, --manifest <path>` - Path or URL to manifest file
 - `-o, --output-dir <path>` - Output directory for downloaded modules
+- `--package-dir <path>` - Separate root for package resources, unpacked directories and `.dmd`/`.dmr` metadata (default: `DMOD_PACKAGE_DIR`, otherwise the module output directory).
 - `--license-dir <path>` - Install `.dmr` license resources to `<path>/<module>/<source-name>`, including dependencies. Defaults to `DMOD_LICENSE_DIR`; otherwise uses the package destination. Also collects licenses with `--mini`.
 - `--config <path>` - Configuration file to copy from module (for single module only)
 - `--config-dir <path>` - Directory where configuration files should be copied
@@ -197,6 +198,31 @@ This copies `mymodule`'s configuration to `./config/drivers/mymodule/stm32f746g-
 - `-c, --clear-cache` - Clear downloaded manifests and packages cache
 - `-h, --help` - Show help message
 - `-v, --version` - Show version information
+
+### Separate Package Directory
+
+```bash
+dmf-get -o ./dmf --package-dir ./packages mymodule
+DMOD_PACKAGE_DIR=./packages dmf-get -o ./dmf -d dependencies.dmd
+```
+
+With a separate package root, `./dmf` receives only `.dmf`/`.dmfc` binaries;
+package resources and metadata go under `./packages`. `.dmr` resources use that
+root for `${destination}`, while module binaries are installed directly in `-o`
+by source filename. Packages without `.dmr` retain their structure under
+`./packages/<module>`. Dependencies and configuration copying use the new root.
+
+The CLI option overrides a non-empty `DMOD_PACKAGE_DIR`. When neither is set,
+the existing behavior is preserved. Relative paths use the working directory, and missing parent
+directories are created. Existing installations are not moved or cleaned up.
+Choose a package directory outside `-o` to keep the module directory separate.
+
+Default views go to `<package-dir>/views/<module>`. Explicit view and license
+directories still override their destinations, and other explicit `.dmr` paths
+remain effective. Mini mode keeps its resource filtering. ZIP downloads are
+staged in the package root and removed after extraction; `.dmp` archives are
+stored there. Temporary extraction and caching are unchanged. The dedicated
+`headers`, `docs` and `lib` commands retain their existing `-o` behavior.
 
 ## Caching
 

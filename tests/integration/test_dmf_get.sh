@@ -490,6 +490,7 @@ rm -rf test_type_both test_type_dmf_only test_type_nodmr typemod.zip dmfonly.zip
 
 echo ""
 bash "$SCRIPT_DIR/test_dmf_get_licenses.sh" "$BUILD_DIR"
+bash "$SCRIPT_DIR/test_dmf_get_packages.sh" "$BUILD_DIR"
 
 echo "=== All dmf-get integration tests passed! ==="
 cd ..

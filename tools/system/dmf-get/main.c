@@ -40,6 +40,7 @@
 #define ENV_LIB_DIR "DMOD_LIB_DIR"
 #define ENV_VIEWS_DIR "DMOD_VIEWS_DIR"
 #define ENV_LICENSE_DIR "DMOD_LICENSE_DIR"
+#define ENV_PACKAGE_DIR "DMOD_PACKAGE_DIR"
 #define ENV_CACHE_DIR "DMOD_CACHE_DIR"
 
 // Cache directories
@@ -1164,6 +1165,10 @@ static const char* g_views_dir = NULL;
 // When unset, preserve the destinations declared by the package's .dmr file.
 static const char* g_license_dir = NULL;
 
+// Optional installation root for package resources and metadata. Module binaries
+// still go to output_dir; unset preserves the existing combined layout.
+static const char* g_package_dir = NULL;
+
 /**
  * Create a resource context for installing a module and hand it the views
  * directory, so that .dmr entries using ${views_dir} resolve.
@@ -1239,6 +1244,20 @@ static void NormalizeResourceOutputDir(char* safe_output_dir, size_t safe_output
         } else {
             safe_output_dir[dir_len - module_len - 1] = '\0';
         }
+    }
+}
+
+/**
+ * Resolve the resource root for a normal module installation. An explicit
+ * package directory is used verbatim, even when its last component is the
+ * module name. The dedicated headers/docs/lib commands keep their own -o.
+ */
+static void GetInstallResourceOutputDir(char* path, size_t path_size,
+                                        const char* output_dir, const char* module_name) {
+    if (g_package_dir) {
+        Dmod_SnPrintf(path, path_size, "%s", g_package_dir);
+    } else {
+        NormalizeResourceOutputDir(path, path_size, output_dir, module_name);
     }
 }
 
@@ -1475,7 +1494,7 @@ static bool CopyConfigurationFile(const char* module_name, const char* config_pa
     DMOD_LOG_INFO("Looking for configuration file: %s for module: %s\n", substituted_config_path, module_name);
 
     char safe_output_dir[DMOD_MAX_PATH_LEN];
-    NormalizeResourceOutputDir(safe_output_dir, sizeof(safe_output_dir), output_dir, module_name);
+    GetInstallResourceOutputDir(safe_output_dir, sizeof(safe_output_dir), output_dir, module_name);
 
     // First, check if the module has a .dmr file in the output directory
     char dmr_path[DMOD_MAX_PATH_LEN];
@@ -1720,7 +1739,7 @@ static bool CheckLicenseAcceptance(const char* extract_dir, const char* module_n
     // Parse .dmr file to find license resource
     char license_source[1024] = "";
     char safe_output_dir[1024];
-    NormalizeResourceOutputDir(safe_output_dir, sizeof(safe_output_dir), output_dir, module_name);
+    GetInstallResourceOutputDir(safe_output_dir, sizeof(safe_output_dir), output_dir, module_name);
     Dmod_ResourceContext_t* res_ctx = InitInstallResourceContext(safe_output_dir, module_name);
     if (res_ctx) {
         if (Dmod_Resource_ParseFile(res_ctx, dmr_file)) {
@@ -2006,49 +2025,63 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
     strncpy(output_file, dest_path, output_file_size - 1);
     output_file[output_file_size - 1] = '\0';
     
-    // Copy the .dmd file if found and if caller wants it
-    if (dmd_file[0] != '\0' && output_dmd_file != NULL && output_dmd_file_size > 0) {
-        const char* dmd_filename = strrchr(dmd_file, '/');
-        if (dmd_filename) {
-            dmd_filename++; // Skip the '/'
-        } else {
-            dmd_filename = dmd_file;
+    bool resource_install_failed = false;
+
+    // Retain dependency metadata outside the module directory when requested.
+    // Also retain .dmr so later configuration copying can resolve custom mappings.
+    const char* metadata_sources[] = {dmd_file, g_package_dir ? dmr_file : ""};
+    const char* metadata_dir = g_package_dir ? g_package_dir : output_dir;
+    for (size_t i = 0; i < 2; i++) {
+        const char* source = metadata_sources[i];
+        if (source[0] == '\0' ||
+            (i == 0 && (output_dmd_file == NULL || output_dmd_file_size == 0))) {
+            continue;
         }
-        
-        char dmd_dest_path[512];
-        Dmod_SnPrintf(dmd_dest_path, sizeof(dmd_dest_path), "%s/%s", output_dir, dmd_filename);
-        
-        char cp_dmd_cmd[1024];
-        Dmod_SnPrintf(cp_dmd_cmd, sizeof(cp_dmd_cmd), "cp \"%s\" \"%s\"", dmd_file, dmd_dest_path);
-        result = system(cp_dmd_cmd);
-        
-        if (result == 0) {
-            strncpy(output_dmd_file, dmd_dest_path, output_dmd_file_size - 1);
-            output_dmd_file[output_dmd_file_size - 1] = '\0';
+        const char* metadata_name = strrchr(source, '/');
+        metadata_name = metadata_name ? metadata_name + 1 : source;
+        char metadata_path[512];
+        int path_len = Dmod_SnPrintf(metadata_path, sizeof(metadata_path), "%s/%s",
+                                    metadata_dir, metadata_name);
+        if (path_len < 0 || (size_t)path_len >= sizeof(metadata_path)) {
+            DMOD_LOG_ERROR("Metadata destination is too long\n");
+            resource_install_failed = true;
+            continue;
+        }
+        struct stat metadata_stat;
+        if (g_package_dir && stat(metadata_path, &metadata_stat) == 0 && !S_ISREG(metadata_stat.st_mode)) {
+            DMOD_LOG_ERROR("Metadata destination is not a regular file: %s\n", metadata_path);
+            resource_install_failed = true;
+            continue;
+        }
+        char cp_metadata_cmd[2048];
+        Dmod_SnPrintf(cp_metadata_cmd, sizeof(cp_metadata_cmd), "cp \"%s\" \"%s\"",
+                     source, metadata_path);
+        if (system(cp_metadata_cmd) != 0) {
+            DMOD_LOG_ERROR("Failed to copy metadata to: %s\n", metadata_path);
+            if (g_package_dir) resource_install_failed = true;
+        } else if (i == 0) {
+            Dmod_SnPrintf(output_dmd_file, output_dmd_file_size, "%s", metadata_path);
             DMOD_LOG_INFO("Dependencies file copied to: %s\n", output_dmd_file);
         }
     }
-    
-    bool license_install_failed = false;
 
     // Process .dmr file if found
     if (dmr_file[0] != '\0') {
         DMOD_LOG_INFO("Processing resource file: %s\n", dmr_file);
 
-        // Initialize resource parser. output_dir here is normally already
-        // the bare install root (top-level .dmf/.dmfc/.dmd above are copied
-        // straight into it) - normalize defensively in case a caller passed
-        // an already module-scoped -o.
+        // Resolve non-module resources relative to the optional package root.
         char safe_output_dir[1024];
-        NormalizeResourceOutputDir(safe_output_dir, sizeof(safe_output_dir), output_dir, module_name);
+        GetInstallResourceOutputDir(safe_output_dir, sizeof(safe_output_dir), output_dir, module_name);
         Dmod_ResourceContext_t* res_ctx = InitInstallResourceContext(safe_output_dir, module_name);
         if (!res_ctx) {
             DMOD_LOG_ERROR("Failed to initialize resource parser\n");
+            if (g_package_dir) resource_install_failed = true;
         } else {
             // Parse the .dmr file
             if (!Dmod_Resource_ParseFile(res_ctx, dmr_file)) {
                 DMOD_LOG_ERROR("Failed to parse resource file: %s\n", 
                         Dmod_Resource_GetError(res_ctx));
+                if (g_package_dir) resource_install_failed = true;
                 Dmod_Resource_Free(res_ctx);
             } else {
                 size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
@@ -2059,6 +2092,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                     Dmod_ResourceEntry_t res_entry;
                     if (!Dmod_Resource_GetEntry(res_ctx, i, &res_entry)) {
                         DMOD_LOG_ERROR("Failed to get resource entry %zu\n", i);
+                        if (g_package_dir) resource_install_failed = true;
                         continue;
                     }
                     
@@ -2079,6 +2113,24 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                         continue;
                     }
                     
+                    if (g_package_dir && res_entry.is_dmf_dmfc) {
+                        // Keep binary resources flat in the module output directory,
+                        // regardless of their package-relative .dmr destination.
+                        const char* binary_name = strrchr(res_entry.source, '/');
+                        binary_name = binary_name ? binary_name + 1 : res_entry.source;
+                        int path_len = Dmod_SnPrintf(res_entry.destination, sizeof(res_entry.destination),
+                                                    "%s/%s", output_dir, binary_name);
+                        size_t name_len = strlen(binary_name);
+                        const char* suffix = strcmp(res_entry.key, "dmfc") == 0 ? ".dmfc" : ".dmf";
+                        size_t suffix_len = strlen(suffix);
+                        if (path_len < 0 || (size_t)path_len >= sizeof(res_entry.destination) ||
+                            name_len <= suffix_len || strcmp(binary_name + name_len - suffix_len, suffix) != 0) {
+                            DMOD_LOG_ERROR("Invalid module resource destination\n");
+                            resource_install_failed = true;
+                            continue;
+                        }
+                    }
+
                     if (redirect_license) {
                         // Keep each module's licenses separate and preserve source names.
                         // Strip trailing slashes so directory resources also have a basename.
@@ -2096,7 +2148,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                             strcmp(basename, "..") == 0 || path_len < 0 ||
                             (size_t)path_len >= sizeof(res_entry.destination)) {
                             DMOD_LOG_ERROR("  Invalid or too long license destination\n");
-                            license_install_failed = true;
+                            resource_install_failed = true;
                             continue;
                         }
                     }
@@ -2112,7 +2164,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                     // Validate paths for safety
                     if (!IsPathSafe(full_source) || !IsPathSafe(res_entry.destination)) {
                         DMOD_LOG_ERROR("  Invalid path detected (contains unsafe characters)\n");
-                        if (redirect_license) license_install_failed = true;
+                        if (redirect_license || g_package_dir) resource_install_failed = true;
                         continue;
                     }
                     
@@ -2120,10 +2172,16 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                     struct stat st;
                     if (stat(full_source, &st) != 0) {
                         DMOD_LOG_WARN("  Resource source not found: %s\n", full_source);
-                        if (redirect_license) license_install_failed = true;
+                        if (redirect_license || g_package_dir) resource_install_failed = true;
                         continue;
                     }
                     
+                    if (g_package_dir && res_entry.is_dmf_dmfc && !S_ISREG(st.st_mode)) {
+                        DMOD_LOG_ERROR("Module resource must be a regular file: %s\n", full_source);
+                        resource_install_failed = true;
+                        continue;
+                    }
+
                     // Create destination directory if needed
                     char dest_parent[1024];
                     strncpy(dest_parent, res_entry.destination, sizeof(dest_parent) - 1);
@@ -2136,7 +2194,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                         // Validate parent path
                         if (!IsPathSafe(dest_parent)) {
                             DMOD_LOG_ERROR("  Invalid destination path (contains unsafe characters)\n");
-                            if (redirect_license) license_install_failed = true;
+                            if (redirect_license || g_package_dir) resource_install_failed = true;
                             continue;
                         }
                         
@@ -2145,14 +2203,14 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                         int mkdir_result = system(mkdir_cmd);
                         if (mkdir_result != 0) {
                             DMOD_LOG_ERROR("  Failed to create destination directory: %s\n", dest_parent);
-                            if (redirect_license) license_install_failed = true;
+                            if (redirect_license || g_package_dir) resource_install_failed = true;
                             continue;
                         }
                     }
                     
                     // Copy the resource
                     char cp_res_cmd[2048];
-                    if (S_ISDIR(st.st_mode) && (is_views || redirect_license)) {
+                    if (S_ISDIR(st.st_mode) && (is_views || redirect_license || g_package_dir)) {
                         // Copy directory contents so repeated installs do not nest them.
                         Dmod_SnPrintf(cp_res_cmd, sizeof(cp_res_cmd),
                                      "mkdir -p \"%s\" && cp -r \"%s/.\" \"%s/\"",
@@ -2170,7 +2228,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                         DMOD_LOG_INFO("  Resource installed successfully\n");
                     } else {
                         DMOD_LOG_ERROR("  Failed to install resource\n");
-                        if (redirect_license) license_install_failed = true;
+                        if (redirect_license || g_package_dir) resource_install_failed = true;
                     }
                 }
                 
@@ -2178,15 +2236,16 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
             }
         }
     } else {
-        // No .dmr file found - copy entire extracted directory to output_dir/module_name/
+        // No .dmr file found - copy the package under the selected resource root.
         // This ensures config files and other resources are available
         DMOD_LOG_INFO("No .dmr file found, copying entire package structure\n");
         
         char module_dir[1024];
-        Dmod_SnPrintf(module_dir, sizeof(module_dir), "%s/%s", output_dir, module_name);
+        int module_dir_len = Dmod_SnPrintf(module_dir, sizeof(module_dir), "%s/%s",
+                                           g_package_dir ? g_package_dir : output_dir, module_name);
         
         // Validate path for safety
-        if (IsPathSafe(module_dir)) {
+        if (module_dir_len >= 0 && (size_t)module_dir_len < sizeof(module_dir) && IsPathSafe(module_dir)) {
             // Create module directory
             char mkdir_cmd[2048];
             Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", module_dir);
@@ -2204,10 +2263,15 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                     DMOD_LOG_INFO("Package contents copied to: %s\n", module_dir);
                 } else {
                     DMOD_LOG_WARN("Failed to copy package contents to module directory\n");
+                    if (g_package_dir) resource_install_failed = true;
                 }
             } else {
                 DMOD_LOG_WARN("Failed to create module directory: %s\n", module_dir);
+                if (g_package_dir) resource_install_failed = true;
             }
+        } else if (g_package_dir) {
+            DMOD_LOG_ERROR("Invalid package directory\n");
+            resource_install_failed = true;
         }
     }
     
@@ -2220,7 +2284,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
     Dmod_SnPrintf(rm_temp_cmd, sizeof(rm_temp_cmd), "rm -rf \"%s\"", extract_dir);
     system(rm_temp_cmd);
     
-    if (license_install_failed) {
+    if (resource_install_failed) {
         return false;
     }
     DMOD_LOG_INFO("Module installed to: %s\n", output_file);
@@ -2642,7 +2706,9 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("                            \"driver:./config/drivers;service:./config/services\"\n");
     Dmod_Printf("  --views-dir <path>        Directory where views of the installed applications are placed,\n");
     Dmod_Printf("                            each module in its own <path>/<module> (= ${views_dir} in .dmr)\n");
-    Dmod_Printf("                            (default: $DMOD_VIEWS_DIR, otherwise <output-dir>/views)\n");
+    Dmod_Printf("                            (default: $DMOD_VIEWS_DIR, otherwise <package-dir>/views or <output-dir>/views)\n");
+    Dmod_Printf("  --package-dir <path>      Root for unpacked package resources and .dmd/.dmr metadata\n");
+    Dmod_Printf("                            (default: $DMOD_PACKAGE_DIR, otherwise the module output directory)\n");
     Dmod_Printf("  --license-dir <path>      Install .dmr license resources to <path>/<module>/<source-name>\n");
     Dmod_Printf("                            (default: $DMOD_LICENSE_DIR, otherwise the .dmr destination)\n");
     Dmod_Printf("                            Also installs licenses in --mini mode\n");
@@ -2672,6 +2738,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s       Static library output directory\n", ENV_LIB_DIR);
     Dmod_Printf("  %s     Views output directory (same as --views-dir)\n", ENV_VIEWS_DIR);
     Dmod_Printf("  %s   License output directory (same as --license-dir)\n", ENV_LICENSE_DIR);
+    Dmod_Printf("  %s   Package resource directory (same as --package-dir)\n", ENV_PACKAGE_DIR);
     Dmod_Printf("  %s      Cache directory (default: ~/.cache/dmod/dmf-get)\n\n", ENV_CACHE_DIR);
     Dmod_Printf("Examples:\n");
     Dmod_Printf("  %s mymodule              # Download latest version\n", app_name);
@@ -2958,22 +3025,32 @@ static int DownloadModule(const char* module_name, const char* module_version,
         const char* url = url_ptr;
         const char* ext = strrchr(url, '.');
         char output_file[512];
-        
+        const char* download_dir = output_dir;
+        if (g_package_dir && ext && (strcmp(ext, ".zip") == 0 || strcmp(ext, ".dmp") == 0)) {
+            download_dir = g_package_dir;
+        }
+        int output_path_len;
+
         if (ext && (strcmp(ext, ".dmf") == 0 || strcmp(ext, ".dmfc") == 0 || 
                     strcmp(ext, ".zip") == 0 || strcmp(ext, ".dmp") == 0)) {
-            Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s%s",
-                    output_dir, entry.name,
+            output_path_len = Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s%s",
+                    download_dir, entry.name,
                     version_to_use ? "-" : "",
                     version_to_use ? version_to_use : "",
                     ext);
         } else {
             // Default to .dmf if no extension
-            Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s.dmf",
-                    output_dir, entry.name,
+            output_path_len = Dmod_SnPrintf(output_file, sizeof(output_file), "%s/%s%s%s.dmf",
+                    download_dir, entry.name,
                     version_to_use ? "-" : "",
                     version_to_use ? version_to_use : "");
         }
         
+        if (output_path_len < 0 || (size_t)output_path_len >= sizeof(output_file)) {
+            DMOD_LOG_ERROR("Download destination is too long\n");
+            return FinalizeModuleDownload(module_name, module_version, 1);
+        }
+
         // Check if file already exists
         bool already_exists = (Dmod_Access(output_file, DMOD_F_OK) == 0);
         if (already_exists) {
@@ -3146,6 +3223,13 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
             g_views_dir = argv[i];
+        }
+        else if (strcmp(argv[i], "--package-dir") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: --package-dir requires an argument\n");
+                return 1;
+            }
+            g_package_dir = argv[i];
         }
         else if (strcmp(argv[i], "--license-dir") == 0) {
             if (++i >= argc) {
@@ -3333,6 +3417,19 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
+    if (!g_package_dir) {
+        g_package_dir = Dmod_GetEnv(ENV_PACKAGE_DIR);
+        if (g_package_dir && g_package_dir[0] == '\0') {
+            g_package_dir = NULL;
+        }
+    }
+    if (g_package_dir && (g_package_dir[0] == '\0' || !IsPathSafe(g_package_dir) ||
+                          strlen(g_package_dir) >= DMOD_RESOURCE_MAX_PATH_LEN)) {
+        DMOD_LOG_ERROR("Error: --package-dir requires a non-empty, safe path shorter than %d characters\n",
+                       DMOD_RESOURCE_MAX_PATH_LEN);
+        return 1;
+    }
+
     if (!module_spec && !dependencies_path) {
         DMOD_LOG_ERROR("Error: No module name or dependencies file specified\n");
         PrintUsage(argv[0]);
@@ -3595,6 +3692,16 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
+    if (g_package_dir) {
+        char mkdir_cmd[DMOD_MAX_CMD_LEN];
+        Dmod_SnPrintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", g_package_dir);
+        if (system(mkdir_cmd) != 0) {
+            DMOD_LOG_ERROR("Failed to create package directory: %s\n", g_package_dir);
+            curl_global_cleanup();
+            return 1;
+        }
+    }
+
     // Get manifest path
     if (!manifest_path) {
         manifest_path = Dmod_GetEnv(ENV_MANIFEST);
