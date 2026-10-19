@@ -52,12 +52,13 @@ protected:
         ASSERT_NE(mkdtemp(temp), nullptr);
         root = temp;
         setenv("DMOD_REPO_PATHS", (root + "/*/bin").c_str(), 1);
+        Dmod_Hlp_InitSearchCache();
         Dmod_InvalidateModuleSearchPaths();
         opens = 0;
     }
     void TearDown() override
     {
-        Dmod_InvalidateModuleSearchPaths();
+        Dmod_Hlp_DeinitSearchCache();
         if (hadRepo) setenv("DMOD_REPO_PATHS", oldRepo.c_str(), 1);
         else unsetenv("DMOD_REPO_PATHS");
         for (auto& file : files) unlink(file.c_str());
@@ -148,7 +149,7 @@ TEST_F(SearchCacheTest, KeysCacheByConfigurationAndReusesReturningContext)
     EXPECT_EQ(opens, count);
 }
 
-TEST_F(SearchCacheTest, EvictionDoesNotFreeActiveReaders)
+TEST_F(SearchCacheTest, ReusesConfigurationsBeyondTheFormerSlotLimit)
 {
     Directory("CARD");
     auto held = Snapshot();
@@ -159,6 +160,11 @@ TEST_F(SearchCacheTest, EvictionDoesNotFreeActiveReaders)
         ASSERT_TRUE(Contains(next.get(), "/context/" + std::to_string(i)));
     }
     EXPECT_TRUE(Contains(held.get(), root + "/CARD/bin"));
+    setenv("DMOD_REPO_PATHS", (root + "/*/bin").c_str(), 1);
+    unsigned count = opens;
+    auto again = Snapshot();
+    EXPECT_EQ(again.get(), held.get());
+    EXPECT_EQ(opens, count);
 }
 
 TEST_F(SearchCacheTest, DoesNotPublishAnExpansionInvalidatedWhileBuilding)
@@ -213,4 +219,35 @@ TEST_F(SearchCacheTest, ConcurrentReadersAndInvalidation)
     for (int i = 0; i < 500; ++i) { Dmod_InvalidateModuleSearchPaths(); std::this_thread::yield(); }
     for (auto& reader : readers) reader.join();
     EXPECT_FALSE(bad);
+}
+
+TEST_F(SearchCacheTest, LookupsBeforeInitializationRemainUncached)
+{
+    Dmod_Hlp_DeinitSearchCache();
+    auto before = Snapshot();
+    Directory("CARD");
+    auto after = Snapshot();
+    ASSERT_TRUE(Contains(after.get(), root + "/CARD/bin"));
+    EXPECT_FALSE(Contains(before.get(), root + "/CARD/bin"));
+    ASSERT_NE(after.get(), nullptr);
+    EXPECT_EQ(after->Snapshot, nullptr);
+    Dmod_Hlp_InitSearchCache();
+    auto cached = Snapshot();
+    auto reused = Snapshot();
+    EXPECT_EQ(cached.get(), reused.get());
+}
+
+TEST_F(SearchCacheTest, ReinitializationDropsOldConfigurationCache)
+{
+    Directory("A");
+    {
+        auto before = Snapshot();
+        ASSERT_TRUE(Contains(before.get(), root + "/A/bin"));
+    }
+    Dmod_Hlp_DeinitSearchCache();
+    Directory("B");
+    Dmod_Hlp_InitSearchCache();
+    auto after = Snapshot();
+    EXPECT_TRUE(Contains(after.get(), root + "/A/bin"));
+    EXPECT_TRUE(Contains(after.get(), root + "/B/bin"));
 }

@@ -25,10 +25,11 @@ DMOD_REPO_PATHS=/mnt/*/bin:/flash/dmf:/flash/dmfc
 
 `Dmod_Hlp_PrepareModulesSearchNodes()` returns an immutable reference-counted
 snapshot, shared by module lookup, completion and module enumeration. The
-cache holds at most four configurations; its key contains the values of
-all effective search sources, so separate environment contexts do not
-reuse one another's paths. Repeated lookups with an unchanged configuration
-perform neither directory enumeration nor list allocation. Changing any
+cache is a linked list of configurations; each entry stores its effective
+search sources in the existing linked path nodes. Entries remain cached
+until invalidation or deinitialization, so separate environment contexts
+do not reuse one another's paths. Repeated lookups with an unchanged
+configuration perform neither directory enumeration nor list allocation. Changing any
 source selects or builds the corresponding snapshot automatically.
 
 After a successful mount or unmount, a filesystem manager should call:
@@ -42,7 +43,8 @@ the cache's references and advances its generation; the next lookup builds
 lazily. Readers already using a snapshot retain it until they finish.
 Builders invalidated while enumerating may finish their current lookup but
 cannot publish a stale snapshot into the cache. Failed allocation does not
-publish a partial snapshot. `Dmod_Deinitialize()` also releases the cache.
+publish a partial snapshot. `Dmod_Deinitialize()` releases the cache and
+its SAL mutex; as with system initialization, callers must be quiescent.
 
 The cache stores directories, not file names or existence results: adding
 or removing a `.dmf` or `.dmfc` does not require invalidation. An unmount
@@ -51,6 +53,9 @@ changes made outside automount must issue the same notification. As with
 other uses of `Dmod_GetEnv`, callers must not concurrently mutate or free
 the environment strings being read.
 
-On pthread hosts the cache metadata uses a mutex; other targets use their
-SAL critical-section implementation. No allocation, filesystem I/O or
-memory freeing happens while that metadata lock is held.
+Cache metadata is protected exclusively through `Dmod_Mutex_Lock()` and
+`Dmod_Mutex_Unlock()`. `Dmod_Initialize()` creates the mutex through
+`Dmod_Mutex_New()` and deinitialization deletes it through SAL. Lookups
+before initialization, or on platforms without a mutex implementation,
+remain uncached. No allocation, filesystem I/O or memory freeing happens
+while the cache mutex is held.

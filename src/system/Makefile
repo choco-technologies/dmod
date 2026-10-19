@@ -18,7 +18,6 @@ DMOD_LIB_NAME=libdmod_system.a
 DMOD_SOURCES=private/dmod_vars.c\
 		private/dmod_ctx.c\
 		private/dmod_hlp.c\
-		private/dmod_search.c\
 		private/dmod_ldr.c\
 		private/dmod_mgr.c\
 		private/dmod_rmod.c\
