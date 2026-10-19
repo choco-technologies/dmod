@@ -8,7 +8,7 @@ last source and the last entry in a source are searched first.
 
 An absolute entry can contain one complete `*` directory component, for
 example `/mnt/*/bin`. It expands the directories directly below `/mnt`,
-with matches searched in alphabetical order. `.` and `..` and files are
+in the order returned by the filesystem (last added is searched first). `.` and `..` and files are
 excluded. The literal suffix need not exist yet: a card mounted without
 `bin` can receive it and new tools through an upload later. Relative
 wildcards, partial-component patterns and multiple stars are unsupported
@@ -23,39 +23,29 @@ DMOD_REPO_PATHS=/mnt/*/bin:/flash/dmf:/flash/dmfc
 
 ## Cache and hotplug
 
-`Dmod_Hlp_PrepareModulesSearchNodes()` returns an immutable reference-counted
-snapshot, shared by module lookup, completion and module enumeration. The
-cache is a linked list of configurations; each entry stores its effective
-search sources in the existing linked path nodes. Entries remain cached
-until invalidation or deinitialization, so separate environment contexts
-do not reuse one another's paths. Repeated lookups with an unchanged
-configuration perform neither directory enumeration nor list allocation. Changing any
-source selects or builds the corresponding snapshot automatically.
+`Dmod_Hlp_PrepareModulesSearchNodes()` builds the linked list once and stores
+its tail in a global variable. Subsequent calls return that tail without
+reading configuration, allocating nodes or scanning directories.
 
-After a successful mount or unmount, a filesystem manager should call:
+After a successful mount/unmount or a change to the search path configuration,
+call from task context, after releasing filesystem/mount locks:
 
 ```c
 Dmod_InvalidateModuleSearchPaths();
 ```
 
-Call it from task context after releasing filesystem/mount locks. It drops
-the cache's references and advances its generation; the next lookup builds
-lazily. Readers already using a snapshot retain it until they finish.
-Builders invalidated while enumerating may finish their current lookup but
-cannot publish a stale snapshot into the cache. Failed allocation does not
-publish a partial snapshot. `Dmod_Deinitialize()` releases the cache and
-its SAL mutex; as with system initialization, callers must be quiescent.
+Invalidation sets the global tail to NULL; the next lookup rebuilds the list.
+The tail counts references from the cache and its readers, so invalidation
+does not free nodes still used by a lookup or module iterator. Callers release
+the list through `Dmod_Hlp_FreeSearchPathList()` and must not modify it.
+There is one system-wide cache; environment changes require explicit
+invalidation, including when switching between different environments.
 
-The cache stores directories, not file names or existence results: adding
-or removing a `.dmf` or `.dmfc` does not require invalidation. An unmount
-racing with a lookup can still make the file open fail normally. Mount
-changes made outside automount must issue the same notification. As with
-other uses of `Dmod_GetEnv`, callers must not concurrently mutate or free
-the environment strings being read.
+The cache stores directories, not file names: uploading or removing a `.dmf`
+or `.dmfc` does not require invalidation. A file open may still fail if the
+card is unmounted during a lookup.
 
-Cache metadata is protected exclusively through `Dmod_Mutex_Lock()` and
-`Dmod_Mutex_Unlock()`. `Dmod_Initialize()` creates the mutex through
-`Dmod_Mutex_New()` and deinitialization deletes it through SAL. Lookups
-before initialization, or on platforms without a mutex implementation,
-remain uncached. No allocation, filesystem I/O or memory freeing happens
-while the cache mutex is held.
+The SAL mutex serializes cache construction, access and invalidation.
+`Dmod_Initialize()` creates it and `Dmod_Deinitialize()` releases the cache
+and deletes it. Initialization/deinitialization require quiescent callers.
+Lookups before initialization or without SAL mutex support remain uncached.

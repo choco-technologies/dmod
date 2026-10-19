@@ -14,12 +14,10 @@
 #include <unistd.h>
 
 static std::atomic<unsigned> opens{0};
-static std::atomic<bool> invalidateDuringOpen{false};
 extern "C" void* Dmod_OpenDir(const char* path)
 {
     ++opens;
     void* dir = opendir(path);
-    if (invalidateDuringOpen.exchange(false)) Dmod_InvalidateModuleSearchPaths();
     return dir;
 }
 
@@ -122,7 +120,7 @@ TEST_F(SearchCacheTest, NewBinAndFilesAreVisibleWithoutInvalidation)
     EXPECT_EQ(opens, count);
 }
 
-TEST_F(SearchCacheTest, SortsCardsAndSkipsFilesAndDotEntries)
+TEST_F(SearchCacheTest, ExpandsCardsAndSkipsFilesAndDotEntries)
 {
     Directory("Z"); Directory("A");
     files.push_back(root + "/regular-file");
@@ -130,53 +128,23 @@ TEST_F(SearchCacheTest, SortsCardsAndSkipsFilesAndDotEntries)
     auto snapshot = Snapshot();
     std::vector<std::string> cards;
     for (const auto& p : Paths(snapshot.get())) if (p.find(root + "/") == 0) cards.push_back(p);
+    std::sort(cards.begin(), cards.end());
     EXPECT_EQ(cards, (std::vector<std::string>{root + "/A/bin", root + "/Z/bin"}));
 }
 
-TEST_F(SearchCacheTest, KeysCacheByConfigurationAndReusesReturningContext)
+TEST_F(SearchCacheTest, ConfigurationChangesRequireInvalidation)
 {
     Directory("A");
-    auto a = Snapshot();
+    auto before = Snapshot();
     setenv("DMOD_REPO_PATHS", "/other/context", 1);
-    auto b = Snapshot();
-    EXPECT_NE(a.get(), b.get());
-    EXPECT_TRUE(Contains(b.get(), "/other/context"));
-    EXPECT_FALSE(Contains(b.get(), root + "/A/bin"));
-    setenv("DMOD_REPO_PATHS", (root + "/*/bin").c_str(), 1);
-    unsigned count = opens;
-    auto aAgain = Snapshot();
-    EXPECT_EQ(aAgain.get(), a.get());
-    EXPECT_EQ(opens, count);
-}
-
-TEST_F(SearchCacheTest, ReusesConfigurationsBeyondTheFormerSlotLimit)
-{
-    Directory("CARD");
-    auto held = Snapshot();
-    for (int i = 0; i < 20; ++i)
-    {
-        setenv("DMOD_REPO_PATHS", ("/context/" + std::to_string(i)).c_str(), 1);
-        auto next = Snapshot();
-        ASSERT_TRUE(Contains(next.get(), "/context/" + std::to_string(i)));
-    }
-    EXPECT_TRUE(Contains(held.get(), root + "/CARD/bin"));
-    setenv("DMOD_REPO_PATHS", (root + "/*/bin").c_str(), 1);
-    unsigned count = opens;
-    auto again = Snapshot();
-    EXPECT_EQ(again.get(), held.get());
-    EXPECT_EQ(opens, count);
-}
-
-TEST_F(SearchCacheTest, DoesNotPublishAnExpansionInvalidatedWhileBuilding)
-{
-    Directory("CARD");
-    invalidateDuringOpen = true;
-    auto first = Snapshot();
-    ASSERT_TRUE(Contains(first.get(), root + "/CARD/bin"));
-    unsigned count = opens;
-    auto second = Snapshot();
-    EXPECT_GT(opens, count);
-    EXPECT_NE(first.get(), second.get());
+    auto cached = Snapshot();
+    EXPECT_EQ(cached.get(), before.get());
+    EXPECT_FALSE(Contains(cached.get(), "/other/context"));
+    Dmod_InvalidateModuleSearchPaths();
+    auto after = Snapshot();
+    EXPECT_TRUE(Contains(after.get(), "/other/context"));
+    EXPECT_FALSE(Contains(after.get(), root + "/A/bin"));
+    EXPECT_TRUE(Contains(before.get(), root + "/A/bin"));
 }
 
 TEST_F(SearchCacheTest, PreservesLiteralPrecedenceAndSupportsWildcardWithoutSuffix)
@@ -197,6 +165,7 @@ TEST_F(SearchCacheTest, RejectsUnsupportedWildcards)
     for (const char* pattern : {"relative/*/bin", "/mnt/card*/bin", "/mnt/*/*/bin"})
     {
         setenv("DMOD_REPO_PATHS", pattern, 1);
+        Dmod_InvalidateModuleSearchPaths();
         auto snapshot = Snapshot();
         EXPECT_FALSE(Contains(snapshot.get(), pattern));
     }
@@ -230,7 +199,7 @@ TEST_F(SearchCacheTest, LookupsBeforeInitializationRemainUncached)
     ASSERT_TRUE(Contains(after.get(), root + "/CARD/bin"));
     EXPECT_FALSE(Contains(before.get(), root + "/CARD/bin"));
     ASSERT_NE(after.get(), nullptr);
-    EXPECT_EQ(after->Snapshot, nullptr);
+    EXPECT_EQ(after->References, 0u);
     Dmod_Hlp_InitSearchCache();
     auto cached = Snapshot();
     auto reused = Snapshot();

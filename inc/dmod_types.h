@@ -358,7 +358,7 @@ typedef struct Dmod_SearchNode
 {
     char*                   Path;   //!< Path to the repository directory
     struct Dmod_SearchNode* Prev;   //!< Pointer to the prev node
-    void*                   Snapshot; //!< Private owner of a shared immutable search list
+    size_t                  References; //!< Cache + readers; used only on the cached tail
 } Dmod_SearchNode_t;
 
 /**

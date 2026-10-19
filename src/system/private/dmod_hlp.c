@@ -3,35 +3,10 @@
 #include "dmod.h"
 #include "private/dmod_hlp.h"
 
-typedef struct Dmod_SearchCache
-{
-    Dmod_SearchNode_t* Sources;
-    Dmod_SearchNode_t* Paths;
-    size_t References;
-    struct Dmod_SearchCache* Next;
-} Dmod_SearchCache_t;
+static Dmod_SearchNode_t* SearchPaths = NULL;
+static void* SearchPathsMutex = NULL;
 
-static Dmod_SearchCache_t* SearchCache = NULL;
-static void* SearchCacheMutex = NULL;
-static unsigned long SearchCacheGeneration = 0;
-
-static void ReleaseSearchCache( Dmod_SearchCache_t* Cache );
-static bool PreparePaths( Dmod_SearchNode_t** Tail, const char* Paths );
-static bool MatchSearchSources( Dmod_SearchNode_t* Sources );
-typedef enum
-{
-    SearchSource_Path,
-    SearchSource_DmfDir,
-    SearchSource_DmfcDir,
-    SearchSource_RepoPaths,
-    SearchSource_RepoDir,
-    SearchSource_EnvRepoPaths,
-    SearchSource_EnvDmfcDir,
-    SearchSource_EnvDmfDir,
-    SearchSource_Count
-} SearchSource_t;
-
-static const char* GetSearchSource( SearchSource_t Source );
+static Dmod_SearchNode_t* ExpandSearchPath( Dmod_SearchNode_t* Tail, const char* Path );
 
 /**
  * @brief Resolve a serialized cross-platform offset without modifying it.
@@ -119,7 +94,7 @@ Dmod_SearchNode_t* Dmod_Hlp_AddSearchNode( Dmod_SearchNode_t* Tail, const char* 
     }
     strcpy( newNode->Path, Path );
     newNode->Prev = Tail;
-    newNode->Snapshot = NULL;
+    newNode->References = 0;
     return newNode;
 }
 
@@ -130,10 +105,19 @@ Dmod_SearchNode_t* Dmod_Hlp_AddSearchNode( Dmod_SearchNode_t* Tail, const char* 
  */
 void Dmod_Hlp_FreeSearchPathList( Dmod_SearchNode_t* Tail )
 {
-    if( Tail != NULL && Tail->Snapshot != NULL )
+    if( Tail == NULL )
     {
-        ReleaseSearchCache( Tail->Snapshot );
         return;
+    }
+    if( SearchPathsMutex != NULL )
+    {
+        Dmod_Mutex_Lock( SearchPathsMutex );
+        bool shared = Tail->References != 0 && --Tail->References != 0;
+        Dmod_Mutex_Unlock( SearchPathsMutex );
+        if( shared )
+        {
+            return;
+        }
     }
     Dmod_SearchNode_t* current = Tail;
     while( current != NULL )
@@ -155,23 +139,43 @@ void Dmod_Hlp_FreeSearchPathList( Dmod_SearchNode_t* Tail )
  */
 Dmod_SearchNode_t* Dmod_Hlp_PrepareSearchNodes( Dmod_SearchNode_t* Tail, const char* Paths )
 {
-    Dmod_SearchNode_t* added = NULL;
-    if( !PreparePaths( &added, Paths ) )
-    {
-        Dmod_Hlp_FreeSearchPathList( added );
-        return Tail;
-    }
-    if( added == NULL )
+    if( Paths == NULL )
     {
         return Tail;
     }
-    Dmod_SearchNode_t* last = added;
-    while( last->Prev != NULL )
+
+    char* pathsCopy = (char*)Dmod_Malloc( strlen( Paths ) + 1 );
+    if( pathsCopy == NULL )
     {
-        last = last->Prev;
+        DMOD_LOG_ERROR("Cannot prepare search nodes - out of memory\n");
+        return Tail;
     }
-    last->Prev = Tail;
-    return added;
+    strcpy( pathsCopy, Paths );
+
+    /* Keep tokenization local: directory callbacks may also parse strings. */
+    char* token = pathsCopy;
+    while( *token != '\0' )
+    {
+        token += strspn( token, DMOD_ARRAY_SEP );
+        if( *token == '\0' ) break;
+        char* end = token + strcspn( token, DMOD_ARRAY_SEP );
+        char separator = *end;
+        *end = '\0';
+        if( strchr( token, '*' ) != NULL )
+        {
+            Tail = ExpandSearchPath( Tail, token );
+        }
+        else
+        {
+            Dmod_SearchNode_t* node = Dmod_Hlp_AddSearchNode( Tail, token );
+            if( node != NULL ) Tail = node;
+        }
+        if( separator == '\0' ) break;
+        token = end + 1;
+    }
+
+    Dmod_Free( pathsCopy );
+    return Tail;
 }
 
 /**
@@ -181,279 +185,109 @@ Dmod_SearchNode_t* Dmod_Hlp_PrepareSearchNodes( Dmod_SearchNode_t* Tail, const c
  */
 Dmod_SearchNode_t* Dmod_Hlp_PrepareModulesSearchNodes( void )
 {
-    unsigned long generation = 0;
-    if( SearchCacheMutex != NULL )
+    if( SearchPathsMutex != NULL )
     {
-        Dmod_Mutex_Lock( SearchCacheMutex );
-        generation = SearchCacheGeneration;
-        for( Dmod_SearchCache_t* cached = SearchCache; cached != NULL; cached = cached->Next )
+        Dmod_Mutex_Lock( SearchPathsMutex );
+        if( SearchPaths != NULL )
         {
-            if( MatchSearchSources( cached->Sources ) )
-            {
-                Dmod_SearchNode_t* paths = cached->Paths;
-                if( paths != NULL )
-                {
-                    ++cached->References;
-                }
-                Dmod_Mutex_Unlock( SearchCacheMutex );
-                return paths;
-            }
+            ++SearchPaths->References;
+            Dmod_SearchNode_t* tail = SearchPaths;
+            Dmod_Mutex_Unlock( SearchPathsMutex );
+            return tail;
         }
-        Dmod_Mutex_Unlock( SearchCacheMutex );
     }
-
-    Dmod_SearchNode_t* sources = NULL;
-    bool complete = true;
-    /* Prepend in reverse order so the source list retains the existing order. */
-    for( int i = SearchSource_Count - 1; i >= 0; --i )
-    {
-        Dmod_SearchNode_t* source = Dmod_Hlp_AddSearchNode( sources, GetSearchSource( i ) );
-        if( source == NULL )
-        {
-            complete = false;
-            break;
-        }
-        sources = source;
-    }
-
     Dmod_SearchNode_t* tail = NULL;
-    for( Dmod_SearchNode_t* source = sources; complete && source != NULL; source = source->Prev )
-    {
-        complete = PreparePaths( &tail, source->Path );
-    }
-    if( !complete || SearchCacheMutex == NULL )
-    {
-        Dmod_Hlp_FreeSearchPathList( sources );
-        if( !complete )
-        {
-            Dmod_Hlp_FreeSearchPathList( tail );
-            return NULL;
-        }
-        return tail;
-    }
+    tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetEnv("PATH") );
+    #ifdef DMOD_DMF_DIR
+    tail = Dmod_Hlp_PrepareSearchNodes( tail, DMOD_DMF_DIR );
+    #endif
+    #ifdef DMOD_DMFC_DIR
+    tail = Dmod_Hlp_PrepareSearchNodes( tail, DMOD_DMFC_DIR );
+    #endif
+    tail = Dmod_Hlp_PrepareSearchNodes( tail, DMOD_REPO_PATHS );
+    tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetRepoDir() );
+    tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetEnv("DMOD_REPO_PATHS") );
+    tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetEnv("DMOD_DMFC_DIR") );
+    tail = Dmod_Hlp_PrepareSearchNodes( tail, Dmod_GetEnv("DMOD_DMF_DIR") );
 
-    Dmod_SearchCache_t* built = Dmod_Malloc( sizeof(*built) );
-    if( built == NULL )
+    if( SearchPathsMutex != NULL )
     {
-        Dmod_Hlp_FreeSearchPathList( sources );
-        return tail;
-    }
-    built->Sources = sources;
-    built->Paths = tail;
-    built->References = 1;
-    built->Next = NULL;
-    if( tail != NULL )
-    {
-        tail->Snapshot = built;
-    }
-
-    Dmod_Mutex_Lock( SearchCacheMutex );
-    if( generation == SearchCacheGeneration )
-    {
-        Dmod_SearchCache_t* cached = SearchCache;
-        while( cached != NULL && !MatchSearchSources( cached->Sources ) )
-        {
-            cached = cached->Next;
-        }
-        /* A concurrent builder may have published this configuration already.
-         * In that case our snapshot stays private to this lookup. */
-        if( cached == NULL )
-        {
-            built->Next = SearchCache;
-            SearchCache = built;
-            ++built->References;
-        }
-    }
-    Dmod_Mutex_Unlock( SearchCacheMutex );
-    if( tail == NULL )
-    {
-        ReleaseSearchCache( built );
+        SearchPaths = tail;
+        if( tail != NULL ) tail->References = 2; /* Cache and caller. */
+        Dmod_Mutex_Unlock( SearchPathsMutex );
     }
     return tail;
 }
 
-/* The system initializes/deinitializes the mutex while callers are quiescent.
- * Before initialization, or without mutex support, lookups remain uncached. */
+/* Initialization and deinitialization require quiescent callers, as does the
+ * rest of the system lifecycle. Without a SAL mutex, searches remain uncached. */
 void Dmod_Hlp_InitSearchCache( void )
 {
-    if( SearchCacheMutex == NULL )
+    if( SearchPathsMutex == NULL )
     {
-        SearchCacheMutex = Dmod_Mutex_New( false );
+        SearchPathsMutex = Dmod_Mutex_New( false );
     }
 }
 
 void Dmod_Hlp_DeinitSearchCache( void )
 {
     Dmod_InvalidateModuleSearchPaths();
-    if( SearchCacheMutex != NULL )
+    if( SearchPathsMutex != NULL )
     {
-        Dmod_Mutex_Delete( SearchCacheMutex );
-        SearchCacheMutex = NULL;
-    }
-}
-
-static void ReleaseSearchCache( Dmod_SearchCache_t* Cache )
-{
-    Dmod_Mutex_Lock( SearchCacheMutex );
-    bool last = --Cache->References == 0;
-    Dmod_Mutex_Unlock( SearchCacheMutex );
-    if( last )
-    {
-        if( Cache->Paths != NULL )
-        {
-            Cache->Paths->Snapshot = NULL;
-        }
-        Dmod_Hlp_FreeSearchPathList( Cache->Paths );
-        Dmod_Hlp_FreeSearchPathList( Cache->Sources );
-        Dmod_Free( Cache );
+        Dmod_Mutex_Delete( SearchPathsMutex );
+        SearchPathsMutex = NULL;
     }
 }
 
 void Dmod_InvalidateModuleSearchPaths( void )
 {
-    if( SearchCacheMutex == NULL )
-    {
-        return;
-    }
-    Dmod_Mutex_Lock( SearchCacheMutex );
-    ++SearchCacheGeneration;
-    Dmod_SearchCache_t* old = SearchCache;
-    SearchCache = NULL;
-    Dmod_Mutex_Unlock( SearchCacheMutex );
-    while( old != NULL )
-    {
-        Dmod_SearchCache_t* next = old->Next;
-        ReleaseSearchCache( old );
-        old = next;
-    }
+    if( SearchPathsMutex == NULL ) return;
+    Dmod_Mutex_Lock( SearchPathsMutex );
+    Dmod_SearchNode_t* old = SearchPaths;
+    SearchPaths = NULL;
+    Dmod_Mutex_Unlock( SearchPathsMutex );
+    Dmod_Hlp_FreeSearchPathList( old );
 }
 
-/* One definition of the effective configuration, used for both cache hits
- * and construction of the linked source list. No directory I/O here. */
-static const char* GetSearchSource( SearchSource_t Source )
+/* Expand a single complete '*' component, in a mount path. Only the matched
+ * directory must exist; bin may arrive later with an upload. */
+static Dmod_SearchNode_t* ExpandSearchPath( Dmod_SearchNode_t* Tail, const char* Path )
 {
-    const char* value = NULL;
-    switch( Source )
+    const char* star = strchr( Path, '*' );
+    if( Path[0] != '/' || star == Path || star[-1] != '/' ||
+        (star[1] != '/' && star[1] != '\0') || strchr( star + 1, '*' ) != NULL )
     {
-        case SearchSource_Path:         value = Dmod_GetEnv("PATH"); break;
-        case SearchSource_DmfDir:
-            #ifdef DMOD_DMF_DIR
-            value = DMOD_DMF_DIR;
-            #endif
-            break;
-        case SearchSource_DmfcDir:
-            #ifdef DMOD_DMFC_DIR
-            value = DMOD_DMFC_DIR;
-            #endif
-            break;
-        case SearchSource_RepoPaths:    value = DMOD_REPO_PATHS; break;
-        case SearchSource_RepoDir:      value = Dmod_GetRepoDir(); break;
-        case SearchSource_EnvRepoPaths: value = Dmod_GetEnv("DMOD_REPO_PATHS"); break;
-        case SearchSource_EnvDmfcDir:   value = Dmod_GetEnv("DMOD_DMFC_DIR"); break;
-        case SearchSource_EnvDmfDir:    value = Dmod_GetEnv("DMOD_DMF_DIR"); break;
-        default: break;
-    }
-    return value != NULL ? value : "";
-}
-
-static bool MatchSearchSources( Dmod_SearchNode_t* Sources )
-{
-    for( int i = 0; i < SearchSource_Count; ++i )
-    {
-        if( Sources == NULL || strcmp( Sources->Path, GetSearchSource( i ) ) != 0 )
-        {
-            return false;
-        }
-        Sources = Sources->Prev;
-    }
-    return Sources == NULL;
-}
-
-/* Expand one complete '*' directory component in an absolute path. The suffix
- * stays literal and need not exist (e.g. bin may be created by a later upload).
- * No recursive globs, filename patterns or relative wildcard paths. */
-static bool ExpandPath(Dmod_SearchNode_t** tail, const char* path)
-{
-    const char* star = strchr(path, '*');
-    if (star == NULL)
-    {
-        Dmod_SearchNode_t* node = Dmod_Hlp_AddSearchNode(*tail, path);
-        if (node == NULL) return false;
-        *tail = node;
-        return true;
-    }
-    if (path[0] != '/' || star == path || star[-1] != '/' ||
-        (star[1] != '/' && star[1] != '\0') || strchr(star + 1, '*') != NULL)
-    {
-        DMOD_LOG_WARN("Unsupported module search wildcard: %s\n", path);
-        return true;
+        DMOD_LOG_WARN("Unsupported module search wildcard: %s\n", Path);
+        return Tail;
     }
 
-    size_t prefixLen = (size_t)(star - path);
-    char* parent = Dmod_StrDup(path);
-    if (parent == NULL) return false;
-    parent[prefixLen] = '\0';
-    void* dir = Dmod_OpenDir(parent);
-    Dmod_Free(parent);
-    if (dir == NULL) return true; /* no mounts yet: cached until invalidation */
+    size_t prefixLength = (size_t)(star - Path);
+    char* parent = Dmod_StrDup( Path );
+    if( parent == NULL ) return Tail;
+    parent[prefixLength] = '\0';
+    void* dir = Dmod_OpenDir( parent );
+    Dmod_Free( parent );
+    if( dir == NULL ) return Tail;
 
-    bool ok = true;
-    Dmod_SearchNode_t* matches = NULL;
     const char* name;
-    while ((name = Dmod_ReadDir(dir)) != NULL)
+    while( (name = Dmod_ReadDir( dir )) != NULL )
     {
-        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) continue;
-        size_t nameLen = strlen(name);
-        char* expanded = Dmod_Malloc(prefixLen + nameLen + strlen(star + 1) + 1);
-        if (expanded == NULL) { ok = false; break; }
-        memcpy(expanded, path, prefixLen);
-        memcpy(expanded + prefixLen, name, nameLen + 1);
-        /* ReadDir works on per-handle storage; unlike some ReadDirEx SALs it
-         * does not share a static entry across simultaneous cache builders. */
-        void* child = Dmod_OpenDir(expanded);
-        if (child == NULL) { Dmod_Free(expanded); continue; }
-        Dmod_CloseDir(child);
-        strcpy(expanded + prefixLen + nameLen, star + 1);
-        Dmod_SearchNode_t* node = Dmod_Hlp_AddSearchNode(NULL, expanded);
-        Dmod_Free(expanded);
-        if (node == NULL) { ok = false; break; }
-        /* Deterministic first match across cards, independent of readdir order. */
-        Dmod_SearchNode_t** at = &matches;
-        while (*at != NULL && strcmp((*at)->Path, node->Path) < 0) at = &(*at)->Prev;
-        node->Prev = *at;
-        *at = node;
+        if( strcmp( name, "." ) == 0 || strcmp( name, ".." ) == 0 ) continue;
+        size_t nameLength = strlen( name );
+        char* path = Dmod_Malloc( prefixLength + nameLength + strlen( star + 1 ) + 1 );
+        if( path == NULL ) break;
+        memcpy( path, Path, prefixLength );
+        memcpy( path + prefixLength, name, nameLength + 1 );
+        void* child = Dmod_OpenDir( path );
+        if( child != NULL )
+        {
+            Dmod_CloseDir( child );
+            strcpy( path + prefixLength + nameLength, star + 1 );
+            Dmod_SearchNode_t* node = Dmod_Hlp_AddSearchNode( Tail, path );
+            if( node != NULL ) Tail = node;
+        }
+        Dmod_Free( path );
     }
-    Dmod_CloseDir(dir);
-    if (!ok) { Dmod_Hlp_FreeSearchPathList(matches); return false; }
-    if (matches != NULL)
-    {
-        Dmod_SearchNode_t* last = matches;
-        while (last->Prev != NULL) last = last->Prev;
-        last->Prev = *tail;
-        *tail = matches;
-    }
-    return true;
-}
-
-static bool PreparePaths(Dmod_SearchNode_t** tail, const char* paths)
-{
-    if (paths == NULL || *paths == '\0') return true;
-    char* copy = Dmod_StrDup(paths);
-    if (copy == NULL) return false;
-    char* token = copy;
-    bool ok = true;
-    /* Do not use strtok: different contexts may rebuild concurrently. */
-    while (*token != '\0')
-    {
-        token += strspn(token, DMOD_ARRAY_SEP);
-        if (*token == '\0') break;
-        char* end = token + strcspn(token, DMOD_ARRAY_SEP);
-        char separator = *end;
-        *end = '\0';
-        if (!ExpandPath(tail, token)) { ok = false; break; }
-        if (separator == '\0') break;
-        token = end + 1;
-    }
-    Dmod_Free(copy);
-    return ok;
+    Dmod_CloseDir( dir );
+    return Tail;
 }
