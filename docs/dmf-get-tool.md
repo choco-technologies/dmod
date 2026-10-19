@@ -100,6 +100,7 @@ Two variables are automatically substituted in URLs:
 - `DMOD_DMFC_DIR` - Default output directory for DMFC files
 - `DMOD_MANIFEST` - Default manifest path or URL
 - `DMOD_LICENSE_DIR` - Default base directory for license resources (overridden by `--license-dir`)
+- `DMOD_PACKAGE_DIR` - Default root for package resources and metadata (overridden by `--package-dir`)
 - `DMOD_VIEWS_DIR` - Default views directory (same as `--views-dir`)
 
 ### Version Matching
@@ -304,6 +305,24 @@ dmf-get [options] [install] <module_name>[@version]
 
 - `-o, --output-dir <path>` - Output directory for downloaded modules (default: `./dmf` or `DMOD_DMF_DIR`)
 
+#### Package Directory
+
+- `--package-dir <path>` - Use a separate root for installed package resources, unpacked package directories and `.dmd`/`.dmr` metadata. Defaults to the non-empty `DMOD_PACKAGE_DIR` environment variable; the command-line option takes precedence. Without either setting, the existing combined layout is preserved.
+- `.dmf` and `.dmfc` binaries stay directly in `--output-dir` / `DMOD_DMF_DIR`. Binary resources from `.dmr` are installed there by source filename. Non-binary `.dmr` resources resolve `${destination}` against the package root. Packages without `.dmr` keep their complete structure under `<package-dir>/<module>`.
+- Dependencies use the same package root. Configuration copying (`--config`, `--config-dir`, `--config-map`) reads resources from that root, including custom paths declared in the retained `.dmr` file.
+- Default views move to `<package-dir>/views/<module>`. Explicit `--views-dir` / `DMOD_VIEWS_DIR` and `--license-dir` / `DMOD_LICENSE_DIR` retain their precedence. Other explicit destinations declared by `.dmr` remain in effect.
+- Relative paths are resolved from the working directory; missing parent directories are created. ZIP downloads are staged in the package root and removed after extraction; `.dmp` archives are stored there. Temporary ZIP extraction and the download cache keep their existing locations.
+- `--mini` keeps its existing resource filtering, while `.dmd`/`.dmr` metadata stays in the package root. The dedicated `headers`, `docs` and `lib` commands keep their existing output paths.
+- Use a package root outside the module output directory to keep the latter limited to `.dmf`/`.dmfc` files. Existing files from earlier installations are not moved or deleted.
+
+```bash
+dmf-get -o ./dmf --package-dir ./packages mymodule
+DMOD_PACKAGE_DIR=./packages dmf-get -o ./dmf -d dependencies.dmd
+
+# Separate module binaries, package resources and licenses
+dmf-get -o ./dmf --package-dir ./packages --license-dir ./licenses -y mymodule
+```
+
 #### License Options
 
 - `--license-dir <path>` - Install resources whose `.dmr` key is `license` under `<path>/<module>/<source-name>`, overriding their declared destination. Paths may be absolute or relative to the current working directory. Each module (including dependencies) gets its own directory; source filenames are preserved. Directory resources are copied recursively, and reinstalling updates their contents without adding another directory level.
@@ -320,7 +339,7 @@ dmf-get --mini --license-dir ./licenses -y -d dependencies.dmd
 
 #### Views Options
 
-- `--views-dir <path>` - Directory where views (`.dmv`) of the installed applications are placed (default: `DMOD_VIEWS_DIR`, otherwise `views` inside the output directory, e.g. `$DMOD_DMF_DIR/views`). Every module gets its own subdirectory `<path>/<module>`, which is what `${views_dir}` resolves to in `.dmr` files (e.g. `views=./views => ${views_dir}`), so views of different modules never overwrite each other. The contents of the `views` directory are copied into it (a reinstall overwrites them). The `views` resource is installed also with `--mini`.
+- `--views-dir <path>` - Directory where views (`.dmv`) of the installed applications are placed (default: `DMOD_VIEWS_DIR`, otherwise `views` inside the package root when configured, or the output directory, e.g. `$DMOD_DMF_DIR/views`). Every module gets its own subdirectory `<path>/<module>`, which is what `${views_dir}` resolves to in `.dmr` files (e.g. `views=./views => ${views_dir}`), so views of different modules never overwrite each other. The contents of the `views` directory are copied into it (a reinstall overwrites them). The `views` resource is installed also with `--mini`.
 
 #### Configuration Options
 
@@ -351,6 +370,7 @@ dmf-get --mini --license-dir ./licenses -y -d dependencies.dmd
 - `DMOD_DMFC_DIR` - Default DMFC output directory
 - `DMOD_MANIFEST` - Default manifest path or URL
 - `DMOD_LICENSE_DIR` - Default base directory for license resources (overridden by `--license-dir`)
+- `DMOD_PACKAGE_DIR` - Default root for package resources and metadata (overridden by `--package-dir`)
 
 ### Examples
 
