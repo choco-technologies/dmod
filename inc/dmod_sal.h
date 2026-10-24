@@ -574,7 +574,10 @@ DMOD_BUILTIN_API(Dmod, 1.0, const char*, _Compression_GetNextSupported, ( const 
 #else
     DMOD_BUILTIN_API(Dmod, 1.0, char*     , _StrDup,        ( const char* Str ) );
 #endif
+#define Dmod_StrMerge(Count, ...)                   Dmod_StrMergeEx(Count, DMOD_CURRENT_ALLOCATOR, ##__VA_ARGS__)
+
 DMOD_BUILTIN_API(Dmod, 1.0, char*     , _StrDupEx,      ( const char* Str, const char* ModuleName ) );
+DMOD_BUILTIN_API(Dmod, 1.0, char*     , _StrMergeEx,    ( int Count, const char* ModuleName, ... ) );
 
 //! @}
 
