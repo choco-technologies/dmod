@@ -581,6 +581,28 @@ Dmod_Context_t* Dmod_LoadFromPackage( const char* PackageName, const char* Modul
 }
 
 /**
+ * @brief Check if a module exists in known locations
+ * 
+ * This function searches all module search paths (including packages) to check
+ * if a module with the given name exists. It uses the same search logic as
+ * module loading but does not attempt to load the module.
+ * 
+ * @param ModuleName Name of the module to check
+ * 
+ * @return True if module exists, false otherwise
+ */
+bool Dmod_ModuleExists(const char* ModuleName)
+{
+    if( ModuleName == NULL )
+    {
+        return false;
+    }
+
+    char filePath[256];
+    return Dmod_FindModuleFile(ModuleName, NULL, filePath, sizeof(filePath));
+}
+
+/**
  * @brief Find module file in repositories
  * 
  * @param ModuleName Name of the module
