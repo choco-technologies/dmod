@@ -599,7 +599,12 @@ bool Dmod_ModuleExists(const char* ModuleName)
     }
 
     char filePath[256];
-    return Dmod_FindModuleFile(ModuleName, NULL, filePath, sizeof(filePath));
+    bool found_file = Dmod_FindModuleFile(ModuleName, NULL, filePath, sizeof(filePath));
+
+    Dmod_PackageSlot_t* slot = NULL;
+    Dmod_DmpModuleEntry_t* moduleEntry = Dmod_Pck_FindModuleEntryInPackages( ModuleName, &slot );
+
+    return found_file || moduleEntry != NULL;
 }
 
 /**
