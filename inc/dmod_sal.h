@@ -569,13 +569,9 @@ DMOD_BUILTIN_API(Dmod, 1.0, const char*, _Compression_GetNextSupported, ( const 
  * declared for the system itself and for modules built against an older
  * header, and delegates with the running context's allocator.
  */
-#if defined(DMOD_MODULE_NAME)
-#   define Dmod_StrDup(Str)                         Dmod_StrDupEx(Str, DMOD_CURRENT_ALLOCATOR)
-#   define Dmod_StrMerge(Count, ...)                Dmod_StrMergeEx(Count, DMOD_CURRENT_ALLOCATOR, ##__VA_ARGS__)
-#else
-    DMOD_BUILTIN_API(Dmod, 1.0, char*     , _StrDup,        ( const char* Str ) );
-    DMOD_BUILTIN_API(Dmod, 1.0, char*     , _StrMerge,      ( int Count, ... ) );
-#endif
+#define Dmod_StrDup(Str)                         Dmod_StrDupEx(Str, DMOD_CURRENT_ALLOCATOR)
+#define Dmod_StrMerge(Count, ...)                Dmod_StrMergeEx(Count, DMOD_CURRENT_ALLOCATOR, ##__VA_ARGS__)
+
 DMOD_BUILTIN_API(Dmod, 1.0, char*     , _StrDupEx,      ( const char* Str, const char* ModuleName ) );
 DMOD_BUILTIN_API(Dmod, 1.0, char*     , _StrMergeEx,    ( int Count, const char* ModuleName, ... ) );
 
