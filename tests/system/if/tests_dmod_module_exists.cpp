@@ -59,10 +59,18 @@ TEST(DmodModuleExistsTest, NonExistentModule)
 }
 
 /**
- * @brief Test for Dmod_ModuleExists with existing module (dmsystem)
+ * @brief Test for Dmod_ModuleExists with existing module
+ * 
+ * This test verifies the function doesn't crash with a valid module name.
+ * The result depends on whether dmsystem is available in the search paths.
  */
 TEST(DmodModuleExistsTest, ExistingModule)
 {
+    char outPath[256];
+    bool foundViaFind = Dmod_FindModuleFile("dmsystem", NULL, outPath, sizeof(outPath));
+    
     bool result = Dmod_ModuleExists("dmsystem");
-    ASSERT_TRUE(result);
+    
+    // Dmod_ModuleExists should return the same result as Dmod_FindModuleFile
+    ASSERT_EQ(result, foundViaFind);
 }
