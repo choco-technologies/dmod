@@ -49,10 +49,12 @@ DMOD_INC_DIRS = $(DMOD_DIR)/src/system\
 		$(DMOD_DIR)/inc\
 		$(DMOD_BUILD_DIR)\
 		$(DMOD_DIR)/src/common\
-		$(DMOD_DIR)/lib/third-party/FastLZ
+		$(DMOD_DIR)/lib/third-party/FastLZ\
+		$(DMOD_DIR)/lib/third-party/dmcomp
 DMOD_LIBS = dmod_inc\
 		dmod_common\
 		dmod_fastlz\
+		dmod_dmcomp\
 		pthread
 DMOD_GEN_HEADERS_IN = 
 DMOD_DEFINITIONS = DMOD_CURRENT_ALLOCATOR="dmod_system"

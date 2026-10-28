@@ -28,6 +28,9 @@ OBJ_OUTPUT_DIR	= $(DMOD_OBJS_DIR)/$(PROJECT_NAME)
 ifeq ($(DMOD_USE_FASTLZ),ON)
 	DMOD_LIBS += dmod_fastlz
 endif
+ifeq ($(DMOD_USE_DMCOMP),ON)
+	DMOD_LIBS += dmod_dmcomp
+endif
 
 # -----------------------------------------------------------------------------
 # 	List of objects

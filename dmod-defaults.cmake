@@ -68,6 +68,20 @@ if (NOT DEFINED DMOD_USE_FASTLZ)
     set(DMOD_USE_FASTLZ ON)
 endif()
 
+if (NOT DEFINED DMOD_USE_DMCOMP)
+    set(DMOD_USE_DMCOMP ON)
+endif()
+
+if (NOT DEFINED DMOD_USE_DMCOMP_ENCODER)
+    # The encoder allocates its work memory (~330 kB) with malloc: it is for the host. Without the standard library
+    # (a firmware) there is no malloc, and nothing to compress for - only the decoder is built.
+    if (DMOD_USE_STDLIB)
+        set(DMOD_USE_DMCOMP_ENCODER ON)
+    else()
+        set(DMOD_USE_DMCOMP_ENCODER OFF)
+    endif()
+endif()
+
 if (NOT DEFINED DMOD_MAX_MODULES)
     set(DMOD_MAX_MODULES 30)
 endif()

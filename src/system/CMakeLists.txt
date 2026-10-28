@@ -62,6 +62,7 @@ target_link_libraries(${MODULE_NAME}
         dmod_inc
         dmod_common
         dmod_fastlz
+        dmod_dmcomp
     )
 
 if (DMOD_USE_PTHREAD)

@@ -73,6 +73,20 @@ ifndef DMOD_USE_FASTLZ
     DMOD_USE_FASTLZ = ON
 endif
 
+ifndef DMOD_USE_DMCOMP
+    DMOD_USE_DMCOMP = ON
+endif
+
+ifndef DMOD_USE_DMCOMP_ENCODER
+    # The encoder allocates its work memory (~330 kB) with malloc: it is for the host. Without the standard library
+    # (a firmware) there is no malloc, and nothing to compress for - only the decoder is built.
+    ifeq ($(DMOD_USE_STDLIB),ON)
+        DMOD_USE_DMCOMP_ENCODER = ON
+    else
+        DMOD_USE_DMCOMP_ENCODER = OFF
+    endif
+endif
+
 ifndef DMOD_MAX_MODULES
     DMOD_MAX_MODULES = 30
 endif
