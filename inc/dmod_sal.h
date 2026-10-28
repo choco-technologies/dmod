@@ -677,6 +677,72 @@ DMOD_BUILTIN_API(Dmod, 1.0, int, _Reboot, ( void ) );
 
 //! @}
 
+/**
+ * @defgroup DMOD_SAL_FIRMWARE Firmware Interface
+ * @ingroup DMOD_SAL
+ *
+ * What the running firmware tells the platform, and what the platform keeps for it between the runs.
+ *
+ * A platform that has more than one firmware image (banks) starts a new one on trial: it stays only if it says that it
+ * runs properly (Dmod_FirmwareReady()); if it does not, the platform goes back to the previous one after a reset. The
+ * persistent data (Dmod_WritePersistency(), Dmod_ReadPersistency()) is kept apart from the images, so that an update of
+ * the firmware - or a firmware that did not start - does not touch it.
+ *
+ * All of the functions are implemented by the platform (the boot loader of the board, for instance); the default
+ * (weak) implementations of the host and of the platforms without them return -ENOSYS and have no side effects.
+ * @{
+ */
+
+/**
+ * @brief Tell the platform that the running firmware has started properly and may stay.
+ *
+ * What "properly" means is up to the firmware, so it is the firmware that calls this - when the console is there, the
+ * file system is mounted, the network is up, or whatever its project needs to be able to be updated again. A platform
+ * with a firmware on trial keeps it from then on; calling it again, or on a firmware that is not on trial, is harmless.
+ * Until it is called a platform may restart the system (a watchdog) and fall back to the previous firmware.
+ *
+ * @return 0 on success, a negative errno value otherwise (-ENOSYS: the platform has nothing to confirm)
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, int, _FirmwareReady, ( void ) );
+
+/**
+ * @brief Store data that survives a reset and an update of the firmware.
+ *
+ * The item @p Id is replaced with the @p Size bytes of @p Data. @p Data may be NULL only when @p Size is 0, which
+ * removes the item. The platform decides the sizes, and the number of the items, that it can keep (-ENOSPC when it
+ * cannot).
+ *
+ * Writing may erase and program a non-volatile memory: it can take long (hundreds of milliseconds for a sector of a
+ * flash) and, where the code runs from the same memory, stop the whole system meanwhile. Do not do it often, nor from
+ * a time critical thread; the data is for the settings, not for the logs.
+ *
+ * @param Id    Identifier of the item, chosen by the caller (the same one reads it back)
+ * @param Data  The data
+ * @param Size  Size of the data in bytes
+ *
+ * @return 0 on success, a negative errno value otherwise (-EINVAL: wrong arguments, -ENOSPC: no room,
+ *         -EIO: the memory failed, -ENOSYS: the platform keeps nothing)
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, int, _WritePersistency, ( uint32_t Id, const void* Data, size_t Size ) );
+
+/**
+ * @brief Read data stored with Dmod_WritePersistency().
+ *
+ * Copies at most @p BufferSize bytes of the item @p Id. The result is the size of the whole item, which may be more
+ * than @p BufferSize (then the rest was not copied): call it with a NULL @p Buffer and 0 as @p BufferSize to learn the
+ * size first.
+ *
+ * @param Id            Identifier of the item
+ * @param Buffer        Where to copy the data; may be NULL when @p BufferSize is 0
+ * @param BufferSize    Size of the buffer in bytes
+ *
+ * @return Size of the item in bytes (0 or more), or a negative errno value (-ENOENT: there is no such item,
+ *         -EINVAL: wrong arguments, -EIO: the memory failed, -ENOSYS: the platform keeps nothing)
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, int, _ReadPersistency, ( uint32_t Id, void* Buffer, size_t BufferSize ) );
+
+//! @}
+
 #ifdef __cplusplus
 }
 #endif
