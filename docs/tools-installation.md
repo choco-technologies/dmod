@@ -420,7 +420,7 @@ docker pull chocotechnologies/dmod:1.0.4
 docker run -it -v $(pwd):/workspace -w /workspace chocotechnologies/dmod:1.0.4 bash
 
 # Option B: Install tools locally
-git clone https://github.com/choco-technologies/dmod.git
+git clone --recursive https://github.com/choco-technologies/dmod.git
 cd dmod
 cmake -DDMOD_MODE=DMOD_SYSTEM -DDMOD_BUILD_TOOLS=ON -B build -S .
 cmake --build build/
