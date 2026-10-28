@@ -21,7 +21,8 @@ cmake --build .
 ```
 
 Pass `-DDMOD_DIR=/path/to/local/dmod` to build against a local dmod checkout
-instead of fetching `develop` from GitHub.
+instead of fetching `develop` from GitHub. The checkout needs its submodules (dmod keeps its compression
+library in one): `git clone --recursive`, or `git submodule update --init --recursive` in an existing one.
 
 ### Using Make
 
