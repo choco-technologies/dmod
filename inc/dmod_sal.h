@@ -741,6 +741,101 @@ DMOD_BUILTIN_API(Dmod, 1.0, int, _WritePersistency, ( uint32_t Id, const void* D
  */
 DMOD_BUILTIN_API(Dmod, 1.0, int, _ReadPersistency, ( uint32_t Id, void* Buffer, size_t BufferSize ) );
 
+/**
+ * @brief State of a firmware image in a bank
+ */
+typedef enum
+{
+    Dmod_FirmwareBankState_Empty        = 0,    //!< There is no image in the bank
+    Dmod_FirmwareBankState_Invalid      = 1,    //!< An image that is damaged, or that was started and never confirmed
+    Dmod_FirmwareBankState_Valid        = 2,    //!< A good image that has not been selected to start (or has not run yet)
+    Dmod_FirmwareBankState_Trial        = 3,    //!< Selected to start on trial: it stays only when it confirms (Dmod_FirmwareReady)
+    Dmod_FirmwareBankState_Confirmed    = 4,    //!< An image that ran properly and confirmed it
+} Dmod_FirmwareBankState_t;
+
+/**
+ * @brief What the platform knows about a bank (Dmod_FirmwareGetBankInfo)
+ *
+ * The caller sets @c StructSize to sizeof of the structure it was built with; the platform fills the fields that fit in
+ * it and leaves the rest, so the structure can grow without a new function.
+ */
+typedef struct
+{
+    uint32_t    StructSize;     //!< [in] sizeof(Dmod_FirmwareBankInfo_t) of the caller
+    uint32_t    State;          //!< Dmod_FirmwareBankState_t
+    uint32_t    Version;        //!< Version of the image (a number of the platform's image format: the bigger the newer); 0 when empty
+    uint32_t    Size;           //!< Size of the image in bytes; 0 when empty
+    uint32_t    Tries;          //!< How many times it was started without confirming (a trial)
+    uint32_t    Reserved;       //!< 0
+    uint64_t    Address;        //!< Where the bank is in the memory of the platform (the flash address)
+    uint64_t    Capacity;       //!< How many bytes of an image the bank holds
+} Dmod_FirmwareBankInfo_t;
+
+/** The bank that cannot be: "no bank" (Dmod_FirmwareGetRunningBank on a platform where the code does not run from one) */
+#define DMOD_FIRMWARE_BANK_NONE     (-1)
+
+/**
+ * @brief Number of the firmware banks (images) that the platform keeps: 2 for the platform with banks A and B.
+ *
+ * The banks are numbered 0 .. count - 1 (0 is A). A platform without banks answers -ENOSYS; treat anything below 1 as
+ * "no banks, nothing to update this way".
+ *
+ * @return Number of the banks, or a negative errno value
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, int, _FirmwareGetBankCount, ( void ) );
+
+/**
+ * @brief The bank that the running firmware was started from.
+ *
+ * @return Number of the bank (0 ..), DMOD_FIRMWARE_BANK_NONE or a negative errno value (-ENOSYS: no banks)
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, int, _FirmwareGetRunningBank, ( void ) );
+
+/**
+ * @brief Read what the platform knows about a bank: its state, version, size and where it is.
+ *
+ * The state is the one the platform keeps (a stored one, not a verification of the image: see Dmod_FirmwareVerifyBank()).
+ * The address and the capacity tell a tool where an image goes - a block device of the platform (the flash driver) that
+ * covers it is how it is written; the platform's own tool of the update is not needed for that.
+ *
+ * @param Bank  Number of the bank
+ * @param Info  Receives the data; Info->StructSize has to be set
+ *
+ * @return 0 on success, a negative errno value otherwise (-EINVAL: no such bank or wrong arguments, -ENOSYS: no banks)
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, int, _FirmwareGetBankInfo, ( int Bank, Dmod_FirmwareBankInfo_t* Info ) );
+
+/**
+ * @brief Check whether the image in a bank is whole: the platform reads it and verifies it the way it does before it starts it.
+ *
+ * Call it after writing an image and before Dmod_FirmwareSelectBank(): a damaged image would be refused by the platform
+ * at the start anyway, but then only after the reset. The result is also the state that Dmod_FirmwareGetBankInfo()
+ * reports (Empty, Invalid or Valid) from now on. It can take long (the platform reads the whole image).
+ *
+ * @param Bank  Number of the bank
+ *
+ * @return 0 when the image is good, -ENODATA when the bank is empty, -EBADMSG when the image is damaged (or is not an
+ *         image of this platform), another negative errno value for other errors (-EINVAL: no such bank, -ENOSYS: no banks)
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, int, _FirmwareVerifyBank, ( int Bank ) );
+
+/**
+ * @brief Choose the bank that the platform starts from after the next reset.
+ *
+ * The image has to pass Dmod_FirmwareVerifyBank(). With @p Trial the image stays selected only if it confirms that it runs
+ * properly (Dmod_FirmwareReady()); if it does not - in the number of starts that the platform allows - the platform goes
+ * back to the bank that ran before. Without @p Trial the bank is selected for good, with no confirmation expected (a way
+ * back to a bank, the way to leave the platform at the image that is known to be good). Nothing restarts the system: call
+ * Dmod_Reboot() when ready.
+ *
+ * @param Bank  Number of the bank
+ * @param Trial true: on trial, until it confirms; false: for good
+ *
+ * @return 0 on success, a negative errno value otherwise (-EINVAL: no such bank, -EBADMSG: the image is not good,
+ *         -ENODATA: the bank is empty, -EIO: the choice could not be stored, -ENOSYS: no banks)
+ */
+DMOD_BUILTIN_API(Dmod, 1.0, int, _FirmwareSelectBank, ( int Bank, bool Trial ) );
+
 //! @}
 
 #ifdef __cplusplus
