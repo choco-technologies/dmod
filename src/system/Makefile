@@ -51,7 +51,7 @@ DMOD_INC_DIRS = $(DMOD_DIR)/src/system\
 		$(DMOD_BUILD_DIR)\
 		$(DMOD_DIR)/src/common\
 		$(DMOD_DIR)/lib/third-party/FastLZ\
-		$(DMOD_DIR)/lib/third-party/dmcomp
+		$(DMOD_DIR)/lib/third-party/dmod_dmcomp/../dmcomp/include
 DMOD_LIBS = dmod_inc\
 		dmod_common\
 		dmod_fastlz\

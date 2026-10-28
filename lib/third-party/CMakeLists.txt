@@ -1,2 +1,2 @@
 add_subdirectory(FastLZ)
-add_subdirectory(dmcomp)
+add_subdirectory(dmod_dmcomp)

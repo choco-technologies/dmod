@@ -29,10 +29,12 @@ install(DIRECTORY "${DMOD_DIR}/lib/third-party/FastLZ"
     DESTINATION "${DMOD_SDK_INSTALL_DIR}/lib/third-party" COMPONENT development
     FILES_MATCHING PATTERN "*.c" PATTERN "*.h" PATTERN "CMakeLists.txt"
     PATTERN "LICENSE.MIT")
-install(DIRECTORY "${DMOD_DIR}/lib/third-party/dmcomp"
+install(DIRECTORY "${DMOD_DIR}/lib/third-party/dmod_dmcomp"
     DESTINATION "${DMOD_SDK_INSTALL_DIR}/lib/third-party" COMPONENT development
-    FILES_MATCHING PATTERN "*.c" PATTERN "*.h" PATTERN "CMakeLists.txt"
-    PATTERN "LICENSE.MIT")
+    FILES_MATCHING PATTERN "CMakeLists.txt")
+install(DIRECTORY "${DMOD_DIR}/lib/third-party/dmcomp/src" "${DMOD_DIR}/lib/third-party/dmcomp/include"
+    DESTINATION "${DMOD_SDK_INSTALL_DIR}/lib/third-party/dmcomp" COMPONENT development
+    FILES_MATCHING PATTERN "*.c" PATTERN "*.h")
 install(DIRECTORY "${DMOD_DIR}/scripts/"
     DESTINATION "${DMOD_SDK_INSTALL_DIR}/scripts" COMPONENT development
     FILES_MATCHING PATTERN "CMakeLists.txt" PATTERN "*.in" PATTERN "*.ld"
@@ -48,7 +50,7 @@ install(FILES "${DMOD_DIR}/license.md"
     DESTINATION share/doc/dmod-dev RENAME copyright COMPONENT development)
 install(FILES "${DMOD_DIR}/lib/third-party/FastLZ/LICENSE.MIT"
     DESTINATION share/doc/dmod-dev RENAME copyright.FastLZ COMPONENT development)
-install(FILES "${DMOD_DIR}/lib/third-party/dmcomp/LICENSE.MIT"
+install(FILES "${DMOD_DIR}/lib/third-party/dmcomp/LICENSE"
     DESTINATION share/doc/dmod-dev RENAME copyright.dmcomp COMPONENT development)
 install(FILES "${DMOD_DIR}/docs/development-package.md"
     DESTINATION share/doc/dmod-dev COMPONENT development)

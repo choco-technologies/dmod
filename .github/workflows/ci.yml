@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
       
       - name: Clean build directory
         run: rm -rf build
@@ -190,6 +192,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
       
       - name: Clean build directory
         run: rm -rf build
@@ -281,6 +285,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
       
       - name: Build dmod in MODULE mode
         run: |
@@ -331,6 +337,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
       
       - name: Build dmod with Make in MODULE mode
         run: make DMOD_MODE=DMOD_MODULE

@@ -15,10 +15,11 @@ endif
 #  Name of the module
 #
 DMOD_LIB_NAME=libdmod_dmcomp.a
-DMOD_SOURCES=dmcomp_inflate.c\
-		dmcomp_strerror.c\
-		dmcomp_deflate.c
-DMOD_INC_DIRS = $(DMOD_DIR)/lib/third-party/dmcomp
+DMOD_SOURCES=../dmcomp/src/dmcomp_inflate.c\
+		../dmcomp/src/dmcomp_strerror.c\
+		../dmcomp/src/dmcomp_deflate.c
+DMOD_INC_DIRS = $(DMOD_DIR)/lib/third-party/dmod_dmcomp/../dmcomp/include\
+		$(DMOD_DIR)/lib/third-party/dmod_dmcomp/../dmcomp/src
 DMOD_LIBS = 
 DMOD_GEN_HEADERS_IN = 
 DMOD_DEFINITIONS = DMOD_CURRENT_ALLOCATOR="dmod_dmcomp"

@@ -6,7 +6,7 @@ DMOD_DIR=../..
 # -----------------------------------------------------------------------------
 #   Subdirectories
 # -----------------------------------------------------------------------------
-SUBDIRS = FastLZ dmcomp
+SUBDIRS = FastLZ dmod_dmcomp
 SYSTEM_SUBDIRS = 
 MODULE_SUBDIRS = 
 
