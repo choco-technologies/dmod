@@ -42,6 +42,7 @@ DMOD_SOURCES=private/dmod_vars.c\
 		if/dmod_if_input.c\
 		if/dmod_if_proc.c\
 		if/dmod_if_power.c\
+		if/dmod_if_firmware.c\
 		if/dmod_if_time.c\
 		Dmod.cpp\
 		if/dmod_prf.c
@@ -49,10 +50,12 @@ DMOD_INC_DIRS = $(DMOD_DIR)/src/system\
 		$(DMOD_DIR)/inc\
 		$(DMOD_BUILD_DIR)\
 		$(DMOD_DIR)/src/common\
-		$(DMOD_DIR)/lib/third-party/FastLZ
+		$(DMOD_DIR)/lib/third-party/FastLZ\
+		$(DMOD_DIR)/lib/third-party/dmod_dmcomp/../dmcomp/include
 DMOD_LIBS = dmod_inc\
 		dmod_common\
 		dmod_fastlz\
+		dmod_dmcomp\
 		pthread
 DMOD_GEN_HEADERS_IN = 
 DMOD_DEFINITIONS = DMOD_CURRENT_ALLOCATOR="dmod_system"

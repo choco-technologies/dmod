@@ -22,6 +22,8 @@
 #define DMOD_USE_TERMIOS                @DMOD_USE_TERMIOS@
 #define DMOD_USE_TIME                 @DMOD_USE_TIME@
 #define DMOD_USE_FASTLZ                 @DMOD_USE_FASTLZ@
+#define DMOD_USE_DMCOMP                 @DMOD_USE_DMCOMP@
+#define DMOD_USE_DMCOMP_ENCODER         @DMOD_USE_DMCOMP_ENCODER@
 #define DMOD_IMPLEMENT_PRINTF           @DMOD_IMPLEMENT_PRINTF@
 #define DMOD_IMPLEMENT_SCANF            @DMOD_IMPLEMENT_SCANF@
 #define DMOD_MODE           "@DMOD_MODE@"

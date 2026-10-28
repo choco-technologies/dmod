@@ -41,6 +41,10 @@ DMOD_USE_TIME=ON
 # Use FastLZ compression library
 DMOD_USE_FASTLZ=ON
 
+# Use the dmcomp library (the deflate compression method) and its encoder (for the host tools)
+DMOD_USE_DMCOMP=ON
+DMOD_USE_DMCOMP_ENCODER=ON
+
 # Maximum number of modules
 DMOD_MAX_MODULES=30
 

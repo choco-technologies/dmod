@@ -31,6 +31,19 @@ set(DMOD_USE_REALLOC ON CACHE BOOL "Enable to use the realloc function")
 # Use FastLZ compression library
 set(DMOD_USE_FASTLZ ON CACHE BOOL "Enable to use the FastLZ compression library")
 
+# Use the dmcomp library: the "deflate" compression method (the decoder)
+set(DMOD_USE_DMCOMP ON CACHE BOOL "Enable to use the dmcomp library (the deflate compression method)")
+
+# Build the deflate encoder (Dmod_Compression_Pack) of the dmcomp library: for the host tools. It allocates its work memory
+# (~330 kB) with malloc, so by default it is built when DMOD_USE_STDLIB is (a firmware has no malloc of the standard
+# library and nothing to compress for - it gets the decoder only)
+if(DMOD_USE_STDLIB)
+    set(DMOD_USE_DMCOMP_ENCODER_DEFAULT ON)
+else()
+    set(DMOD_USE_DMCOMP_ENCODER_DEFAULT OFF)
+endif()
+set(DMOD_USE_DMCOMP_ENCODER ${DMOD_USE_DMCOMP_ENCODER_DEFAULT} CACHE BOOL "Enable to build the deflate encoder of the dmcomp library (it needs malloc and ~330 kB of the heap)")
+
 # Maximum number of modules
 set(DMOD_MAX_MODULES 30 CACHE STRING "Maximum number of modules")
 

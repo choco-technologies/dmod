@@ -104,6 +104,15 @@ function isTargetSelected()
 }
 
 #
+#   The image is built from this directory (COPY . in the Dockerfile): the submodules (lib/third-party/dmcomp) have to be
+#   in it
+#
+function updateSubmodules()
+{
+    git -C "$ROOT_DIR" submodule update --init --recursive
+}
+
+#
 #   Builds the environment image
 #   
 function buildEnv()
@@ -152,6 +161,7 @@ function buildOpencode()
 #   MAIN
 #
 prepareScript "$@"
+updateSubmodules
 isTargetSelected env && buildEnv
 isTargetSelected dmod && build
 isTargetSelected claude && buildClaude

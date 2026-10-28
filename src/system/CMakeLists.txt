@@ -30,6 +30,7 @@ set(SYSTEM_SOURCES
     if/dmod_if_input.c
     if/dmod_if_proc.c
     if/dmod_if_power.c
+    if/dmod_if_firmware.c
     if/dmod_if_time.c
     Dmod.cpp
 )
@@ -62,6 +63,7 @@ target_link_libraries(${MODULE_NAME}
         dmod_inc
         dmod_common
         dmod_fastlz
+        dmod_dmcomp
     )
 
 if (DMOD_USE_PTHREAD)

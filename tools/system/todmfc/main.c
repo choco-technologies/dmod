@@ -43,7 +43,9 @@ void PrintHelp( const char* AppName )
     printf("  -v, --version         Print version information\n");
     printf("  [compression_method]  (default: %s) Compression method method to be used. ", Dmod_Compression_GetNextSupported(NULL));
     PrintSupportedCompressionMethods();
-    printf("  [level]               (default: 2)  Compression level - depends on the [compression_method]\n");
+    printf("  [level]               Compression level - depends on the [compression_method]:\n");
+    printf("                          fastlz: 1 (faster) or 2 (smaller, the default)\n");
+    printf("                          deflate: 0 (stored) .. 9 (the smallest, the default)\n");
 }
 
 // -----------------------------------------
@@ -96,7 +98,8 @@ int main( int argc, char *argv[] )
         }
     }
 
-    int level = 2;
+    // The default level depends on the method: fastlz has two (1, 2), deflate ten (0 - 9)
+    int level = strcmp( compression, "deflate" ) == 0 ? 9 : 2;
     if( argc >= 5 )
     {
         level = atoi( argv[4] );

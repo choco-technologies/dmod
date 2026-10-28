@@ -37,7 +37,7 @@ and compiled runtime objects are created in the consumer's build directory;
 the installed SDK remains read-only. Existing module API declaration rules
 still apply; see the [CMake function reference](cmake-functions.md).
 
-Set DMOD options before `find_package`, for example `DMOD_USE_FASTLZ`,
+Set DMOD options before `find_package`, for example `DMOD_USE_FASTLZ`, `DMOD_USE_DMCOMP` (the `deflate` method) and `DMOD_USE_DMCOMP_ENCODER`,
 `DMOD_DMF_DIR`, `DMOD_DMFC_DIR`, `DMOD_REPO_DIR` and `DMOD_ARCH`. Set per-module
 options such as `DMOD_AUTHOR_NAME`, `DMOD_STACK_SIZE`, `DMOD_MAL_IMPLS` and
 `DMOD_DMR_PATH` before calling `dmod_add_library` or `dmod_add_executable`.

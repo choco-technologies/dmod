@@ -7,7 +7,7 @@
 ## Features
 
 - **Compression of DMF files**: Converts standard DMF files to compressed DMFC format
-- **Multiple compression methods**: Supports various compression algorithms (currently: fastlz)
+- **Multiple compression methods**: Supports various compression algorithms (currently: fastlz and deflate)
 - **Configurable compression levels**: Allows tuning between compression ratio and speed
 - **Size comparison**: Displays original and compressed file sizes with compression ratio
 - **Simple interface**: Easy-to-use command-line tool
@@ -22,6 +22,13 @@ todmfc path/to/file.dmf path/to/output.dmfc
 
 This will compress the DMF file using the default compression method (fastlz) and level (2).
 
+The `deflate` method (RFC 1951, [dmcomp](../../../lib/third-party/dmcomp)) makes the files ~20 % smaller than `fastlz`; its decoder is 1.7 kB of code. A loader has to know it, so the modules that older firmware has to load stay `fastlz`:
+
+```bash
+todmfc path/to/file.dmf path/to/output.dmfc deflate        # level 9
+todmfc path/to/file.dmf path/to/output.dmfc deflate 6
+```
+
 ### Advanced Usage
 
 ```bash
@@ -32,7 +39,7 @@ todmfc path/to/file.dmf path/to/output.dmfc [compression_method] [level]
 - `path/to/file.dmf` - Input DMF file to compress
 - `path/to/output.dmfc` - Output DMFC file path
 - `[compression_method]` - (Optional) Compression algorithm to use (default: fastlz)
-- `[level]` - (Optional) Compression level (default: 2)
+- `[level]` - (Optional) Compression level: fastlz 1 or 2 (default: 2), deflate 0 (stored) .. 9 (default: 9)
 
 ### Options
 

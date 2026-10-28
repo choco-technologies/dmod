@@ -220,7 +220,8 @@ Full documentation: [todmm-tool.md](todmm-tool.md)
 todmfc input.dmf output.dmfc
 
 # Specify compression method and level
-todmfc input.dmf output.dmfc fastlz 3
+todmfc input.dmf output.dmfc fastlz 1
+todmfc input.dmf output.dmfc deflate 9    # ~20 % smaller than fastlz
 
 # Display available compression methods
 todmfc --help
@@ -229,8 +230,10 @@ todmfc --help
 **Parameters:**
 - `path/to/file.dmf` - Input DMF file
 - `path/to/output.dmfc` - Output DMFC file
-- `[compression_method]` - Optional compression method (default: fastlz)
-- `[level]` - Optional compression level (default: 2)
+- `[compression_method]` - Optional compression method: `fastlz` (default) or `deflate` (RFC 1951, from the
+  [dmcomp](../lib/third-party/dmcomp) library). A loader has to know the method: the `deflate` decoder is 1.7 kB of code
+  and needs a work memory of ~3 kB from the heap, so keep `fastlz` for the modules that older firmware has to load
+- `[level]` - Optional compression level: `fastlz` 1 or 2 (default: 2), `deflate` 0 (stored) to 9 (default: 9)
 
 ### todmp
 
