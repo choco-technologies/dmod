@@ -10,10 +10,10 @@ ifeq ($(CROSS_COMPILE),)
 	CROSS_COMPILE=aarch64-linux-gnu-
 endif
 ifeq ($(CPUCONFIG_CFLAGS),)
-	CPUCONFIG_CFLAGS=-mcpu=cortex-a53 -DDMOD_ARCH="$(DMOD_ARCH)" -DDMOD_CPU="$(DMOD_CPU)"
+	CPUCONFIG_CFLAGS=-mcpu=cortex-a53 -mno-outline-atomics -DDMOD_ARCH="$(DMOD_ARCH)" -DDMOD_CPU="$(DMOD_CPU)"
 endif
 ifeq ($(CPUCONFIG_CXXFLAGS),)
-	CPUCONFIG_CXXFLAGS=-mcpu=cortex-a53 -DDMOD_ARCH="$(DMOD_ARCH)" -DDMOD_CPU="$(DMOD_CPU)"
+	CPUCONFIG_CXXFLAGS=-mcpu=cortex-a53 -mno-outline-atomics -DDMOD_ARCH="$(DMOD_ARCH)" -DDMOD_CPU="$(DMOD_CPU)"
 endif
 CC=$(CROSS_COMPILE)gcc
 CXX=$(CROSS_COMPILE)g++
