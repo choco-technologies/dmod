@@ -119,11 +119,11 @@ bool Dmod_Ldr_LoadHeader( Dmod_Context_t* Context )
 
     Context->Header = header;
 
-    bool result = Dmod_Hlp_InitPointer( Context, (void**)&header->Preinit,  "Preinit"    )
-               && Dmod_Hlp_InitPointer( Context, (void**)&header->Init,     "Init"       ) 
-               && Dmod_Hlp_InitPointer( Context, (void**)&header->Main,     "Main"       ) 
-               && Dmod_Hlp_InitPointer( Context, (void**)&header->Deinit,   "Deinit"     )
-               && Dmod_Hlp_InitPointer( Context, (void**)&header->Signal,   "Signal"     );
+    bool result = Dmod_Hlp_InitCodePointer( Context, (void**)&header->Preinit,  "Preinit"    )
+               && Dmod_Hlp_InitCodePointer( Context, (void**)&header->Init,     "Init"       ) 
+               && Dmod_Hlp_InitCodePointer( Context, (void**)&header->Main,     "Main"       ) 
+               && Dmod_Hlp_InitCodePointer( Context, (void**)&header->Deinit,   "Deinit"     )
+               && Dmod_Hlp_InitCodePointer( Context, (void**)&header->Signal,   "Signal"     );
                ;
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(Context), 85 );
     return result;
@@ -436,7 +436,7 @@ bool Dmod_Ldr_LoadInput( Dmod_Context_t* Context )
         else 
         {
             if( !Dmod_Hlp_InitPointer( Context, (void**)&inputSection->Entries[i].Signature, "Input Signature" ) 
-             || !Dmod_Hlp_InitPointer( Context, (void**)&inputSection->Entries[i].Function , "Input Function"  ) 
+             || !Dmod_Hlp_InitCodePointer( Context, (void**)&inputSection->Entries[i].Function , "Input Function"  ) 
                 )
             {
                 DMOD_LOG_ERROR("Cannot load input - cannot initialize input entry at index %d\n", i);
@@ -541,10 +541,31 @@ bool Dmod_Ldr_LoadGot( Dmod_Context_t* Context )
     Dmod_GotSection_t* gotSection = Context->Data + got->SectionStart;
     size_t numberOfEntries = got->SectionSize / sizeof( gotSection->Entries[0] );
 
+#ifdef DMOD_USE_RELDYN
+    /* The section is not a GOT but the table of the relocations: the offsets of the words in the module that hold an address
+       (see docs/reldyn.md). Each of them gets the address of the load added; an address of the code gets the one that the code is
+       executed from (Dmod_Hlp_CodeAddress). */
+    size_t dataBase = (size_t)Context->Data;
+    size_t codeBase = (size_t)Dmod_Hlp_CodeAddress( Context->Data );
+    size_t textStart = footer->Text.SectionStart;
+    size_t textEnd   = footer->Text.SectionStart + footer->Text.SectionSize;
+    for(size_t i = 0; i < numberOfEntries; i++)
+    {
+        size_t offset = (size_t)gotSection->Entries[i];
+        if( offset % sizeof(size_t) != 0 || offset + sizeof(size_t) > got->SectionStart )
+        {
+            DMOD_LOG_ERROR("Cannot load got - invalid relocation at index %d: offset 0x%08X\n", (int)i, (unsigned)offset);
+            return false;
+        }
+        size_t* word = (size_t*)( Context->Data + offset );
+        *word += ( *word >= textStart && *word < textEnd ) ? codeBase : dataBase;
+    }
+#else
     for(size_t i = 0; i < numberOfEntries; i++)
     {
         gotSection->Entries[i] += (size_t)Context->Data;
     }
+#endif
 
     Dmod_Event_ModuleLoadingInProgress( Dmod_Context_GetModuleName(Context), 95 );
 

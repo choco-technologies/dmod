@@ -76,7 +76,16 @@ if(NOT DEFINED IDF_PATH)
     endif()
 endif()
 
-set(COMMON_DEFINE_FLAGS "-DDMOD_ARCH=\\\"${DMOD_ARCH}\\\" -DDMOD_CPU=\\\"${DMOD_CPU}\\\"")
+# GCC for the Xtensa has no position independent code (the code loads the addresses it needs as constants from the literal pools):
+# the modules are relocated by a table of the words that hold an address, which is in the section .got (see docs/reldyn.md)
+set(DMOD_USE_RELDYN ON CACHE BOOL "Relocate the modules by the table of the words with addresses, in place of the GOT")
+
+# The internal RAM (SRAM1) is seen by two buses: the data bus reads and writes it, the instruction bus executes it, 0x6F0000 away
+# (0x3FC88000..0x3FCF0000 <-> 0x40378000..0x403E0000). The loader writes a module through the data bus and runs it through the
+# instruction bus (Dmod_Hlp_CodeAddress, docs/reldyn.md). The ranges of the data bus and the distance, "low:high:offset", separated by ';'
+set(DMOD_CODE_ALIAS "0x3FC88000:0x3FCF0000:0x6F0000" CACHE STRING "Ranges of the memory that is executed at another address than it is written at: low:high:offset;...")
+
+set(COMMON_DEFINE_FLAGS "-DDMOD_ARCH=\\\"${DMOD_ARCH}\\\" -DDMOD_CPU=\\\"${DMOD_CPU}\\\" -DDMOD_USE_RELDYN=1")
 set(CPUCONFIG_CFLAGS "-mlongcalls -mtext-section-literals -fstrict-volatile-bitfields -Wno-frame-address ${COMMON_DEFINE_FLAGS}${ESP_IDF_INCLUDE_FLAGS}" CACHE STRING "C compiler flags")
 set(CPUCONFIG_CXXFLAGS "-mlongcalls -mtext-section-literals -fstrict-volatile-bitfields -Wno-frame-address ${COMMON_DEFINE_FLAGS}${ESP_IDF_INCLUDE_FLAGS}" CACHE STRING "C++ compiler flags")
 set(CPUCONFIG_ASMFLAGS "-mlongcalls -mtext-section-literals -fstrict-volatile-bitfields -Wno-frame-address ${COMMON_DEFINE_FLAGS}${ESP_IDF_INCLUDE_FLAGS}" CACHE STRING "ASM compiler flags")
