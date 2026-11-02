@@ -19,6 +19,10 @@ extern bool               Dmod_Hlp_InitPointer( Dmod_Context_t* Context, void** 
    the instruction bus, which sees it elsewhere than the data bus does - Dmod_Hlp_CodeAddress, see docs/reldyn.md). Without it,
    there is one address. */
 #ifdef DMOD_USE_RELDYN
+/** Starts the table of the relocations in the section .got: scripts/reldyn.cmake writes it, the loader looks for it. It is 1 because
+    the tools that load a module on the host check every word of the section to be an offset in the module; no offset of the table
+    (a multiple of 4, behind the header) and no address of the GOT is 1 */
+#define DMOD_RELDYN_MAGIC           1u
 extern void*               Dmod_Hlp_CodeAddress( void* Address );
 extern bool                Dmod_Hlp_InitCodePointer( Dmod_Context_t* Context, void** PointerRef, const char* PointerName );
 #else

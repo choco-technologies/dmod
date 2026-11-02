@@ -7,9 +7,14 @@ A module is linked for the address 0 and loaded at any address. On the ARM the c
 has no such mode: the code loads the addresses it needs as constants from the literal pools (`l32r`), and nothing in the module
 changes them when the module is loaded elsewhere. The GOT of such a module is empty.
 
-For an architecture like that `DMOD_USE_RELDYN` is switched on. The section `.got` is then not a GOT but **the table of the
-relocations**: the offsets (32 bits each, ascending) of the words in the module that hold an address. The loader adds the address
-of the load to each of those words. The header, the footer and the layout of the module do not change, so a module of an
+For an architecture like that `DMOD_USE_RELDYN` is switched on. The section `.got` then has **the table of the relocations**:
+the magic `1`, the number of the offsets and the offsets (32 bits each, ascending) of the words in the module
+that hold an address. The loader adds the address of the load to each of those words.
+
+The linker can still make entries of the GOT for some references (the addresses that the code takes through it, e.g. the
+addresses of strings); they are in the same section, before the table, and have the address of the load added too. That is why the
+table starts with the magic: the loader finds it among them. A section without the magic (a module built before it) is the table
+only. The header, the footer and the layout of the module do not change, so a module of an
 architecture without `DMOD_USE_RELDYN` is loaded as before.
 
 ## How it works
