@@ -542,14 +542,32 @@ bool Dmod_Ldr_LoadGot( Dmod_Context_t* Context )
     size_t numberOfEntries = got->SectionSize / sizeof( gotSection->Entries[0] );
 
 #ifdef DMOD_USE_RELDYN
-    /* The section is not a GOT but the table of the relocations: the offsets of the words in the module that hold an address
-       (see docs/reldyn.md). Each of them gets the address of the load added; an address of the code gets the one that the code is
-       executed from (Dmod_Hlp_CodeAddress). */
+    /* The section is not (only) a GOT but has the table of the relocations: DMOD_RELDYN_MAGIC, the number of the offsets and the
+       offsets of the words in the module that hold an address (see docs/reldyn.md). Each of those words gets the address of the
+       load added. The rest of the section are the entries of the GOT that the linker made (the addresses that the code loads
+       through it): the same is added to them. An address of the code gets the one that the code is executed from
+       (Dmod_Hlp_CodeAddress). A section without the magic (a module built before it) is the table only. */
     size_t dataBase = (size_t)Context->Data;
     size_t codeBase = (size_t)Dmod_Hlp_CodeAddress( Context->Data );
     size_t textStart = footer->Text.SectionStart;
     size_t textEnd   = footer->Text.SectionStart + footer->Text.SectionSize;
-    for(size_t i = 0; i < numberOfEntries; i++)
+
+    size_t tableFirst = 0;                      /* the first word that is not an entry of the GOT */
+    size_t offsetsFirst = 0;                    /* the first offset */
+    size_t offsetsEnd = numberOfEntries;        /* behind the last offset */
+    for(size_t i = 0; i + 1 < numberOfEntries; i++)
+    {
+        if( (size_t)gotSection->Entries[i] == DMOD_RELDYN_MAGIC && (size_t)gotSection->Entries[i + 1] <= numberOfEntries - i - 2 )
+        {
+            tableFirst   = i;
+            offsetsFirst = i + 2;
+            offsetsEnd   = i + 2 + (size_t)gotSection->Entries[i + 1];
+            break;
+        }
+    }
+    bool hasMagic = offsetsFirst != 0;
+
+    for(size_t i = offsetsFirst; i < offsetsEnd; i++)
     {
         size_t offset = (size_t)gotSection->Entries[i];
         if( offset % sizeof(size_t) != 0 || offset + sizeof(size_t) > got->SectionStart )
@@ -559,6 +577,18 @@ bool Dmod_Ldr_LoadGot( Dmod_Context_t* Context )
         }
         size_t* word = (size_t*)( Context->Data + offset );
         *word += ( *word >= textStart && *word < textEnd ) ? codeBase : dataBase;
+    }
+    if( hasMagic )
+    {
+        for(size_t i = 0; i < numberOfEntries; i++)
+        {
+            if( i >= tableFirst && i < offsetsEnd )
+            {
+                continue;                       /* the table */
+            }
+            size_t* slot = (size_t*)&gotSection->Entries[i];
+            *slot += ( *slot >= textStart && *slot < textEnd ) ? codeBase : dataBase;
+        }
     }
 #else
     for(size_t i = 0; i < numberOfEntries; i++)
