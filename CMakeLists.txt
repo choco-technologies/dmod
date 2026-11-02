@@ -75,6 +75,28 @@ else()
 	message(FATAL_ERROR "Unknown DMOD_MODE: ${DMOD_MODE}")
 endif()
 
+# The profile of the architecture (DMOD_TOOLS) switches DMOD_USE_RELDYN on when the modules are relocated by the table in the
+# section .got (docs/reldyn.md). Its flags reach the modules; this is for what is built here, the loader.
+if(DMOD_USE_RELDYN)
+	add_definitions(-DDMOD_USE_RELDYN=1)
+	# DMOD_CODE_ALIAS "low:high:offset;...": the memory that is executed at another address than it is written at
+	set(DMOD_CODE_ALIAS_INITIALIZER "")
+	foreach(DMOD_CODE_ALIAS_RANGE IN LISTS DMOD_CODE_ALIAS)
+		string(REPLACE ":" ";" DMOD_CODE_ALIAS_PARTS "${DMOD_CODE_ALIAS_RANGE}")
+		list(LENGTH DMOD_CODE_ALIAS_PARTS DMOD_CODE_ALIAS_LENGTH)
+		if(NOT DMOD_CODE_ALIAS_LENGTH EQUAL 3)
+			message(FATAL_ERROR "DMOD_CODE_ALIAS: '${DMOD_CODE_ALIAS_RANGE}' is not low:high:offset")
+		endif()
+		list(GET DMOD_CODE_ALIAS_PARTS 0 DMOD_CODE_ALIAS_LOW)
+		list(GET DMOD_CODE_ALIAS_PARTS 1 DMOD_CODE_ALIAS_HIGH)
+		list(GET DMOD_CODE_ALIAS_PARTS 2 DMOD_CODE_ALIAS_OFFSET)
+		string(APPEND DMOD_CODE_ALIAS_INITIALIZER "{ ${DMOD_CODE_ALIAS_LOW}UL, ${DMOD_CODE_ALIAS_HIGH}UL, ${DMOD_CODE_ALIAS_OFFSET}UL }, ")
+	endforeach()
+	if(DMOD_CODE_ALIAS_INITIALIZER)
+		add_compile_definitions("DMOD_CODE_ALIAS_MAP=${DMOD_CODE_ALIAS_INITIALIZER}")
+	endif()
+endif()
+
 add_definitions(-DON=1 -DOFF=0)
 
 # ===========================================================================

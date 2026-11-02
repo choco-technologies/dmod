@@ -67,6 +67,71 @@ bool Dmod_Hlp_InitPointer( Dmod_Context_t* Context, void** PointerRef, const cha
     return true;
 }
 
+#ifdef DMOD_USE_RELDYN
+/**
+ * @brief The address that the code written at Address is executed from
+ *
+ * A memory that the processor executes through another bus than the one it is written through (the internal RAM of the
+ * Xtensa) is seen at two addresses. The profile of the architecture lists such memories (DMOD_CODE_ALIAS, DMOD_CODE_ALIAS_MAP
+ * here): the address of the data bus is in [Low, High), the code is at Address + Offset. Elsewhere it is the same address. The
+ * platform can replace this function.
+ *
+ * @param Address Address in the memory that the module is written to
+ *
+ * @return The address in the memory that the processor executes
+ */
+__attribute__((weak)) void* Dmod_Hlp_CodeAddress( void* Address )
+{
+#ifdef DMOD_CODE_ALIAS_MAP
+    static const struct { uintptr_t Low; uintptr_t High; uintptr_t Offset; } aliases[] = { DMOD_CODE_ALIAS_MAP };
+    uintptr_t address = (uintptr_t)Address;
+    for( size_t i = 0; i < sizeof( aliases ) / sizeof( aliases[0] ); i++ )
+    {
+        if( address >= aliases[i].Low && address < aliases[i].High )
+        {
+            return (void*)( address + aliases[i].Offset );
+        }
+    }
+#endif
+    return Address;
+}
+
+/**
+ * @brief Initialize pointer to the code of a module
+ *
+ * The same as Dmod_Hlp_InitPointer, but the pointer is the address that the code is executed from.
+ *
+ * @param Context       Context to initialize pointer in
+ * @param PointerRef    Pointer to initialize
+ * @param PointerName   Name of the pointer
+ *
+ * @return true if initialized
+ */
+bool Dmod_Hlp_InitCodePointer( Dmod_Context_t* Context, void** PointerRef, const char* PointerName )
+{
+    if(PointerRef == NULL || Context == NULL)
+    {
+        DMOD_LOG_ERROR("Cannot initialize pointer %s - unexpected NULL\n", PointerName);
+        return false;
+    }
+    void* pointer = *PointerRef;
+    if( pointer == NULL )
+    {
+        return true;
+    }
+
+    size_t offset = (size_t)pointer;
+    if( offset == 0 || offset > Context->Size )
+    {
+        DMOD_LOG_ERROR("Cannot initialize pointer %s - invalid offset: 0x%08X\n", PointerName, offset);
+        return false;
+    }
+
+    *PointerRef = (char*)Dmod_Hlp_CodeAddress( Context->Data ) + offset;
+    return true;
+}
+#endif
+
 /**
  * @brief Add search path node
  * 

@@ -767,6 +767,55 @@ function(dmod_create_module moduleName version moduleType)
     )
     target_link_options(${moduleName} PRIVATE -L ${DMOD_SCRIPTS_DIR} -pie -nostartfiles -nostdlib -Xlinker --discard-all -Wl,--gc-sections,--undefined=ModuleHeader )
     target_link_options(${moduleName} PRIVATE -T ${DMOD_SCRIPTS_DIR}/module.ld  -static)
+
+    # ===========================================================================
+    # DMOD_USE_RELDYN: the table of the relocations in place of the GOT (see docs/reldyn.md)
+    # ===========================================================================
+    # The architectures whose compiler has no position independent code (the code loads the addresses it needs as constants):
+    # the module is linked twice. The first link (the probe) keeps the relocations in the ELF (-Wl,-q), reldyn.cmake makes the
+    # table of the words with addresses from it, and the module is linked with the table in the section .got, which the loader
+    # reads on such an architecture (DMOD_USE_RELDYN) as the offsets of the words to relocate. The table is behind the code
+    # and the data, so it moves nothing of them: the offsets are the same in both links.
+    if(DMOD_USE_RELDYN)
+        if(NOT DMOD_READELF)
+            string(REGEX REPLACE "objcopy$" "readelf" DMOD_READELF_GUESS "${CMAKE_OBJCOPY}")
+            find_program(DMOD_READELF NAMES readelf HINTS ${DMOD_READELF_GUESS})
+            if(NOT DMOD_READELF AND EXISTS "${DMOD_READELF_GUESS}")
+                set(DMOD_READELF "${DMOD_READELF_GUESS}")
+            endif()
+        endif()
+        if(NOT DMOD_READELF)
+            message(FATAL_ERROR "DMOD_USE_RELDYN: readelf of the toolchain not found (set DMOD_READELF)")
+        endif()
+
+        set(DMOD_RELDYN_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/${moduleName}_reldyn.c")
+
+        target_link_options(${moduleName} PRIVATE -Wl,-q -Wl,--undefined=dmod_reldyn)
+
+        # the probe: the same sources and options (read when the project is generated, so also what is added to the module
+        # later), no table
+        add_executable(${moduleName}_reldyn_probe EXCLUDE_FROM_ALL
+            ${SOURCES}
+            ${CMAKE_CURRENT_BINARY_DIR}/${DMOD_MODULE_NAME_SNAKE_CASE}_header.c
+            ${DMOD_SCRIPTS_DIR}/reldyn_empty.c
+            )
+        foreach(PROPERTY COMPILE_DEFINITIONS COMPILE_OPTIONS INCLUDE_DIRECTORIES LINK_OPTIONS LINK_LIBRARIES)
+            set_property(TARGET ${moduleName}_reldyn_probe APPEND PROPERTY ${PROPERTY} "$<TARGET_PROPERTY:${moduleName},${PROPERTY}>")
+        endforeach()
+
+        add_custom_command(
+            OUTPUT ${DMOD_RELDYN_SOURCE}
+            COMMAND ${CMAKE_COMMAND}
+                -DELF=$<TARGET_FILE:${moduleName}_reldyn_probe>
+                -DREADELF=${DMOD_READELF}
+                -DOUT=${DMOD_RELDYN_SOURCE}
+                -P ${DMOD_SCRIPTS_DIR}/reldyn.cmake
+            DEPENDS ${moduleName}_reldyn_probe ${DMOD_SCRIPTS_DIR}/reldyn.cmake
+            COMMENT "Making the table of the relocations of ${moduleName}"
+            VERBATIM
+        )
+        target_sources(${moduleName} PRIVATE ${DMOD_RELDYN_SOURCE})
+    endif()
     
     set(ELF_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${moduleName}")
     set(DMF_OUTPUT "${DMOD_DMF_DIR}/${moduleName}.dmf")

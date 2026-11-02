@@ -38,8 +38,13 @@ static void Dmod_ApplyEnvLogLevel( Dmod_Context_t* Context );
  * This is the address that should be used with gdb's add-symbol-file command
  * to debug the module.
  */
+#ifdef DMOD_USE_RELDYN
+#define DMOD_GET_TEXT_SECTION_ADDR(ctx) \
+    ((void*)((uint8_t*)Dmod_Hlp_CodeAddress((ctx)->Data) + (ctx)->Footer->Text.SectionStart))
+#else
 #define DMOD_GET_TEXT_SECTION_ADDR(ctx) \
     ((void*)((uint8_t*)(ctx)->Data + (ctx)->Footer->Text.SectionStart))
+#endif
 
 //==============================================================================
 //                              FUNCTION IMPLEMENTATIONS
