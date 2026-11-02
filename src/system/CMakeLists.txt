@@ -45,7 +45,16 @@ if(DMOD_IMPLEMENT_SCANF)
     list(APPEND SYSTEM_SOURCES if/dmod_scf.c)
 endif()
 
+# The external RAM of the ESP32-S3 is behind the cache of the CPU: what the loader writes there has to be written back and the
+# instruction cache has to forget it before it is executed (Dmod_SyncCode)
+if(DMOD_ARCH STREQUAL "xtensa-esp32s3")
+    list(APPEND SYSTEM_SOURCES private/dmod_cache_esp32s3.c)
+endif()
+
 add_library(${MODULE_NAME} STATIC ${SYSTEM_SOURCES})
+if(DMOD_ARCH STREQUAL "xtensa-esp32s3")
+    target_compile_definitions(${MODULE_NAME} PRIVATE DMOD_CACHE_ESP32S3)
+endif()
 
 # Add DMOD_EXTERNAL_REGISTRATION definition when enabled
 if(DMOD_EXTERNAL_REGISTRATION)

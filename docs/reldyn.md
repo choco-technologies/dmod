@@ -43,7 +43,10 @@ bus:
 - the loader uses it for the entry points of the header (`Preinit`, `Init`, `Main`, `Deinit`, `Signal`), the functions of
   `.inputs` and the words of the table that point into `.text`; the data stays at the data bus;
 - the default `Dmod_SyncCode()` on the Xtensa makes the stores done and drops what the processor has fetched (`memw`, `isync`);
-  the internal RAM has no cache. A memory with a cache in front of it (the external RAM) needs its own `Dmod_SyncCode()`.
+  the internal RAM has no cache. The external RAM of the ESP32-S3 is behind the cache: `Dmod_Cache_Esp32s3_Sync()`
+  (`src/system/private/dmod_cache_esp32s3.c`, built for `xtensa-esp32s3`) writes the data cache back and drops the lines of the
+  instruction cache of the range, and the window of the cache (0x3C000000..0x3E000000) is an alias in `DMOD_CODE_ALIAS`, the code
+  is executed 0x6000000 higher.
 
 ## Other architectures
 

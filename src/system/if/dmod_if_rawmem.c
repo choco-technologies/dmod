@@ -188,8 +188,14 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, void, _SyncCode, ( const void* Addres
     (void)Size;
 #if defined(__XTENSA__)
     /* The stores are done (memw) and what the processor has fetched already is dropped (isync). The internal RAM, which the
-       modules are loaded into, has no cache; a platform with a cache in front of the memory replaces this function. */
-    __asm__ __volatile__("memw\n\tisync" ::: "memory");
+       modules are loaded into, has no cache; a memory with a cache in front of it needs its own maintenance (the external RAM
+       of the ESP32-S3: dmod_cache_esp32s3.c), a platform with another one replaces this function. */
+    __asm__ __volatile__("memw" ::: "memory");
+#ifdef DMOD_CACHE_ESP32S3
+    extern void Dmod_Cache_Esp32s3_Sync( const void* Address, size_t Size );
+    Dmod_Cache_Esp32s3_Sync( Address, Size );
+#endif
+    __asm__ __volatile__("isync" ::: "memory");
 #else
     /* No caches to keep coherent - see dmod_sal.h */
 #endif
