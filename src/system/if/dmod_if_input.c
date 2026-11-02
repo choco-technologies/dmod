@@ -125,8 +125,24 @@ DMOD_INPUT_WEAK_API_DECLARATION(Dmod, 1.0, char*, _Gets, ( char* Buffer, int Siz
     {
         #if DMOD_USE_STDIO
         Result = fgets( Buffer, Size, resolvedFile );
-        #else 
-        Result = Dmod_FileRead(Buffer, 1, Size, resolvedFile);
+        #else
+        // Without stdio there is no fgets: read byte by byte up to the end of the line, like the raw kernel I/O branch above
+        // (Dmod_FileRead returns the number of the items read, not a pointer)
+        int Count = 0;
+        char Byte;
+        while( Count < (Size - 1) && Dmod_FileRead( &Byte, 1, 1, resolvedFile ) == 1 )
+        {
+            Buffer[Count++] = Byte;
+            if( Byte == '\n' )
+            {
+                break;
+            }
+        }
+        if( Count > 0 )
+        {
+            Buffer[Count] = '\0';
+            Result = Buffer;
+        }
         #endif
     }
     Dmod_UnlockStdio( DMOD_STDIN );
