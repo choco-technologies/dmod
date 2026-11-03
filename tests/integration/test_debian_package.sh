@@ -30,6 +30,10 @@ for tool in "${tools[@]}"; do
     [[ -x "$root/usr/bin/$tool" ]]
     "$root/usr/bin/$tool" --help > "$root/$tool.help" 2>&1
     grep -q 'Usage:' "$root/$tool.help"
+    if [[ -n ${DMOD_EXPECTED_VERSION:-} ]]; then
+        "$root/usr/bin/$tool" --version > "$root/$tool.version" 2>&1
+        awk -v expected="$DMOD_EXPECTED_VERSION" '$NF == expected { found=1 } END { exit !found }' "$root/$tool.version"
+    fi
 done
 
 if [[ $# == 2 ]]; then

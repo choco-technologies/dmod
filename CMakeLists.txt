@@ -33,7 +33,7 @@ endif()
 # ===========================================================================
 # Set some basic project attributes
 project (dmod
-	VERSION ${dmod_VERSION_MAJOR}.${dmod_VERSION_MINOR}
+	VERSION ${DMOD_VERSION_NUMERIC}
 	DESCRIPTION "Library for managing of dynamic modules")
 
 option(DMOD_BUILD_DEB "Enable Debian packaging of the host tools and loader" OFF)

@@ -8,9 +8,13 @@ set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
 set(CPACK_PACKAGE_NAME "dmod")
 set(CPACK_PACKAGE_VENDOR "Choco Technologies")
 set(CPACK_PACKAGE_CONTACT "Patryk Kubiak <patryk.kubiak90@gmail.com>")
-# Release tags version the distributable tools/SDK independently of the API.
-set(DMOD_DEB_VERSION "${PROJECT_VERSION}" CACHE STRING "Debian package version")
-set(CPACK_PACKAGE_VERSION "${DMOD_DEB_VERSION}")
+set(DMOD_DEB_VERSION "" CACHE STRING "Debian package version override (empty uses DMOD_RELEASE_VERSION)")
+if(DMOD_DEB_VERSION STREQUAL "")
+    # Debian uses '~' so a prerelease sorts before the stable release.
+    string(REGEX REPLACE "^([^-]*)-" "\\1~" CPACK_PACKAGE_VERSION "${DMOD_RELEASE_VERSION}")
+else()
+    set(CPACK_PACKAGE_VERSION "${DMOD_DEB_VERSION}")
+endif()
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Dynamic Modules (DMOD)")
 set(CPACK_PACKAGE_DESCRIPTION
     "Tools for creating, compressing, locating and installing DMOD modules, and the dmod_loader host runtime.")

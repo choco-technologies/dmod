@@ -1148,13 +1148,12 @@ static bool IsPathSafe(const char* path) {
 }
 
 /**
- * @brief Convert DMOD_VERSION hex to semantic version
+ * @brief Get the numeric components of the configured DMOD release
  */
 static void GetCurrentDmodVersion(Dmod_SemanticVersion_t* version) {
-    // DMOD_VERSION format: 0xMMmmpppp (Major, minor, patch)
     version->major = dmod_VERSION_MAJOR;
     version->minor = dmod_VERSION_MINOR;
-    version->patch = 0; // Patch not defined in dmod_VERSION
+    version->patch = dmod_VERSION_PATCH;
 }
 
 /**
