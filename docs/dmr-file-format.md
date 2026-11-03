@@ -54,6 +54,41 @@ inc=./include => ${destination}/${module}/include [origin=${repo_dir}/include] [
 - **destination_path**: Target installation path (can include variable substitutions)
 - **[origin=path]** *(optional, repeatable)*: Origin path of the file or directory when building the release package (can include variable substitutions)
 
+### Screen variants of runtime views
+
+One module package may contain self-contained view bundles for several screens:
+
+```dmr
+views=./views/480x272 => ${views_dir} [screen=480x272] [default=true] [origin=${views_dir}/480x272]
+views=./views/320x240 => ${views_dir} [screen=320x240] [origin=${views_dir}/320x240]
+```
+
+Each bundle contains the `.dmv` files and their fonts/images. `mkdmrpkg` retains
+both entries and packages all their origins. `dmf-get` selects one bundle and
+copies its contents directly into the same module views directory, so an
+application keeps opening `views/<module>/main.dmv` for either screen.
+
+- `[screen=ID]` is valid only on `views`. The ID is an opaque, case-sensitive
+  label such as `480x272`, `epaper` or `epaper-mono`. It is compared literally;
+  no dimensions or display capabilities are inferred. IDs contain 1..127 ASCII
+  letters/digits, `_`, `.` or `-`, starting with a letter/digit or `_`.
+- `[default=true]` designates the default variant when no screen is requested.
+  A sole variant is selected automatically. Multiple variants without a default
+  require an explicit selector.
+- Duplicate IDs, several defaults or `[default]` without `[screen]`
+  are package errors. Attribute order does not matter.
+- An explicit request requires an exact match. Missing variants report the
+  available screens and fail before installed binaries/views are overwritten.
+- Legacy unqualified `views` resources retain their existing behavior, including
+  when a screen is requested. Non-view resources are not filtered.
+
+Changing a variant replaces the module's managed views directory, including
+its fonts/images. A failed staged copy leaves the previous views intact. The
+installer rejects two different variants targeting the same destination in one
+run. All variants travel in the ZIP; only the selected one is installed, also
+with `--mini`. Packages using these attributes require a screen-aware version
+of `dmf-get`; older tools ignore unknown attributes and must be upgraded first.
+
 ### Environment Variable Substitution
 
 The DMR parser supports variable substitution using `${VAR_NAME}` syntax:
