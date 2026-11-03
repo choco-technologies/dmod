@@ -84,7 +84,7 @@ set(DMOD_USE_RELDYN ON CACHE BOOL "Relocate the modules by the table of the word
 # (0x3FC88000..0x3FCF0000 <-> 0x40378000..0x403E0000). The loader writes a module through the data bus and runs it through the
 # instruction bus (Dmod_Hlp_CodeAddress, docs/reldyn.md). The ranges of the data bus and the distance, "low:high:offset", separated by ';'.
 # The window of the data bus of the cache (0x3C000000..0x3E000000: the flash and the external RAM, 32 MB) is seen by the instruction
-# bus 0x6000000 higher: a module in the external RAM is executed there (Dmod_SyncCode has to get it through the cache first).
+# bus 0x6000000 higher: a module in the external RAM is executed there (the platform's Dmod_SyncCode has to get it through the cache first).
 set(DMOD_CODE_ALIAS "0x3FC88000:0x3FCF0000:0x6F0000;0x3C000000:0x3E000000:0x6000000" CACHE STRING "Ranges of the memory that is executed at another address than it is written at: low:high:offset;...")
 
 set(COMMON_DEFINE_FLAGS "-DDMOD_ARCH=\\\"${DMOD_ARCH}\\\" -DDMOD_CPU=\\\"${DMOD_CPU}\\\" -DDMOD_USE_RELDYN=1")
