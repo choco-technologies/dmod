@@ -20,15 +20,30 @@ cmake ..
 cmake --build .
 ```
 
-Pass `-DDMOD_DIR=/path/to/local/dmod` to build against a local dmod checkout
-instead of fetching `develop` from GitHub. The checkout needs its submodules (dmod keeps its compression
-library in one): `git clone --recursive`, or `git submodule update --init --recursive` in an existing one.
+CMake automatically uses an installed `dmod-dev` SDK. Without an SDK it fetches
+dmod's `develop` branch from GitHub. With the SDK installed, a self-contained
+module builds without a DMOD checkout or network access.
+
+Pass `-DDMOD_DIR=/path/to/local/dmod` to select a local checkout, even when the
+SDK is installed. The checkout needs its submodules: use `git clone --recursive`
+or run `git submodule update --init --recursive` in an existing checkout.
+To force the GitHub source build while an SDK is installed, pass
+`-DDMOD_USE_INSTALLED_SDK=OFF`. Use separate build directories when switching
+between source and installed SDK builds.
+
+For an SDK in a custom prefix, pass `-DCMAKE_PREFIX_PATH=/path/to/prefix`.
+Existing `DMOD_TOOLS_NAME` profiles also work with the SDK, for example
+`-DDMOD_TOOLS_NAME=arch/armv7/cortex-m7` with the corresponding compiler
+installed.
 
 ### Using Make
 
 ```bash
 make DMOD_MODE=DMOD_MODULE DMOD_DIR=/path/to/dmod
 ```
+
+The legacy Make integration uses a source checkout. For a `dmod-dev` installation,
+use the CMake commands above.
 
 ## Testing
 

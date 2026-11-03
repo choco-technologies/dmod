@@ -52,6 +52,25 @@ sources, options, API declarations and calls to the module-building functions.
 The installed SDK supports MODULE mode; building the SYSTEM runtime/firmware
 or using the legacy Make integration still requires the source checkout.
 
+## Generated modules
+
+Projects generated with `scripts/new-module.sh` automatically use `dmod-dev`
+when it is installed. The same templates still support GitHub FetchContent and
+local source checkouts:
+
+```sh
+./scripts/new-module.sh --name my_module --type library --path ./my_module
+cmake -S my_module -B my_module/build
+cmake --build my_module/build --parallel
+```
+
+An explicit `--dmod-dir` generator argument or `-DDMOD_DIR=/path/to/dmod` at
+configure time selects that checkout even when the SDK is installed. To fetch
+`develop` instead of using an installed SDK, configure with
+`-DDMOD_USE_INSTALLED_SDK=OFF`. Use a fresh build directory when switching
+framework sources. Native SDK builds of self-contained generated modules need
+no checkout or network; the generated legacy Makefile still needs a checkout.
+
 ## Cross compilation and custom prefixes
 
 All existing `DMOD_TOOLS_NAME` profiles are installed with the SDK. They load

@@ -20,8 +20,8 @@
 #   --license LICENSE License name (default: "MIT")
 #   --dmod-dir DIR    Path to a local dmod checkout. When set, the generated
 #                      CMakeLists.txt is pinned to it (via
-#                      FETCHCONTENT_SOURCE_DIR_DMOD) instead of fetching dmod
-#                      from GitHub. Also used to fetch Claude Code skills.
+#                      FETCHCONTENT_SOURCE_DIR_DMOD) instead of using dmod-dev
+#                      or fetching from GitHub. Also used for Claude Code skills.
 #   --github          Generate GitHub Actions workflow
 #   --bitbucket       Generate Bitbucket pipeline
 #   --dif             Add DIF interface support (library modules only)
@@ -105,8 +105,8 @@ Optional parameters:
   --author AUTHOR   Author name (default: "John Doe")
   --license LICENSE License name (default: "MIT")
   --dmod-dir DIR    Path to a local dmod checkout. When set, the generated
-                     CMakeLists.txt is pinned to it instead of fetching dmod
-                     from GitHub. Also used to fetch Claude Code skills.
+                     CMakeLists.txt is pinned to it instead of using dmod-dev
+                     or fetching from GitHub. Also used for Claude Code skills.
   --github          Generate GitHub Actions workflow
   --bitbucket       Generate Bitbucket pipeline
   --dif             Add DIF interface support (library modules only)
@@ -699,5 +699,6 @@ echo "  1. Navigate to the module directory: cd ${MODULE_PATH}"
 echo "  2. Implement your module logic in src/${MODULE_NAME}.c"
 echo "  3. Build the module:"
 echo "     - With CMake: mkdir build && cd build && cmake .. && cmake --build ."
-echo "     - With Make:  make DMOD_MODE=DMOD_MODULE"
+echo "       CMake uses dmod-dev when installed, otherwise the configured source checkout or GitHub."
+echo "     - With Make:  make DMOD_MODE=DMOD_MODULE DMOD_DIR=/path/to/dmod"
 echo ""

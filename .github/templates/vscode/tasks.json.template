@@ -47,8 +47,8 @@
     "inputs": [
         {
             "id": "dmodDir",
-            "description": "Path to a local dmod checkout (leave blank to fetch dmod's develop branch from GitHub instead)",
-            "default": "${workspaceFolder}/../dmod",
+            "description": "Optional local dmod checkout (leave blank to use dmod-dev, or fetch develop if no SDK is installed)",
+            "default": "",
             "type": "promptString"
         }
     ]
