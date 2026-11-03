@@ -1,8 +1,13 @@
 cmake_minimum_required(VERSION 3.18)
-find_package(dmod 1.0 CONFIG REQUIRED)
+set(sdk_version_args 1.0)
+if(DEFINED DMOD_EXPECTED_VERSION)
+    string(REGEX REPLACE "-.*$" "" expected_numeric "${DMOD_EXPECTED_VERSION}")
+    set(sdk_version_args ${expected_numeric} EXACT)
+endif()
+find_package(dmod ${sdk_version_args} CONFIG REQUIRED)
 project(sdk_consumer LANGUAGES C CXX)
 # Finding the same package twice must not create duplicate runtime targets.
-find_package(dmod 1.0 CONFIG REQUIRED)
+find_package(dmod ${sdk_version_args} CONFIG REQUIRED)
 
 set(DMOD_DMR_PATH "${CMAKE_CURRENT_SOURCE_DIR}/sdk_math.dmr")
 dmod_add_library(sdk_math "0.1" library.c)
@@ -18,8 +23,6 @@ add_library(ordinary STATIC ordinary.c)
 # A released SDK must preserve the tag's version in package discovery and the
 # generated consumer header, including a patch component and prerelease suffix.
 if(DEFINED DMOD_EXPECTED_VERSION)
-    string(REGEX REPLACE "-.*$" "" expected_numeric "${DMOD_EXPECTED_VERSION}")
-    find_package(dmod ${expected_numeric} EXACT CONFIG REQUIRED)
     if(NOT DMOD_RELEASE_VERSION STREQUAL DMOD_EXPECTED_VERSION)
         message(FATAL_ERROR "Installed SDK release version does not match ${DMOD_EXPECTED_VERSION}")
     endif()
