@@ -692,3 +692,49 @@ TEST_F(DmodDependenciesTest, ParseModuleWithEmptyConfigPathAfterTagFails) {
 
     Dmod_Dependencies_Free(ctx);
 }
+
+TEST_F(DmodDependenciesTest, ScreenIsSeparateFromVersionAndConfiguration) {
+    auto* ctx = Dmod_Dependencies_Init("manifest.dmm", MockDownloadFunc, nullptr);
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx,
+        "app@>=1.2 @screen 320x240 service=app.ini renamed.ini\n"
+        "other\tdriver=board.ini\t@screen\t480x272\n"));
+    Dmod_DependencyEntry_t e;
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &e));
+    EXPECT_STREQ(e.name, "app");
+    EXPECT_STREQ(e.version, ">=1.2");
+    EXPECT_STREQ(e.screen, "320x240");
+    EXPECT_STREQ(e.tag, "service");
+    EXPECT_STREQ(e.config, "app.ini");
+    EXPECT_STREQ(e.config_dest, "renamed.ini");
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 1, &e));
+    EXPECT_STREQ(e.name, "other");
+    EXPECT_STREQ(e.screen, "480x272");
+    EXPECT_STREQ(e.config, "board.ini");
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, RejectsInvalidMissingAndDuplicateScreenOptions) {
+    const char* lines[] = {"app @screen", "app @screen 0x240", "app @screen 320X240",
+        "app @screen 0320x240", "app @screen 65536x240", "app @screen 1x9999999999999999",
+        "app @screen 320x240 @screen 480x272", "app @unknown 320x240"};
+    for (auto line : lines) {
+        auto* ctx = Dmod_Dependencies_Init("manifest.dmm", MockDownloadFunc, nullptr);
+        EXPECT_FALSE(Dmod_Dependencies_Parse(ctx, line)) << line;
+        EXPECT_NE(Dmod_Dependencies_GetError(ctx), nullptr);
+        Dmod_Dependencies_Free(ctx);
+    }
+}
+
+TEST_F(DmodDependenciesTest, ScreenCombinesWithInlineManifestAndDoesNotLeakToNextEntry) {
+    auto* ctx = Dmod_Dependencies_Init("default.dmm", MockDownloadFunc, nullptr);
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx,
+        "app @screen 320x240 $from custom.dmm\nnext\n"));
+    Dmod_DependencyEntry_t e;
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &e));
+    EXPECT_STREQ(e.screen, "320x240");
+    EXPECT_STREQ(e.manifest, "custom.dmm");
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 1, &e));
+    EXPECT_STREQ(e.screen, "");
+    EXPECT_STREQ(e.manifest, "default.dmm");
+    Dmod_Dependencies_Free(ctx);
+}

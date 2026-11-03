@@ -62,6 +62,7 @@ typedef struct {
     char config[DMOD_DEPENDENCIES_MAX_CONFIG_LEN];  /**< Configuration file path (empty if not specified) */
     char config_dest[DMOD_DEPENDENCIES_MAX_CONFIG_LEN]; /**< Custom destination filename for config (empty if not specified) */
     char tag[DMOD_DEPENDENCIES_MAX_TAG_LEN];        /**< Configuration tag, set via "<tag>=" prefix on the config path (empty if not specified) */
+    char screen[12];                                /**< Optional @screen WIDTHxHEIGHT resource selector */
     Dmod_VersionConstraint_t constraint;             /**< Parsed version constraint */
     bool has_constraint;                             /**< Whether constraint is parsed and valid */
 } Dmod_DependencyEntry_t;

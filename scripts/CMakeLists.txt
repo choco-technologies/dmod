@@ -225,6 +225,8 @@ endfunction()
 #                 (CSS letter-spacing; default 0)
 #
 # Related variables:
+#   DMOD_ASSETS_SCREENS     optional list, e.g. "480x272;320x240"; sources and
+#                          outputs are grouped in one subdirectory per screen
 #   DMOD_VIEWS_DIR          output directory of the converted assets
 #   DMOD_VIEWS_TOOLS_NAME   tools name used to download the tools (host
 #                           tools, default: arch/x86_64)
@@ -410,7 +412,46 @@ function(_dmod_asset_outputs kind source prefix)
     set(${prefix}_NAMES ${SECTIONS} PARENT_SCOPE)
 endfunction()
 
+# Each screen is built into a separate asset directory, within one module package.
+# Source layout: <DMOD_ASSETS_PATHS>/<screen>/*.dmvs, images and fonts.
 function(dmod_setup_assets moduleName)
+    if(NOT DMOD_ASSETS_SCREENS)
+        _dmod_setup_assets(${moduleName})
+        set(DMOD_VIEWS_ENABLED "${DMOD_VIEWS_ENABLED}" PARENT_SCOPE)
+        set(DMOD_VIEWS_DIR "${DMOD_VIEWS_DIR}" PARENT_SCOPE)
+        return()
+    endif()
+    set(ASSET_ROOTS "${DMOD_ASSETS_PATHS}")
+    if(NOT DMOD_VIEWS_DIR)
+        set(DMOD_VIEWS_DIR "${CMAKE_BINARY_DIR}/views")
+    endif()
+    set(VIEW_ROOT "${DMOD_VIEWS_DIR}")
+    set(VIEWS_ENABLED FALSE)
+    foreach(SCREEN IN LISTS DMOD_ASSETS_SCREENS)
+        if(NOT SCREEN MATCHES "^[1-9][0-9]*x[1-9][0-9]*$")
+            message(FATAL_ERROR "Invalid DMOD_ASSETS_SCREENS entry: ${SCREEN}")
+        endif()
+        string(REPLACE "x" ";" DIMENSIONS "${SCREEN}")
+        foreach(DIMENSION IN LISTS DIMENSIONS)
+            if(DIMENSION GREATER 65535)
+                message(FATAL_ERROR "Screen dimensions must fit 1..65535: ${SCREEN}")
+            endif()
+        endforeach()
+        set(DMOD_ASSETS_PATHS "")
+        foreach(ROOT IN LISTS ASSET_ROOTS)
+            list(APPEND DMOD_ASSETS_PATHS "${ROOT}/${SCREEN}")
+        endforeach()
+        set(DMOD_VIEWS_DIR "${VIEW_ROOT}/${SCREEN}")
+        _dmod_setup_assets(${moduleName})
+        if(DMOD_VIEWS_ENABLED)
+            set(VIEWS_ENABLED TRUE)
+        endif()
+    endforeach()
+    set(DMOD_VIEWS_ENABLED "${VIEWS_ENABLED}" PARENT_SCOPE)
+    set(DMOD_VIEWS_DIR "${VIEW_ROOT}" PARENT_SCOPE)
+endfunction()
+
+function(_dmod_setup_assets moduleName)
     set(DMOD_VIEWS_ENABLED FALSE PARENT_SCOPE)
     if((NOT DEFINED DMOD_ASSETS_PATHS OR "${DMOD_ASSETS_PATHS}" STREQUAL "") AND
        DEFINED DMOD_FIXTURES_PATHS AND NOT "${DMOD_FIXTURES_PATHS}" STREQUAL "")
@@ -439,11 +480,14 @@ function(dmod_setup_assets moduleName)
         set(DMOD_FONT_EXTENSIONS ttf otf ttc)
     endif()
 
-    # The assets are converted once per project - later modules only depend on the target
-    get_property(VIEWS_TARGET_READY GLOBAL PROPERTY DMOD_ASSETS_TARGET_READY)
-    if(VIEWS_TARGET_READY)
+    # Reuse conversions per output directory, including screen variants.
+    string(MD5 ASSETS_KEY "${DMOD_VIEWS_DIR}")
+    set(ASSETS_TARGET "dmod_assets_${ASSETS_KEY}")
+    if(TARGET ${ASSETS_TARGET})
         set(DMOD_VIEWS_ENABLED TRUE PARENT_SCOPE)
-        add_dependencies(${moduleName} dmod_assets)
+        add_dependencies(${moduleName} ${ASSETS_TARGET})
+        get_property(ASSET_OUTPUTS TARGET ${ASSETS_TARGET} PROPERTY DMOD_ASSET_OUTPUTS)
+        set_property(TARGET ${moduleName} APPEND PROPERTY LINK_DEPENDS ${ASSET_OUTPUTS})
         return()
     endif()
 
@@ -609,9 +653,15 @@ function(dmod_setup_assets moduleName)
         return()
     endif()
 
-    add_custom_target(dmod_assets ALL DEPENDS ${OUTPUTS})
-    set_property(GLOBAL PROPERTY DMOD_ASSETS_TARGET_READY TRUE)
-    add_dependencies(${moduleName} dmod_assets)
+    add_custom_target(${ASSETS_TARGET} ALL DEPENDS ${OUTPUTS})
+    set_property(TARGET ${ASSETS_TARGET} PROPERTY DMOD_ASSET_OUTPUTS "${OUTPUTS}")
+    if(NOT TARGET dmod_assets)
+        add_custom_target(dmod_assets ALL)
+    endif()
+    add_dependencies(dmod_assets ${ASSETS_TARGET})
+    add_dependencies(${moduleName} ${ASSETS_TARGET})
+    # Packaging runs in POST_BUILD: assets must trigger re-linking too.
+    set_property(TARGET ${moduleName} APPEND PROPERTY LINK_DEPENDS ${OUTPUTS})
     message(STATUS "Assets: converting ${VIEW_SOURCES} ${IMAGE_SOURCES} ${FONT_SOURCES} to ${DMOD_VIEWS_DIR}")
     set(DMOD_VIEWS_ENABLED TRUE PARENT_SCOPE)
 endfunction()
@@ -954,6 +1004,7 @@ function(dmod_create_module moduleName version moduleType)
             HINTS ${DMOD_TOOLS_BIN_DIR}
         )
 
+        set_property(TARGET ${moduleName} APPEND PROPERTY LINK_DEPENDS "${DMOD_DMR_ABS_PATH}")
         dmod_setup_assets(${moduleName})
         set(MKDMRPKG_VIEWS_ARGS "")
         if(DMOD_VIEWS_ENABLED)
@@ -972,6 +1023,7 @@ function(dmod_create_module moduleName version moduleType)
             # Run mkdmrpkg to populate the package directory, then create zip archive
             add_custom_command(
                 TARGET ${moduleName} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E rm -rf "${DMOD_PKG_OUT_DIR}"
                 COMMAND ${MKDMRPKG} "${DMOD_DMR_ABS_PATH}"
                     -m "${moduleName}"
                     -r "${CMAKE_SOURCE_DIR}"

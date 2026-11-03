@@ -520,3 +520,27 @@ cmake --build build/
   - [DMD File Format](dmd-file-format.md) - Dependencies specification
   - [DMM File Format](dmm-file-format.md) - Module manifest format
 - Integration Tests: `/tests/integration/test_dmf_get.sh`
+
+## Selecting a screen variant
+
+```bash
+dmf-get install carhmi_view --screen 320x240
+DMOD_SCREEN=480x272 dmf-get -d board.dmd
+```
+
+`--screen WIDTHxHEIGHT` overrides `DMOD_SCREEN`; an entry's `@screen` in `.dmd`
+overrides both. The selected screen follows recursive dependencies; an entry
+can override the inherited selection. Screen dimensions are canonical positive
+integers 1..65535, separated by lowercase `x`.
+
+The package's `.dmr` declares available view bundles with `[screen=...]` and
+an optional `[default=true]`. An explicit screen must match exactly. Without a
+request, the default or sole variant is selected; ambiguous packages fail.
+Code-only modules and legacy unqualified views retain their existing behavior.
+
+One package and module binary serve every resolution. Only the chosen view
+bundle is installed under the module's normal views directory. Reinstalling
+another resolution replaces managed view assets, removing stale fonts/images.
+Validation happens before installed files change, and conflicting selections
+for one destination fail. The ZIP still contains and downloads all variants.
+The feature also works with `--mini`, `--package-dir` and `--views-dir`.

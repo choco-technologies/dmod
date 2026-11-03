@@ -5,6 +5,7 @@
 
 #include "dmod_resource.h"
 #include "dmod.h"
+#include "../dmod_screen.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -215,6 +216,9 @@ static bool ParseLine(Dmod_ResourceContext_t* ctx, const char* line) {
     // Create entry
     Dmod_ResourceEntry_t* entry = &ctx->entries[ctx->entry_count];
     
+    memset(entry, 0, sizeof(*entry));
+    entry->selected = true;
+
     // Copy key
     strncpy(entry->key, key, sizeof(entry->key) - 1);
     entry->key[sizeof(entry->key) - 1] = '\0';
@@ -236,66 +240,61 @@ static bool ParseLine(Dmod_ResourceContext_t* ctx, const char* line) {
     // Check if this is a dmf or dmfc resource
     entry->is_dmf_dmfc = (strcmp(key, "dmf") == 0 || strcmp(key, "dmfc") == 0);
     
-    // Parse [origin=...] directives
-    entry->origin_count = 0;
+    // Resource attributes are independent of their order.
     if (origins_start) {
         char* p = origins_start;
-        while (*p && entry->origin_count < DMOD_RESOURCE_MAX_ORIGINS) {
-            // Skip whitespace
+        bool seen_default = false;
+        while (*p) {
             while (isspace((unsigned char)*p)) p++;
-            if (*p != '[') break;
-            p++; // skip '['
-            
-            // Check for "origin="
-            if (strncmp(p, "origin=", 7) != 0) {
-                // Unknown directive, skip to closing ']'
-                char* close = strchr(p, ']');
-                if (!close) break;
-                p = close + 1;
-                continue;
-            }
-            p += 7; // skip "origin="
-            
-            // Find closing ']'
-            char* close = strchr(p, ']');
+            if (!*p) break;
+            char* close = (*p == '[') ? strchr(p + 1, ']') : NULL;
             if (!close) {
-                Dmod_SnPrintf(ctx->error, sizeof(ctx->error),
-                             "Invalid [origin] directive: missing ']'");
+                Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Invalid resource attribute: missing ']'");
                 return false;
             }
-            
-            // Extract origin path
-            size_t origin_len = (size_t)(close - p);
-            char origin_raw[DMOD_RESOURCE_MAX_PATH_LEN];
-            if (origin_len >= sizeof(origin_raw)) {
-                Dmod_SnPrintf(ctx->error, sizeof(ctx->error),
-                             "Origin path too long");
-                return false;
+            *close = '\0';
+            char* attribute = Trim(p + 1);
+            if (strncmp(attribute, "origin=", 7) == 0) {
+                char* origin = Trim(attribute + 7);
+                if (!*origin || entry->origin_count >= DMOD_RESOURCE_MAX_ORIGINS ||
+                    !SubstituteVariables(ctx, origin, entry->origins[entry->origin_count], DMOD_RESOURCE_MAX_PATH_LEN)) {
+                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Invalid, too long or too many [origin] paths");
+                    return false;
+                }
+                entry->origin_count++;
+            } else if (strncmp(attribute, "screen=", 7) == 0) {
+                const char* screen = attribute + 7;
+                if (strcmp(key, "views") != 0 || entry->screen[0] || !Dmod_Screen_IsValid(screen)) {
+                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Invalid or duplicate [screen]: views require WIDTHxHEIGHT");
+                    return false;
+                }
+                strcpy(entry->screen, screen);
+            } else if (strncmp(attribute, "default=", 8) == 0) {
+                const char* value = attribute + 8;
+                if (strcmp(key, "views") != 0 || seen_default ||
+                    (strcmp(value, "true") != 0 && strcmp(value, "false") != 0)) {
+                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Invalid [default]: expected true or false on views");
+                    return false;
+                }
+                seen_default = true;
+                entry->is_default = strcmp(value, "true") == 0;
             }
-            strncpy(origin_raw, p, origin_len);
-            origin_raw[origin_len] = '\0';
-            
-            char* trimmed_origin = Trim(origin_raw);
-            if (strlen(trimmed_origin) == 0) {
-                Dmod_SnPrintf(ctx->error, sizeof(ctx->error),
-                             "Empty [origin] path");
-                return false;
-            }
-            
-            // Substitute variables in origin path
-            if (!SubstituteVariables(ctx, trimmed_origin,
-                                     entry->origins[entry->origin_count],
-                                     sizeof(entry->origins[entry->origin_count]))) {
-                Dmod_SnPrintf(ctx->error, sizeof(ctx->error),
-                             "Origin path too long after variable substitution");
-                return false;
-            }
-            
-            entry->origin_count++;
             p = close + 1;
         }
+        if (seen_default && !entry->screen[0]) {
+            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "[default] requires [screen]");
+            return false;
+        }
     }
-    
+    for (size_t i = 0; i < ctx->entry_count; i++) {
+        const Dmod_ResourceEntry_t* other = &ctx->entries[i];
+        if (entry->screen[0] && other->screen[0] &&
+            (strcmp(entry->screen, other->screen) == 0 || (entry->is_default && other->is_default))) {
+            Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Duplicate screen or multiple default view variants");
+            return false;
+        }
+    }
+
     ctx->entry_count++;
     return true;
 }
@@ -481,4 +480,38 @@ const char* Dmod_Resource_GetError(Dmod_ResourceContext_t* ctx) {
         return NULL;
     }
     return ctx->error;
+}
+
+bool Dmod_Resource_SelectViews(Dmod_ResourceContext_t* ctx, const char* screen)
+{
+    if (!ctx) return false;
+    ctx->error[0] = '\0';
+    if (screen && *screen && !Dmod_Screen_IsValid(screen)) {
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Invalid screen: %s", screen);
+        return false;
+    }
+    size_t count = 0, sole = 0, chosen = MAX_ENTRIES;
+    char available[180] = {0};
+    for (size_t i = 0; i < ctx->entry_count; i++) {
+        Dmod_ResourceEntry_t* e = &ctx->entries[i];
+        e->selected = true;
+        if (!e->screen[0]) continue;
+        count++;
+        sole = i;
+        size_t used = strlen(available);
+        Dmod_SnPrintf(available + used, sizeof(available) - used, "%s%s", used ? ", " : "", e->screen);
+        if ((screen && *screen) ? strcmp(screen, e->screen) == 0 : e->is_default)
+            chosen = i;
+    }
+    if (count == 0) return true; /* Legacy views or a code-only module. */
+    if ((!screen || !*screen) && count == 1) chosen = sole;
+    if (chosen == MAX_ENTRIES) {
+        Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "No matching/default view for screen '%s'; available: %s",
+                     screen && *screen ? screen : "unspecified", available);
+        return false;
+    }
+    for (size_t i = 0; i < ctx->entry_count; i++) {
+        if (ctx->entries[i].screen[0]) ctx->entries[i].selected = i == chosen;
+    }
+    return true;
 }
