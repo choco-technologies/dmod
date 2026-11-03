@@ -35,6 +35,10 @@ endif()
 project (dmod
 	VERSION ${DMOD_VERSION_NUMERIC}
 	DESCRIPTION "Library for managing of dynamic modules")
+# project() clears the patch component for two-part versions such as 1.0.
+if("${dmod_VERSION_PATCH}" STREQUAL "")
+    set(dmod_VERSION_PATCH 0)
+endif()
 
 option(DMOD_BUILD_DEB "Enable Debian packaging of the host tools and loader" OFF)
 if(DMOD_BUILD_DEB)
