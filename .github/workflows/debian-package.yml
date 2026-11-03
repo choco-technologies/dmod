@@ -48,6 +48,11 @@ jobs:
           /usr/bin/dmf-get --help
           DMOD_CACHE_DIR="$RUNNER_TEMP/asset-cache" bash tests/integration/prepare_sdk_assets.sh /usr "$RUNNER_TEMP/asset-tools" arch/x86_64
           sudo env DMOD_SDK_TEST_ASSETS="$RUNNER_TEMP/asset-tools" bash tests/integration/test_installed_sdk.sh /usr -DDMOD_TOOLS_NAME=arch/x86_64
+      - name: Test generated module templates with SDK and source builds
+        if: matrix.examples == 'OFF'
+        run: |
+          sudo bash tests/integration/test_generated_modules.sh /usr
+          bash tests/integration/test_generated_modules.sh /usr --source
       - name: Cross compile with the installed SDK
         if: matrix.examples == 'OFF'
         run: |
