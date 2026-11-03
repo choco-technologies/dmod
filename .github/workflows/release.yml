@@ -1,0 +1,167 @@
+name: Release Debian packages
+
+on:
+  push:
+    tags: ['v[0-9]*']
+  pull_request:
+    branches: [develop, master]
+    paths:
+      - '.github/workflows/release.yml'
+      - 'scripts/debian-package.cmake'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: debian-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      deb_version: ${{ steps.version.outputs.deb_version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - name: Determine package version
+        id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            if [[ ! "$GITHUB_REF_NAME" =~ ^v([0-9]+\.[0-9]+(\.[0-9]+)?)(-([0-9A-Za-z]+([.-][0-9A-Za-z]+)*))?$ ]]; then
+              echo "::error::Expected vMAJOR.MINOR[.PATCH][-PRERELEASE], e.g. v1.2.3 or v1.2.3-rc.1"
+              exit 1
+            fi
+            version=${GITHUB_REF_NAME#v}
+            prerelease=false
+            if [[ "$version" == *-* ]]; then
+              # Debian sorts '~rc.1' before the corresponding stable version.
+              version=${version/-/\~}
+              prerelease=true
+            fi
+          else
+            # PRs and manual branch runs build and test without publishing.
+            version="0.0.0~ci.${GITHUB_RUN_NUMBER}"
+            prerelease=true
+          fi
+          echo "deb_version=$version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+  package:
+    name: Package ${{ matrix.arch }}
+    needs: version
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            profile: arch/x86_64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            profile: arch/aarch64/cortex-a53
+    env:
+      DEB_VERSION: ${{ needs.version.outputs.deb_version }}
+      DMOD_PROFILE: ${{ matrix.profile }}
+      DEB_ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake dpkg-dev libcurl4-openssl-dev unzip gdb-multiarch bubblewrap python3
+      - name: Bootstrap host tools
+        run: |
+          test "$(dpkg --print-architecture)" = "$DEB_ARCH"
+          cmake -S . -B build-release-deb \
+            -DDMOD_TOOLS_NAME="$DMOD_PROFILE" -DCROSS_COMPILE= \
+            -DDMOD_MODE=DMOD_SYSTEM -DDMOD_BUILD_TOOLS=ON \
+            -DDMOD_BUILD_TESTS=OFF -DDMOD_BUILD_EXAMPLES=OFF -DDMOD_BUILD_TEMPLATES=OFF
+          cmake --build build-release-deb --parallel 2
+      - name: Build Debian packages
+        run: |
+          cmake -S . -B build-release-deb -DDMOD_BUILD_DEB=ON \
+            -DDMOD_DEB_VERSION="$DEB_VERSION" \
+            -DDMF_GET="$PWD/build-release-deb/bin/tools/dmf-get"
+          cmake --build build-release-deb --target package --parallel 2
+      - name: Build a module for the packaged loader
+        run: |
+          cmake -S . -B build-release-modules \
+            -DDMOD_TOOLS_NAME="$DMOD_PROFILE" -DCROSS_COMPILE= \
+            -DDMOD_MODE=DMOD_MODULE -DDMOD_BUILD_EXAMPLES=ON \
+            -DDMOD_BUILD_TESTS=OFF -DDMOD_BUILD_TOOLS=OFF -DDMOD_BUILD_TEMPLATES=OFF
+          cmake --build build-release-modules --target example_app dmodex --parallel 2
+      - name: Validate packages
+        run: |
+          runtime="build-release-deb/dmod_${DEB_VERSION}_${DEB_ARCH}.deb"
+          sdk="build-release-deb/dmod-dev_${DEB_VERSION}_all.deb"
+          test "$(dpkg-deb --field "$runtime" Version)" = "$DEB_VERSION"
+          test "$(dpkg-deb --field "$sdk" Version)" = "$DEB_VERSION"
+          bash tests/integration/test_debian_package.sh "$runtime" build-release-modules/dmf/example_app.dmf
+          bash tests/integration/test_development_package.sh "$runtime" "$sdk"
+      - name: Install packages and test the SDK without a checkout
+        run: |
+          sudo apt-get install -y ./build-release-deb/dmod_*.deb ./build-release-deb/dmod-dev_*.deb
+          sudo bash tests/integration/test_installed_sdk.sh /usr -DDMOD_TOOLS_NAME="$DMOD_PROFILE" -DCROSS_COMPILE=
+          sudo apt-get remove -y dmod-dev dmod
+      - name: Collect release assets
+        run: |
+          mkdir release-assets
+          cp "build-release-deb/dmod_${DEB_VERSION}_${DEB_ARCH}.deb" release-assets/
+          # The SDK is target-neutral; publish one copy from the amd64 build.
+          if [[ "$DEB_ARCH" == amd64 ]]; then
+            cp "build-release-deb/dmod-dev_${DEB_VERSION}_all.deb" release-assets/
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dmod-release-${{ matrix.arch }}
+          path: release-assets/*.deb
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: [version, package]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ github.ref_name }}
+      DEB_VERSION: ${{ needs.version.outputs.deb_version }}
+      PRERELEASE: ${{ needs.version.outputs.prerelease }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dmod-release-*
+          path: release-assets
+          merge-multiple: true
+      - name: Verify release assets and generate checksums
+        working-directory: release-assets
+        run: |
+          packages=("dmod_${DEB_VERSION}_amd64.deb" "dmod_${DEB_VERSION}_arm64.deb" "dmod-dev_${DEB_VERSION}_all.deb")
+          for package in "${packages[@]}"; do
+            test -s "$package"
+          done
+          sha256sum "${packages[@]}" > SHA256SUMS
+          sha256sum --check SHA256SUMS
+      - name: Create draft, upload assets and publish
+        run: |
+          if gh release view "$RELEASE_TAG" --json isDraft > release.json; then
+            if ! jq -e '.isDraft' release.json > /dev/null; then
+              echo "::error::Release $RELEASE_TAG is already published; use a new version tag."
+              exit 1
+            fi
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft \
+              --title "DMOD $RELEASE_TAG" --generate-notes --prerelease="$PRERELEASE"
+          fi
+          gh release upload "$RELEASE_TAG" release-assets/*.deb release-assets/SHA256SUMS --clobber
+          # Upload before publication so this also supports immutable releases.
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease="$PRERELEASE"

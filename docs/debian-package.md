@@ -63,6 +63,55 @@ After building, packaging can also be repeated with:
 (cd build-deb && cpack -G DEB)
 ```
 
+## GitHub releases
+
+The `Release Debian packages` workflow (`.github/workflows/release.yml`) builds
+and tests native packages on Ubuntu 24.04 for amd64 and arm64 (Cortex-A53).
+Push a version tag on the commit you want to release, after merging the workflow:
+
+```sh
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+Tags use `vMAJOR.MINOR` or `vMAJOR.MINOR.PATCH`, optionally followed by a
+prerelease suffix such as `-rc.1`. The tag supplies the Debian package version;
+it does not change DMOD's API or CMake SDK compatibility version. For example,
+`v1.2.3` produces:
+
+- `dmod_1.2.3_amd64.deb`
+- `dmod_1.2.3_arm64.deb`
+- `dmod-dev_1.2.3_all.deb`
+- `SHA256SUMS`
+
+Both architectures must pass package metadata, executable, module loading and
+installed SDK tests before publication. CI creates a draft GitHub Release,
+uploads all assets and then publishes it with generated release notes. Only
+the publishing job has `contents: write`; the built-in `GITHUB_TOKEN` is enough.
+Uploading before publication also supports
+[GitHub immutable releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository).
+
+A tag such as `v1.2.3-rc.1` publishes a GitHub prerelease, with Debian version
+`1.2.3~rc.1` so APT orders it before `1.2.3`. Published releases are not
+overwritten. If publication fails while the release is still a draft, rerun the
+failed jobs to upload the assets again and finish publishing.
+
+Pull requests changing the release workflow or packaging configuration, and
+manual runs on branches, build and test preview packages with version
+`0.0.0~ci.<run-number>`. They only upload Actions artifacts. Manual runs on tags
+use the tag version and also only upload artifacts; publication requires a tag
+push. Download a runtime package matching your architecture plus the shared SDK,
+then verify and install them:
+
+```sh
+sha256sum --check --ignore-missing SHA256SUMS
+sudo apt-get install ./dmod_1.2.3_amd64.deb ./dmod-dev_1.2.3_all.deb
+```
+
+For a local build with an explicit package version, pass
+`-DDMOD_DEB_VERSION=1.2.3` when enabling `DMOD_BUILD_DEB`. It defaults to the
+project version for ordinary builds.
+
 ## Inspect, install and remove
 
 ```sh
