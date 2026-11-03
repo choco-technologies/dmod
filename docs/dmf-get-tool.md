@@ -528,10 +528,12 @@ dmf-get install carhmi_view --screen 320x240
 DMOD_SCREEN=480x272 dmf-get -d board.dmd
 ```
 
-`--screen WIDTHxHEIGHT` overrides `DMOD_SCREEN`; an entry's `@screen` in `.dmd`
+`--screen ID` overrides `DMOD_SCREEN`; an entry's `@screen` in `.dmd`
 overrides both. The selected screen follows recursive dependencies; an entry
-can override the inherited selection. Screen dimensions are canonical positive
-integers 1..65535, separated by lowercase `x`.
+can override the inherited selection. The ID is an opaque, case-sensitive label:
+`480x272`, `epaper` and `epaper-mono` are compared literally, without parsing
+pixel dimensions. IDs contain 1..127 ASCII letters/digits, `_`, `.` or `-`,
+starting with a letter/digit or `_`.
 
 The package's `.dmr` declares available view bundles with `[screen=...]` and
 an optional `[default=true]`. An explicit screen must match exactly. Without a

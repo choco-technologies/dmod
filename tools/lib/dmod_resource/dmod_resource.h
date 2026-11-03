@@ -47,7 +47,7 @@ typedef struct {
     char source[DMOD_RESOURCE_MAX_PATH_LEN];       /**< Source path in zip */
     char destination[DMOD_RESOURCE_MAX_PATH_LEN];  /**< Destination path after substitution */
     bool is_dmf_dmfc;                               /**< True if this is a dmf or dmfc resource */
-    char screen[12];                              /**< Optional views resolution selector */
+    char screen[128];                              /**< Optional opaque views variant selector */
     bool is_default;                              /**< Default screen variant */
     bool selected;                                /**< Set by SelectViews; all entries selected when parsed */
     size_t origin_count;                            /**< Number of [origin] directives */

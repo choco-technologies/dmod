@@ -265,7 +265,7 @@ static bool ParseLine(Dmod_ResourceContext_t* ctx, const char* line) {
             } else if (strncmp(attribute, "screen=", 7) == 0) {
                 const char* screen = attribute + 7;
                 if (strcmp(key, "views") != 0 || entry->screen[0] || !Dmod_Screen_IsValid(screen)) {
-                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Invalid or duplicate [screen]: views require WIDTHxHEIGHT");
+                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Invalid or duplicate [screen]: expected a view variant identifier");
                     return false;
                 }
                 strcpy(entry->screen, screen);

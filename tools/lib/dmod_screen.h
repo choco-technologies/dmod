@@ -3,21 +3,19 @@
 
 #include <stdbool.h>
 
-/* Canonical pixel dimensions, each fitting the DMV header's uint16_t. */
-#define DMOD_SCREEN_MAX_LEN 12
+/* Opaque, case-sensitive variant IDs; no interpretation of pixel dimensions.
+ * Portable single-component names also work as asset-directory names. */
+#define DMOD_SCREEN_MAX_LEN 128
 static inline bool Dmod_Screen_IsValid(const char* screen)
 {
-    if (!screen) return false;
-    const char* p = screen;
-    for (unsigned dimension = 0; dimension < 2; dimension++) {
-        if (*p < '1' || *p > '9') return false;
-        unsigned value = 0;
-        do {
-            value = value * 10 + (unsigned)(*p++ - '0');
-            if (value > 65535) return false;
-        } while (*p >= '0' && *p <= '9');
-        if (dimension == 0 && *p++ != 'x') return false;
+    if (!screen || !*screen) return false;
+    unsigned length = 0;
+    for (const unsigned char* p = (const unsigned char*)screen; *p; p++) {
+        bool alnum = (*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
+                     (*p >= '0' && *p <= '9');
+        if ((!alnum && *p != '_' && (length == 0 || (*p != '-' && *p != '.'))) ||
+            ++length >= DMOD_SCREEN_MAX_LEN) return false;
     }
-    return *p == '\0';
+    return true;
 }
 #endif

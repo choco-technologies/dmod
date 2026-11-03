@@ -2800,7 +2800,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --config-dest <name>      Custom destination filename for config file\n");
     Dmod_Printf("  --config-map <map>        Route tagged configs to different directories (with -d), e.g.\n");
     Dmod_Printf("                            \"driver:./config/drivers;service:./config/services\"\n");
-    Dmod_Printf("  --screen <WIDTHxHEIGHT>   Select runtime view resources (default: $DMOD_SCREEN)\n");
+    Dmod_Printf("  --screen <ID>             Select runtime view resources (default: $DMOD_SCREEN)\n");
     Dmod_Printf("  --views-dir <path>        Directory where views of the installed applications are placed,\n");
     Dmod_Printf("                            each module in its own <path>/<module> (= ${views_dir} in .dmr)\n");
     Dmod_Printf("                            (default: $DMOD_VIEWS_DIR, otherwise <package-dir>/views or <output-dir>/views)\n");
@@ -3320,7 +3320,7 @@ int main(int argc, char* argv[]) {
         }
         else if (strcmp(argv[i], "--screen") == 0) {
             if (++i >= argc || !Dmod_Screen_IsValid(argv[i])) {
-                DMOD_LOG_ERROR("--screen requires WIDTHxHEIGHT (1..65535)\n");
+                DMOD_LOG_ERROR("--screen requires a variant identifier (up to 127 characters)\n");
                 return 1;
             }
             screen = argv[i];

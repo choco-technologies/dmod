@@ -323,11 +323,30 @@ TEST_F(DmodResourceTest, MultipleVariantsNeedAnExplicitChoiceOrDefault) {
 
 TEST_F(DmodResourceTest, RejectsInvalidVariantMetadata) {
     const char* entries[] = {
-        "views=a => b [screen=0x240]", "views=a => b [screen=320x240] [screen=480x272]",
-        "views=a => b [screen=65536x240]", "views=a => b [screen=320x240] [default=yes]",
+        "views=a => b [screen=../epaper]", "views=a => b [screen=320x240] [screen=480x272]",
+        "views=a => b [screen=]", "views=a => b [screen=320x240] [default=yes]",
         "views=a => b [default=true]", "docs=a => b [screen=320x240]",
         "views=a => b [screen=320x240]\nviews=c => b [screen=320x240]",
         "views=a => b [screen=320x240] [default=true]\nviews=c => b [screen=480x272] [default=true]"
     };
     for (auto entry : entries) EXPECT_FALSE(Dmod_Resource_Parse(ctx, entry)) << entry;
+}
+
+TEST_F(DmodResourceTest, NamedScreenVariantsAreLiteralAndCaseSensitive) {
+    const std::string long_id(127, 'e');
+    const std::string resources =
+        "views=paper => /out/views [screen=epaper] [default=true]\n"
+        "views=mono => /out/views [screen=epaper-mono]\n"
+        "views=custom => /out/views [screen=" + long_id + "]\n";
+    ASSERT_TRUE(Dmod_Resource_Parse(ctx, resources.c_str()));
+    EXPECT_FALSE(Dmod_Resource_SelectViews(ctx, "EPAPER"));
+    ASSERT_TRUE(Dmod_Resource_SelectViews(ctx, "epaper-mono"));
+    Dmod_ResourceEntry_t entry;
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 1, &entry));
+    EXPECT_TRUE(entry.selected);
+    EXPECT_STREQ(entry.screen, "epaper-mono");
+    ASSERT_TRUE(Dmod_Resource_SelectViews(ctx, long_id.c_str()));
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 2, &entry));
+    EXPECT_TRUE(entry.selected);
+    EXPECT_STREQ(entry.screen, long_id.c_str());
 }

@@ -58,7 +58,7 @@ can@<2.0      # Less than 2.0 (exclusive)
 
 #### Screen selection
 
-`@screen WIDTHxHEIGHT` is a reserved installation option, separate from the
+`@screen ID` is a reserved installation option, separate from the
 module's `@version` and configuration arguments:
 
 ```dmd
@@ -69,9 +69,11 @@ carhmi service=carhmi.ini @screen 320x240
 
 The option may appear before or after configuration arguments. It overrides
 `dmf-get --screen` / `DMOD_SCREEN` for that entry and is inherited by its
-recursive dependencies unless they provide their own `@screen`. Dimensions
-are canonical positive decimal integers, separated by lowercase `x`, each
-1..65535. A missing value, duplicate option or unknown `@option` is an error.
+recursive dependencies unless they provide their own `@screen`. IDs are opaque
+and case-sensitive: `480x272`, `epaper` and `epaper-mono` are equally valid.
+Nothing extracts width, height, technology or color depth from the name.
+Portable IDs have 1..127 ASCII letters/digits, `_`, `.` or `-`, starting with
+an ASCII letter/digit or `_`. A missing value, duplicate option or unknown `@option` is an error.
 It is a per-module option, not a standalone directive. Existing configuration
 paths, tags, versions, `$include` and `$from` retain their meaning.
 

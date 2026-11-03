@@ -68,12 +68,14 @@ both entries and packages all their origins. `dmf-get` selects one bundle and
 copies its contents directly into the same module views directory, so an
 application keeps opening `views/<module>/main.dmv` for either screen.
 
-- `[screen=WIDTHxHEIGHT]` is valid only on `views`. Dimensions are 1..65535,
-  written without leading zeros, with lowercase `x`.
+- `[screen=ID]` is valid only on `views`. The ID is an opaque, case-sensitive
+  label such as `480x272`, `epaper` or `epaper-mono`. It is compared literally;
+  no dimensions or display capabilities are inferred. IDs contain 1..127 ASCII
+  letters/digits, `_`, `.` or `-`, starting with a letter/digit or `_`.
 - `[default=true]` designates the default variant when no screen is requested.
   A sole variant is selected automatically. Multiple variants without a default
   require an explicit selector.
-- Duplicate resolutions, several defaults or `[default]` without `[screen]`
+- Duplicate IDs, several defaults or `[default]` without `[screen]`
   are package errors. Attribute order does not matter.
 - An explicit request requires an exact match. Missing variants report the
   available screens and fail before installed binaries/views are overwritten.

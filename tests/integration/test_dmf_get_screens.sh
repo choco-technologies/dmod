@@ -86,7 +86,7 @@ reject -d conflict.dmd -o conflict
 grep -q conflicting install.log
 cmp source/views/320x240/main.dmv conflict/views/view/main.dmv
 # Invalid requests fail instead of becoming a configuration path.
-for value in 0x240 0320x240 320X240 320x 65536x240; do
+for value in ../epaper a/b bad[profile] -option; do
     reject view --screen "$value" -o invalid
     echo "view @screen $value" > invalid.dmd
     reject -d invalid.dmd -o invalid
@@ -103,6 +103,26 @@ DMR
 echo "legacy $TEST_DIR/legacy.zip" >> manifest.dmm
 run legacy -o old --mini --screen 320x240
 cmp legacy/views/main.dmv old/views/legacy/main.dmv
+# Named profiles and resolution-looking IDs are both opaque; retain long IDs.
+for id in epaper epaper-mono OFF 0320x240 320X240 65536x240 "$(printf 'e%.0s' {1..127})"; do
+    mkdir -p "source/views/$id"
+    printf '%s' "$id" > "source/views/$id/main.dmv"
+    cat >> source/view.dmr <<DMR
+views=./views/$id => \${views_dir} [screen=$id] [origin=\${views_dir}/$id]
+DMR
+done
+"$MKDMRPKG" source/view.dmr -m view -r "$TEST_DIR/source" --views-dir "$TEST_DIR/source/views" -o named-package > install.log 2>&1 || fail named-package
+(cd named-package && zip -qr ../named.zip .)
+echo "view $TEST_DIR/named.zip" > named.dmm
+for id in epaper epaper-mono OFF 0320x240 320X240 65536x240 "$(printf 'e%.0s' {1..127})"; do
+    echo "view @screen $id" > named.dmd
+    run -m named.dmm -d named.dmd --screen 480x272 -o named --mini
+    test "$(cat named/views/view/main.dmv)" = "$id"
+done
+DMOD_SCREEN=epaper-mono run -m named.dmm view -o named-env --mini
+test "$(cat named-env/views/view/main.dmv)" = epaper-mono
+reject -m named.dmm view -o named-case --screen EPAPER --mini
+test ! -e named-case/view.dmf
 # Invalid metadata must fail preflight even with --mini or --ignore-missing.
 sed 's/screen=320x240/screen=480x272/' package/view.dmr > package/bad.dmr
 mv package/bad.dmr package/view.dmr

@@ -236,13 +236,13 @@ static bool ParseScreen(Dmod_DependenciesContext_t* ctx, char* line, char* scree
         while (*p && !isspace((unsigned char)*p)) p++;
         size_t len = (size_t)(p - value);
         if (len == 0 || len >= DMOD_SCREEN_MAX_LEN) {
-            SetError(ctx, "@screen requires WIDTHxHEIGHT");
+            SetError(ctx, "@screen requires a variant identifier (up to 127 characters)");
             return false;
         }
         memcpy(screen, value, len);
         screen[len] = '\0';
         if (!Dmod_Screen_IsValid(screen)) {
-            SetError(ctx, "Invalid @screen '%s': expected WIDTHxHEIGHT (1..65535)", screen);
+            SetError(ctx, "Invalid @screen identifier '%s'", screen);
             return false;
         }
         memmove(start, p, strlen(p) + 1);

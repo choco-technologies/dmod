@@ -521,7 +521,8 @@ Same as the DMOD project (MIT License).
 
 ### Screen variants
 
-Use `--screen 320x240` or `DMOD_SCREEN` to choose runtime view resources.
+Use `--screen 320x240`, `--screen epaper` or `DMOD_SCREEN` to choose runtime
+view resources. Values are opaque, case-sensitive IDs; pixel dimensions are not parsed.
 A dependency entry can override that default with `module @screen 320x240`.
 The selector is inherited by recursive dependencies. Packages declare bundles
 as `views=... => ${views_dir} [screen=320x240]`, with `[default=true]` on an

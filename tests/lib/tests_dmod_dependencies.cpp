@@ -714,8 +714,8 @@ TEST_F(DmodDependenciesTest, ScreenIsSeparateFromVersionAndConfiguration) {
 }
 
 TEST_F(DmodDependenciesTest, RejectsInvalidMissingAndDuplicateScreenOptions) {
-    const char* lines[] = {"app @screen", "app @screen 0x240", "app @screen 320X240",
-        "app @screen 0320x240", "app @screen 65536x240", "app @screen 1x9999999999999999",
+    const char* lines[] = {"app @screen", "app @screen ../epaper", "app @screen a/b",
+        "app @screen bad[profile]", "app @screen -option",
         "app @screen 320x240 @screen 480x272", "app @unknown 320x240"};
     for (auto line : lines) {
         auto* ctx = Dmod_Dependencies_Init("manifest.dmm", MockDownloadFunc, nullptr);
@@ -736,5 +736,21 @@ TEST_F(DmodDependenciesTest, ScreenCombinesWithInlineManifestAndDoesNotLeakToNex
     ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 1, &e));
     EXPECT_STREQ(e.screen, "");
     EXPECT_STREQ(e.manifest, "default.dmm");
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, ScreenNamesAreOpaqueAndPreserved) {
+    const std::string ids[] = {"epaper", "epaper-mono-800x600-v2", "OFF", "320X240",
+        "0320x240", "65536x240", std::string(127, 'e')};
+    for (const auto& id : ids) {
+        auto* ctx = Dmod_Dependencies_Init("manifest.dmm", MockDownloadFunc, nullptr);
+        ASSERT_TRUE(Dmod_Dependencies_Parse(ctx, ("app @screen " + id).c_str())) << id;
+        Dmod_DependencyEntry_t entry;
+        ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &entry));
+        EXPECT_STREQ(entry.screen, id.c_str());
+        Dmod_Dependencies_Free(ctx);
+    }
+    auto* ctx = Dmod_Dependencies_Init("manifest.dmm", MockDownloadFunc, nullptr);
+    EXPECT_FALSE(Dmod_Dependencies_Parse(ctx, ("app @screen " + std::string(128, 'e')).c_str()));
     Dmod_Dependencies_Free(ctx);
 }
