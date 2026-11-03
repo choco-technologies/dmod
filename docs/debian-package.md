@@ -74,8 +74,12 @@ that release, matching the other DMOD repositories. Publishing a prerelease
 starts the same workflow. A tag push alone does not start it.
 
 Tags use `vMAJOR.MINOR` or `vMAJOR.MINOR.PATCH`, optionally followed by a
-prerelease suffix such as `-rc.1`. The tag supplies the Debian package version;
-it does not change DMOD's API or CMake SDK compatibility version. For example,
+prerelease suffix such as `-rc.1`. CI passes the tag without `v` to CMake as
+`DMOD_RELEASE_VERSION` before bootstrapping the tools. This sets the project and
+SDK version, generated `dmod_VERSION_MAJOR`, `dmod_VERSION_MINOR` and
+`dmod_VERSION_PATCH` fields, `DMOD_VERSION_STRING`, `version.txt`, and tool
+`--version` output. The numeric module compatibility field retains its existing
+major/minor encoding; patch releases do not change that encoding. For example,
 `v1.2.3` produces these downloads under the release's **Assets**:
 
 - `dmod_1.2.3_amd64.deb`
@@ -102,7 +106,10 @@ gh workflow run release.yml --ref develop -f tag=v1.2.3
 The workflow builds the source from that tag, even when started from another
 branch. Pull requests changing the release workflow or packaging configuration,
 and manual runs with an empty `tag`, only upload Actions artifacts with preview
-version `0.0.0~ci.<run-number>`.
+version `1.2.3~ci.<run-number>` and tool/header version `1.2.3-ci.<run-number>`.
+These previews deliberately exercise nonzero minor/patch fields and prerelease
+suffixes; CI checks all packaged tools and an installed SDK consumer against
+the expected version.
 
 Download a runtime package matching your architecture plus the shared SDK and
 checksums from the release, then verify and install them:
@@ -112,9 +119,11 @@ sha256sum --check --ignore-missing SHA256SUMS
 sudo apt-get install ./dmod_1.2.3_amd64.deb ./dmod-dev_1.2.3_all.deb
 ```
 
-For a local build with an explicit package version, pass
-`-DDMOD_DEB_VERSION=1.2.3` when enabling `DMOD_BUILD_DEB`. It defaults to the
-project version for ordinary builds.
+For a local build, pass `-DDMOD_RELEASE_VERSION=1.2.3` to the first configure
+command so all binaries, generated headers and SDK metadata receive that
+version. It defaults to `1.0`. The Debian version defaults to the same release,
+with `-` replaced by `~` before the prerelease suffix. `DMOD_DEB_VERSION` remains
+available as an explicit package-only override.
 
 ## Inspect, install and remove
 

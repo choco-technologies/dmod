@@ -8,6 +8,11 @@ on:
     paths:
       - '.github/workflows/release.yml'
       - 'scripts/debian-package.cmake'
+      - 'dmod-info.cmake'
+      - 'dmod-config.h.in'
+      - 'cmake/dmodConfig.cmake.in'
+      - 'tests/integration/test_debian_package.sh'
+      - 'tests/integration/sdk/**'
   workflow_dispatch:
     inputs:
       tag:
@@ -28,6 +33,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       deb_version: ${{ steps.version.outputs.deb_version }}
+      release_version: ${{ steps.version.outputs.release_version }}
       release_tag: ${{ steps.version.outputs.release_tag }}
       source_ref: ${{ steps.version.outputs.source_ref }}
     steps:
@@ -46,15 +52,16 @@ jobs:
             fi
             # Both automatic and recovery runs upload to an existing release.
             gh release view "$RELEASE_TAG" --json tagName --jq .tagName > /dev/null
-            version=${RELEASE_TAG#v}
-            # Debian sorts '~rc.1' before the corresponding stable version.
-            version=${version/-/\~}
+            release_version=${RELEASE_TAG#v}
             source_ref="refs/tags/$RELEASE_TAG"
           else
             # PRs and manual runs without a release tag only build previews.
-            version="0.0.0~ci.${GITHUB_RUN_NUMBER}"
+            # Exercise a nonzero patch version and prerelease suffix in PRs.
+            release_version="1.2.3-ci.${GITHUB_RUN_NUMBER}"
             source_ref="$GITHUB_SHA"
           fi
+          version=${release_version/-/\~}
+          echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
           echo "deb_version=$version" >> "$GITHUB_OUTPUT"
           echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "source_ref=$source_ref" >> "$GITHUB_OUTPUT"
@@ -75,6 +82,7 @@ jobs:
             profile: arch/aarch64/cortex-a53
     env:
       DEB_VERSION: ${{ needs.version.outputs.deb_version }}
+      RELEASE_VERSION: ${{ needs.version.outputs.release_version }}
       DMOD_PROFILE: ${{ matrix.profile }}
       DEB_ARCH: ${{ matrix.arch }}
     steps:
@@ -90,7 +98,7 @@ jobs:
       - name: Bootstrap host tools
         run: |
           test "$(dpkg --print-architecture)" = "$DEB_ARCH"
-          cmake -S . -B build-release-deb \
+          cmake -S . -B build-release-deb -DDMOD_RELEASE_VERSION="$RELEASE_VERSION" \
             -DDMOD_TOOLS_NAME="$DMOD_PROFILE" -DCROSS_COMPILE= \
             -DDMOD_MODE=DMOD_SYSTEM -DDMOD_BUILD_TOOLS=ON \
             -DDMOD_BUILD_TESTS=OFF -DDMOD_BUILD_EXAMPLES=OFF -DDMOD_BUILD_TEMPLATES=OFF
@@ -103,7 +111,7 @@ jobs:
           cmake --build build-release-deb --target package --parallel 2
       - name: Build a module for the packaged loader
         run: |
-          cmake -S . -B build-release-modules \
+          cmake -S . -B build-release-modules -DDMOD_RELEASE_VERSION="$RELEASE_VERSION" \
             -DDMOD_TOOLS_NAME="$DMOD_PROFILE" -DCROSS_COMPILE= \
             -DDMOD_MODE=DMOD_MODULE -DDMOD_BUILD_EXAMPLES=ON \
             -DDMOD_BUILD_TESTS=OFF -DDMOD_BUILD_TOOLS=OFF -DDMOD_BUILD_TEMPLATES=OFF
@@ -114,12 +122,14 @@ jobs:
           sdk="build-release-deb/dmod-dev_${DEB_VERSION}_all.deb"
           test "$(dpkg-deb --field "$runtime" Version)" = "$DEB_VERSION"
           test "$(dpkg-deb --field "$sdk" Version)" = "$DEB_VERSION"
-          bash tests/integration/test_debian_package.sh "$runtime" build-release-modules/dmf/example_app.dmf
+          DMOD_EXPECTED_VERSION="$RELEASE_VERSION" bash tests/integration/test_debian_package.sh "$runtime" build-release-modules/dmf/example_app.dmf
           bash tests/integration/test_development_package.sh "$runtime" "$sdk"
+          grep -Fqx "#define DMOD_VERSION_STRING \"$RELEASE_VERSION\"" build-release-deb/dmod-config.h
+          grep -Fqx "dmod $RELEASE_VERSION $(git rev-parse --short HEAD)" build-release-deb/version.txt
       - name: Install packages and test the SDK without a checkout
         run: |
           sudo apt-get install -y ./build-release-deb/dmod_*.deb ./build-release-deb/dmod-dev_*.deb
-          sudo bash tests/integration/test_installed_sdk.sh /usr -DDMOD_TOOLS_NAME="$DMOD_PROFILE" -DCROSS_COMPILE=
+          sudo bash tests/integration/test_installed_sdk.sh /usr -DDMOD_TOOLS_NAME="$DMOD_PROFILE" -DCROSS_COMPILE= -DDMOD_EXPECTED_VERSION="$RELEASE_VERSION"
           sudo apt-get remove -y dmod-dev dmod
       - name: Collect release assets
         run: |
