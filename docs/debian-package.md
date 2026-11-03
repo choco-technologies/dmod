@@ -67,17 +67,16 @@ After building, packaging can also be repeated with:
 
 The `Release Debian packages` workflow (`.github/workflows/release.yml`) builds
 and tests native packages on Ubuntu 24.04 for amd64 and arm64 (Cortex-A53).
-Push a version tag on the commit you want to release, after merging the workflow:
-
-```sh
-git tag v1.2.3
-git push origin v1.2.3
-```
+After merging the workflow, open **Releases → Draft a new release** in GitHub,
+choose or create a version tag on the commit you want to release, and click
+**Publish release**. This starts CI, which attaches the packages directly to
+that release, matching the other DMOD repositories. Publishing a prerelease
+starts the same workflow. A tag push alone does not start it.
 
 Tags use `vMAJOR.MINOR` or `vMAJOR.MINOR.PATCH`, optionally followed by a
 prerelease suffix such as `-rc.1`. The tag supplies the Debian package version;
 it does not change DMOD's API or CMake SDK compatibility version. For example,
-`v1.2.3` produces:
+`v1.2.3` produces these downloads under the release's **Assets**:
 
 - `dmod_1.2.3_amd64.deb`
 - `dmod_1.2.3_arm64.deb`
@@ -85,23 +84,28 @@ it does not change DMOD's API or CMake SDK compatibility version. For example,
 - `SHA256SUMS`
 
 Both architectures must pass package metadata, executable, module loading and
-installed SDK tests before publication. CI creates a draft GitHub Release,
-uploads all assets and then publishes it with generated release notes. Only
-the publishing job has `contents: write`; the built-in `GITHUB_TOKEN` is enough.
-Uploading before publication also supports
-[GitHub immutable releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository).
+installed SDK tests before the assets are uploaded. Only the upload job has
+`contents: write`; the built-in `GITHUB_TOKEN` is enough. CI preserves the
+release title, notes and prerelease status. A tag such as `v1.2.3-rc.1` uses
+Debian version `1.2.3~rc.1` so APT orders it before `1.2.3`.
 
-A tag such as `v1.2.3-rc.1` publishes a GitHub prerelease, with Debian version
-`1.2.3~rc.1` so APT orders it before `1.2.3`. Published releases are not
-overwritten. If publication fails while the release is still a draft, rerun the
-failed jobs to upload the assets again and finish publishing.
+If an upload fails, rerun the failed jobs. Existing assets with the same names
+are replaced, so retrying an upload is supported. To rebuild assets for an
+existing release with the latest workflow, open **Actions → Release Debian
+packages → Run workflow**, select the branch containing the workflow fix,
+and enter the release tag in `tag`. For example, from the command line:
 
-Pull requests changing the release workflow or packaging configuration, and
-manual runs on branches, build and test preview packages with version
-`0.0.0~ci.<run-number>`. They only upload Actions artifacts. Manual runs on tags
-use the tag version and also only upload artifacts; publication requires a tag
-push. Download a runtime package matching your architecture plus the shared SDK,
-then verify and install them:
+```sh
+gh workflow run release.yml --ref develop -f tag=v1.2.3
+```
+
+The workflow builds the source from that tag, even when started from another
+branch. Pull requests changing the release workflow or packaging configuration,
+and manual runs with an empty `tag`, only upload Actions artifacts with preview
+version `0.0.0~ci.<run-number>`.
+
+Download a runtime package matching your architecture plus the shared SDK and
+checksums from the release, then verify and install them:
 
 ```sh
 sha256sum --check --ignore-missing SHA256SUMS
