@@ -48,6 +48,18 @@ bus:
   `src/arch/xtensa/lx7/caches.c`). The window of the data bus of the cache (0x3C000000..0x3E000000) is a second range of the alias in
   the profile of the ESP32-S3: the code is executed 0x6000000 higher.
 
+## Packages built without relocation support
+
+A loader built with `DMOD_USE_RELDYN` rejects a module whose `.got` section is
+missing or empty. Even a new module with no relocations carries the magic and
+a zero count, so it can still be loaded. Nonempty legacy tables without the
+magic remain supported.
+
+An example of an incompatible package is `memory` 0.9 for ESP32-S3: it has an
+empty `.got` and calls the unrelocated `print_usage` address (`0x1a4`). Rebuild
+and redistribute that module with the current Xtensa profile; accepting the
+old binary would stop the processor in its exception handler.
+
 ## Other architectures
 
 An architecture with the same problem sets `DMOD_USE_RELDYN` in its profile and adds the relocation types of its own to

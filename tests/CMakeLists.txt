@@ -38,6 +38,14 @@ foreach(test_src ${TEST_SOURCES})
     get_filename_component(test_name ${test_src} NAME_WE)
     add_executable(${test_name} ${test_src} ut_main.cpp)
     dmod_set_current_allocator(${test_name})
+    if(test_name STREQUAL "tests_dmod_ldr_reldyn")
+        # Exercise the Xtensa loader path on the host without changing the
+        # normal GOT loader used by the remaining tests.
+        target_sources(${test_name} PRIVATE
+            ../src/system/private/dmod_ldr.c
+            ../src/system/private/dmod_hlp.c)
+        target_compile_definitions(${test_name} PRIVATE DMOD_USE_RELDYN=1)
+    endif()
     target_link_libraries(${test_name} gtest gtest_main gmock dmod_system dmod_common dmod_inc dmod_fastlz dmod_dmcomp dmod_version dmod_manifest dmod_dependencies dmod_resource)
     add_test(NAME ${test_name} COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${test_name})
 
