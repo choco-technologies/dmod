@@ -528,8 +528,17 @@ bool Dmod_Ldr_LoadGot( Dmod_Context_t* Context )
 
     if( got->SectionStart == 0 || got->SectionSize == 0 )
     {
+#ifdef DMOD_USE_RELDYN
+        /* Even a module without relocations has a magic/count table. Older
+           Xtensa packages have an empty GOT and still contain absolute
+           addresses linked at zero: running one would fault the whole system. */
+        DMOD_LOG_ERROR("Cannot load module '%s' - missing relocation table; rebuild it with DMOD_USE_RELDYN\n",
+            Dmod_Context_GetModuleName(Context));
+        return false;
+#else
         DMOD_LOG_VERBOSE("No got to load\n");
         return true;
+#endif
     }
 
     if( got->SectionStart + got->SectionSize > Context->Size )

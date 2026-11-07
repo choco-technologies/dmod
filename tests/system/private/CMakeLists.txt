@@ -4,6 +4,7 @@ set(TEST_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_hlp.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_search.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_ldr.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_ldr_reldyn.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/tests_dmod_mgr.cpp
         PARENT_SCOPE
         )
