@@ -6,6 +6,7 @@
 #include "dmod_dependencies.h"
 #include "dmod.h"
 #include "dmod_version.h"
+#include "../dmod_screen.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -61,7 +62,7 @@ static void SetError(Dmod_DependenciesContext_t* ctx, const char* format, ...) {
  */
 static bool AddEntry(Dmod_DependenciesContext_t* ctx, const char* name,
                      const char* version, const char* manifest, const char* config,
-                     const char* config_dest, const char* tag) {
+                     const char* config_dest, const char* tag, const char* screen) {
     DependencyNode_t* node = (DependencyNode_t*)Dmod_Malloc(sizeof(DependencyNode_t));
     if (!node) {
         SetError(ctx, "Out of memory");
@@ -109,6 +110,10 @@ static bool AddEntry(Dmod_DependenciesContext_t* ctx, const char* name,
         node->entry.tag[DMOD_DEPENDENCIES_MAX_TAG_LEN - 1] = '\0';
     } else {
         node->entry.tag[0] = '\0';
+    }
+
+    if (screen) {
+        strcpy(node->entry.screen, screen);
     }
 
     // Add to list
@@ -204,6 +209,45 @@ static bool ParseConfigAndTag(Dmod_DependenciesContext_t* ctx, char* rest,
         dest_out[dest_out_size - 1] = '\0';
     }
 
+    return true;
+}
+
+/* Remove reserved installation options before interpreting configuration paths. */
+static bool ParseScreen(Dmod_DependenciesContext_t* ctx, char* line, char* screen)
+{
+    char* p = line;
+    while (*p && !isspace((unsigned char)*p)) p++; /* module[@version] */
+    while (*p) {
+        while (isspace((unsigned char)*p)) p++;
+        char* start = p;
+        while (*p && !isspace((unsigned char)*p)) p++;
+        if (start == p) break;
+        if (*start != '@') continue;
+        if ((size_t)(p - start) != 7 || strncmp(start, "@screen", 7) != 0) {
+            SetError(ctx, "Unknown installation option: %.*s", (int)(p - start), start);
+            return false;
+        }
+        if (screen[0]) {
+            SetError(ctx, "Duplicate @screen option");
+            return false;
+        }
+        while (isspace((unsigned char)*p)) p++;
+        char* value = p;
+        while (*p && !isspace((unsigned char)*p)) p++;
+        size_t len = (size_t)(p - value);
+        if (len == 0 || len >= DMOD_SCREEN_MAX_LEN) {
+            SetError(ctx, "@screen requires a variant identifier (up to 127 characters)");
+            return false;
+        }
+        memcpy(screen, value, len);
+        screen[len] = '\0';
+        if (!Dmod_Screen_IsValid(screen)) {
+            SetError(ctx, "Invalid @screen identifier '%s'", screen);
+            return false;
+        }
+        memmove(start, p, strlen(p) + 1);
+        p = start;
+    }
     return true;
 }
 
@@ -313,6 +357,12 @@ static bool ParseLine(Dmod_DependenciesContext_t* ctx, char* line) {
         line = TrimWhitespace(line);
     }
     
+    char screen[DMOD_SCREEN_MAX_LEN] = {0};
+    if (!ParseScreen(ctx, line, screen)) {
+        if (manifest_for_entry) Dmod_Free(manifest_for_entry);
+        return false;
+    }
+    line = TrimWhitespace(line);
     // Parse: module[@version] [[tag=]config_path] [config_dest]
     char* at_sign = strchr(line, '@');
     char module_name[DMOD_DEPENDENCIES_MAX_NAME_LEN];
@@ -322,7 +372,7 @@ static bool ParseLine(Dmod_DependenciesContext_t* ctx, char* line) {
     char module_tag[DMOD_DEPENDENCIES_MAX_TAG_LEN] = {0};
 
     // First, extract module name (and version if present)
-    char* first_space = strchr(line, ' ');
+    char* first_space = strpbrk(line, " \t");
 
     if (at_sign && (!first_space || at_sign < first_space)) {
         // Has version: module@version ...
@@ -342,7 +392,7 @@ static bool ParseLine(Dmod_DependenciesContext_t* ctx, char* line) {
 
         // Extract version (up to first space or end of string)
         char* version_start = at_sign + 1;
-        char* version_end = strchr(version_start, ' ');
+        char* version_end = strpbrk(version_start, " \t");
 
         if (version_end) {
             size_t version_len = version_end - version_start;
@@ -414,7 +464,7 @@ static bool ParseLine(Dmod_DependenciesContext_t* ctx, char* line) {
     bool result = AddEntry(ctx, module_name, module_version[0] ? module_version : NULL, manifest,
                           module_config[0] ? module_config : NULL,
                           module_config_dest[0] ? module_config_dest : NULL,
-                          module_tag[0] ? module_tag : NULL);
+                          module_tag[0] ? module_tag : NULL, screen[0] ? screen : NULL);
     
     // Free the inline manifest memory after adding the entry
     if (manifest_for_entry) {

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Set the project name
-project(dmod_loader VERSION ${dmod_VERSION_MAJOR}.${dmod_VERSION_MINOR})
+project(dmod_loader VERSION ${DMOD_VERSION_NUMERIC})
 
 # Specify the C++ standard
 set(CMAKE_CXX_STANDARD 11)

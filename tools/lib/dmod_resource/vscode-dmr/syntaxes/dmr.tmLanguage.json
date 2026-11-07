@@ -23,7 +23,7 @@
       "patterns": [
         {
           "name": "meta.resource-entry.dmr",
-          "match": "^\\s*([a-zA-Z0-9_.-]+)\\s*=\\s*(.+?)\\s*=>\\s*([^\\[]+?)((?:\\s*\\[origin=[^\\]]*\\])*)?$",
+          "match": "^\\s*([a-zA-Z0-9_.-]+)\\s*=\\s*(.+?)\\s*=>\\s*([^\\[]+?)((?:\\s*\\[(?:origin|screen|default)=[^\\]]*\\])*)?$",
           "captures": {
             "1": {
               "name": "entity.name.function.resource-key.dmr"
@@ -47,6 +47,17 @@
             "4": {
               "name": "meta.origin-directives.dmr",
               "patterns": [
+                {
+                  "match": "\\[(screen|default)=([^\\]]*)\\]",
+                  "captures": {
+                    "1": {
+                      "name": "keyword.other.resource-selector.dmr"
+                    },
+                    "2": {
+                      "name": "constant.other.resource-selector.dmr"
+                    }
+                  }
+                },
                 {
                   "include": "#origin-directive"
                 }

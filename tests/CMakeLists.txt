@@ -71,3 +71,8 @@ endif()
 if(DMFC_FILE_FOUND)
     add_definitions(-DDMOD_TEST_DMFC_FILE="${DMOD_TEST_DMFC_FILE}")
 endif()
+# Local archives exercise packaging and screen selection without network access.
+if(DMOD_SYSTEM AND DMOD_BUILD_TOOLS)
+    add_test(NAME dmf_get_screen_variants
+        COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_dmf_get_screens.sh ${CMAKE_BINARY_DIR})
+endif()

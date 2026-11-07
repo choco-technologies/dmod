@@ -1,0 +1,177 @@
+name: Release Debian packages
+
+on:
+  release:
+    types: [published]
+  pull_request:
+    branches: [develop, master]
+    paths:
+      - '.github/workflows/release.yml'
+      - 'scripts/debian-package.cmake'
+      - 'dmod-info.cmake'
+      - 'dmod-config.h.in'
+      - 'cmake/dmodConfig.cmake.in'
+      - 'tests/integration/test_debian_package.sh'
+      - 'tests/integration/sdk/**'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to build and upload (empty = preview only)'
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: debian-release-${{ github.event.release.tag_name || inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      deb_version: ${{ steps.version.outputs.deb_version }}
+      release_version: ${{ steps.version.outputs.release_version }}
+      release_tag: ${{ steps.version.outputs.release_tag }}
+      source_ref: ${{ steps.version.outputs.source_ref }}
+    steps:
+      - name: Determine package version
+        id: version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [[ -n "$RELEASE_TAG" ]]; then
+            if [[ ! "$RELEASE_TAG" =~ ^v([0-9]+\.[0-9]+(\.[0-9]+)?)(-([0-9A-Za-z]+([.-][0-9A-Za-z]+)*))?$ ]]; then
+              echo "::error::Expected vMAJOR.MINOR[.PATCH][-PRERELEASE], e.g. v1.2.3 or v1.2.3-rc.1"
+              exit 1
+            fi
+            # Both automatic and recovery runs upload to an existing release.
+            gh release view "$RELEASE_TAG" --json tagName --jq .tagName > /dev/null
+            release_version=${RELEASE_TAG#v}
+            source_ref="refs/tags/$RELEASE_TAG"
+          else
+            # PRs and manual runs without a release tag only build previews.
+            # Exercise a nonzero patch version and prerelease suffix in PRs.
+            release_version="1.2.3-ci.${GITHUB_RUN_NUMBER}"
+            source_ref="$GITHUB_SHA"
+          fi
+          version=${release_version/-/\~}
+          echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
+          echo "deb_version=$version" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "source_ref=$source_ref" >> "$GITHUB_OUTPUT"
+
+  package:
+    name: Package ${{ matrix.arch }}
+    needs: version
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            profile: arch/x86_64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            profile: arch/aarch64/cortex-a53
+    env:
+      DEB_VERSION: ${{ needs.version.outputs.deb_version }}
+      RELEASE_VERSION: ${{ needs.version.outputs.release_version }}
+      DMOD_PROFILE: ${{ matrix.profile }}
+      DEB_ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.source_ref }}
+          submodules: recursive
+          persist-credentials: false
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake dpkg-dev libcurl4-openssl-dev unzip gdb-multiarch bubblewrap python3
+      - name: Bootstrap host tools
+        run: |
+          test "$(dpkg --print-architecture)" = "$DEB_ARCH"
+          cmake -S . -B build-release-deb -DDMOD_RELEASE_VERSION="$RELEASE_VERSION" \
+            -DDMOD_TOOLS_NAME="$DMOD_PROFILE" -DCROSS_COMPILE= \
+            -DDMOD_MODE=DMOD_SYSTEM -DDMOD_BUILD_TOOLS=ON \
+            -DDMOD_BUILD_TESTS=OFF -DDMOD_BUILD_EXAMPLES=OFF -DDMOD_BUILD_TEMPLATES=OFF
+          cmake --build build-release-deb --parallel 2
+      - name: Build Debian packages
+        run: |
+          cmake -S . -B build-release-deb -DDMOD_BUILD_DEB=ON \
+            -DDMOD_DEB_VERSION="$DEB_VERSION" \
+            -DDMF_GET="$PWD/build-release-deb/bin/tools/dmf-get"
+          cmake --build build-release-deb --target package --parallel 2
+      - name: Build a module for the packaged loader
+        run: |
+          cmake -S . -B build-release-modules -DDMOD_RELEASE_VERSION="$RELEASE_VERSION" \
+            -DDMOD_TOOLS_NAME="$DMOD_PROFILE" -DCROSS_COMPILE= \
+            -DDMOD_MODE=DMOD_MODULE -DDMOD_BUILD_EXAMPLES=ON \
+            -DDMOD_BUILD_TESTS=OFF -DDMOD_BUILD_TOOLS=OFF -DDMOD_BUILD_TEMPLATES=OFF
+          cmake --build build-release-modules --target example_app dmodex --parallel 2
+      - name: Validate packages
+        run: |
+          runtime="build-release-deb/dmod_${DEB_VERSION}_${DEB_ARCH}.deb"
+          sdk="build-release-deb/dmod-dev_${DEB_VERSION}_all.deb"
+          test "$(dpkg-deb --field "$runtime" Version)" = "$DEB_VERSION"
+          test "$(dpkg-deb --field "$sdk" Version)" = "$DEB_VERSION"
+          DMOD_EXPECTED_VERSION="$RELEASE_VERSION" bash tests/integration/test_debian_package.sh "$runtime" build-release-modules/dmf/example_app.dmf
+          bash tests/integration/test_development_package.sh "$runtime" "$sdk"
+          grep -Fqx "#define DMOD_VERSION_STRING \"$RELEASE_VERSION\"" build-release-deb/dmod-config.h
+          grep -Fqx "dmod $RELEASE_VERSION $(git rev-parse --short HEAD)" build-release-deb/version.txt
+      - name: Install packages and test the SDK without a checkout
+        run: |
+          sudo apt-get install -y ./build-release-deb/dmod_*.deb ./build-release-deb/dmod-dev_*.deb
+          sudo bash tests/integration/test_installed_sdk.sh /usr -DDMOD_TOOLS_NAME="$DMOD_PROFILE" -DCROSS_COMPILE= -DDMOD_EXPECTED_VERSION="$RELEASE_VERSION"
+          sudo apt-get remove -y dmod-dev dmod
+      - name: Collect release assets
+        run: |
+          mkdir release-assets
+          cp "build-release-deb/dmod_${DEB_VERSION}_${DEB_ARCH}.deb" release-assets/
+          # The SDK is target-neutral; publish one copy from the amd64 build.
+          if [[ "$DEB_ARCH" == amd64 ]]; then
+            cp "build-release-deb/dmod-dev_${DEB_VERSION}_all.deb" release-assets/
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dmod-release-${{ matrix.arch }}
+          path: release-assets/*.deb
+          if-no-files-found: error
+
+  publish:
+    name: Upload release assets
+    needs: [version, package]
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.version.outputs.release_tag }}
+      DEB_VERSION: ${{ needs.version.outputs.deb_version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dmod-release-*
+          path: release-assets
+          merge-multiple: true
+      - name: Verify release assets and generate checksums
+        working-directory: release-assets
+        run: |
+          packages=("dmod_${DEB_VERSION}_amd64.deb" "dmod_${DEB_VERSION}_arm64.deb" "dmod-dev_${DEB_VERSION}_all.deb")
+          for package in "${packages[@]}"; do
+            test -s "$package"
+          done
+          sha256sum "${packages[@]}" > SHA256SUMS
+          sha256sum --check SHA256SUMS
+      - name: Upload packages to the existing GitHub Release
+        run: |
+          gh release upload "$RELEASE_TAG" release-assets/*.deb release-assets/SHA256SUMS --clobber

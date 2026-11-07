@@ -11,7 +11,7 @@ internal smoke-test fixture used by `dmod`'s own CI build (see
 ```
 .github/templates/
 ├── library/                          # Library module templates
-│   ├── CMakeLists.txt.template       # FetchContent-based CMake config, sets DMOD_DMR_PATH
+│   ├── CMakeLists.txt.template       # SDK/source CMake config, sets DMOD_DMR_PATH
 │   ├── Makefile.template
 │   ├── main.c.template
 │   ├── manifest.dmm.template
@@ -134,3 +134,15 @@ To customize module generation:
 
 - [Module Generation Script](../../scripts/README.md)
 - [CMake Functions Reference](../../docs/cmake-functions.md)
+
+## Selecting the DMOD framework
+
+Generated application and library CMake projects first look for an installed
+`dmod-dev` SDK with `find_package(dmod CONFIG QUIET)`. If it is not installed,
+they use the existing FetchContent flow from GitHub's `develop` branch.
+An explicit `DMOD_DIR` or `FETCHCONTENT_SOURCE_DIR_DMOD` always selects source
+builds; `DMOD_USE_INSTALLED_SDK=OFF` also disables SDK discovery. Resolve DMOD
+before `project()` to preserve compiler/profile selection, including port
+configuration. SDK builds use the package's initialized targets and helpers;
+only source builds include `paths.cmake` and call `dmod_setup_external_module()`.
+The generated Makefile continues to use the source-based Make integration.

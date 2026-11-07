@@ -11,7 +11,7 @@ configure_package_config_file(
     PATH_VARS DMOD_SDK_INSTALL_DIR DMOD_SDK_INCLUDE_DIR)
 write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/dmodConfigVersion.cmake"
-    VERSION "${PROJECT_VERSION}" COMPATIBILITY SameMajorVersion ARCH_INDEPENDENT)
+    VERSION "${DMOD_VERSION_NUMERIC}" COMPATIBILITY SameMajorVersion ARCH_INDEPENDENT)
 
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/dmodConfig.cmake"

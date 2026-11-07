@@ -47,6 +47,9 @@ typedef struct {
     char source[DMOD_RESOURCE_MAX_PATH_LEN];       /**< Source path in zip */
     char destination[DMOD_RESOURCE_MAX_PATH_LEN];  /**< Destination path after substitution */
     bool is_dmf_dmfc;                               /**< True if this is a dmf or dmfc resource */
+    char screen[128];                              /**< Optional opaque views variant selector */
+    bool is_default;                              /**< Default screen variant */
+    bool selected;                                /**< Set by SelectViews; all entries selected when parsed */
     size_t origin_count;                            /**< Number of [origin] directives */
     char origins[DMOD_RESOURCE_MAX_ORIGINS][DMOD_RESOURCE_MAX_PATH_LEN]; /**< Origin paths after substitution */
 } Dmod_ResourceEntry_t;
@@ -86,6 +89,13 @@ Dmod_ResourceContext_t* Dmod_Resource_Init(
  * @param views_dir The views directory path (may be NULL to unset)
  */
 void Dmod_Resource_SetViewsDir(Dmod_ResourceContext_t* ctx, const char* views_dir);
+
+/** Select view resources for a screen (NULL/empty: default or sole variant).
+ * Leaves non-variant resources selected. Packaging need not call this: parsing
+ * retains all variants. Returns false with available screens in GetError when
+ * no variant matches or a default is required.
+ */
+bool Dmod_Resource_SelectViews(Dmod_ResourceContext_t* ctx, const char* screen);
 
 /**
  * @brief Free a resource context and all associated resources

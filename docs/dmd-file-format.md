@@ -56,6 +56,27 @@ i2c@>1.0      # Greater than 1.0 (exclusive)
 can@<2.0      # Less than 2.0 (exclusive)
 ```
 
+#### Screen selection
+
+`@screen ID` is a reserved installation option, separate from the
+module's `@version` and configuration arguments:
+
+```dmd
+carhmi_view @screen 320x240
+carhmi_view@>=0.8 @screen 480x272
+carhmi service=carhmi.ini @screen 320x240
+```
+
+The option may appear before or after configuration arguments. It overrides
+`dmf-get --screen` / `DMOD_SCREEN` for that entry and is inherited by its
+recursive dependencies unless they provide their own `@screen`. IDs are opaque
+and case-sensitive: `480x272`, `epaper` and `epaper-mono` are equally valid.
+Nothing extracts width, height, technology or color depth from the name.
+Portable IDs have 1..127 ASCII letters/digits, `_`, `.` or `-`, starting with
+an ASCII letter/digit or `_`. A missing value, duplicate option or unknown `@option` is an error.
+It is a per-module option, not a standalone directive. Existing configuration
+paths, tags, versions, `$include` and `$from` retain their meaning.
+
 #### Configuration Files
 
 Modules can optionally specify a configuration file that should be copied during installation. The configuration file path is relative to the module's configuration directory (as defined in the module's `.dmr` file, or the default `config/` directory).

@@ -63,6 +63,68 @@ After building, packaging can also be repeated with:
 (cd build-deb && cpack -G DEB)
 ```
 
+## GitHub releases
+
+The `Release Debian packages` workflow (`.github/workflows/release.yml`) builds
+and tests native packages on Ubuntu 24.04 for amd64 and arm64 (Cortex-A53).
+After merging the workflow, open **Releases → Draft a new release** in GitHub,
+choose or create a version tag on the commit you want to release, and click
+**Publish release**. This starts CI, which attaches the packages directly to
+that release, matching the other DMOD repositories. Publishing a prerelease
+starts the same workflow. A tag push alone does not start it.
+
+Tags use `vMAJOR.MINOR` or `vMAJOR.MINOR.PATCH`, optionally followed by a
+prerelease suffix such as `-rc.1`. CI passes the tag without `v` to CMake as
+`DMOD_RELEASE_VERSION` before bootstrapping the tools. This sets the project and
+SDK version, generated `dmod_VERSION_MAJOR`, `dmod_VERSION_MINOR` and
+`dmod_VERSION_PATCH` fields, `DMOD_VERSION_STRING`, `version.txt`, and tool
+`--version` output. The numeric module compatibility field retains its existing
+major/minor encoding; patch releases do not change that encoding. For example,
+`v1.2.3` produces these downloads under the release's **Assets**:
+
+- `dmod_1.2.3_amd64.deb`
+- `dmod_1.2.3_arm64.deb`
+- `dmod-dev_1.2.3_all.deb`
+- `SHA256SUMS`
+
+Both architectures must pass package metadata, executable, module loading and
+installed SDK tests before the assets are uploaded. Only the upload job has
+`contents: write`; the built-in `GITHUB_TOKEN` is enough. CI preserves the
+release title, notes and prerelease status. A tag such as `v1.2.3-rc.1` uses
+Debian version `1.2.3~rc.1` so APT orders it before `1.2.3`.
+
+If an upload fails, rerun the failed jobs. Existing assets with the same names
+are replaced, so retrying an upload is supported. To rebuild assets for an
+existing release with the latest workflow, open **Actions → Release Debian
+packages → Run workflow**, select the branch containing the workflow fix,
+and enter the release tag in `tag`. For example, from the command line:
+
+```sh
+gh workflow run release.yml --ref develop -f tag=v1.2.3
+```
+
+The workflow builds the source from that tag, even when started from another
+branch. Pull requests changing the release workflow or packaging configuration,
+and manual runs with an empty `tag`, only upload Actions artifacts with preview
+version `1.2.3~ci.<run-number>` and tool/header version `1.2.3-ci.<run-number>`.
+These previews deliberately exercise nonzero minor/patch fields and prerelease
+suffixes; CI checks all packaged tools and an installed SDK consumer against
+the expected version.
+
+Download a runtime package matching your architecture plus the shared SDK and
+checksums from the release, then verify and install them:
+
+```sh
+sha256sum --check --ignore-missing SHA256SUMS
+sudo apt-get install ./dmod_1.2.3_amd64.deb ./dmod-dev_1.2.3_all.deb
+```
+
+For a local build, pass `-DDMOD_RELEASE_VERSION=1.2.3` to the first configure
+command so all binaries, generated headers and SDK metadata receive that
+version. It defaults to `1.0`. The Debian version defaults to the same release,
+with `-` replaced by `~` before the prerelease suffix. `DMOD_DEB_VERSION` remains
+available as an explicit package-only override.
+
 ## Inspect, install and remove
 
 ```sh

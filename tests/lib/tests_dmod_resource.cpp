@@ -283,3 +283,70 @@ TEST_F(DmodResourceTest, MultipleEntries) {
     ASSERT_EQ(entry.origin_count, 1u);
     ASSERT_STREQ(entry.origins[0], "/repo/include");
 }
+
+TEST_F(DmodResourceTest, PackageRetainsAllScreensAndInstallationSelectsOne) {
+    ASSERT_TRUE(Dmod_Resource_Parse(ctx,
+        "dmf=app.dmf => /out/app.dmf\n"
+        "views=views/480x272 => /out/views [screen=480x272] [default=true] [origin=/build/480]\n"
+        "views=views/320x240 => /out/views [origin=/build/320] [screen=320x240]\n"));
+    Dmod_ResourceEntry_t e;
+    ASSERT_EQ(Dmod_Resource_GetEntryCount(ctx), 3u);
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 2, &e));
+    EXPECT_TRUE(e.selected); // mkdmrpkg sees every variant without selecting.
+    EXPECT_STREQ(e.screen, "320x240");
+    EXPECT_STREQ(e.origins[0], "/build/320");
+    ASSERT_TRUE(Dmod_Resource_SelectViews(ctx, "320x240"));
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 0, &e)); EXPECT_TRUE(e.selected);
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 1, &e)); EXPECT_FALSE(e.selected);
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 2, &e)); EXPECT_TRUE(e.selected);
+    ASSERT_TRUE(Dmod_Resource_SelectViews(ctx, nullptr));
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 1, &e)); EXPECT_TRUE(e.selected);
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 2, &e)); EXPECT_FALSE(e.selected);
+}
+
+TEST_F(DmodResourceTest, LegacyViewsAndSoleVariantRemainUsable) {
+    ASSERT_TRUE(Dmod_Resource_Parse(ctx, "views=views => /out/views\n"));
+    EXPECT_TRUE(Dmod_Resource_SelectViews(ctx, "320x240"));
+    ASSERT_TRUE(Dmod_Resource_Parse(ctx, "views=small => /out/views [screen=320x240]\n"));
+    EXPECT_TRUE(Dmod_Resource_SelectViews(ctx, nullptr));
+    EXPECT_FALSE(Dmod_Resource_SelectViews(ctx, "480x272"));
+    EXPECT_NE(strstr(Dmod_Resource_GetError(ctx), "320x240"), nullptr);
+}
+
+TEST_F(DmodResourceTest, MultipleVariantsNeedAnExplicitChoiceOrDefault) {
+    ASSERT_TRUE(Dmod_Resource_Parse(ctx,
+        "views=a => /out/views [screen=320x240]\nviews=b => /out/views [screen=480x272]\n"));
+    EXPECT_FALSE(Dmod_Resource_SelectViews(ctx, nullptr));
+    EXPECT_NE(strstr(Dmod_Resource_GetError(ctx), "480x272"), nullptr);
+    EXPECT_TRUE(Dmod_Resource_SelectViews(ctx, "480x272"));
+}
+
+TEST_F(DmodResourceTest, RejectsInvalidVariantMetadata) {
+    const char* entries[] = {
+        "views=a => b [screen=../epaper]", "views=a => b [screen=320x240] [screen=480x272]",
+        "views=a => b [screen=]", "views=a => b [screen=320x240] [default=yes]",
+        "views=a => b [default=true]", "docs=a => b [screen=320x240]",
+        "views=a => b [screen=320x240]\nviews=c => b [screen=320x240]",
+        "views=a => b [screen=320x240] [default=true]\nviews=c => b [screen=480x272] [default=true]"
+    };
+    for (auto entry : entries) EXPECT_FALSE(Dmod_Resource_Parse(ctx, entry)) << entry;
+}
+
+TEST_F(DmodResourceTest, NamedScreenVariantsAreLiteralAndCaseSensitive) {
+    const std::string long_id(127, 'e');
+    const std::string resources =
+        "views=paper => /out/views [screen=epaper] [default=true]\n"
+        "views=mono => /out/views [screen=epaper-mono]\n"
+        "views=custom => /out/views [screen=" + long_id + "]\n";
+    ASSERT_TRUE(Dmod_Resource_Parse(ctx, resources.c_str()));
+    EXPECT_FALSE(Dmod_Resource_SelectViews(ctx, "EPAPER"));
+    ASSERT_TRUE(Dmod_Resource_SelectViews(ctx, "epaper-mono"));
+    Dmod_ResourceEntry_t entry;
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 1, &entry));
+    EXPECT_TRUE(entry.selected);
+    EXPECT_STREQ(entry.screen, "epaper-mono");
+    ASSERT_TRUE(Dmod_Resource_SelectViews(ctx, long_id.c_str()));
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 2, &entry));
+    EXPECT_TRUE(entry.selected);
+    EXPECT_STREQ(entry.screen, long_id.c_str());
+}

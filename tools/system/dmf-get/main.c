@@ -23,6 +23,7 @@
 #include "dmod_dependencies.h"
 #include "dmod_version.h"
 #include "dmod_resource.h"
+#include "../../lib/dmod_screen.h"
 
 // Default paths
 #define DEFAULT_DMF_DIR "./dmf"
@@ -989,6 +990,7 @@ typedef enum {
 typedef struct {
     char name[DMOD_MANIFEST_MAX_NAME_LEN];
     char version[DMOD_MANIFEST_MAX_VERSION_LEN];
+    char screen[DMOD_SCREEN_MAX_LEN];
     ModuleVisitState_t state;
 } ModuleVisitEntry_t;
 
@@ -996,12 +998,13 @@ static ModuleVisitEntry_t* g_module_visit_entries = NULL;
 static size_t g_module_visit_count = 0;
 static size_t g_module_visit_capacity = 0;
 
-static int FindModuleVisitEntry(const char* module_name, const char* module_version) {
+static int FindModuleVisitEntry(const char* module_name, const char* module_version, const char* screen) {
     const char* normalized_version = (module_version && module_version[0] != '\0') ? module_version : "";
 
     for (size_t index = 0; index < g_module_visit_count; index++) {
         if (strcmp(g_module_visit_entries[index].name, module_name) == 0 &&
-            strcmp(g_module_visit_entries[index].version, normalized_version) == 0) {
+            strcmp(g_module_visit_entries[index].version, normalized_version) == 0 &&
+            strcmp(g_module_visit_entries[index].screen, screen ? screen : "") == 0) {
             return (int)index;
         }
     }
@@ -1030,9 +1033,9 @@ static bool EnsureModuleVisitCapacity(size_t required_capacity) {
     return true;
 }
 
-static bool SetModuleVisitState(const char* module_name, const char* module_version, ModuleVisitState_t state) {
+static bool SetModuleVisitState(const char* module_name, const char* module_version, ModuleVisitState_t state, const char* screen) {
     const char* normalized_version = (module_version && module_version[0] != '\0') ? module_version : "";
-    int existing_index = FindModuleVisitEntry(module_name, normalized_version);
+    int existing_index = FindModuleVisitEntry(module_name, normalized_version, screen);
 
     if (existing_index >= 0) {
         g_module_visit_entries[existing_index].state = state;
@@ -1048,13 +1051,14 @@ static bool SetModuleVisitState(const char* module_name, const char* module_vers
     entry->name[sizeof(entry->name) - 1] = '\0';
     strncpy(entry->version, normalized_version, sizeof(entry->version) - 1);
     entry->version[sizeof(entry->version) - 1] = '\0';
+    strcpy(entry->screen, screen ? screen : "");
     entry->state = state;
     g_module_visit_count++;
     return true;
 }
 
-static bool GetModuleVisitState(const char* module_name, const char* module_version, ModuleVisitState_t* out_state) {
-    int existing_index = FindModuleVisitEntry(module_name, module_version);
+static bool GetModuleVisitState(const char* module_name, const char* module_version, ModuleVisitState_t* out_state, const char* screen) {
+    int existing_index = FindModuleVisitEntry(module_name, module_version, screen);
     if (existing_index < 0) {
         return false;
     }
@@ -1063,8 +1067,8 @@ static bool GetModuleVisitState(const char* module_name, const char* module_vers
     return true;
 }
 
-static void RemoveModuleVisitEntry(const char* module_name, const char* module_version) {
-    int existing_index = FindModuleVisitEntry(module_name, module_version);
+static void RemoveModuleVisitEntry(const char* module_name, const char* module_version, const char* screen) {
+    int existing_index = FindModuleVisitEntry(module_name, module_version, screen);
     if (existing_index < 0) {
         return;
     }
@@ -1078,16 +1082,16 @@ static void RemoveModuleVisitEntry(const char* module_name, const char* module_v
     g_module_visit_count--;
 }
 
-static int FinalizeModuleDownload(const char* module_name, const char* module_version, int result) {
+static int FinalizeModuleDownload(const char* module_name, const char* module_version, int result, const char* screen) {
     if (result == 0) {
-        if (!SetModuleVisitState(module_name, module_version, MODULE_VISIT_PROCESSED)) {
+        if (!SetModuleVisitState(module_name, module_version, MODULE_VISIT_PROCESSED, screen)) {
             DMOD_LOG_WARN("Failed to persist processed state for %s%s%s\n",
                           module_name,
                           (module_version && module_version[0] != '\0') ? "@" : "",
                           (module_version && module_version[0] != '\0') ? module_version : "");
         }
     } else {
-        RemoveModuleVisitEntry(module_name, module_version);
+        RemoveModuleVisitEntry(module_name, module_version, screen);
     }
     return result;
 }
@@ -1101,7 +1105,7 @@ static int DownloadModule(const char* module_name, const char* module_version,
                           bool download_dependencies, const char* default_manifest,
                           bool ignore_missing, bool skip_dmod_ver_check,
                           bool mini_mode, bool auto_accept_license, 
-                          InstallationCounts_t* counts);
+                          InstallationCounts_t* counts, const char* screen);
 
 static Dmod_ManifestContext_t* GetContextForModule(
     Dmod_ManifestContext_t* primary_ctx,
@@ -1144,13 +1148,12 @@ static bool IsPathSafe(const char* path) {
 }
 
 /**
- * @brief Convert DMOD_VERSION hex to semantic version
+ * @brief Get the numeric components of the configured DMOD release
  */
 static void GetCurrentDmodVersion(Dmod_SemanticVersion_t* version) {
-    // DMOD_VERSION format: 0xMMmmpppp (Major, minor, patch)
     version->major = dmod_VERSION_MAJOR;
     version->minor = dmod_VERSION_MINOR;
-    version->patch = 0; // Patch not defined in dmod_VERSION
+    version->patch = dmod_VERSION_PATCH;
 }
 
 /**
@@ -1815,6 +1818,47 @@ static void RemoveSkippedModuleFiles(const char* dir, const char* selected_type,
     }
 }
 
+/* One install destination cannot receive two different variants in one run. */
+static bool RecordViewSelection(const char* destination, const char* screen)
+{
+    static struct { char destination[DMOD_RESOURCE_MAX_PATH_LEN]; char screen[DMOD_SCREEN_MAX_LEN]; } selections[128];
+    static size_t count;
+    for (size_t i = 0; i < count; i++) {
+        if (strcmp(selections[i].destination, destination) == 0)
+            return strcmp(selections[i].screen, screen) == 0;
+    }
+    if (count == 128 || strlen(destination) >= sizeof(selections[0].destination)) return false;
+    strcpy(selections[count].destination, destination);
+    strcpy(selections[count++].screen, screen);
+    return true;
+}
+
+/* Stage a complete variant beside its managed destination, then swap it.
+ * This removes stale assets after a resolution change without exposing a
+ * partially copied view; a failed copy leaves the previous view intact. */
+static bool InstallViewDirectory(const char* source, const char* destination)
+{
+    char staged[1200], backup[1200], command[2600];
+    struct stat st;
+    if (!IsPathSafe(source) || !IsPathSafe(destination) || !destination[0] ||
+        strcmp(destination, "/") == 0 || strcmp(destination, ".") == 0) return false;
+    bool exists = lstat(destination, &st) == 0;
+    if (exists && !S_ISDIR(st.st_mode)) return false;
+    if (Dmod_SnPrintf(staged, sizeof(staged), "%s.dmf-get-XXXXXX", destination) >= (int)sizeof(staged) ||
+        !mkdtemp(staged)) return false;
+    Dmod_SnPrintf(command, sizeof(command), "cp -r \"%s/.\" \"%s/\"", source, staged);
+    bool ok = system(command) == 0;
+    Dmod_SnPrintf(backup, sizeof(backup), "%s.old", staged);
+    if (ok && exists) ok = rename(destination, backup) == 0;
+    if (ok && rename(staged, destination) != 0) {
+        if (exists) rename(backup, destination);
+        ok = false;
+    }
+    Dmod_SnPrintf(command, sizeof(command), "rm -rf \"%s\"", ok && exists ? backup : staged);
+    system(command);
+    return ok;
+}
+
 /**
  * @brief Extract ZIP file and find DMF/DMFC file
  * 
@@ -1834,7 +1878,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                                      const char* module_name, const char* preferred_type,
                                      bool mini_mode, bool auto_accept_license,
                                      char* output_file, size_t output_file_size,
-                                     char* output_dmd_file, size_t output_dmd_file_size) {
+                                     char* output_dmd_file, size_t output_dmd_file_size, const char* screen) {
     // Create temporary extraction directory in /tmp
     char extract_dir[512];
     Dmod_SnPrintf(extract_dir, sizeof(extract_dir), "/tmp/dmod_extract_%s_%d", module_name, (int)getpid());
@@ -1965,6 +2009,42 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
     
     Dmod_CloseDir(dir);
     
+    if (dmr_file[0]) {
+        char safe_output_dir[1024];
+        GetInstallResourceOutputDir(safe_output_dir, sizeof(safe_output_dir), output_dir, module_name);
+        Dmod_ResourceContext_t* check = InitInstallResourceContext(safe_output_dir, module_name);
+        bool valid = check && Dmod_Resource_ParseFile(check, dmr_file) &&
+                     Dmod_Resource_SelectViews(check, screen);
+        if (valid) {
+            for (size_t i = 0; i < Dmod_Resource_GetEntryCount(check); i++) {
+                Dmod_ResourceEntry_t e;
+                Dmod_Resource_GetEntry(check, i, &e);
+                if (!e.selected || !e.screen[0]) continue;
+                char source[1024];
+                struct stat info;
+                Dmod_SnPrintf(source, sizeof(source), "%s/%s", extract_dir, e.source);
+                if (!IsPathSafe(source) || !IsPathSafe(e.destination) ||
+                    stat(source, &info) != 0 || !S_ISDIR(info.st_mode) ||
+                    !RecordViewSelection(e.destination, e.screen)) {
+                    DMOD_LOG_ERROR("Invalid, missing or conflicting view variant %s\n", e.screen);
+                    valid = false;
+                    break;
+                }
+            }
+        }
+        if (!valid) {
+            DMOD_LOG_ERROR("Cannot select views: %s\n", check && Dmod_Resource_GetError(check) ?
+                           Dmod_Resource_GetError(check) : "invalid view resources");
+        }
+        Dmod_Resource_Free(check);
+        if (!valid) {
+            char cleanup[1024];
+            Dmod_SnPrintf(cleanup, sizeof(cleanup), "rm -rf \"%s\"", extract_dir);
+            system(cleanup);
+            return false;
+        }
+    }
+
     // Check license acceptance before proceeding
     if (!CheckLicenseAcceptance(extract_dir, module_name, output_dir, auto_accept_license)) {
         DMOD_LOG_INFO("Installation cancelled by user\n");
@@ -2084,6 +2164,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                 if (g_package_dir) resource_install_failed = true;
                 Dmod_Resource_Free(res_ctx);
             } else {
+                Dmod_Resource_SelectViews(res_ctx, screen);
                 size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
                 DMOD_LOG_INFO("Found %zu resource entries in .dmr file\n", res_count);
                 
@@ -2096,6 +2177,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                         continue;
                     }
                     
+                    if (!res_entry.selected) continue;
                     bool is_views = strcmp(res_entry.key, "views") == 0;
 
                     bool redirect_license = g_license_dir && strcmp(res_entry.key, "license") == 0;
@@ -2212,6 +2294,13 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                         }
                     }
                     
+                    if (res_entry.screen[0]) {
+                        if (!InstallViewDirectory(full_source, res_entry.destination)) {
+                            resource_install_failed = true;
+                        }
+                        continue;
+                    }
+
                     // Copy the resource
                     char cp_res_cmd[2048];
                     if (S_ISDIR(st.st_mode) && (is_views || redirect_license || g_package_dir)) {
@@ -2318,7 +2407,7 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                                       const char* default_manifest, bool ignore_missing,
                                       bool skip_dmod_ver_check, bool mini_mode,
                                       bool auto_accept_license,
-                                      InstallationCounts_t* counts) {
+                                      InstallationCounts_t* counts, const char* screen) {
     int failed_count = 0;
     
     // First, try to load dependencies from .dmd file if provided
@@ -2417,7 +2506,8 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                 skip_dmod_ver_check,
                 mini_mode,
                 auto_accept_license,
-                counts
+                counts,
+                dep_entry.screen[0] ? dep_entry.screen : screen
             );
             
             Dmod_Manifest_Free(man_ctx);
@@ -2541,7 +2631,8 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                         skip_dmod_ver_check,
                         mini_mode,
                         auto_accept_license,
-                        counts
+                        counts,
+                        screen
                     );
                     
                     Dmod_Manifest_Free(man_ctx);
@@ -2708,6 +2799,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --config-dest <name>      Custom destination filename for config file\n");
     Dmod_Printf("  --config-map <map>        Route tagged configs to different directories (with -d), e.g.\n");
     Dmod_Printf("                            \"driver:./config/drivers;service:./config/services\"\n");
+    Dmod_Printf("  --screen <ID>             Select runtime view resources (default: $DMOD_SCREEN)\n");
     Dmod_Printf("  --views-dir <path>        Directory where views of the installed applications are placed,\n");
     Dmod_Printf("                            each module in its own <path>/<module> (= ${views_dir} in .dmr)\n");
     Dmod_Printf("                            (default: $DMOD_VIEWS_DIR, otherwise <package-dir>/views or <output-dir>/views)\n");
@@ -2916,9 +3008,9 @@ static int DownloadModule(const char* module_name, const char* module_version,
                           bool download_dependencies, const char* default_manifest,
                           bool ignore_missing, bool skip_dmod_ver_check,
                           bool mini_mode, bool auto_accept_license,
-                          InstallationCounts_t* counts) {
+                          InstallationCounts_t* counts, const char* screen) {
     ModuleVisitState_t existing_state;
-    if (GetModuleVisitState(module_name, module_version, &existing_state)) {
+    if (GetModuleVisitState(module_name, module_version, &existing_state, screen)) {
         if (existing_state == MODULE_VISIT_PROCESSING) {
             DMOD_LOG_WARN("Detected dependency cycle for %s%s%s - skipping\n",
                           module_name,
@@ -2933,7 +3025,7 @@ static int DownloadModule(const char* module_name, const char* module_version,
         return 0;
     }
 
-    if (!SetModuleVisitState(module_name, module_version, MODULE_VISIT_PROCESSING)) {
+    if (!SetModuleVisitState(module_name, module_version, MODULE_VISIT_PROCESSING, screen)) {
         DMOD_LOG_ERROR("Failed to track dependency state for %s%s%s\n",
                        module_name,
                        (module_version && module_version[0] != '\0') ? "@" : "",
@@ -2957,11 +3049,11 @@ static int DownloadModule(const char* module_name, const char* module_version,
             // No more entries found
             if (!found_any) {
                 DMOD_LOG_ERROR("Error: %s\n", Dmod_Manifest_GetError(manifest_ctx));
-                return FinalizeModuleDownload(module_name, module_version, ignore_missing ? 0 : 1);
+                return FinalizeModuleDownload(module_name, module_version, ignore_missing ? 0 : 1, screen);
             } else {
                 // We tried all entries but none matched architecture
                 DMOD_LOG_ERROR("Error: No compatible architecture found for module: %s\n", module_name);
-                return FinalizeModuleDownload(module_name, module_version, ignore_missing ? 0 : 1);
+                return FinalizeModuleDownload(module_name, module_version, ignore_missing ? 0 : 1, screen);
             }
         }
         
@@ -3052,7 +3144,7 @@ static int DownloadModule(const char* module_name, const char* module_version,
         
         if (output_path_len < 0 || (size_t)output_path_len >= sizeof(output_file)) {
             DMOD_LOG_ERROR("Download destination is too long\n");
-            return FinalizeModuleDownload(module_name, module_version, 1);
+            return FinalizeModuleDownload(module_name, module_version, 1, screen);
         }
 
         // Check if file already exists
@@ -3063,7 +3155,7 @@ static int DownloadModule(const char* module_name, const char* module_version,
             // Download the file
             if (!DownloadFile(url, output_file)) {
                 DMOD_LOG_ERROR("Error: Failed to download module\n");
-                return FinalizeModuleDownload(module_name, module_version, 1);
+                return FinalizeModuleDownload(module_name, module_version, 1, screen);
             }
         }
         
@@ -3075,9 +3167,10 @@ static int DownloadModule(const char* module_name, const char* module_version,
             if (!ExtractZipAndFindModule(output_file, output_dir, entry.name, preferred_type,
                                         mini_mode, auto_accept_license,
                                         final_module_path, sizeof(final_module_path),
-                                        dmd_file_path, sizeof(dmd_file_path))) {
+                                        dmd_file_path, sizeof(dmd_file_path), screen)) {
                 DMOD_LOG_ERROR("Error: Failed to extract and find module from ZIP\n");
-                return FinalizeModuleDownload(module_name, module_version, 1);
+                remove(output_file);
+                return FinalizeModuleDownload(module_name, module_version, 1, screen);
             }
             // ExtractZipAndFindModule already prints where it was installed
         } else {
@@ -3132,11 +3225,13 @@ static int DownloadModule(const char* module_name, const char* module_version,
                 skip_dmod_ver_check,
                 mini_mode,
                 auto_accept_license,
-                counts
+                counts,
+                screen
             );
             
             if (dep_result > 0) {
                 DMOD_LOG_WARN("%d dependencies failed to download\n", dep_result);
+                return FinalizeModuleDownload(module_name, module_version, 1, screen);
             }
         }
         
@@ -3150,15 +3245,16 @@ static int DownloadModule(const char* module_name, const char* module_version,
             counts->success_count++;
         }
         
-        return FinalizeModuleDownload(module_name, module_version, 0);  // Success - found and installed compatible module
+        return FinalizeModuleDownload(module_name, module_version, 0, screen);  // Success - found and installed compatible module
     } // end while loop
-    return FinalizeModuleDownload(module_name, module_version, -1);  // Should not reach here
+    return FinalizeModuleDownload(module_name, module_version, -1, screen);  // Should not reach here
 }
 
 /**
  * @brief Main function
  */
 int main(int argc, char* argv[]) {
+    const char* screen = Dmod_GetEnv("DMOD_SCREEN");
     // Parse command line arguments
     const char* module_spec = NULL;
     const char* dependencies_path = NULL;
@@ -3220,6 +3316,13 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
             config_dir = argv[i];
+        }
+        else if (strcmp(argv[i], "--screen") == 0) {
+            if (++i >= argc || !Dmod_Screen_IsValid(argv[i])) {
+                DMOD_LOG_ERROR("--screen requires a variant identifier (up to 127 characters)\n");
+                return 1;
+            }
+            screen = argv[i];
         }
         else if (strcmp(argv[i], "--views-dir") == 0) {
             if (++i >= argc) {
@@ -3405,6 +3508,10 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    if (screen && *screen && !Dmod_Screen_IsValid(screen)) {
+        DMOD_LOG_ERROR("Invalid DMOD_SCREEN: %s\n", screen);
+        return 1;
+    }
     if (!g_views_dir) {
         g_views_dir = Dmod_GetEnv(ENV_VIEWS_DIR);
     }
@@ -3836,7 +3943,8 @@ int main(int argc, char* argv[]) {
                 skip_dmod_ver_check,
                 mini_mode,
                 auto_accept_license,
-                &counts
+                &counts,
+                dep_entry.screen[0] ? dep_entry.screen : screen
             );
             
             Dmod_Manifest_Free(man_ctx);
@@ -3958,7 +4066,8 @@ int main(int argc, char* argv[]) {
             skip_dmod_ver_check,
             mini_mode,
             auto_accept_license,
-            &counts
+            &counts,
+            screen
         );
         
         if (result != 0) {
