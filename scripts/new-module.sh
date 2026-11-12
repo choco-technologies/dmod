@@ -294,6 +294,7 @@ MODULE_NAME_UPPER=$(printf '%s' "${MODULE_NAME}" | tr '[:lower:]' '[:upper:]')
 case "${PORT_ARCH}" in
     stm32f7) DMOD_TOOLS_NAME_VALUE='"arch/armv7/cortex-m7"' ;;
     stm32f4) DMOD_TOOLS_NAME_VALUE='"arch/armv7/cortex-m4"' ;;
+    esp32s3) DMOD_TOOLS_NAME_VALUE='"arch/xtensa/esp32s3"' ;;
     x86_64)  DMOD_TOOLS_NAME_VALUE='"arch/x86_64"' ;;
     *)
         DMOD_TOOLS_NAME_VALUE='"arch/armv7/cortex-m7"'

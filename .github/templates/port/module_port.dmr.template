@@ -20,3 +20,7 @@ inc=./include => ${destination}/${module}/include [origin=${repo_dir}/include] [
 
 # === License ===
 license=./LICENSE => ${destination}/${module}/LICENSE [origin=${repo_dir}/LICENSE]
+
+# Adding itself (dmf-get reads where the resources are from it - e.g. a lib resource for dmod_link_builtin; without it only the default
+# layout is found)
+dmr=./${module}.dmr => ${destination}/${module}/${module}.dmr [origin=${repo_dir}/${module}.dmr]
