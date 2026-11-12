@@ -42,6 +42,7 @@
 #define ENV_VIEWS_DIR "DMOD_VIEWS_DIR"
 #define ENV_LICENSE_DIR "DMOD_LICENSE_DIR"
 #define ENV_PACKAGE_DIR "DMOD_PACKAGE_DIR"
+#define ENV_BUILTIN_DIR "DMOD_BUILTIN_DIR"
 #define ENV_CACHE_DIR "DMOD_CACHE_DIR"
 
 // Cache directories
@@ -1107,6 +1108,10 @@ static int DownloadModule(const char* module_name, const char* module_version,
                           bool mini_mode, bool auto_accept_license, 
                           InstallationCounts_t* counts, const char* screen);
 
+static int InstallBuiltin(const Dmod_DependencyEntry_t* dep_entry, Dmod_ManifestContext_t* manifest_ctx,
+                          const char* tools_name, const char* arch_name, const char* cpu_name,
+                          const char* cpu_family, InstallationCounts_t* counts);
+
 static Dmod_ManifestContext_t* GetContextForModule(
     Dmod_ManifestContext_t* primary_ctx,
     Dmod_ManifestContext_t** fallback_ctx,
@@ -1171,6 +1176,23 @@ static const char* g_license_dir = NULL;
 // Optional installation root for package resources and metadata. Module binaries
 // still go to output_dir; unset preserves the existing combined layout.
 static const char* g_package_dir = NULL;
+
+/*
+ * Directory of the libraries of the system ("@builtin" entries of a .dmd: the "lib" resource and the headers of a package, which the
+ * binary that loads the modules links - see dmod_link_builtin): <dir>/<module>/lib/lib<module>.a and <dir>/<module>/include. Set by
+ * --builtin-dir, DMOD_BUILTIN_DIR or the "builtin" command; when NULL such entries are only reported, never installed: a library of the
+ * system is not something to put next to the modules.
+ */
+static const char* g_builtin_dir = NULL;
+
+/* The libraries of the system installed to g_builtin_dir in this run (listed in <dir>/builtin.dmd at the end) */
+typedef struct {
+    char name[DMOD_DEPENDENCIES_MAX_NAME_LEN];
+    char version[DMOD_DEPENDENCIES_MAX_VERSION_LEN];
+} BuiltinRecord_t;
+#define MAX_BUILTIN_RECORDS 64
+static BuiltinRecord_t g_builtin_records[MAX_BUILTIN_RECORDS];
+static size_t g_builtin_record_count = 0;
 
 /**
  * Create a resource context for installing a module and hand it the views
@@ -2446,11 +2468,17 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
                 continue;
             }
             
-            DMOD_LOG_INFO("  [%zu/%zu] %s%s%s\n", 
+            DMOD_LOG_INFO("  [%zu/%zu] %s%s%s%s\n", 
                    i + 1, dep_count,
                    dep_entry.name,
                    dep_entry.version[0] ? "@" : "",
-                   dep_entry.version[0] ? dep_entry.version : "");
+                   dep_entry.version[0] ? dep_entry.version : "",
+                   dep_entry.builtin ? " @builtin" : "");
+
+            if (dep_entry.builtin && !g_builtin_dir) {
+                InstallBuiltin(&dep_entry, NULL, tools_name, arch_name, cpu_name, cpu_family, counts);
+                continue;
+            }
             
             // Initialize manifest parser for this dependency
             Dmod_ManifestContext_t* man_ctx = Dmod_Manifest_Init(tools_name, arch_name, cpu_name, cpu_family, DownloadWithCurl, NULL);
@@ -2486,6 +2514,14 @@ static int ProcessModuleDependencies(const char* module_file_path, const char* d
             if (!active_ctx) {
                 Dmod_Manifest_Free(man_ctx);
                 failed_count++;
+                continue;
+            }
+
+            if (dep_entry.builtin) {
+                if (InstallBuiltin(&dep_entry, active_ctx, tools_name, arch_name, cpu_name, cpu_family, counts) != 0) {
+                    failed_count++;
+                }
+                Dmod_Manifest_Free(man_ctx);
                 continue;
             }
             
@@ -2789,7 +2825,11 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  install <module>          Download and install module (default command)\n");
     Dmod_Printf("  headers <module>          Extract module headers to output directory\n");
     Dmod_Printf("  docs <module>             Extract module documentation to output directory\n");
-    Dmod_Printf("  lib <module>              Extract module static library to output directory\n\n");
+    Dmod_Printf("  lib <module>              Extract module static library to output directory\n");
+    Dmod_Printf("  builtin <module> | -d <path>\n");
+    Dmod_Printf("                            Install only the libraries of the system (@builtin entries) that the module(s)\n");
+    Dmod_Printf("                            and their dependencies need, to the output directory (default: $DMOD_BUILTIN_DIR,\n");
+    Dmod_Printf("                            otherwise $DMOD_DMF_DIR/builtin); they are listed in <output>/builtin.dmd\n\n");
     Dmod_Printf("Options:\n");
     Dmod_Printf("  -d, --dependencies <path> Path or URL to dependencies (.dmd) file\n");
     Dmod_Printf("  -m, --manifest <path>     Path or URL to manifest file\n");
@@ -2808,6 +2848,9 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --license-dir <path>      Install .dmr license resources to <path>/<module>/<source-name>\n");
     Dmod_Printf("                            (default: $DMOD_LICENSE_DIR, otherwise the .dmr destination)\n");
     Dmod_Printf("                            Also installs licenses in --mini mode\n");
+    Dmod_Printf("  --builtin-dir <path>      Install the libraries of the system (@builtin entries) to <path>/<module>/lib and\n");
+    Dmod_Printf("                            <path>/<module>/include and list them in <path>/builtin.dmd\n");
+    Dmod_Printf("                            (default: $DMOD_BUILTIN_DIR; without it they are not installed)\n");
     Dmod_Printf("  -D, --define <VAR=value>  Define variable for config path substitution\n");
     Dmod_Printf("  -t, --tools-name <name>   Tools name for variable substitution\n");
     Dmod_Printf("  -a, --arch-name <name>    Architecture name for variable substitution\n");
@@ -2835,6 +2878,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s     Views output directory (same as --views-dir)\n", ENV_VIEWS_DIR);
     Dmod_Printf("  %s   License output directory (same as --license-dir)\n", ENV_LICENSE_DIR);
     Dmod_Printf("  %s   Package resource directory (same as --package-dir)\n", ENV_PACKAGE_DIR);
+    Dmod_Printf("  %s   Libraries of the system directory (same as --builtin-dir)\n", ENV_BUILTIN_DIR);
     Dmod_Printf("  %s      Cache directory (default: ~/.cache/dmod/dmf-get)\n\n", ENV_CACHE_DIR);
     Dmod_Printf("Examples:\n");
     Dmod_Printf("  %s mymodule              # Download latest version\n", app_name);
@@ -2978,6 +3022,96 @@ static int ExtractResourceCommand(const char* module_name, const char* module_ve
     
     DMOD_LOG_INFO("Successfully extracted %s to: %s\n", resource_key, output_dir);
     return 0;
+}
+
+/**
+ * @brief Install a library of the system: an "@builtin" entry of a .dmd
+ *
+ * Such an entry is not a module: it names a package whose "lib" resource (a static library with a Built-in API) the binary that loads
+ * the modules has to link (dmod_link_builtin). With a builtin directory (--builtin-dir, the "builtin" command) its library and headers
+ * go there - <dir>/<module>/lib and <dir>/<module>/include - and it is listed in <dir>/builtin.dmd; without one nothing is installed.
+ * Its own dependencies are not followed: what a library of the system needs is linked with it.
+ *
+ * @return 0 on success, non-zero on failure
+ */
+static int InstallBuiltin(const Dmod_DependencyEntry_t* dep_entry, Dmod_ManifestContext_t* manifest_ctx,
+                          const char* tools_name, const char* arch_name, const char* cpu_name,
+                          const char* cpu_family, InstallationCounts_t* counts) {
+    const char* version = dep_entry->version[0] ? dep_entry->version : NULL;
+
+    if (!g_builtin_dir) {
+        DMOD_LOG_INFO("  %s%s%s is a library of the system (@builtin): linked into the binary that loads the modules, not installed\n",
+                      dep_entry->name, version ? "@" : "", version ? version : "");
+        return 0;
+    }
+
+    for (size_t i = 0; i < g_builtin_record_count; i++) {
+        if (strcmp(g_builtin_records[i].name, dep_entry->name) == 0) {
+            if (strcmp(g_builtin_records[i].version, dep_entry->version) != 0) {
+                DMOD_LOG_WARN("  Library of the system %s required as '%s' and as '%s': the first one is installed\n",
+                              dep_entry->name, g_builtin_records[i].version, dep_entry->version);
+            }
+            DMOD_LOG_INFO("  Library of the system already installed: %s\n", dep_entry->name);
+            return 0;
+        }
+    }
+    if (g_builtin_record_count >= MAX_BUILTIN_RECORDS) {
+        DMOD_LOG_ERROR("  Too many libraries of the system (at most %d)\n", MAX_BUILTIN_RECORDS);
+        return 1;
+    }
+
+    DMOD_LOG_INFO("  Installing the library of the system %s%s%s to %s\n",
+                  dep_entry->name, version ? "@" : "", version ? version : "", g_builtin_dir);
+    if (ExtractResourceCommand(dep_entry->name, version, manifest_ctx, g_builtin_dir,
+                               tools_name, arch_name, cpu_name, cpu_family, "lib") != 0) {
+        DMOD_LOG_ERROR("  %s has no library of the system (\"lib\" resource) for this target\n", dep_entry->name);
+        return 1;
+    }
+    if (ExtractResourceCommand(dep_entry->name, version, manifest_ctx, g_builtin_dir,
+                               tools_name, arch_name, cpu_name, cpu_family, "inc") != 0) {
+        DMOD_LOG_WARN("  %s: no headers installed with its library of the system\n", dep_entry->name);
+    }
+
+    BuiltinRecord_t* record = &g_builtin_records[g_builtin_record_count++];
+    strcpy(record->name, dep_entry->name);
+    strcpy(record->version, dep_entry->version);
+
+    Dmod_Printf("Installed library of the system: %s%s%s\n", dep_entry->name, version ? "@" : "", version ? version : "");
+    if (counts) {
+        counts->success_count++;
+    }
+    return 0;
+}
+
+/**
+ * @brief Write <builtin dir>/builtin.dmd: the libraries of the system installed in this run, one "@builtin" entry each
+ *
+ * This is what a build reads to link them (dmod_link_builtin DEPENDENCIES); it is written even when there are none.
+ */
+static bool WriteBuiltinList(void) {
+    if (!g_builtin_dir) {
+        return true;
+    }
+    if (!EnsureDirectory(g_builtin_dir)) {
+        return false;
+    }
+    char list_path[DMOD_RESOURCE_MAX_PATH_LEN + 16];
+    Dmod_SnPrintf(list_path, sizeof(list_path), "%s/builtin.dmd", g_builtin_dir);
+    FILE* list = fopen(list_path, "w");
+    if (!list) {
+        DMOD_LOG_ERROR("Failed to write the list of the libraries of the system: %s\n", list_path);
+        return false;
+    }
+    fprintf(list, "# Libraries of the system installed by dmf-get: <module>/lib/lib<module>.a and <module>/include\n");
+    for (size_t i = 0; i < g_builtin_record_count; i++) {
+        fprintf(list, "%s%s%s @builtin\n", g_builtin_records[i].name,
+                g_builtin_records[i].version[0] ? "@" : "", g_builtin_records[i].version);
+    }
+    bool ok = fclose(list) == 0;
+    if (!ok) {
+        DMOD_LOG_ERROR("Failed to write the list of the libraries of the system: %s\n", list_path);
+    }
+    return ok;
 }
 
 /**
@@ -3338,6 +3472,13 @@ int main(int argc, char* argv[]) {
             }
             g_package_dir = argv[i];
         }
+        else if (strcmp(argv[i], "--builtin-dir") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: --builtin-dir requires an argument\n");
+                return 1;
+            }
+            g_builtin_dir = argv[i];
+        }
         else if (strcmp(argv[i], "--license-dir") == 0) {
             if (++i >= argc) {
                 DMOD_LOG_ERROR("Error: --license-dir requires an argument\n");
@@ -3480,6 +3621,11 @@ int main(int argc, char* argv[]) {
             // Handle subcommands: install, headers, docs, lib
             // Check if this is a command keyword
             if (!command && !module_spec) {
+                // "builtin" is always the command: it is used with -d as well as with a module
+                if (strcmp(argv[i], "builtin") == 0) {
+                    command = argv[i];
+                    continue;
+                }
                 if (strcmp(argv[i], "install") == 0 ||
                     strcmp(argv[i], "headers") == 0 ||
                     strcmp(argv[i], "docs") == 0 ||
@@ -3528,6 +3674,13 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
+    if (!g_builtin_dir) {
+        g_builtin_dir = Dmod_GetEnv(ENV_BUILTIN_DIR);
+        if (g_builtin_dir && g_builtin_dir[0] == '\0') {
+            g_builtin_dir = NULL;
+        }
+    }
+
     if (!g_package_dir) {
         g_package_dir = Dmod_GetEnv(ENV_PACKAGE_DIR);
         if (g_package_dir && g_package_dir[0] == '\0') {
@@ -3767,6 +3920,45 @@ int main(int argc, char* argv[]) {
         return result;
     }
     
+    // "builtin": only the libraries of the system that the modules need. The modules are installed to a temporary directory - their
+    // .dmd files are in their packages - and removed at the end; the output directory is the directory of the libraries
+    bool builtin_command = command && strcmp(command, "builtin") == 0;
+    char builtin_staging_dir[] = "/tmp/dmf-get-builtin-XXXXXX";
+    char default_builtin_dir[1024];
+    if (builtin_command) {
+        if (output_dir) {
+            g_builtin_dir = output_dir;
+        } else if (!g_builtin_dir) {
+            const char* dmf_dir = GetEnvOrDefault(ENV_DMF_DIR, DEFAULT_DMF_DIR);
+            Dmod_SnPrintf(default_builtin_dir, sizeof(default_builtin_dir), "%s/builtin", dmf_dir);
+            g_builtin_dir = default_builtin_dir;
+        }
+        if (config_dir || g_config_map_count > 0) {
+            DMOD_LOG_ERROR("Error: the builtin command installs no configuration (--config-dir, --config-map)\n");
+            curl_global_cleanup();
+            return 1;
+        }
+        if (!mkdtemp(builtin_staging_dir)) {
+            DMOD_LOG_ERROR("Error: Failed to create a temporary directory for the modules\n");
+            curl_global_cleanup();
+            return 1;
+        }
+        output_dir = builtin_staging_dir;
+        mini_mode = true;
+        auto_accept_license = true;     // nothing of the modules is kept
+        g_views_dir = NULL;
+        g_license_dir = NULL;
+        g_package_dir = NULL;
+    }
+    if (g_builtin_dir && (g_builtin_dir[0] == '\0' || !IsPathSafe(g_builtin_dir) ||
+                          strlen(g_builtin_dir) >= DMOD_RESOURCE_MAX_PATH_LEN)) {
+        DMOD_LOG_ERROR("Error: --builtin-dir requires a non-empty, safe path shorter than %d characters\n",
+                       DMOD_RESOURCE_MAX_PATH_LEN);
+        if (builtin_command) rmdir(builtin_staging_dir);
+        curl_global_cleanup();
+        return 1;
+    }
+
     // If arch_name not specified, default to system architecture
     if (!arch_name && !skip_arch_check && !tools_name) {
         arch_name = DMOD_ARCH;
@@ -3882,11 +4074,16 @@ int main(int argc, char* argv[]) {
                 continue;
             }
             
-            DMOD_LOG_INFO("\n[%zu/%zu] Downloading module: %s%s%s\n", 
+            DMOD_LOG_INFO("\n[%zu/%zu] Downloading %s: %s%s%s\n", 
                    i + 1, dep_count,
+                   dep_entry.builtin ? "library of the system" : "module",
                    dep_entry.name,
                    dep_entry.version[0] ? "@" : "",
                    dep_entry.version[0] ? dep_entry.version : "");
+            if (dep_entry.builtin && !g_builtin_dir) {
+                InstallBuiltin(&dep_entry, NULL, tools_name, arch_name, cpu_name, cpu_family, &counts);
+                continue;
+            }
             DMOD_LOG_INFO("  Using manifest: %s\n", dep_entry.manifest);
             
             // Initialize manifest parser for this module
@@ -3923,6 +4120,14 @@ int main(int argc, char* argv[]) {
             if (!active_ctx) {
                 Dmod_Manifest_Free(man_ctx);
                 counts.failed_count++;
+                continue;
+            }
+
+            if (dep_entry.builtin) {
+                if (InstallBuiltin(&dep_entry, active_ctx, tools_name, arch_name, cpu_name, cpu_family, &counts) != 0) {
+                    counts.failed_count++;
+                }
+                Dmod_Manifest_Free(man_ctx);
                 continue;
             }
             
@@ -4096,6 +4301,18 @@ int main(int argc, char* argv[]) {
         if (fallback_ctx) Dmod_Manifest_Free(fallback_ctx);
     }
     
+    if (!WriteBuiltinList()) {
+        result = 1;
+    }
+    if (builtin_command) {
+        Dmod_Printf("Libraries of the system: %zu (listed in %s/builtin.dmd)\n", g_builtin_record_count, g_builtin_dir);
+        char rm_cmd[1024];
+        Dmod_SnPrintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", builtin_staging_dir);
+        if (system(rm_cmd) != 0) {
+            DMOD_LOG_WARN("Failed to remove the temporary directory %s\n", builtin_staging_dir);
+        }
+    }
+
     // Cleanup
     curl_global_cleanup();
     

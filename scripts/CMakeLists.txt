@@ -884,6 +884,10 @@ function(dmod_create_module moduleName version moduleType)
     endif()
 
     set(DMD_OUTPUT "${DMOD_DMF_DIR}/${moduleName}.dmd")
+    # The libraries of the system the module needs (dmod_require_builtin): "--builtin <package>" for each, as "@builtin" entries of its
+    # .dmd. A generator expression, so that dmod_require_builtin may be called after the module is created (COMMAND_EXPAND_LISTS)
+    set(DMOD_BUILTIN_REQS "$<TARGET_PROPERTY:${moduleName},DMOD_BUILTIN_REQUIREMENTS>")
+    set(TODMD_BUILTIN_ARGS "$<$<BOOL:${DMOD_BUILTIN_REQS}>:--builtin;$<JOIN:${DMOD_BUILTIN_REQS},;--builtin;>>")
     if(TODMD)
         # Check if version requirements file was created by dmod_link_modules
         get_target_property(VERSION_REQS_FILE ${moduleName} DMOD_VERSION_REQUIREMENTS_FILE)
@@ -891,16 +895,18 @@ function(dmod_create_module moduleName version moduleType)
             # Pass version requirements file to todmd
             add_custom_command(
                 TARGET ${moduleName} POST_BUILD
-                COMMAND ${TODMD} ${DMF_OUTPUT} ${DMD_OUTPUT} -r ${VERSION_REQS_FILE}
+                COMMAND ${TODMD} ${DMF_OUTPUT} ${DMD_OUTPUT} -r ${VERSION_REQS_FILE} "${TODMD_BUILTIN_ARGS}"
                 COMMENT "Generating dependencies file with version requirements"
+                COMMAND_EXPAND_LISTS
             )
             message(STATUS "Will use version requirements from: ${VERSION_REQS_FILE}")
         else()
             # No version requirements file, use original command
             add_custom_command(
                 TARGET ${moduleName} POST_BUILD
-                COMMAND ${TODMD} ${DMF_OUTPUT} ${DMD_OUTPUT}
+                COMMAND ${TODMD} ${DMF_OUTPUT} ${DMD_OUTPUT} "${TODMD_BUILTIN_ARGS}"
                 COMMENT "Generating dependencies file"
+                COMMAND_EXPAND_LISTS
             )
         endif()
     endif()
@@ -1071,14 +1077,16 @@ function(dmod_create_module moduleName version moduleType)
                     if(VERSION_REQS_FILE AND EXISTS "${VERSION_REQS_FILE}")
                         add_custom_command(
                             TARGET ${moduleName}_local_dmd POST_BUILD
-                            COMMAND ${TODMD} ${DMF_OUTPUT} ${DMD_OUTPUT} -r ${VERSION_REQS_FILE} --local-manifest "${DMOD_LOCAL_MANIFEST_PATH}"
+                            COMMAND ${TODMD} ${DMF_OUTPUT} ${DMD_OUTPUT} -r ${VERSION_REQS_FILE} --local-manifest "${DMOD_LOCAL_MANIFEST_PATH}" "${TODMD_BUILTIN_ARGS}"
                             COMMENT "Generating local dependencies file: ${LOCAL_DMD_OUTPUT}"
+                            COMMAND_EXPAND_LISTS
                         )
                     else()
                         add_custom_command(
                             TARGET ${moduleName}_local_dmd POST_BUILD
-                            COMMAND ${TODMD} ${DMF_OUTPUT} ${DMD_OUTPUT} --local-manifest "${DMOD_LOCAL_MANIFEST_PATH}"
+                            COMMAND ${TODMD} ${DMF_OUTPUT} ${DMD_OUTPUT} --local-manifest "${DMOD_LOCAL_MANIFEST_PATH}" "${TODMD_BUILTIN_ARGS}"
                             COMMENT "Generating local dependencies file: ${LOCAL_DMD_OUTPUT}"
+                            COMMAND_EXPAND_LISTS
                         )
                     endif()
                 endif()
@@ -1321,6 +1329,10 @@ endfunction()
 #       module1[@version]
 #       module2[@version]
 #   )
+#   dmod_link_builtin(target_name [PRIVATE|PUBLIC|INTERFACE]
+#       DEPENDENCIES file1.dmd [file2.dmd ...]
+#       [MANIFEST manifest.dmm]
+#   )
 #
 # Some DMOD modules (e.g. dmlist, dmosi-posix) are never turned into loadable
 # .dmf files - they are "system modules", distributed as a precompiled static
@@ -1331,6 +1343,15 @@ endfunction()
 # module via dmf-get, adds the headers to the target's include directories,
 # and statically links the library into targetName.
 #
+# With DEPENDENCIES the libraries are not named here: they are the "@builtin"
+# entries (docs/dmd-file-format.md) that the modules of the given .dmd files and
+# all their dependencies declare - e.g. the firmware links what the modules it
+# carries need (a module declares it with dmod_require_builtin()). They are
+# resolved by "dmf-get builtin" when the project is configured and installed to
+# ${CMAKE_CURRENT_BINARY_DIR}/<target_name>_builtin. MANIFEST is the manifest of
+# the .dmd files (default: DMOD_DMM_URL). A library that cannot be installed is
+# an error: the binary would lack an API its modules need.
+#
 # These libraries define their dmod API functions in a way that always marks
 # them as "used" to the compiler/linker, so simply linking the archive is
 # enough to make their Built-in API available to whatever loads modules that
@@ -1340,36 +1361,70 @@ endfunction()
 # dmod_add_library) - those must always link other modules dynamically via
 # dmod_link_modules() instead, since modules are loaded/unloaded independently
 # at runtime. This function is only for system-side binaries that are not
-# themselves loaded as .dmf files.
+# themselves loaded as .dmf files. A module that needs a library of the system
+# declares it with dmod_require_builtin().
 #
 # The visibility scope (PRIVATE, PUBLIC, or INTERFACE) works the same way as
 # for dmod_link_modules()/target_link_libraries(). If not specified, PRIVATE
 # is used.
 #
+
+# Links <libDir>/<module>/lib/lib<module_snake>.a (all of it) and adds <incDir>/<module>/include (incDir empty: no headers)
+function(_dmod_link_builtin_library targetName visibility moduleName incDir libDir)
+    set(ACTUAL_HEADER_DIR "${incDir}/${moduleName}/include")
+    if(NOT incDir)
+        # (the headers could not be downloaded: already reported)
+    elseif(EXISTS "${ACTUAL_HEADER_DIR}")
+        target_include_directories(${targetName} ${visibility} ${ACTUAL_HEADER_DIR})
+        message(STATUS "Added include directory for ${moduleName} (${visibility}): ${ACTUAL_HEADER_DIR}")
+    else()
+        message(WARNING "Header directory does not exist after download: ${ACTUAL_HEADER_DIR}")
+    endif()
+
+    # The archive file name follows the module's snake_case form (hyphens
+    # replaced with underscores, e.g. "dmosi-posix" -> "libdmosi_posix.a"),
+    # matching how these modules' own CMakeLists.txt name the CMake library
+    # target that produces them (see dmlist/CMakeLists.txt and
+    # dmosi-posix/CMakeLists.txt, and their respective .dmr "lib=" entries).
+    to_snake_case(${moduleName} MODULE_NAME_SNAKE_CASE)
+    set(ACTUAL_LIB_PATH "${libDir}/${moduleName}/lib/lib${MODULE_NAME_SNAKE_CASE}.a")
+
+    if(EXISTS "${ACTUAL_LIB_PATH}")
+        # A plain link only pulls object files out of a static archive to
+        # resolve symbols someone else already references. Nothing in a
+        # system binary like dmod_loader calls these functions directly -
+        # they exist purely so a *dynamically loaded* module can resolve
+        # them later through the Built-in API - so without forcing the
+        # whole archive in, the linker drops every object file here and
+        # the symbols never make it into the binary at all.
+        target_link_libraries(${targetName} ${visibility}
+            -Wl,--whole-archive ${ACTUAL_LIB_PATH} -Wl,--no-whole-archive
+        )
+        message(STATUS "Statically linked system module ${moduleName} (${visibility}): ${ACTUAL_LIB_PATH}")
+        set(_DMOD_BUILTIN_LINKED TRUE PARENT_SCOPE)
+    else()
+        message(WARNING "Static library not found after download: ${ACTUAL_LIB_PATH}")
+        set(_DMOD_BUILTIN_LINKED FALSE PARENT_SCOPE)
+    endif()
+endfunction()
+
 function(dmod_link_builtin targetName)
-    # Parse arguments for visibility scope
+    # Visibility: the first keyword given (a keyword may come without modules, before DEPENDENCIES)
+    set(VISIBILITY "PRIVATE")
+    foreach(KEYWORD PRIVATE PUBLIC INTERFACE)
+        if(KEYWORD IN_LIST ARGN)
+            set(VISIBILITY "${KEYWORD}")
+            break()
+        endif()
+    endforeach()
+
     set(options "")
-    set(oneValueArgs "")
-    set(multiValueArgs PRIVATE PUBLIC INTERFACE)
+    set(oneValueArgs MANIFEST)
+    set(multiValueArgs PRIVATE PUBLIC INTERFACE DEPENDENCIES)
     cmake_parse_arguments(DMOD_LINK_BUILTIN "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    # Determine visibility scope and module list
-    set(VISIBILITY "PRIVATE")
-    set(MODULE_SPECS "")
-
-    if(DMOD_LINK_BUILTIN_PRIVATE)
-        set(VISIBILITY "PRIVATE")
-        set(MODULE_SPECS ${DMOD_LINK_BUILTIN_PRIVATE})
-    elseif(DMOD_LINK_BUILTIN_PUBLIC)
-        set(VISIBILITY "PUBLIC")
-        set(MODULE_SPECS ${DMOD_LINK_BUILTIN_PUBLIC})
-    elseif(DMOD_LINK_BUILTIN_INTERFACE)
-        set(VISIBILITY "INTERFACE")
-        set(MODULE_SPECS ${DMOD_LINK_BUILTIN_INTERFACE})
-    else()
-        # No visibility keyword specified, treat all unparsed args as module specs with PRIVATE visibility
-        set(MODULE_SPECS ${DMOD_LINK_BUILTIN_UNPARSED_ARGUMENTS})
-    endif()
+    set(MODULE_SPECS ${DMOD_LINK_BUILTIN_PRIVATE} ${DMOD_LINK_BUILTIN_PUBLIC} ${DMOD_LINK_BUILTIN_INTERFACE}
+        ${DMOD_LINK_BUILTIN_UNPARSED_ARGUMENTS})
 
     # Check if target exists
     if(NOT TARGET ${targetName})
@@ -1384,6 +1439,9 @@ function(dmod_link_builtin targetName)
     )
 
     if(NOT DMF_GET)
+        if(DMOD_LINK_BUILTIN_DEPENDENCIES)
+            message(FATAL_ERROR "dmod_link_builtin: dmf-get tool not found - the libraries of the system of ${targetName} cannot be resolved. Build the tools first with -DDMOD_BUILD_TOOLS=ON")
+        endif()
         message(WARNING "dmf-get tool not found. Skipping system library download for ${targetName}. Build the tools first with -DDMOD_BUILD_TOOLS=ON")
         return()
     endif()
@@ -1403,7 +1461,10 @@ function(dmod_link_builtin targetName)
         message(STATUS "Using tools name: ${DMOD_TOOLS_NAME}")
     endif()
 
-    if(DEFINED DMOD_DMM_URL)
+    if(DMOD_LINK_BUILTIN_MANIFEST)
+        list(APPEND DMF_GET_OPTIONS "-m" "${DMOD_LINK_BUILTIN_MANIFEST}")
+        message(STATUS "Using manifest: ${DMOD_LINK_BUILTIN_MANIFEST}")
+    elseif(DEFINED DMOD_DMM_URL)
         list(APPEND DMF_GET_OPTIONS "-m" "${DMOD_DMM_URL}")
         message(STATUS "Using manifest: ${DMOD_DMM_URL}")
     endif()
@@ -1416,6 +1477,58 @@ function(dmod_link_builtin targetName)
     if(DEFINED DMOD_CPU_FAMILY AND NOT "${DMOD_CPU_FAMILY}" STREQUAL "")
         list(APPEND DMF_GET_OPTIONS "--cpu-family" "${DMOD_CPU_FAMILY}")
         message(STATUS "Using CPU family: ${DMOD_CPU_FAMILY}")
+    endif()
+
+    # The libraries of the system that the modules of the .dmd files need ("@builtin" entries, see dmf-get builtin)
+    if(DMOD_LINK_BUILTIN_DEPENDENCIES)
+        execute_process(COMMAND ${DMF_GET} --help OUTPUT_VARIABLE DMF_GET_HELP ERROR_QUIET)
+        if(NOT DMF_GET_HELP MATCHES "builtin <module>")
+            message(FATAL_ERROR "dmod_link_builtin DEPENDENCIES: ${DMF_GET} does not know the builtin command (@builtin entries); build/install the DMOD tools of this version")
+        endif()
+
+        set(BUILTIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/${targetName}_builtin")
+        file(REMOVE_RECURSE "${BUILTIN_DIR}")
+        set(BUILTIN_MODULES "")
+        foreach(DMD_FILE ${DMOD_LINK_BUILTIN_DEPENDENCIES})
+            if(EXISTS "${DMD_FILE}")
+                # Configured again when the file changes: its modules may need other libraries
+                set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${DMD_FILE}")
+            endif()
+            message(STATUS "Resolving the libraries of the system of ${targetName} needed by ${DMD_FILE}")
+            execute_process(
+                COMMAND ${DMF_GET} builtin -d ${DMD_FILE} ${DMF_GET_OPTIONS} -o ${BUILTIN_DIR}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                RESULT_VARIABLE DMF_GET_BUILTIN_RESULT
+                OUTPUT_VARIABLE DMF_GET_BUILTIN_OUTPUT
+                ERROR_VARIABLE DMF_GET_BUILTIN_OUTPUT
+            )
+            if(NOT DMF_GET_BUILTIN_RESULT EQUAL 0)
+                message(FATAL_ERROR "dmod_link_builtin: the libraries of the system needed by ${DMD_FILE} could not be installed:\n${DMF_GET_BUILTIN_OUTPUT}")
+            endif()
+            file(STRINGS "${BUILTIN_DIR}/builtin.dmd" BUILTIN_ENTRIES REGEX "^[^#]")
+            foreach(BUILTIN_ENTRY ${BUILTIN_ENTRIES})
+                string(REGEX MATCH "^[^@ \t]+" BUILTIN_MODULE "${BUILTIN_ENTRY}")
+                if(BUILTIN_MODULE)
+                    list(APPEND BUILTIN_MODULES ${BUILTIN_MODULE})
+                endif()
+            endforeach()
+        endforeach()
+        list(REMOVE_DUPLICATES BUILTIN_MODULES)
+
+        if(NOT BUILTIN_MODULES)
+            message(STATUS "No libraries of the system needed by the modules of ${targetName}")
+        endif()
+        foreach(MODULE_NAME ${BUILTIN_MODULES})
+            # (dmf-get installs the headers when the package has them)
+            set(BUILTIN_INC_DIR "")
+            if(EXISTS "${BUILTIN_DIR}/${MODULE_NAME}/include")
+                set(BUILTIN_INC_DIR "${BUILTIN_DIR}")
+            endif()
+            _dmod_link_builtin_library(${targetName} ${VISIBILITY} ${MODULE_NAME} "${BUILTIN_INC_DIR}" "${BUILTIN_DIR}")
+            if(NOT _DMOD_BUILTIN_LINKED)
+                message(FATAL_ERROR "dmod_link_builtin: the library of the system ${MODULE_NAME} was not installed to ${BUILTIN_DIR}")
+            endif()
+        endforeach()
     endif()
 
     # Process each module specification
@@ -1444,14 +1557,7 @@ function(dmod_link_builtin targetName)
 
         if(NOT DMF_GET_HEADERS_RESULT EQUAL 0)
             message(WARNING "Failed to download headers for ${MODULE_SPEC}: ${DMF_GET_HEADERS_ERROR}")
-        else()
-            set(ACTUAL_HEADER_DIR "${HEADER_OUTPUT_DIR}/${MODULE_NAME}/include")
-            if(EXISTS "${ACTUAL_HEADER_DIR}")
-                target_include_directories(${targetName} ${VISIBILITY} ${ACTUAL_HEADER_DIR})
-                message(STATUS "Added include directory for ${MODULE_NAME} (${VISIBILITY}): ${ACTUAL_HEADER_DIR}")
-            else()
-                message(WARNING "Header directory does not exist after download: ${ACTUAL_HEADER_DIR}")
-            endif()
+            set(HEADER_OUTPUT_DIR "")
         endif()
 
         # Download the precompiled static library
@@ -1472,29 +1578,48 @@ function(dmod_link_builtin targetName)
             continue()
         endif()
 
-        # The archive file name follows the module's snake_case form (hyphens
-        # replaced with underscores, e.g. "dmosi-posix" -> "libdmosi_posix.a"),
-        # matching how these modules' own CMakeLists.txt name the CMake library
-        # target that produces them (see dmlist/CMakeLists.txt and
-        # dmosi-posix/CMakeLists.txt, and their respective .dmr "lib=" entries).
-        to_snake_case(${MODULE_NAME} MODULE_NAME_SNAKE_CASE)
-        set(ACTUAL_LIB_PATH "${LIB_OUTPUT_DIR}/${MODULE_NAME}/lib/lib${MODULE_NAME_SNAKE_CASE}.a")
+        _dmod_link_builtin_library(${targetName} ${VISIBILITY} ${MODULE_NAME} "${HEADER_OUTPUT_DIR}" "${LIB_OUTPUT_DIR}")
+    endforeach()
+endfunction()
 
-        if(EXISTS "${ACTUAL_LIB_PATH}")
-            # A plain link only pulls object files out of a static archive to
-            # resolve symbols someone else already references. Nothing in a
-            # system binary like dmod_loader calls these functions directly -
-            # they exist purely so a *dynamically loaded* module can resolve
-            # them later through the Built-in API - so without forcing the
-            # whole archive in, the linker drops every object file here and
-            # the symbols never make it into the binary at all.
-            target_link_libraries(${targetName} ${VISIBILITY}
-                -Wl,--whole-archive ${ACTUAL_LIB_PATH} -Wl,--no-whole-archive
-            )
-            message(STATUS "Statically linked system module ${MODULE_NAME} (${VISIBILITY}): ${ACTUAL_LIB_PATH}")
-        else()
-            message(WARNING "Static library not found after download: ${ACTUAL_LIB_PATH}")
+#
+# Function to declare the libraries of the system that a DMOD module needs
+#
+# Usage:
+#   dmod_require_builtin(module_target
+#       package1[@version]
+#       package2[@version]
+#   )
+#
+# A module that calls a Built-in API - the API of a library of the system,
+# linked into the binary that loads the module, not loaded itself - cannot get
+# it with dmod_link_modules(). This records the packages whose "lib" resource
+# provides it: they are written as "@builtin" entries to the module's .dmd
+# (todmd --builtin), so that "dmf-get builtin" and dmod_link_builtin(...
+# DEPENDENCIES ...) of the system that carries the module find and link them.
+# Nothing is downloaded: the headers of the API are the module's business.
+#
+# The package may be the module's own (its "lib" resource, e.g. a port whose
+# static library goes into the firmware); give it the module's version then.
+#
+function(dmod_require_builtin targetName)
+    if(NOT TARGET ${targetName})
+        message(FATAL_ERROR "dmod_require_builtin: Target '${targetName}' does not exist")
+    endif()
+    # The requirements are written by todmd: one that does not know --builtin would fail the build of the module
+    find_program(TODMD todmd HINTS ${DMOD_TOOLS_BIN_DIR})
+    if(TODMD)
+        execute_process(COMMAND ${TODMD} --help OUTPUT_VARIABLE TODMD_HELP ERROR_QUIET)
+        if(NOT TODMD_HELP MATCHES "--builtin")
+            message(FATAL_ERROR "dmod_require_builtin: ${TODMD} does not know --builtin (the libraries of the system of a module); install the DMOD tools of this version")
         endif()
+    endif()
+    foreach(BUILTIN_SPEC ${ARGN})
+        if(NOT BUILTIN_SPEC MATCHES "^[A-Za-z0-9_.-]+(@[^ \t]+)?$")
+            message(FATAL_ERROR "dmod_require_builtin: invalid package specification '${BUILTIN_SPEC}' (package[@version])")
+        endif()
+        set_property(TARGET ${targetName} APPEND PROPERTY DMOD_BUILTIN_REQUIREMENTS "${BUILTIN_SPEC}")
+        message(STATUS "Module ${targetName} needs the library of the system: ${BUILTIN_SPEC}")
     endforeach()
 endfunction()
 

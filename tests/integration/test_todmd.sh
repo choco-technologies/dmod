@@ -147,6 +147,27 @@ if [ -n "$MODULE_BUILD_DIR" ] && [ -d "$MODULE_BUILD_DIR/dmf" ]; then
     fi
     
     echo ""
+    echo "Test 6b: Libraries of the system (--builtin) as @builtin entries"
+
+    if [ -f "test_module.dmf" ]; then
+        if $TODMD test_module.dmf builtin_output.dmd --builtin radio@1.0 --builtin otherlib 2>&1 | grep -q "Success" \
+            && grep -qx "radio@1.0 @builtin" builtin_output.dmd && grep -qx "otherlib @builtin" builtin_output.dmd; then
+            echo "✓ @builtin entries written"
+        else
+            echo "✗ @builtin entries missing"
+            cat builtin_output.dmd 2>/dev/null || true
+            exit 1
+        fi
+        if $TODMD test_module.dmf bad_builtin.dmd --builtin > /dev/null 2>&1; then
+            echo "✗ --builtin without a package was accepted"
+            exit 1
+        fi
+        echo "✓ --builtin without a package rejected"
+    else
+        echo "⊘ Skipping test 6b: example_app.dmf not found"
+    fi
+
+    echo ""
     echo "Test 7: Verify dependencies are listed correctly"
     
     if [ -f "test_output.dmd" ]; then

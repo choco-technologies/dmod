@@ -62,7 +62,7 @@ static void SetError(Dmod_DependenciesContext_t* ctx, const char* format, ...) {
  */
 static bool AddEntry(Dmod_DependenciesContext_t* ctx, const char* name,
                      const char* version, const char* manifest, const char* config,
-                     const char* config_dest, const char* tag, const char* screen) {
+                     const char* config_dest, const char* tag, const char* screen, bool builtin) {
     DependencyNode_t* node = (DependencyNode_t*)Dmod_Malloc(sizeof(DependencyNode_t));
     if (!node) {
         SetError(ctx, "Out of memory");
@@ -115,6 +115,8 @@ static bool AddEntry(Dmod_DependenciesContext_t* ctx, const char* name,
     if (screen) {
         strcpy(node->entry.screen, screen);
     }
+
+    node->entry.builtin = builtin;
 
     // Add to list
     if (ctx->tail) {
@@ -212,8 +214,9 @@ static bool ParseConfigAndTag(Dmod_DependenciesContext_t* ctx, char* rest,
     return true;
 }
 
-/* Remove reserved installation options before interpreting configuration paths. */
-static bool ParseScreen(Dmod_DependenciesContext_t* ctx, char* line, char* screen)
+/* Remove reserved installation options before interpreting configuration paths:
+ * "@screen ID" (the variant of the views) and "@builtin" (the library of the system of the package, see Dmod_DependencyEntry_t). */
+static bool ParseOptions(Dmod_DependenciesContext_t* ctx, char* line, char* screen, bool* builtin)
 {
     char* p = line;
     while (*p && !isspace((unsigned char)*p)) p++; /* module[@version] */
@@ -223,8 +226,19 @@ static bool ParseScreen(Dmod_DependenciesContext_t* ctx, char* line, char* scree
         while (*p && !isspace((unsigned char)*p)) p++;
         if (start == p) break;
         if (*start != '@') continue;
-        if ((size_t)(p - start) != 7 || strncmp(start, "@screen", 7) != 0) {
-            SetError(ctx, "Unknown installation option: %.*s", (int)(p - start), start);
+        size_t option_len = (size_t)(p - start);
+        if (option_len == 8 && strncmp(start, "@builtin", 8) == 0) {
+            if (*builtin) {
+                SetError(ctx, "Duplicate @builtin option");
+                return false;
+            }
+            *builtin = true;
+            memmove(start, p, strlen(p) + 1);
+            p = start;
+            continue;
+        }
+        if (option_len != 7 || strncmp(start, "@screen", 7) != 0) {
+            SetError(ctx, "Unknown installation option: %.*s", (int)option_len, start);
             return false;
         }
         if (screen[0]) {
@@ -358,7 +372,8 @@ static bool ParseLine(Dmod_DependenciesContext_t* ctx, char* line) {
     }
     
     char screen[DMOD_SCREEN_MAX_LEN] = {0};
-    if (!ParseScreen(ctx, line, screen)) {
+    bool builtin = false;
+    if (!ParseOptions(ctx, line, screen, &builtin)) {
         if (manifest_for_entry) Dmod_Free(manifest_for_entry);
         return false;
     }
@@ -464,7 +479,7 @@ static bool ParseLine(Dmod_DependenciesContext_t* ctx, char* line) {
     bool result = AddEntry(ctx, module_name, module_version[0] ? module_version : NULL, manifest,
                           module_config[0] ? module_config : NULL,
                           module_config_dest[0] ? module_config_dest : NULL,
-                          module_tag[0] ? module_tag : NULL, screen[0] ? screen : NULL);
+                          module_tag[0] ? module_tag : NULL, screen[0] ? screen : NULL, builtin);
     
     // Free the inline manifest memory after adding the entry
     if (manifest_for_entry) {

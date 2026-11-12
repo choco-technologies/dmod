@@ -159,11 +159,15 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
     printf("Found %zu module(s) in .dmd file\n", dep_count);
     
     // Get the first module name (for main module if not specified)
+    // (the first entry that is a module: "@builtin" entries are libraries of the system, not modules of the package)
     Dmod_DependencyEntry_t first_entry;
     const char* firstModuleName = NULL;
-    if( Dmod_Dependencies_GetEntry(dep_ctx, 0, &first_entry) )
+    for( size_t i = 0; i < dep_count && firstModuleName == NULL; i++ )
     {
-        firstModuleName = first_entry.name;
+        if( Dmod_Dependencies_GetEntry(dep_ctx, i, &first_entry) && !first_entry.builtin )
+        {
+            firstModuleName = first_entry.name;
+        }
     }
     
     // Verify all modules exist and create a temporary directory with only the needed modules
@@ -188,6 +192,13 @@ int CreateDMPFromDmd( const char* packageName, const char* dmdFilePath,
             return -1;
         }
         
+        if( dep_entry.builtin )
+        {
+            // A library of the system: linked into the binary that loads the modules, not packed
+            printf("  [%zu] %s (@builtin, skipped)\n", i + 1, dep_entry.name);
+            continue;
+        }
+
         printf("  [%zu] %s\n", i + 1, dep_entry.name);
         
         // Try both .dmf and .dmfc extensions

@@ -63,6 +63,9 @@ typedef struct {
     char config_dest[DMOD_DEPENDENCIES_MAX_CONFIG_LEN]; /**< Custom destination filename for config (empty if not specified) */
     char tag[DMOD_DEPENDENCIES_MAX_TAG_LEN];        /**< Configuration tag, set via "<tag>=" prefix on the config path (empty if not specified) */
     char screen[128];                                /**< Optional opaque @screen resource selector */
+    bool builtin;                                    /**< "@builtin": not a module to install - the library of the system of the
+                                                          package (its "lib" resource and headers), linked into the system binary
+                                                          that loads the modules (dmf-get builtin, dmod_link_builtin DEPENDENCIES) */
     Dmod_VersionConstraint_t constraint;             /**< Parsed version constraint */
     bool has_constraint;                             /**< Whether constraint is parsed and valid */
 } Dmod_DependencyEntry_t;
