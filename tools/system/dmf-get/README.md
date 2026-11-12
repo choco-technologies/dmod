@@ -224,6 +224,20 @@ staged in the package root and removed after extraction; `.dmp` archives are
 stored there. Temporary extraction and caching are unchanged. The dedicated
 `headers`, `docs` and `lib` commands retain their existing `-o` behavior.
 
+### Libraries of the System (`@builtin`)
+
+```bash
+# only the libraries of the system (lib + headers) that the modules of flash.dmd need
+dmf-get builtin -d flash.dmd -t arch/xtensa/esp32s3 --cpu-family esp32s3 -o ./builtin
+# installing the modules and those libraries in one go
+dmf-get -d flash.dmd -o ./dmf --builtin-dir ./builtin
+```
+
+A `.dmd` entry with `@builtin` names a package whose `lib` resource the binary that loads the modules links
+(see `docs/dmd-file-format.md`). A plain install skips such entries; with `--builtin-dir` (or `DMOD_BUILTIN_DIR`)
+their library goes to `<dir>/<module>/lib`, their headers to `<dir>/<module>/include`, and `<dir>/builtin.dmd`
+lists them. The `builtin` command resolves the whole tree but installs nothing else.
+
 ## Caching
 
 `dmf-get` caches downloaded manifests and package files to reduce network requests and speed up subsequent downloads. The cache is stored in `~/.cache/dmod/dmf-get/` by default.

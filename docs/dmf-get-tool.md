@@ -337,6 +337,17 @@ dmf-get --license-dir ./licenses -o ./dmf mymodule
 dmf-get --mini --license-dir ./licenses -y -d dependencies.dmd
 ```
 
+#### Libraries of the System
+
+- `--builtin-dir <path>` - Install the libraries of the system (`@builtin` entries of the `.dmd` files, see [DMD File Format](dmd-file-format.md)) met while installing: the `lib` resource to `<path>/<module>/lib` and the headers to `<path>/<module>/include`; they are listed in `<path>/builtin.dmd` (default: `DMOD_BUILTIN_DIR`). Without it such entries are reported and skipped - a library of the system is linked into the binary that loads the modules, not installed next to them.
+- `builtin <module> | -d <file>` (command) - Resolve the whole dependency tree and install **only** the libraries of the system it needs, to `-o` (default: `DMOD_BUILTIN_DIR`, otherwise `$DMOD_DMF_DIR/builtin`). The modules are unpacked to a temporary directory only to read their `.dmd` files and removed afterwards; licenses of modules are not asked for and no configuration is copied. This is what `dmod_link_builtin(... DEPENDENCIES ...)` runs.
+
+```bash
+# the libraries of the system that the firmware has to link for the modules of flash.dmd
+dmf-get builtin -d flash.dmd -t arch/xtensa/esp32s3 --cpu-family esp32s3 -o build/builtin
+cat build/builtin/builtin.dmd
+```
+
 #### Views Options
 
 - `--views-dir <path>` - Directory where views (`.dmv`) of the installed applications are placed (default: `DMOD_VIEWS_DIR`, otherwise `views` inside the package root when configured, or the output directory, e.g. `$DMOD_DMF_DIR/views`). Every module gets its own subdirectory `<path>/<module>`, which is what `${views_dir}` resolves to in `.dmr` files (e.g. `views=./views => ${views_dir}`), so views of different modules never overwrite each other. The contents of the `views` directory are copied into it (a reinstall overwrites them). The `views` resource is installed also with `--mini`.

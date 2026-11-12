@@ -77,6 +77,39 @@ an ASCII letter/digit or `_`. A missing value, duplicate option or unknown `@opt
 It is a per-module option, not a standalone directive. Existing configuration
 paths, tags, versions, `$include` and `$from` retain their meaning.
 
+#### Libraries of the system (`@builtin`)
+
+`@builtin` is a reserved installation option without a value. It marks an entry
+that is not a module to install: it names a package whose library of the system
+- its `lib` resource (a static library with a Built-in API, see
+[DMR File Format](dmr-file-format.md)) and its headers - the binary that loads
+the modules has to link (the firmware, `dmod_loader`, a host tool):
+
+```dmd
+# a module that calls the Built-in API of a library it does not load itself
+dmespwifi_port@0.1 @builtin
+radio_lib@>=1.0 @builtin $from https://vendor.example.com/manifest.dmm
+```
+
+Such entries are normally written by `todmd` into the `.dmd` of a module that
+declares them (`dmod_require_builtin()` in CMake); the package may be the
+module's own, when the package carries the library that its module calls. They
+travel with the module: whoever installs it - directly or as a dependency - gets
+them in its dependency tree.
+
+- `dmf-get install` (`-d`) does not install them: they are reported and skipped,
+  unless `--builtin-dir` is given, which installs their library and headers there.
+- `dmf-get builtin -d <file>` resolves the whole dependency tree of the file and
+  installs only these libraries (`<dir>/<package>/lib/lib<package>.a`,
+  `<dir>/<package>/include`), listed in `<dir>/builtin.dmd`.
+- CMake's `dmod_link_builtin(<target> DEPENDENCIES <file>...)` uses that to link
+  them into a system binary (see [CMake Functions](cmake-functions.md)).
+- `todmp` does not pack them.
+
+The dependencies of a library of the system are not followed. The option
+combines with a version, `$from` and other options; a duplicate `@builtin` is an
+error.
+
 #### Configuration Files
 
 Modules can optionally specify a configuration file that should be copied during installation. The configuration file path is relative to the module's configuration directory (as defined in the module's `.dmr` file, or the default `config/` directory).

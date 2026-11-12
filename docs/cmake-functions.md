@@ -258,7 +258,46 @@ dmod_link_builtin(dmod_loader
 
 These libraries define their DMOD API functions in a way that always marks them as "used" to the compiler/linker, so simply linking the archive is enough to make their Built-in API available - no explicit symbol references are needed at the call site.
 
-**Important:** do **not** use this for regular DMOD modules created with `dmod_add_executable`/`dmod_add_library` - those must always link other modules dynamically via `dmod_link_modules`, since DMOD modules are loaded/unloaded independently at runtime and statically linking a dependency into one defeats that. `dmod_link_builtin` is only for system-side binaries that are not themselves loaded as `.dmf` files.
+**Important:** do **not** use this for regular DMOD modules created with `dmod_add_executable`/`dmod_add_library` - those must always link other modules dynamically via `dmod_link_modules`, since DMOD modules are loaded/unloaded independently at runtime and statically linking a dependency into one defeats that. `dmod_link_builtin` is only for system-side binaries that are not themselves loaded as `.dmf` files. A module that needs a library of the system declares it with `dmod_require_builtin`.
+
+#### The libraries the modules need: `DEPENDENCIES`
+
+```cmake
+dmod_link_builtin(targetName [PRIVATE|PUBLIC|INTERFACE]
+    DEPENDENCIES file1.dmd [file2.dmd ...]
+    [MANIFEST manifest.dmm]
+)
+```
+
+The libraries are not named by the binary: they are the `@builtin` entries (see [DMD File Format](dmd-file-format.md)) that the modules of the given `.dmd` files and all their dependencies declare. A firmware passes the `.dmd` files of the modules it carries and links exactly what they need:
+
+```cmake
+dmod_link_builtin(firmware.elf PRIVATE
+    DEPENDENCIES ${CMAKE_BINARY_DIR}/flash.dmd ${CMAKE_SOURCE_DIR}/ext.dmd
+    MANIFEST ${MY_MANIFEST}
+)
+```
+
+1. For each file, runs `dmf-get builtin -d <file> -o ${CMAKE_CURRENT_BINARY_DIR}/<targetName>_builtin` (with `-t`, `--cpu-name`, `--cpu-family` as above and `-m` from `MANIFEST`, otherwise `DMOD_DMM_URL`) when the project is configured
+2. Reads the installed libraries from `<dir>/builtin.dmd` and links each one as above (`<dir>/<module>/lib/lib<module_snake_case>.a`, whole archive; `<dir>/<module>/include`)
+3. Local `.dmd` files are added to `CMAKE_CONFIGURE_DEPENDS`: editing them configures the project again
+
+A library that cannot be installed, or a `dmf-get` without the `builtin` command, is a configuration error: the binary would lack an API its modules need.
+
+### `dmod_require_builtin(moduleTarget packages...)`
+
+Declares the libraries of the system that a DMOD module needs: packages whose `lib` resource provides a Built-in API the module calls, which the binary loading the module has to link. Nothing is downloaded - the headers of the API are the module's business; the packages are written to the module's `.dmd` as `@builtin` entries (`todmd --builtin`), so that `dmf-get builtin` and `dmod_link_builtin(... DEPENDENCIES ...)` of the system that carries the module find them.
+
+**Parameters:**
+- `moduleTarget` - A module created with `dmod_add_library`/`dmod_add_executable` (may be called after it)
+- `packages...` - `package` or `package@version`
+
+**Example** - a port whose package carries the library of the system that the module calls (its own `lib` resource):
+```cmake
+dmod_add_library(dmespwifi_port ${DMOD_MODULE_VERSION} port.c)
+dmod_require_builtin(dmespwifi_port dmespwifi_port@${DMOD_MODULE_VERSION})
+# dmespwifi_port.dmd: "dmespwifi_port@0.1 @builtin"
+```
 
 ## Tool Creation Functions
 

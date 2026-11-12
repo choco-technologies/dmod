@@ -725,6 +725,46 @@ TEST_F(DmodDependenciesTest, RejectsInvalidMissingAndDuplicateScreenOptions) {
     }
 }
 
+TEST_F(DmodDependenciesTest, BuiltinIsAFlagSeparateFromVersionScreenAndConfiguration) {
+    auto* ctx = Dmod_Dependencies_Init("default.dmm", MockDownloadFunc, nullptr);
+    ASSERT_TRUE(Dmod_Dependencies_Parse(ctx,
+        "radio@>=0.1<1.0 @builtin\n"
+        "app @builtin service=app.ini @screen 320x240\n"
+        "lib\t@builtin\t$from custom.dmm\n"
+        "next\n"));
+    Dmod_DependencyEntry_t e;
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 0, &e));
+    EXPECT_STREQ(e.name, "radio");
+    EXPECT_STREQ(e.version, ">=0.1<1.0");
+    EXPECT_TRUE(e.builtin);
+    EXPECT_STREQ(e.config, "");
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 1, &e));
+    EXPECT_STREQ(e.name, "app");
+    EXPECT_TRUE(e.builtin);
+    EXPECT_STREQ(e.screen, "320x240");
+    EXPECT_STREQ(e.tag, "service");
+    EXPECT_STREQ(e.config, "app.ini");
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 2, &e));
+    EXPECT_STREQ(e.name, "lib");
+    EXPECT_TRUE(e.builtin);
+    EXPECT_STREQ(e.manifest, "custom.dmm");
+    ASSERT_TRUE(Dmod_Dependencies_GetEntry(ctx, 3, &e));
+    EXPECT_STREQ(e.name, "next");
+    EXPECT_FALSE(e.builtin);
+    EXPECT_STREQ(e.manifest, "default.dmm");
+    Dmod_Dependencies_Free(ctx);
+}
+
+TEST_F(DmodDependenciesTest, RejectsDuplicateOrMisspelledBuiltinOption) {
+    const char* lines[] = {"app @builtin @builtin", "app @builtins", "app @built"};
+    for (auto line : lines) {
+        auto* ctx = Dmod_Dependencies_Init("manifest.dmm", MockDownloadFunc, nullptr);
+        EXPECT_FALSE(Dmod_Dependencies_Parse(ctx, line)) << line;
+        EXPECT_NE(Dmod_Dependencies_GetError(ctx), nullptr);
+        Dmod_Dependencies_Free(ctx);
+    }
+}
+
 TEST_F(DmodDependenciesTest, ScreenCombinesWithInlineManifestAndDoesNotLeakToNextEntry) {
     auto* ctx = Dmod_Dependencies_Init("default.dmm", MockDownloadFunc, nullptr);
     ASSERT_TRUE(Dmod_Dependencies_Parse(ctx,

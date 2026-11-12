@@ -199,6 +199,32 @@ bool IsModuleInLocalManifest( char moduleNames[][64], int count, const char* mod
     return false;
 }
 
+// Maximum number of libraries of the system (--builtin)
+#define MAX_BUILTINS 32
+
+// -----------------------------------------
+//
+//      Writes the libraries of the system (--builtin) as "@builtin" entries:
+//      packages whose "lib" resource the binary that loads the module has to link
+//      (they are libraries of the system, not modules - see dmf-get builtin)
+//
+// -----------------------------------------
+static void WriteBuiltins( void* file, const char* const* builtins, int builtinCount, const char* fromManifest )
+{
+    for( int i = 0; i < builtinCount; i++ )
+    {
+        if( fromManifest != NULL )
+        {
+            Dmod_FPrintf( file, "%s @builtin $from %s\n", builtins[i], fromManifest );
+        }
+        else
+        {
+            Dmod_FPrintf( file, "%s @builtin\n", builtins[i] );
+        }
+        Dmod_Printf("  + %s @builtin\n", builtins[i]);
+    }
+}
+
 // -----------------------------------------
 //
 //      Prints usage message
@@ -206,7 +232,7 @@ bool IsModuleInLocalManifest( char moduleNames[][64], int count, const char* mod
 // -----------------------------------------
 void PrintUsage( const char* AppName )
 {
-    printf("Usage: %s path/to/file.dmf [output.dmd] [-r version_requirements.txt] [--from manifest_or_mapping ...] [--local-manifest manifest.dmm]\n", AppName);
+    printf("Usage: %s path/to/file.dmf [output.dmd] [-r version_requirements.txt] [--from manifest_or_mapping ...] [--local-manifest manifest.dmm] [--builtin module[@version] ...]\n", AppName);
 }
 
 // -----------------------------------------
@@ -230,6 +256,9 @@ void PrintHelp( const char* AppName )
     printf("  --local-manifest <manifest>  Local manifest (.dmm) file; generates a companion\n");
     printf("                        <module>-local.dmd listing only dependencies present in\n");
     printf("                        the manifest, each with an inline $from <manifest> directive\n");
+    printf("  --builtin <module[@version]>  Library of the system that the module needs: the package whose\n");
+    printf("                        \"lib\" resource the binary loading the module has to link. Written as\n");
+    printf("                        \"module[@version] @builtin\"; option can be repeated\n");
     printf("\nArguments:\n");
     printf("  path/to/file.dmf      Path to the DMF module file\n");
     printf("  [output.dmd]          (optional) Output .dmd file path (default: module_name.dmd)\n");
@@ -295,6 +324,8 @@ int main( int argc, char *argv[] )
     const char* localManifestPath = NULL;
     ModuleManifest_t moduleManifests[MAX_MODULE_MANIFESTS];
     int moduleManifestCount = 0;
+    const char* builtins[MAX_BUILTINS];
+    int builtinCount = 0;
     
     // First argument is always the DMF path
     dmfPath = argv[1];
@@ -357,6 +388,21 @@ int main( int argc, char *argv[] )
                 PrintUsage( argv[0] );
                 return -1;
             }
+        }
+        else if( strcmp( argv[i], "--builtin" ) == 0 )
+        {
+            if( i + 1 >= argc || argv[i + 1][0] == '\0' || strpbrk( argv[i + 1], " \t" ) != NULL )
+            {
+                printf("Error: --builtin option requires a module name, optionally with @version\n");
+                PrintUsage( argv[0] );
+                return -1;
+            }
+            if( builtinCount >= MAX_BUILTINS )
+            {
+                printf("Error: Too many --builtin libraries (max %d)\n", MAX_BUILTINS);
+                return -1;
+            }
+            builtins[builtinCount++] = argv[++i];
         }
         else if( strcmp( argv[i], "--local-manifest" ) == 0 )
         {
@@ -612,6 +658,8 @@ int main( int argc, char *argv[] )
         reqModule = Dmod_GetNextRequiredModule( context, reqModule );
     }
 
+    WriteBuiltins( outputFile, builtins, builtinCount, NULL );
+
     // Close the output file
     Dmod_FileClose( outputFile );
 
@@ -714,6 +762,22 @@ int main( int argc, char *argv[] )
             reqModule = Dmod_GetNextRequiredModule( context, reqModule );
         }
 
+        // The libraries of the system: from the local manifest when they are built there too
+        for( int i = 0; i < builtinCount; i++ )
+        {
+            char builtinName[64];
+            size_t nameLen = strcspn( builtins[i], "@" );
+            if( nameLen >= sizeof(builtinName) )
+            {
+                nameLen = sizeof(builtinName) - 1;
+            }
+            memcpy( builtinName, builtins[i], nameLen );
+            builtinName[nameLen] = '\0';
+            bool isLocal = IsModuleInLocalManifest( localManifestModules, localManifestModuleCount, builtinName );
+            WriteBuiltins( localOutputFile, &builtins[i], 1, isLocal ? localManifestPath : NULL );
+            localModuleCount++;
+        }
+
         Dmod_FileClose( localOutputFile );
         Dmod_Printf("  Local output file: %s (%d entries)\n", localDmdOutputPath, localModuleCount);
     }
@@ -729,6 +793,10 @@ int main( int argc, char *argv[] )
     if( versionRequirementCount > 0 )
     {
         Dmod_Printf("  Version requirements applied: %d\n", versionRequirementCount);
+    }
+    if( builtinCount > 0 )
+    {
+        Dmod_Printf("  Libraries of the system (@builtin): %d\n", builtinCount);
     }
     if( globalManifest != NULL )
     {

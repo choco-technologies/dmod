@@ -32,6 +32,7 @@ todmd path/to/file.dmf [output.dmd] [-r version_requirements.txt] [--from manife
 - `--from <manifest>` - Global manifest file/URL; adds a `$from` directive at the top of the generated `.dmd` so all modules are fetched from that manifest (optional)
 - `--from <module>=<manifest>` - Per-module manifest mapping; adds an inline `$from <manifest>` only for the named module (optional, repeatable)
 - `--local-manifest <manifest>` - Local manifest (`.dmm`) file; generates a companion `<module>-local.dmd` file where dependencies that are present in the manifest receive an inline `$from <manifest>` directive (optional)
+- `--builtin <module[@version]>` - Library of the system that the module needs (a package whose `lib` resource the binary loading the module links); written as `module[@version] @builtin`, in the local `.dmd` with `$from <manifest>` when the package is in the local manifest (optional, repeatable; `dmod_require_builtin` passes it)
 
 ## Examples
 
