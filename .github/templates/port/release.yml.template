@@ -38,7 +38,7 @@ jobs:
         cpu_family: ${{ fromJson(needs.discover-cpu-families.outputs.cpu_families) }}
 
     container:
-      image: chocotechnologies/dmod:1.0.4
+      image: chocotechnologies/dmod:1.1
 
     steps:
       - name: Checkout code

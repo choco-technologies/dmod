@@ -11,7 +11,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: chocotechnologies/dmod:1.0.4
+      image: chocotechnologies/dmod:1.1
     outputs:
       architectures: ${{ steps.list-archs.outputs.architectures }}
     steps:
@@ -53,7 +53,7 @@ jobs:
         arch_name: ${{ fromJson(needs.discover-architectures.outputs.architectures) }}
 
     container:
-      image: chocotechnologies/dmod:1.0.4
+      image: chocotechnologies/dmod:1.1
 
     steps:
       - name: Checkout code

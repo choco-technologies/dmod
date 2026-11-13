@@ -361,36 +361,36 @@ The Docker image contains:
 
 **Pull the image:**
 ```bash
-docker pull chocotechnologies/dmod:1.0.4
+docker pull chocotechnologies/dmod:1.1
 ```
 
 **Run container interactively:**
 ```bash
-docker run -it chocotechnologies/dmod:1.0.4 bash
+docker run -it chocotechnologies/dmod:1.1 bash
 ```
 
 **Use DMOD tools from the container:**
 ```bash
 # Run dmf-get in container
-docker run --rm chocotechnologies/dmod:1.0.4 dmf-get --version
+docker run --rm chocotechnologies/dmod:1.1 dmf-get --version
 
 # Mount local directory and download modules
 docker run --rm -v $(pwd):/workspace -w /workspace \
-    chocotechnologies/dmod:1.0.4 dmf-get mymodule
+    chocotechnologies/dmod:1.1 dmf-get mymodule
 ```
 
 **Build project in container (x86_64):**
 ```bash
 # Mount project directory and build
 docker run --rm -v $(pwd):/project -w /project \
-    chocotechnologies/dmod:1.0.4 bash -c "cmake -B build && cmake --build build"
+    chocotechnologies/dmod:1.1 bash -c "cmake -B build && cmake --build build"
 ```
 
 **Build project in container (ESP32-S3 / Xtensa):**
 ```bash
 # Mount project directory and build for ESP32-S3
 docker run --rm -v $(pwd):/project -w /project \
-    chocotechnologies/dmod:1.0.4 bash -c \
+    chocotechnologies/dmod:1.1 bash -c \
     "mkdir -p build && cd build && cmake .. -DDMOD_TOOLS_NAME=arch/xtensa/esp32s3 && cmake --build ."
 ```
 
@@ -399,7 +399,7 @@ docker run --rm -v $(pwd):/project -w /project \
 You can extend the Docker image with additional tools:
 
 ```dockerfile
-FROM chocotechnologies/dmod:1.0.4
+FROM chocotechnologies/dmod:1.1
 
 # Add your own tools or configuration
 RUN apt-get update && apt-get install -y your-package
@@ -416,8 +416,8 @@ WORKDIR /workspace
 
 ```bash
 # Option A: Use Docker
-docker pull chocotechnologies/dmod:1.0.4
-docker run -it -v $(pwd):/workspace -w /workspace chocotechnologies/dmod:1.0.4 bash
+docker pull chocotechnologies/dmod:1.1
+docker run -it -v $(pwd):/workspace -w /workspace chocotechnologies/dmod:1.1 bash
 
 # Option B: Install tools locally
 git clone --recursive https://github.com/choco-technologies/dmod.git
