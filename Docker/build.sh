@@ -83,13 +83,13 @@ function prepareScript()
     addCommandLineOptionalArgument 'OPENCODE_IMAGE_NAME' '--opencode-image-name' not_empty_string 'Name of the opencode image to build' 'chocotechnologies/dmod-opencode' ''
     addCommandLineOptionalArgument 'OPENCODE_IMAGE_VERSION' '--opencode-image-version' not_empty_string 'Version of the epencode image to build' 'latest' ''
     addCommandLineOptionalArgument 'TARGETS' '--targets' not_empty_string 'Comma-separated list of images to build: env, dmod, claude (e.g. "dmod" builds only the main image)' 'env,dmod,claude,opencode' ''
-    addCommandLineOptionalArgument 'NO_CACHE' '--no-cache' not_empty_string 'Set to "true" to build without the docker layer cache (forces rebuilding of the dmod tools)' 'false' ''
+    addCommandLineOptionalArgument 'NO_CACHE' '--no-cache' bool 'If set, the docker layer cache is disabled (forces rebuilding of the dmod tools)' 'FALSE' ''
 
     disableConfigurationPrinting
     parseCommandLineArguments "$@"
 
     DOCKER_BUILD_OPTS=(--squash)
-    if [ "$NO_CACHE" == "true" ]
+    if isStringEqual "$NO_CACHE" "TRUE"
     then
         DOCKER_BUILD_OPTS+=(--no-cache)
     fi
