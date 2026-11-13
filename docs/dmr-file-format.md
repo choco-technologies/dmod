@@ -52,7 +52,34 @@ inc=./include => ${destination}/${module}/include [origin=${repo_dir}/include] [
 - **key**: A descriptive identifier for the resource (e.g., `dmf`, `docs`, `inc`, `license`)
 - **source_path**: Path to the resource within the zip package (relative to zip root)
 - **destination_path**: Target installation path (can include variable substitutions)
+- **`${icons_dir}`**: Directory with icons (`.dmvi`). When packaging it is the directory the build converted the icons into (`DMOD_ICON_PATH`, `mkdmrpkg --icons-dir`); when installing (`dmf-get`) it is `--icons-dir`/`DMOD_ICONS_DIR` or `icons` inside the install directory - one directory for all the modules, so the icon of a module is `${icons_dir}/<module>.dmvi`. In an `icon` entry with `[variant=NAME]` it is `<icons dir>/NAME`. `mkdmrpkg` skips entries whose `[origin]` uses it when it is not set (the project has no icons). Example: `icon=./icon.dmvi => ${icons_dir}/${module}.dmvi [origin=${icons_dir}/${module}.dmvi]`
 - **[origin=path]** *(optional, repeatable)*: Origin path of the file or directory when building the release package (can include variable substitutions)
+
+### Icons
+
+The icon of a module is a `.dmvi` image (see dmview's image format), made from a PNG, an SVG, ... at build time (see `DMOD_ICON_PATH` in
+[CMake Functions](cmake-functions.md)) and carried by the package as the `icon` resource. A launcher or a store finds it by the name of the
+module: `<icons>/<module>.dmvi`.
+
+```dmr
+# The default icon
+icon=./icon.dmvi => ${icons_dir}/${module}.dmvi [origin=${icons_dir}/${module}.dmvi]
+# Another one for a screen (the same ids as the views): installed in place of the default when the screen is selected
+icon=./icon-epaper.dmvi => ${icons_dir}/${module}.dmvi [screen=epaper-240x320] [origin=${icons_dir}/epaper-240x320/${module}.dmvi]
+# A variant (e.g. a size): installed beside the default, in a subdirectory named as the variant
+icon=./icon-small.dmvi => ${icons_dir}/${module}.dmvi [variant=small] [origin=${icons_dir}/${module}.dmvi]
+```
+
+- The entry without `[screen]` is the default icon of its variant. **Every variant is installed**: the default one (no `[variant]`) as
+  `<icons>/<module>.dmvi`, a variant as `<icons>/<variant>/<module>.dmvi` - `${icons_dir}` of an entry with `[variant=NAME]` already is
+  `<icons>/NAME`, so the destination is written the same.
+- `dmf-get --screen ID` chooses, **per variant**, the entry with `[screen=ID]` if the package has one, else the one without a screen. An
+  icon never needs a screen: a screen with no icon of its own gets the default, a package with no icon gets none (and is no error).
+- `[screen=ID]` is valid on `views` and `icon`, `[variant=NAME]` only on `icon`; both are identifiers like the screen ids of views. One
+  `icon` per variant and screen. The ids of an icon and of the views are independent, and `default=` is for views only.
+- `dmf-get --mini` installs the icons (like views). The command `dmf-get icon <module>` installs only the icons of a module, without the
+  module itself.
+- A header of the `.dmf` does not carry the icon (that would change the format): like the views, an icon comes with the package.
 
 ### Screen variants of runtime views
 

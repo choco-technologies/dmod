@@ -350,3 +350,99 @@ TEST_F(DmodResourceTest, NamedScreenVariantsAreLiteralAndCaseSensitive) {
     EXPECT_TRUE(entry.selected);
     EXPECT_STREQ(entry.screen, long_id.c_str());
 }
+
+// ===============================================================
+//                  Icons: ${icons_dir}, [variant], [screen]
+// ===============================================================
+
+TEST_F(DmodResourceTest, IconDirectoryIsASubdirectoryPerVariant) {
+    Dmod_Resource_SetIconsDir(ctx, "/dmf/icons");
+    ASSERT_TRUE(Dmod_Resource_Parse(ctx,
+        "icon=icon.dmvi => ${icons_dir}/${module}.dmvi [origin=${icons_dir}/${module}.dmvi]\n"
+        "icon=small.dmvi => ${icons_dir}/${module}.dmvi [variant=small] [origin=${icons_dir}/${module}.dmvi]\n"
+        "icon=paper.dmvi => ${icons_dir}/${module}.dmvi [origin=${icons_dir}/paper/${module}.dmvi] [screen=epaper]\n"
+        "icon=paper-small.dmvi => ${icons_dir}/${module}.dmvi [screen=epaper] [variant=small]\n"));
+    Dmod_ResourceEntry_t e;
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 0, &e));
+    EXPECT_STREQ(e.destination, "/dmf/icons/mymodule.dmvi");
+    EXPECT_STREQ(e.origins[0], "/dmf/icons/mymodule.dmvi");
+    EXPECT_STREQ(e.variant, "");
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 1, &e));
+    EXPECT_STREQ(e.destination, "/dmf/icons/small/mymodule.dmvi");    // the variant is a subdirectory
+    EXPECT_STREQ(e.origins[0], "/dmf/icons/small/mymodule.dmvi");
+    EXPECT_STREQ(e.variant, "small");
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 2, &e));
+    EXPECT_STREQ(e.destination, "/dmf/icons/mymodule.dmvi");          // a screen has no directory: it replaces the default
+    EXPECT_STREQ(e.origins[0], "/dmf/icons/paper/mymodule.dmvi");
+    EXPECT_STREQ(e.screen, "epaper");
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 3, &e));
+    EXPECT_STREQ(e.destination, "/dmf/icons/small/mymodule.dmvi");    // (the attributes are independent of their order)
+}
+
+TEST_F(DmodResourceTest, IconsDirIsUnresolvedWhenNotSet) {
+    ASSERT_TRUE(Dmod_Resource_Parse(ctx, "icon=icon.dmvi => /out/x [origin=${icons_dir}/${module}.dmvi]\n"));
+    Dmod_ResourceEntry_t e;
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 0, &e));
+    EXPECT_STREQ(e.origins[0], "${icons_dir}/mymodule.dmvi");         // mkdmrpkg skips such entries
+}
+
+TEST_F(DmodResourceTest, IconSelectionTakesTheScreensIconElseTheDefault) {
+    ASSERT_TRUE(Dmod_Resource_Parse(ctx,
+        "dmf=app.dmf => /out/app.dmf\n"
+        "icon=icon.dmvi => /i [origin=a]\n"                               // 1 default
+        "icon=paper.dmvi => /i [screen=epaper]\n"                         // 2 of the screen epaper
+        "icon=small.dmvi => /i [variant=small]\n"                         // 3 default of the variant small
+        "icon=color-small.dmvi => /i [variant=small] [screen=color]\n"    // 4 small, of the screen color
+        "views=v => /out/views [screen=epaper] [default=true]\n"));
+    Dmod_ResourceEntry_t e;
+    ASSERT_TRUE(Dmod_Resource_SelectViews(ctx, "epaper"));
+    Dmod_Resource_SelectIcons(ctx, "epaper");
+    const bool epaper[] = { true, false, true, true, false, true };      // paper replaces icon.dmvi; small has none for epaper
+    for (size_t i = 0; i < 6; i++) {
+        ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, i, &e));
+        EXPECT_EQ(e.selected, epaper[i]) << i;
+    }
+    Dmod_Resource_SelectIcons(ctx, "color");
+    const bool color[] = { true, true, false, false, true, true };       // color has its small, and the default icon
+    for (size_t i = 0; i < 6; i++) {
+        ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, i, &e));
+        EXPECT_EQ(e.selected, color[i]) << i;
+    }
+    Dmod_Resource_SelectIcons(ctx, nullptr);                               // no screen: the defaults
+    const bool none[] = { true, true, false, true, false, true };
+    for (size_t i = 0; i < 6; i++) {
+        ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, i, &e));
+        EXPECT_EQ(e.selected, none[i]) << i;
+    }
+}
+
+TEST_F(DmodResourceTest, IconsDoNotMixWithViewVariants) {
+    ASSERT_TRUE(Dmod_Resource_Parse(ctx,
+        "icon=paper.dmvi => /i [screen=epaper]\n"
+        "views=a => /out/views [screen=epaper] [default=true]\n"
+        "views=b => /out/views [screen=color]\n"));
+    // The same screen name on an icon and on views is not a duplicate, and the views choice does not touch the icon
+    ASSERT_TRUE(Dmod_Resource_SelectViews(ctx, "color"));
+    Dmod_ResourceEntry_t e;
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 0, &e)); EXPECT_TRUE(e.selected);
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 1, &e)); EXPECT_FALSE(e.selected);
+    ASSERT_TRUE(Dmod_Resource_GetEntry(ctx, 2, &e)); EXPECT_TRUE(e.selected);
+}
+
+TEST_F(DmodResourceTest, RejectsInvalidIconMetadata) {
+    const char* bad[] = {
+        "icon=a => /i [variant=]",                       // empty
+        "icon=a => /i [variant=a/b]",                    // not an identifier
+        "icon=a => /i [variant=x] [variant=y]",          // duplicate
+        "dmf=a => /i [variant=x]",                       // only on icons
+        "docs=a => /i [screen=epaper]",                  // screen only on views and icons
+        "icon=a => /i [default=true] [screen=x]",        // default only on views
+    };
+    for (const char* line : bad) {
+        Dmod_ResourceContext_t* c = Dmod_Resource_Init("/install/path", "mymodule", nullptr, nullptr, nullptr, nullptr);
+        EXPECT_FALSE(Dmod_Resource_Parse(c, line)) << line;
+        Dmod_Resource_Free(c);
+    }
+    EXPECT_FALSE(Dmod_Resource_Parse(ctx,
+        "icon=a => /i [variant=s]\nicon=b => /i [variant=s]\n"));        // the same variant and screen twice
+}

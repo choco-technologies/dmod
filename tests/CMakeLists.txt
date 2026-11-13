@@ -85,4 +85,6 @@ if(DMOD_SYSTEM AND DMOD_BUILD_TOOLS)
         COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_dmf_get_screens.sh ${CMAKE_BINARY_DIR})
     add_test(NAME dmf_get_builtin_libraries
         COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_dmf_get_builtin.sh ${CMAKE_BINARY_DIR})
+    add_test(NAME dmf_get_icons
+        COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_dmf_get_icons.sh ${CMAKE_BINARY_DIR})
 endif()
