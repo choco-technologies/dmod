@@ -40,6 +40,7 @@
 #define ENV_DOC_DIR "DMOD_DOC_DIR"
 #define ENV_LIB_DIR "DMOD_LIB_DIR"
 #define ENV_VIEWS_DIR "DMOD_VIEWS_DIR"
+#define ENV_ICONS_DIR "DMOD_ICONS_DIR"
 #define ENV_LICENSE_DIR "DMOD_LICENSE_DIR"
 #define ENV_PACKAGE_DIR "DMOD_PACKAGE_DIR"
 #define ENV_BUILTIN_DIR "DMOD_BUILTIN_DIR"
@@ -1169,6 +1170,16 @@ static void GetCurrentDmodVersion(Dmod_SemanticVersion_t* version) {
  */
 static const char* g_views_dir = NULL;
 
+/*
+ * Base directory for icons (set by --icons-dir or DMOD_ICONS_DIR); when NULL the icons go to <package dir or output dir>/icons.
+ * ${icons_dir} in a .dmr file resolves to it, so the icon of a module is <base>/<module>.dmvi, and an icon variant (a size,
+ * [variant=NAME]) <base>/NAME/<module>.dmvi: a launcher finds the icon of a module by its name.
+ */
+static const char* g_icons_dir = NULL;
+
+// The screen the icons are chosen for (--screen, DMOD_SCREEN); NULL: the default icons
+static const char* g_screen = NULL;
+
 // Optional base directory for license resources, shared by all dependencies.
 // When unset, preserve the destinations declared by the package's .dmr file.
 static const char* g_license_dir = NULL;
@@ -1196,7 +1207,7 @@ static size_t g_builtin_record_count = 0;
 
 /**
  * Create a resource context for installing a module and hand it the views
- * directory, so that .dmr entries using ${views_dir} resolve.
+ * and the icons directory, so that .dmr entries using ${views_dir} and ${icons_dir} resolve.
  */
 static Dmod_ResourceContext_t* InitInstallResourceContext(const char* output_dir, const char* module_name) {
     Dmod_ResourceContext_t* ctx = Dmod_Resource_Init(output_dir, module_name, NULL, NULL, NULL, NULL);
@@ -1210,6 +1221,17 @@ static Dmod_ResourceContext_t* InitInstallResourceContext(const char* output_dir
             Dmod_SnPrintf(module_views_dir, sizeof(module_views_dir), "views/%s", module_name);
         }
         Dmod_Resource_SetViewsDir(ctx, module_views_dir);
+
+        // Icons: one flat directory for all the modules (<base>/<module>.dmvi, <base>/<variant>/<module>.dmvi)
+        char icons_dir[DMOD_RESOURCE_MAX_PATH_LEN];
+        if (g_icons_dir) {
+            Dmod_SnPrintf(icons_dir, sizeof(icons_dir), "%s", g_icons_dir);
+        } else if (output_dir[0] != '\0') {
+            Dmod_SnPrintf(icons_dir, sizeof(icons_dir), "%s/icons", output_dir);
+        } else {
+            Dmod_SnPrintf(icons_dir, sizeof(icons_dir), "icons");
+        }
+        Dmod_Resource_SetIconsDir(ctx, icons_dir);
     }
     return ctx;
 }
@@ -1295,6 +1317,69 @@ static void GetInstallResourceOutputDir(char* path, size_t path_size,
  * @param resource_key Resource key to extract ("inc" for headers, "docs" for documentation, "lib" for static library)
  * @return true if extraction succeeded and resource was found and copied
  */
+/**
+ * @brief The icons of a module, from its unpacked package: the "icon" resources of its .dmr that the screen selects
+ *        (the default icon, a variant, each the screen's own when the package has one) to <icons_dir>/[<variant>/]<module>.dmvi
+ *
+ * @return true when at least one icon was installed
+ */
+static bool InstallIcons(const char* extract_dir, const char* dmr_file, const char* icons_dir, const char* module_name) {
+    Dmod_ResourceContext_t* ctx = Dmod_Resource_Init(icons_dir, module_name, NULL, NULL, NULL, NULL);
+    if (!ctx) {
+        return false;
+    }
+    Dmod_Resource_SetIconsDir(ctx, icons_dir);
+    if (!Dmod_Resource_ParseFile(ctx, dmr_file)) {
+        DMOD_LOG_ERROR("Failed to parse resource file: %s\n", Dmod_Resource_GetError(ctx));
+        Dmod_Resource_Free(ctx);
+        return false;
+    }
+    Dmod_Resource_SelectIcons(ctx, g_screen);
+
+    size_t installed = 0;
+    bool failed = false;
+    for (size_t i = 0; i < Dmod_Resource_GetEntryCount(ctx); i++) {
+        Dmod_ResourceEntry_t e;
+        if (!Dmod_Resource_GetEntry(ctx, i, &e) || strcmp(e.key, "icon") != 0 || !e.selected) {
+            continue;
+        }
+        char source[1024];
+        Dmod_SnPrintf(source, sizeof(source), "%s/%s", extract_dir, e.source);
+        struct stat info;
+        if (!IsPathSafe(source) || !IsPathSafe(e.destination) || stat(source, &info) != 0 || !S_ISREG(info.st_mode)) {
+            DMOD_LOG_ERROR("Invalid or missing icon %s => %s\n", e.source, e.destination);
+            failed = true;
+            continue;
+        }
+        char parent[1024];
+        Dmod_SnPrintf(parent, sizeof(parent), "%s", e.destination);
+        char* slash = strrchr(parent, '/');
+        char cmd[2300];
+        if (slash) {
+            *slash = '\0';
+            Dmod_SnPrintf(cmd, sizeof(cmd), "mkdir -p \"%s\"", parent);
+            if (system(cmd) != 0) {
+                DMOD_LOG_ERROR("Failed to create the icon directory: %s\n", parent);
+                failed = true;
+                continue;
+            }
+        }
+        Dmod_SnPrintf(cmd, sizeof(cmd), "cp \"%s\" \"%s\"", source, e.destination);
+        if (system(cmd) != 0) {
+            DMOD_LOG_ERROR("Failed to install the icon %s\n", e.destination);
+            failed = true;
+            continue;
+        }
+        DMOD_LOG_INFO("  Icon%s%s installed: %s\n", e.variant[0] ? " " : "", e.variant, e.destination);
+        installed++;
+    }
+    Dmod_Resource_Free(ctx);
+    if (installed == 0 && !failed) {
+        DMOD_LOG_ERROR("%s has no icon%s%s\n", module_name, g_screen ? " for the screen " : "", g_screen ? g_screen : "");
+    }
+    return installed > 0 && !failed;
+}
+
 static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
                                    const char* module_name, const char* resource_key) {
     // Create temporary extraction directory in /tmp
@@ -1357,6 +1442,18 @@ static bool ExtractResourceFromZip(const char* zip_path, const char* output_dir,
         Dmod_CloseDir(dir);
     }
     
+    // The icons of a module are all of its icon resources the screen selects: the .dmr says where each goes
+    if (strcmp(resource_key, "icon") == 0) {
+        bool icons_ok = dmr_file[0] != '\0' && InstallIcons(extract_dir, dmr_file, output_dir, module_name);
+        char rm_icons_cmd[1024];
+        Dmod_SnPrintf(rm_icons_cmd, sizeof(rm_icons_cmd), "rm -rf \"%s\"", extract_dir);
+        system(rm_icons_cmd);
+        if (dmr_file[0] == '\0') {
+            DMOD_LOG_ERROR("%s has no resource file (.dmr), so no icon\n", module_name);
+        }
+        return icons_ok;
+    }
+
     char source_path[1024] = "";
     char destination_path[1024] = "";
     bool found_resource = false;
@@ -2041,7 +2138,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
             for (size_t i = 0; i < Dmod_Resource_GetEntryCount(check); i++) {
                 Dmod_ResourceEntry_t e;
                 Dmod_Resource_GetEntry(check, i, &e);
-                if (!e.selected || !e.screen[0]) continue;
+                if (!e.selected || !e.screen[0] || strcmp(e.key, "views") != 0) continue;     /* (view variants only) */
                 char source[1024];
                 struct stat info;
                 Dmod_SnPrintf(source, sizeof(source), "%s/%s", extract_dir, e.source);
@@ -2187,6 +2284,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                 Dmod_Resource_Free(res_ctx);
             } else {
                 Dmod_Resource_SelectViews(res_ctx, screen);
+                Dmod_Resource_SelectIcons(res_ctx, screen);
                 size_t res_count = Dmod_Resource_GetEntryCount(res_ctx);
                 DMOD_LOG_INFO("Found %zu resource entries in .dmr file\n", res_count);
                 
@@ -2201,11 +2299,12 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                     
                     if (!res_entry.selected) continue;
                     bool is_views = strcmp(res_entry.key, "views") == 0;
+                    bool is_icon = strcmp(res_entry.key, "icon") == 0;
 
                     bool redirect_license = g_license_dir && strcmp(res_entry.key, "license") == 0;
 
-                    // Keep runtime views and explicitly requested licenses in mini mode.
-                    if (mini_mode && !res_entry.is_dmf_dmfc && !is_views && !redirect_license) {
+                    // Keep runtime views, the icons and explicitly requested licenses in mini mode.
+                    if (mini_mode && !res_entry.is_dmf_dmfc && !is_views && !is_icon && !redirect_license) {
                         DMOD_LOG_INFO("  Skipping resource '%s' (mini mode)\n", res_entry.key);
                         continue;
                     }
@@ -2316,7 +2415,7 @@ static bool ExtractZipAndFindModule(const char* zip_path, const char* output_dir
                         }
                     }
                     
-                    if (res_entry.screen[0]) {
+                    if (is_views && res_entry.screen[0]) {
                         if (!InstallViewDirectory(full_source, res_entry.destination)) {
                             resource_install_failed = true;
                         }
@@ -2825,6 +2924,8 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  install <module>          Download and install module (default command)\n");
     Dmod_Printf("  headers <module>          Extract module headers to output directory\n");
     Dmod_Printf("  docs <module>             Extract module documentation to output directory\n");
+    Dmod_Printf("  icon <module>             Extract the icons of the module (the screen's own, else the default) to the\n");
+    Dmod_Printf("                            icons directory (-o, --icons-dir, $DMOD_ICONS_DIR, otherwise $DMOD_DMF_DIR/icons)\n");
     Dmod_Printf("  lib <module>              Extract module static library to output directory\n");
     Dmod_Printf("  builtin <module> | -d <path>\n");
     Dmod_Printf("                            Install only the libraries of the system (@builtin entries) that the module(s)\n");
@@ -2843,6 +2944,9 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  --views-dir <path>        Directory where views of the installed applications are placed,\n");
     Dmod_Printf("                            each module in its own <path>/<module> (= ${views_dir} in .dmr)\n");
     Dmod_Printf("                            (default: $DMOD_VIEWS_DIR, otherwise <package-dir>/views or <output-dir>/views)\n");
+    Dmod_Printf("  --icons-dir <path>        Directory of the icons of the installed modules: <path>/<module>.dmvi, an icon variant\n");
+    Dmod_Printf("                            (a size) in <path>/<variant>/<module>.dmvi (= ${icons_dir} in .dmr)\n");
+    Dmod_Printf("                            (default: $DMOD_ICONS_DIR, otherwise <package-dir>/icons or <output-dir>/icons)\n");
     Dmod_Printf("  --package-dir <path>      Root for unpacked package resources and .dmd/.dmr metadata\n");
     Dmod_Printf("                            (default: $DMOD_PACKAGE_DIR, otherwise the module output directory)\n");
     Dmod_Printf("  --license-dir <path>      Install .dmr license resources to <path>/<module>/<source-name>\n");
@@ -2876,6 +2980,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s       Documentation output directory\n", ENV_DOC_DIR);
     Dmod_Printf("  %s       Static library output directory\n", ENV_LIB_DIR);
     Dmod_Printf("  %s     Views output directory (same as --views-dir)\n", ENV_VIEWS_DIR);
+    Dmod_Printf("  %s     Icons output directory (same as --icons-dir)\n", ENV_ICONS_DIR);
     Dmod_Printf("  %s   License output directory (same as --license-dir)\n", ENV_LICENSE_DIR);
     Dmod_Printf("  %s   Package resource directory (same as --package-dir)\n", ENV_PACKAGE_DIR);
     Dmod_Printf("  %s   Libraries of the system directory (same as --builtin-dir)\n", ENV_BUILTIN_DIR);
@@ -2887,6 +2992,7 @@ static void PrintUsage(const char* app_name) {
     Dmod_Printf("  %s headers dmini         # Extract headers to $DMOD_INC_DIR or $DMOD_DMF_DIR/dmini/inc\n", app_name);
     Dmod_Printf("  %s docs dmini -o ./dmini/docs    # Extract docs to specified path\n", app_name);
     Dmod_Printf("  %s docs dmini            # Extract docs to $DMOD_DOC_DIR or $DMOD_DMF_DIR/dmini/docs\n", app_name);
+    Dmod_Printf("  %s icon dmell -o ./icons --screen epaper  # Extract the icons of dmell for the screen epaper\n", app_name);
     Dmod_Printf("  %s lib dmlist -o ./dmlist/lib    # Extract static library to specified path\n", app_name);
     Dmod_Printf("  %s lib dmlist            # Extract static library to $DMOD_LIB_DIR or $DMOD_DMF_DIR/lib/dmlist/lib\n", app_name);
     Dmod_Printf("  %s mymodule@1.0          # Download specific version\n", app_name);
@@ -3479,6 +3585,13 @@ int main(int argc, char* argv[]) {
             }
             g_builtin_dir = argv[i];
         }
+        else if (strcmp(argv[i], "--icons-dir") == 0) {
+            if (++i >= argc) {
+                DMOD_LOG_ERROR("Error: --icons-dir requires an argument\n");
+                return 1;
+            }
+            g_icons_dir = argv[i];
+        }
         else if (strcmp(argv[i], "--license-dir") == 0) {
             if (++i >= argc) {
                 DMOD_LOG_ERROR("Error: --license-dir requires an argument\n");
@@ -3629,6 +3742,7 @@ int main(int argc, char* argv[]) {
                 if (strcmp(argv[i], "install") == 0 ||
                     strcmp(argv[i], "headers") == 0 ||
                     strcmp(argv[i], "docs") == 0 ||
+                    strcmp(argv[i], "icon") == 0 ||
                     strcmp(argv[i], "lib") == 0) {
                     // Check if there's another positional argument after this command
                     bool has_more_positional = false;
@@ -3658,8 +3772,19 @@ int main(int argc, char* argv[]) {
         DMOD_LOG_ERROR("Invalid DMOD_SCREEN: %s\n", screen);
         return 1;
     }
+    g_screen = (screen && *screen) ? screen : NULL;
     if (!g_views_dir) {
         g_views_dir = Dmod_GetEnv(ENV_VIEWS_DIR);
+    }
+    if (!g_icons_dir) {
+        g_icons_dir = Dmod_GetEnv(ENV_ICONS_DIR);
+        if (g_icons_dir && g_icons_dir[0] == '\0') {
+            g_icons_dir = NULL;
+        }
+    }
+    if (g_icons_dir && (!IsPathSafe(g_icons_dir) || strlen(g_icons_dir) >= DMOD_RESOURCE_MAX_PATH_LEN)) {
+        DMOD_LOG_ERROR("Error: --icons-dir requires a safe path shorter than %d characters\n", DMOD_RESOURCE_MAX_PATH_LEN);
+        return 1;
     }
     if (!g_license_dir) {
         g_license_dir = Dmod_GetEnv(ENV_LICENSE_DIR);
@@ -3720,7 +3845,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         if (command && (strcmp(command, "headers") == 0 || strcmp(command, "docs") == 0 ||
-                        strcmp(command, "lib") == 0)) {
+                        strcmp(command, "icon") == 0 || strcmp(command, "lib") == 0)) {
             DMOD_LOG_ERROR("Error: --config cannot be used with %s command\n", command);
             PrintUsage(argv[0]);
             return 1;
@@ -3742,9 +3867,9 @@ int main(int argc, char* argv[]) {
     // Initialize curl
     curl_global_init(CURL_GLOBAL_DEFAULT);
     
-    // Handle headers, docs, and lib commands
+    // Handle headers, docs, icon, and lib commands
     if (command && (strcmp(command, "headers") == 0 || strcmp(command, "docs") == 0 ||
-                     strcmp(command, "lib") == 0)) {
+                     strcmp(command, "icon") == 0 || strcmp(command, "lib") == 0)) {
         if (!module_spec) {
             DMOD_LOG_ERROR("Error: No module name specified for %s command\n", command);
             PrintUsage(argv[0]);
@@ -3791,6 +3916,19 @@ int main(int argc, char* argv[]) {
                     output_dir = default_output_dir;
                     DMOD_LOG_INFO("No output directory specified, using default: %s\n", output_dir);
                 }
+            }
+        } else if (strcmp(command, "icon") == 0) {
+            // The icons go to the icons directory (-o, --icons-dir, $DMOD_ICONS_DIR, otherwise $DMOD_DMF_DIR/icons): the .dmr
+            // says the rest (<dir>/<module>.dmvi, <dir>/<variant>/<module>.dmvi - see ${icons_dir})
+            resource_key = "icon";
+            if (!output_dir) {
+                output_dir = g_icons_dir;
+            }
+            if (!output_dir) {
+                const char* dmf_dir = GetEnvOrDefault(ENV_DMF_DIR, DEFAULT_DMF_DIR);
+                Dmod_SnPrintf(default_output_dir, sizeof(default_output_dir), "%s/icons", dmf_dir);
+                output_dir = default_output_dir;
+                DMOD_LOG_INFO("No output directory specified, using default: %s\n", output_dir);
             }
         } else if (strcmp(command, "lib") == 0) {
             resource_key = "lib";
@@ -3947,6 +4085,7 @@ int main(int argc, char* argv[]) {
         mini_mode = true;
         auto_accept_license = true;     // nothing of the modules is kept
         g_views_dir = NULL;
+        g_icons_dir = NULL;
         g_license_dir = NULL;
         g_package_dir = NULL;
     }

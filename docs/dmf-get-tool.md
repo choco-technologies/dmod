@@ -102,6 +102,7 @@ Two variables are automatically substituted in URLs:
 - `DMOD_LICENSE_DIR` - Default base directory for license resources (overridden by `--license-dir`)
 - `DMOD_PACKAGE_DIR` - Default root for package resources and metadata (overridden by `--package-dir`)
 - `DMOD_VIEWS_DIR` - Default views directory (same as `--views-dir`)
+- `DMOD_ICONS_DIR` - Default icons directory (same as `--icons-dir`)
 
 ### Version Matching
 
@@ -230,6 +231,7 @@ Three special variables are available:
 - `${destination}` - Installation destination (from `-o` flag or `DMOD_DMF_DIR`)
 - `${module}` - Module name being installed
 - `${DMOD_DMF_DIR}` - DMF directory from environment
+- `${icons_dir}` - The icons directory, shared by all the modules: `--icons-dir`, `DMOD_ICONS_DIR` or `<output dir>/icons` (`<package dir>/icons` with `--package-dir`); an `icon` entry with `[variant=NAME]` gets `<icons dir>/NAME` (see [DMR File Format](dmr-file-format.md#icons))
 - `${views_dir}` - The module's own views directory: `<views base>/<module>`, where the base is `--views-dir`, `DMOD_VIEWS_DIR` or `<output dir>/views` (e.g. `$DMOD_DMF_DIR/views/<module>`)
 
 Any environment variable can also be used: `${HOME}`, `${USER}`, etc.
@@ -346,6 +348,15 @@ dmf-get --mini --license-dir ./licenses -y -d dependencies.dmd
 # the libraries of the system that the firmware has to link for the modules of flash.dmd
 dmf-get builtin -d flash.dmd -t arch/xtensa/esp32s3 --cpu-family esp32s3 -o build/builtin
 cat build/builtin/builtin.dmd
+```
+
+#### Icons Options
+
+- `--icons-dir <path>` - Directory of the icons of the installed modules (default: `DMOD_ICONS_DIR`, otherwise `icons` inside the package root when configured, or the output directory, e.g. `$DMOD_DMF_DIR/icons`). The icon of a module is `<path>/<module>.dmvi` and a variant of it (e.g. a size) `<path>/<variant>/<module>.dmvi`; `--screen` chooses the icon made for a screen when the package has one. The `icon` resource is installed also with `--mini`.
+- `icon <module>` (command) - Install only the icons of a module (the package is downloaded, the module is not installed), to `-o`, `--icons-dir`, `DMOD_ICONS_DIR` or `$DMOD_DMF_DIR/icons`. Fails when the module has no icon.
+
+```bash
+dmf-get icon dmell -o ./icons --screen epaper-240x320   # ./icons/dmell.dmvi, ./icons/small/dmell.dmvi ...
 ```
 
 #### Views Options

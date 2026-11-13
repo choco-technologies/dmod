@@ -661,6 +661,184 @@ function(_dmod_setup_assets moduleName)
     set(DMOD_VIEWS_ENABLED TRUE PARENT_SCOPE)
 endfunction()
 
+# ---------------------------------------------------------------------------
+# Icons
+# ---------------------------------------------------------------------------
+# The icon of a module is a .dmvi (see dmview's docs/image-format.md) made from an image at build time, the way the images of the views
+# are (todmvi; its ini). DMOD_ICON_PATH is a directory with the sources:
+#
+#   <DMOD_ICON_PATH>/icon.<ext>             the default icon (any extension of DMOD_IMAGE_EXTENSIONS, SVG too)
+#   <DMOD_ICON_PATH>/icon.<ext>.ini         optional: the options of todmvi (format, size, ...). Its [sections] are variants of the
+#                                           icon (e.g. [small] size=24, [large] size=64): a section named after the source
+#                                           (icon) is the default icon, any other is a variant
+#   <DMOD_ICON_PATH>/<screen>/icon.<ext>    the icon of its own for a screen (the same ini rules), in a subdirectory named as the screen
+#
+# The outputs are in DMOD_ICONS_DIR (default: <build>/icons) - the same layout the .dmr uses as ${icons_dir}:
+#
+#   <icons>/<module>.dmvi                       the default icon
+#   <icons>/<variant>/<module>.dmvi             a variant
+#   <icons>/<screen>/<module>.dmvi              the default icon of a screen
+#   <icons>/<variant>/<screen>/<module>.dmvi    a variant of a screen
+#
+# The .dmr says what goes into the package and where (docs/dmr-file-format.md, "Icons"), e.g.
+#   icon=./icon.dmvi => ${icons_dir}/${module}.dmvi [origin=${icons_dir}/${module}.dmvi]
+#   icon=./icon-epaper.dmvi => ${icons_dir}/${module}.dmvi [screen=epaper] [origin=${icons_dir}/epaper/${module}.dmvi]
+#   icon=./icon-small.dmvi => ${icons_dir}/${module}.dmvi [variant=small] [origin=${icons_dir}/${module}.dmvi]
+# (an icon variant has its own ${icons_dir}: <icons>/small), and dmf-get installs them to the icons directory of the device
+# (<icons>/<module>.dmvi, <icons>/<variant>/<module>.dmvi) - the screen's own icon where the package has one.
+#
+# Sets DMOD_ICONS_ENABLED (parent scope) to TRUE when icons are converted, and DMOD_ICONS_DIR.
+function(dmod_setup_icons moduleName)
+    set(DMOD_ICONS_ENABLED FALSE PARENT_SCOPE)
+    if(NOT DEFINED DMOD_ICON_PATH OR "${DMOD_ICON_PATH}" STREQUAL "")
+        return()
+    endif()
+    set(ICON_ROOT "${DMOD_ICON_PATH}")
+    if(NOT IS_ABSOLUTE "${ICON_ROOT}")
+        set(ICON_ROOT "${CMAKE_SOURCE_DIR}/${ICON_ROOT}")
+    endif()
+    if(NOT IS_DIRECTORY "${ICON_ROOT}")
+        message(WARNING "DMOD_ICON_PATH: '${ICON_ROOT}' is not a directory")
+        return()
+    endif()
+    if(NOT DEFINED DMOD_ICONS_DIR OR "${DMOD_ICONS_DIR}" STREQUAL "")
+        set(DMOD_ICONS_DIR "${CMAKE_BINARY_DIR}/icons")
+    endif()
+    set(DMOD_ICONS_DIR "${DMOD_ICONS_DIR}" PARENT_SCOPE)
+    if(NOT DEFINED DMOD_VIEWS_TOOLS_NAME OR "${DMOD_VIEWS_TOOLS_NAME}" STREQUAL "")
+        set(DMOD_VIEWS_TOOLS_NAME "arch/x86_64")
+    endif()
+    if(NOT DEFINED DMOD_IMAGE_EXTENSIONS OR "${DMOD_IMAGE_EXTENSIONS}" STREQUAL "")
+        set(DMOD_IMAGE_EXTENSIONS png jpg jpeg jpe jfif bmp qoi gif tif tiff svg)
+    endif()
+
+    # The sources: icon.<ext> of the root (no screen), and of every subdirectory (a screen)
+    set(ICON_SOURCES "")
+    set(SEARCH_DIRS "${ICON_ROOT}")
+    file(GLOB ROOT_ENTRIES LIST_DIRECTORIES true "${ICON_ROOT}/*")
+    foreach(ENTRY ${ROOT_ENTRIES})
+        if(IS_DIRECTORY "${ENTRY}")
+            get_filename_component(SCREEN "${ENTRY}" NAME)
+            if(NOT SCREEN MATCHES "^[A-Za-z0-9_][A-Za-z0-9_.-]*$")
+                message(SEND_ERROR "DMOD_ICON_PATH: the directory '${SCREEN}' is not a screen identifier")
+            endif()
+            list(APPEND SEARCH_DIRS "${ENTRY}")
+        endif()
+    endforeach()
+    foreach(DIR ${SEARCH_DIRS})
+        set(FOUND_ICON "")
+        foreach(EXT ${DMOD_IMAGE_EXTENSIONS})
+            if(EXISTS "${DIR}/icon.${EXT}")
+                if(FOUND_ICON)
+                    message(SEND_ERROR "${DIR}: two sources of the icon (${FOUND_ICON}, icon.${EXT})")
+                endif()
+                set(FOUND_ICON "icon.${EXT}")
+            endif()
+        endforeach()
+        if(FOUND_ICON)
+            list(APPEND ICON_SOURCES "${DIR}/${FOUND_ICON}")
+        endif()
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${DIR}")
+    endforeach()
+    if(NOT ICON_SOURCES)
+        message(STATUS "DMOD_ICON_PATH: no icon.<ext> in ${ICON_ROOT}")
+        return()
+    endif()
+
+    find_program(DMF_GET dmf-get HINTS ${DMOD_TOOLS_BIN_DIR} PATHS ENV PATH)
+    if(NOT DMF_GET)
+        message(WARNING "dmf-get not found - the icon of ${moduleName} will not be converted. Build the tools first with -DDMOD_BUILD_TOOLS=ON")
+        return()
+    endif()
+    if(NOT DMOD_LOADER)
+        find_program(DMOD_LOADER dmod_loader
+            HINTS ${DMOD_TOOLS_BIN_DIR} ${CMAKE_BINARY_DIR}/examples/system/dmod_loader
+            PATHS ENV PATH)
+    endif()
+    if(NOT DMOD_LOADER)
+        message(WARNING "dmod_loader not found (set DMOD_LOADER) - the icon of ${moduleName} will not be converted")
+        return()
+    endif()
+
+    # todmvi, and the decoders of the sources
+    set(TODMVI_DIR "${CMAKE_BINARY_DIR}/todmvi")
+    _dmod_assets_tool(todmvi "${TODMVI_DIR}" TODMVI_DMF)
+    if(NOT TODMVI_DMF)
+        message(WARNING "The icon of ${moduleName} will not be converted")
+        return()
+    endif()
+    set(DECODERS "${DMOD_IMAGE_DECODERS}")
+    if(NOT DECODERS)
+        foreach(ICON_SOURCE ${ICON_SOURCES})
+            get_filename_component(EXT "${ICON_SOURCE}" LAST_EXT)
+            string(REGEX REPLACE "^\\." "" EXT "${EXT}")
+            _dmod_image_decoder("${EXT}" DECODER)
+            list(APPEND DECODERS ${DECODER})
+        endforeach()
+        list(REMOVE_DUPLICATES DECODERS)
+    endif()
+    foreach(DECODER ${DECODERS})
+        _dmod_assets_tool(${DECODER} "${TODMVI_DIR}" DECODER_DMF)
+        if(NOT DECODER_DMF)
+            message(WARNING "No ${DECODER} - the icons it decodes will not be converted")
+        endif()
+    endforeach()
+
+    set(OUTPUTS "")
+    foreach(ICON_SOURCE ${ICON_SOURCES})
+        get_filename_component(ICON_DIR "${ICON_SOURCE}" DIRECTORY)
+        set(SCREEN_DIR "")
+        if(NOT "${ICON_DIR}" STREQUAL "${ICON_ROOT}")
+            get_filename_component(SCREEN "${ICON_DIR}" NAME)
+            set(SCREEN_DIR "/${SCREEN}")
+        endif()
+        set(ICON_DEPENDS "${ICON_SOURCE}")
+        if(EXISTS "${ICON_SOURCE}.ini")
+            list(APPEND ICON_DEPENDS "${ICON_SOURCE}.ini")
+        endif()
+        _dmod_asset_outputs(image "${ICON_SOURCE}" ICON)
+        foreach(OUTPUT_NAME ${ICON_NAMES})
+            # The output named like the source (icon) is the default icon, any other section is a variant
+            set(VARIANT_DIR "")
+            if(NOT OUTPUT_NAME STREQUAL "icon")
+                if(NOT OUTPUT_NAME MATCHES "^[A-Za-z0-9_][A-Za-z0-9_.-]*$")
+                    message(SEND_ERROR "${ICON_SOURCE}.ini: '${OUTPUT_NAME}' is not a variant identifier")
+                endif()
+                set(VARIANT_DIR "/${OUTPUT_NAME}")
+            endif()
+            set(ICON_OUTPUT "${DMOD_ICONS_DIR}${VARIANT_DIR}${SCREEN_DIR}/${moduleName}.dmvi")
+            get_filename_component(ICON_OUTPUT_DIR "${ICON_OUTPUT}" DIRECTORY)
+            add_custom_command(
+                OUTPUT "${ICON_OUTPUT}"
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${ICON_OUTPUT_DIR}"
+                COMMAND ${CMAKE_COMMAND} -E env DMOD_DMF_DIR=${TODMVI_DIR}
+                        ${DMOD_LOADER} ${TODMVI_DMF} --args -q ${ICON_ARGS_${OUTPUT_NAME}} -o ${ICON_OUTPUT} ${ICON_SOURCE}
+                DEPENDS ${ICON_DEPENDS}
+                COMMENT "Converting the icon ${ICON_SOURCE} of ${moduleName} to ${OUTPUT_NAME}${SCREEN_DIR}"
+                VERBATIM
+            )
+            list(APPEND OUTPUTS "${ICON_OUTPUT}")
+        endforeach()
+    endforeach()
+
+    set(SEEN "")
+    foreach(OUTPUT ${OUTPUTS})
+        if(OUTPUT IN_LIST SEEN)
+            message(SEND_ERROR "DMOD_ICON_PATH: ${OUTPUT} is made from two sources - rename a section of an ini")
+        endif()
+        list(APPEND SEEN "${OUTPUT}")
+    endforeach()
+
+    set(ICONS_TARGET "dmod_icons_${moduleName}")
+    add_custom_target(${ICONS_TARGET} ALL DEPENDS ${OUTPUTS})
+    set_property(TARGET ${ICONS_TARGET} PROPERTY DMOD_ICON_OUTPUTS "${OUTPUTS}")
+    add_dependencies(${moduleName} ${ICONS_TARGET})
+    # Packaging runs in POST_BUILD: the icons must trigger re-linking too.
+    set_property(TARGET ${moduleName} APPEND PROPERTY LINK_DEPENDS ${OUTPUTS})
+    message(STATUS "Icons: converting ${ICON_SOURCES} to ${DMOD_ICONS_DIR}")
+    set(DMOD_ICONS_ENABLED TRUE PARENT_SCOPE)
+endfunction()
+
 #
 # Function to create a DMOD module
 #
@@ -1010,6 +1188,10 @@ function(dmod_create_module moduleName version moduleType)
         set(MKDMRPKG_VIEWS_ARGS "")
         if(DMOD_VIEWS_ENABLED)
             set(MKDMRPKG_VIEWS_ARGS --views-dir "${DMOD_VIEWS_DIR}")
+        endif()
+        dmod_setup_icons(${moduleName})
+        if(DMOD_ICONS_ENABLED)
+            list(APPEND MKDMRPKG_VIEWS_ARGS --icons-dir "${DMOD_ICONS_DIR}")
         endif()
 
         if(MKDMRPKG)

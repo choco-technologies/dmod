@@ -10,7 +10,7 @@
  * - Comments (lines starting with #)
  * - Resource entries: key=source_path => destination_path [origin=path] ...
  * - Environment variable substitution: ${VAR_NAME}
- * - Special variables: ${destination}, ${module}, ${repo_dir}, ${dmf_dir}, ${dmfc_dir}, ${build_dir}, ${views_dir}
+ * - Special variables: ${destination}, ${module}, ${repo_dir}, ${dmf_dir}, ${dmfc_dir}, ${build_dir}, ${views_dir}, ${icons_dir}
  * - Origin directives: [origin=path] specifying where files come from for package creation
  */
 
@@ -47,7 +47,8 @@ typedef struct {
     char source[DMOD_RESOURCE_MAX_PATH_LEN];       /**< Source path in zip */
     char destination[DMOD_RESOURCE_MAX_PATH_LEN];  /**< Destination path after substitution */
     bool is_dmf_dmfc;                               /**< True if this is a dmf or dmfc resource */
-    char screen[128];                              /**< Optional opaque views variant selector */
+    char screen[128];                              /**< Optional opaque screen variant selector (views, icon) */
+    char variant[128];                             /**< Optional icon variant (e.g. a size): ${icons_dir} of the entry is <icons dir>/<variant> */
     bool is_default;                              /**< Default screen variant */
     bool selected;                                /**< Set by SelectViews; all entries selected when parsed */
     size_t origin_count;                            /**< Number of [origin] directives */
@@ -89,6 +90,26 @@ Dmod_ResourceContext_t* Dmod_Resource_Init(
  * @param views_dir The views directory path (may be NULL to unset)
  */
 void Dmod_Resource_SetViewsDir(Dmod_ResourceContext_t* ctx, const char* views_dir);
+
+/**
+ * @brief Set the directory used for ${icons_dir} substitution
+ *
+ * Must be called before parsing. ${icons_dir} of an `icon` entry with [variant=NAME] is <icons_dir>/NAME, so an
+ * icon variant lands in a subdirectory of its own. When not set (or NULL) ${icons_dir} is left unresolved, which
+ * lets a tool skip entries that need it.
+ *
+ * @param ctx Resource context
+ * @param icons_dir The icons directory path (may be NULL to unset)
+ */
+void Dmod_Resource_SetIconsDir(Dmod_ResourceContext_t* ctx, const char* icons_dir);
+
+/**
+ * Select icon resources for a screen: of every variant (the default one, and each [variant=NAME]) the entry made
+ * for @p screen if there is one, else the entry without [screen]; the others are not selected. An icon is
+ * optional: a screen with no icon and no default selects none, and this never fails. Leaves other resources as
+ * they are - call after Dmod_Resource_SelectViews (which selects all it does not choose).
+ */
+void Dmod_Resource_SelectIcons(Dmod_ResourceContext_t* ctx, const char* screen);
 
 /** Select view resources for a screen (NULL/empty: default or sole variant).
  * Leaves non-variant resources selected. Packaging need not call this: parsing

@@ -25,6 +25,8 @@ struct Dmod_ResourceContext {
     char dmfc_dir[DMOD_RESOURCE_MAX_PATH_LEN];
     char build_dir[DMOD_RESOURCE_MAX_PATH_LEN];
     char views_dir[DMOD_RESOURCE_MAX_PATH_LEN];
+    char icons_dir[DMOD_RESOURCE_MAX_PATH_LEN];
+    char icons_variant[128];            /* of the entry being parsed: ${icons_dir} is <icons_dir>/<variant> */
     Dmod_ResourceEntry_t entries[MAX_ENTRIES];
     size_t entry_count;
     char error[MAX_ERROR_LEN];
@@ -82,6 +84,7 @@ static bool SubstituteVariables(Dmod_ResourceContext_t* ctx, const char* input,
             // Extract variable name
             size_t var_len = var_end - var_start;
             char var_name[128];
+            char icons_value[DMOD_RESOURCE_MAX_PATH_LEN];
             if (var_len >= sizeof(var_name)) {
                 // Variable name too long
                 *dst++ = *src++;
@@ -108,6 +111,16 @@ static bool SubstituteVariables(Dmod_ResourceContext_t* ctx, const char* input,
                 value = ctx->build_dir[0] != '\0' ? ctx->build_dir : NULL;
             } else if (strcmp(var_name, "views_dir") == 0) {
                 value = ctx->views_dir[0] != '\0' ? ctx->views_dir : NULL;
+            } else if (strcmp(var_name, "icons_dir") == 0) {
+                value = NULL;
+                if (ctx->icons_dir[0] != '\0') {
+                    if (ctx->icons_variant[0] == '\0') {
+                        value = ctx->icons_dir;
+                    } else {
+                        Dmod_SnPrintf(icons_value, sizeof(icons_value), "%s/%s", ctx->icons_dir, ctx->icons_variant);
+                        value = icons_value;
+                    }
+                }
             } else {
                 // Try environment variable
                 value = Dmod_GetEnv(var_name);
@@ -200,6 +213,24 @@ static bool ParseLine(Dmod_ResourceContext_t* ctx, const char* line) {
     }
     
     char* dest = Trim(dest_and_origins);
+
+    // An icon variant is a subdirectory of the icons directory: its [variant=NAME] is read before the paths are
+    // substituted (the attributes are independent of their order), so that ${icons_dir} of the entry is <icons dir>/NAME
+    ctx->icons_variant[0] = '\0';
+    if (origins_start && strcmp(key, "icon") == 0) {
+        const char* v = strstr(origins_start, "[variant=");
+        const char* v_end = v ? strchr(v, ']') : NULL;
+        if (v_end) {
+            size_t n = (size_t)(v_end - (v + 9));
+            if (n > 0 && n < sizeof(ctx->icons_variant)) {
+                memcpy(ctx->icons_variant, v + 9, n);
+                ctx->icons_variant[n] = '\0';
+            }
+            if (!Dmod_Screen_IsValid(ctx->icons_variant)) {
+                ctx->icons_variant[0] = '\0';          /* (the attribute below reports it) */
+            }
+        }
+    }
     
     if (strlen(key) == 0 || strlen(source) == 0 || strlen(dest) == 0) {
         Dmod_SnPrintf(ctx->error, sizeof(ctx->error), 
@@ -264,11 +295,18 @@ static bool ParseLine(Dmod_ResourceContext_t* ctx, const char* line) {
                 entry->origin_count++;
             } else if (strncmp(attribute, "screen=", 7) == 0) {
                 const char* screen = attribute + 7;
-                if (strcmp(key, "views") != 0 || entry->screen[0] || !Dmod_Screen_IsValid(screen)) {
-                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Invalid or duplicate [screen]: expected a view variant identifier");
+                if ((strcmp(key, "views") != 0 && strcmp(key, "icon") != 0) || entry->screen[0] || !Dmod_Screen_IsValid(screen)) {
+                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Invalid or duplicate [screen]: expected a screen identifier on views or icon");
                     return false;
                 }
                 strcpy(entry->screen, screen);
+            } else if (strncmp(attribute, "variant=", 8) == 0) {
+                const char* variant = attribute + 8;
+                if (strcmp(key, "icon") != 0 || entry->variant[0] || !Dmod_Screen_IsValid(variant)) {
+                    Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Invalid or duplicate [variant]: expected an identifier on icon");
+                    return false;
+                }
+                strcpy(entry->variant, variant);
             } else if (strncmp(attribute, "default=", 8) == 0) {
                 const char* value = attribute + 8;
                 if (strcmp(key, "views") != 0 || seen_default ||
@@ -288,7 +326,15 @@ static bool ParseLine(Dmod_ResourceContext_t* ctx, const char* line) {
     }
     for (size_t i = 0; i < ctx->entry_count; i++) {
         const Dmod_ResourceEntry_t* other = &ctx->entries[i];
-        if (entry->screen[0] && other->screen[0] &&
+        if (strcmp(entry->key, other->key) != 0) {
+            continue;
+        }
+        if (strcmp(entry->key, "icon") == 0) {
+            if (strcmp(entry->screen, other->screen) == 0 && strcmp(entry->variant, other->variant) == 0) {
+                Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Duplicate icon for the same screen and variant");
+                return false;
+            }
+        } else if (entry->screen[0] && other->screen[0] &&
             (strcmp(entry->screen, other->screen) == 0 || (entry->is_default && other->is_default))) {
             Dmod_SnPrintf(ctx->error, sizeof(ctx->error), "Duplicate screen or multiple default view variants");
             return false;
@@ -343,6 +389,18 @@ Dmod_ResourceContext_t* Dmod_Resource_Init(const char* destination_path,
     }
     
     return ctx;
+}
+
+void Dmod_Resource_SetIconsDir(Dmod_ResourceContext_t* ctx, const char* icons_dir) {
+    if (!ctx) {
+        return;
+    }
+    if (icons_dir) {
+        strncpy(ctx->icons_dir, icons_dir, sizeof(ctx->icons_dir) - 1);
+        ctx->icons_dir[sizeof(ctx->icons_dir) - 1] = '\0';
+    } else {
+        ctx->icons_dir[0] = '\0';
+    }
 }
 
 void Dmod_Resource_SetViewsDir(Dmod_ResourceContext_t* ctx, const char* views_dir) {
@@ -495,7 +553,7 @@ bool Dmod_Resource_SelectViews(Dmod_ResourceContext_t* ctx, const char* screen)
     for (size_t i = 0; i < ctx->entry_count; i++) {
         Dmod_ResourceEntry_t* e = &ctx->entries[i];
         e->selected = true;
-        if (!e->screen[0]) continue;
+        if (!e->screen[0] || strcmp(e->key, "views") != 0) continue;
         count++;
         sole = i;
         size_t used = strlen(available);
@@ -511,7 +569,27 @@ bool Dmod_Resource_SelectViews(Dmod_ResourceContext_t* ctx, const char* screen)
         return false;
     }
     for (size_t i = 0; i < ctx->entry_count; i++) {
-        if (ctx->entries[i].screen[0]) ctx->entries[i].selected = i == chosen;
+        if (ctx->entries[i].screen[0] && strcmp(ctx->entries[i].key, "views") == 0) ctx->entries[i].selected = i == chosen;
     }
     return true;
+}
+
+void Dmod_Resource_SelectIcons(Dmod_ResourceContext_t* ctx, const char* screen)
+{
+    if (!ctx) return;
+    for (size_t i = 0; i < ctx->entry_count; i++) {
+        Dmod_ResourceEntry_t* e = &ctx->entries[i];
+        if (strcmp(e->key, "icon") != 0) continue;
+        if (e->screen[0]) {
+            e->selected = screen && *screen && strcmp(screen, e->screen) == 0;
+            continue;
+        }
+        // The entry without a screen is the default of its variant: it stays unless the screen has an icon of its own
+        bool own = false;
+        for (size_t j = 0; screen && *screen && j < ctx->entry_count && !own; j++) {
+            const Dmod_ResourceEntry_t* o = &ctx->entries[j];
+            own = strcmp(o->key, "icon") == 0 && strcmp(o->screen, screen) == 0 && strcmp(o->variant, e->variant) == 0;
+        }
+        e->selected = !own;
+    }
 }

@@ -313,6 +313,8 @@ static void PrintHelp( const char* AppName )
     printf("  --dmfc-dir <dir>      Value for ${dmfc_dir} variable substitution\n");
     printf("  --views-dir <dir>     Value for ${views_dir} variable substitution\n");
     printf("                        (entries using ${views_dir} are skipped when not set)\n");
+    printf("  --icons-dir <dir>     Value for ${icons_dir} variable substitution; an icon [variant=NAME] is in <dir>/NAME\n");
+    printf("                        (entries using ${icons_dir} are skipped when not set)\n");
     printf("  -b <build_dir>        Value for ${build_dir} variable substitution\n");
     printf("\nArguments:\n");
     printf("  <file.dmr>            Path to the .dmr resource file\n");
@@ -365,6 +367,7 @@ int main( int argc, char *argv[] )
     const char* dmfcDir      = NULL;
     const char* buildDir     = NULL;
     const char* viewsDir     = NULL;
+    const char* iconsDir     = NULL;
 
     const char* additionalFiles[MKDMRPKG_MAX_ADDITIONAL_FILES];
     int additionalFileCount = 0;
@@ -502,6 +505,19 @@ int main( int argc, char *argv[] )
                 return -1;
             }
         }
+        else if( strcmp( argv[i], "--icons-dir" ) == 0 )
+        {
+            if( i + 1 < argc )
+            {
+                iconsDir = argv[++i];
+            }
+            else
+            {
+                printf("Error: --icons-dir option requires a value\n");
+                PrintUsage( argv[0] );
+                return -1;
+            }
+        }
         else if( strcmp( argv[i], "-b" ) == 0 )
         {
             if( i + 1 < argc )
@@ -550,6 +566,7 @@ int main( int argc, char *argv[] )
     }
 
     Dmod_Resource_SetViewsDir( ctx, viewsDir );
+    Dmod_Resource_SetIconsDir( ctx, iconsDir );
 
     // Parse the .dmr file
     if( !Dmod_Resource_ParseFile( ctx, dmrPath ) )
@@ -592,20 +609,23 @@ int main( int argc, char *argv[] )
             continue;
         }
 
-        // An origin that still refers to ${views_dir} could not be resolved
-        // (no --views-dir given, i.e. the project has no views) - skip it.
-        bool unresolved = false;
-        for( size_t j = 0; j < entry.origin_count; j++ )
+        // An origin that still refers to ${views_dir} or ${icons_dir} could not be resolved
+        // (no --views-dir / --icons-dir given, i.e. the project has no views / icons) - skip it.
+        const char* unresolved = NULL;
+        for( size_t j = 0; j < entry.origin_count && unresolved == NULL; j++ )
         {
             if( strstr( entry.origins[j], "${views_dir}" ) != NULL )
             {
-                unresolved = true;
-                break;
+                unresolved = "${views_dir}";
+            }
+            else if( strstr( entry.origins[j], "${icons_dir}" ) != NULL )
+            {
+                unresolved = "${icons_dir}";
             }
         }
-        if( unresolved )
+        if( unresolved != NULL )
         {
-            DMOD_LOG_VERBOSE("  Skipping entry '%s' (${views_dir} not set)\n", entry.key);
+            DMOD_LOG_VERBOSE("  Skipping entry '%s' (%s not set)\n", entry.key, unresolved);
             skippedEntries++;
             continue;
         }
