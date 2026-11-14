@@ -30,6 +30,11 @@
 #                      modules only - see dmuart/dmfmc for the pattern
 #   --port-arch NAME  Architecture for the generated port skeleton
 #                      (default: stm32f7). Requires --port.
+#   --gui             An application with a graphical interface (application
+#                      modules only): a page (views/<name>.html - HTML, CSS and
+#                      JavaScript, converted into a view by dmod at build time),
+#                      an icon (icons/), and a main() that claims a display or
+#                      the rent of the launcher - see docs/gui.md of the result
 #   --force           Overwrite files that already exist at --path
 #   --skip-claude-sync Do not run scripts/sync-claude.sh at the end
 #   --help            Show this help message
@@ -47,6 +52,7 @@ GENERATE_BITBUCKET=false
 ADD_DIF=false
 ADD_MAL=false
 ADD_PORT=false
+ADD_GUI=false
 PORT_ARCH="stm32f7"
 FORCE=false
 SKIP_CLAUDE_SYNC=false
@@ -115,6 +121,10 @@ Optional parameters:
                      modules only
   --port-arch NAME  Architecture for the generated port skeleton
                      (default: stm32f7). Requires --port.
+  --gui             An application with a graphical interface (application
+                     modules only): a page (views/<name>.html, converted
+                     into a view by dmod at build time), an icon and a main()
+                     that claims a display or the rent of the launcher
   --force           Overwrite files that already exist at --path
   --skip-claude-sync Do not run scripts/sync-claude.sh at the end
   --help            Show this help message
@@ -131,6 +141,9 @@ Examples:
 
   # Create a driver module with a hardware port (like dmuart/dmfmc)
   ./scripts/new-module.sh --name mydriver --type library --path ./modules/mydriver --port --port-arch stm32f7
+
+  # Create an application with a graphical interface (a page, an icon)
+  ./scripts/new-module.sh --name myapp --type application --path ./modules/myapp --gui
 
   # Scaffold into a repo already created on GitHub and cloned locally
   ./scripts/new-module.sh --name myrepo --type application --path . --github
@@ -230,6 +243,10 @@ while [[ $# -gt 0 ]]; do
             PORT_ARCH="$2"
             shift 2
             ;;
+        --gui)
+            ADD_GUI=true
+            shift
+            ;;
         --force)
             FORCE=true
             shift
@@ -289,6 +306,11 @@ if [[ "${MODULE_TYPE}" == "application" && "${ADD_PORT}" == "true" ]]; then
     ADD_PORT=false
 fi
 
+if [[ "${MODULE_TYPE}" == "library" && "${ADD_GUI}" == "true" ]]; then
+    print_warning "A graphical interface is only supported for application modules. Ignoring --gui option."
+    ADD_GUI=false
+fi
+
 MODULE_NAME_UPPER=$(printf '%s' "${MODULE_NAME}" | tr '[:lower:]' '[:upper:]')
 
 case "${PORT_ARCH}" in
@@ -315,6 +337,9 @@ echo "  Path:   ${MODULE_PATH}"
 echo "  Author: ${AUTHOR_NAME}"
 if [[ "${ADD_PORT}" == "true" ]]; then
     echo "  Port:   ${PORT_ARCH}"
+fi
+if [[ "${ADD_GUI}" == "true" ]]; then
+    echo "  GUI:    a page, an icon and a view"
 fi
 echo ""
 
@@ -375,6 +400,41 @@ EOF
     fi
 fi
 
+if [[ "${CMAKELISTS_GENERATED}" == "true" && "${MODULE_TYPE}" == "application" ]]; then
+    if [[ "${ADD_GUI}" == "true" ]]; then
+        GUI_ASSETS_BLOCK_FILE="$(mktemp)"
+        cat > "${GUI_ASSETS_BLOCK_FILE}" << 'EOF'
+
+# The page (views/@MODULE_NAME@.html, with views/@MODULE_NAME@.html.ini for the options of its conversion) becomes a view with the fonts and
+# images it draws: dmod converts it at build time (see "Pages" in dmod's scripts/CMakeLists.txt). The page of a kind of screen is in a
+# directory named after the screen and ending in its size, e.g. views/epaper-240x320/, with set(DMOD_ASSETS_SCREENS epaper-240x320).
+set(DMOD_ASSETS_PATHS       ${CMAKE_CURRENT_SOURCE_DIR}/views)
+
+# The icon of the application in the launcher: icons/icon.svg (the default one), icons/<screen>/icon.svg for a kind of screen
+set(DMOD_ICON_PATH          ${CMAKE_CURRENT_SOURCE_DIR}/icons)
+EOF
+        insert_block "@GUI_ASSETS_BLOCK@" "${GUI_ASSETS_BLOCK_FILE}" "${MODULE_PATH}/CMakeLists.txt"
+        rm -f "${GUI_ASSETS_BLOCK_FILE}"
+
+        GUI_LINK_BLOCK_FILE="$(mktemp)"
+        cat > "${GUI_LINK_BLOCK_FILE}" << 'EOF'
+
+# libdmview: the display (or the rent of it) claimed, the channel of the claim (dmdrvi: its types). dmosi: the waits.
+dmod_link_modules(${DMOD_MODULE_NAME}
+    dmdrvi@>=2.5
+    dmosi
+    libdmview@>=0.20
+)
+
+EOF
+        insert_block "@GUI_LINK_BLOCK@" "${GUI_LINK_BLOCK_FILE}" "${MODULE_PATH}/CMakeLists.txt"
+        rm -f "${GUI_LINK_BLOCK_FILE}"
+    else
+        remove_placeholder "@GUI_ASSETS_BLOCK@" "${MODULE_PATH}/CMakeLists.txt"
+        remove_placeholder "@GUI_LINK_BLOCK@" "${MODULE_PATH}/CMakeLists.txt"
+    fi
+fi
+
 # -----------------------------------------------------------------------------
 # Makefile
 # -----------------------------------------------------------------------------
@@ -405,7 +465,11 @@ fi
 echo "Generating src/${MODULE_NAME}.c..."
 
 mkdir -p "${MODULE_PATH}/src" "${MODULE_PATH}/docs" "${MODULE_PATH}/tests"
-safe_copy "${TEMPLATE_SRC}/main.c.template" "${MODULE_PATH}/src/${MODULE_NAME}.c" || true
+if [[ "${ADD_GUI}" == "true" ]]; then
+    safe_copy "${TEMPLATES_DIR}/gui/main.c.template" "${MODULE_PATH}/src/${MODULE_NAME}.c" || true
+else
+    safe_copy "${TEMPLATE_SRC}/main.c.template" "${MODULE_PATH}/src/${MODULE_NAME}.c" || true
+fi
 
 # include/ is created for every module type, even application (which has no
 # public header of its own): module.dmr.template's "inc=./include => ..."
@@ -431,7 +495,21 @@ safe_copy "${TEMPLATE_SRC}/docs/README.md.template" "${MODULE_PATH}/docs/README.
 safe_copy "${TEMPLATE_SRC}/docs/api-reference.md.template" "${MODULE_PATH}/docs/api-reference.md" || true
 
 echo "Generating tests/..."
-safe_copy "${TEMPLATE_SRC}/tests/CMakeLists.txt.template" "${MODULE_PATH}/tests/CMakeLists.txt" || true
+if safe_copy "${TEMPLATE_SRC}/tests/CMakeLists.txt.template" "${MODULE_PATH}/tests/CMakeLists.txt"; then
+    if [[ "${ADD_GUI}" == "true" ]]; then
+        GUI_TEST_BLOCK_FILE="$(mktemp)"
+        cat > "${GUI_TEST_BLOCK_FILE}" << 'EOF'
+# (the test is not an application: it has no view and no icon)
+set(DMOD_ASSETS_PATHS       "")
+set(DMOD_ICON_PATH          "")
+
+EOF
+        insert_block "@GUI_TEST_BLOCK@" "${GUI_TEST_BLOCK_FILE}" "${MODULE_PATH}/tests/CMakeLists.txt"
+        rm -f "${GUI_TEST_BLOCK_FILE}"
+    else
+        remove_placeholder "@GUI_TEST_BLOCK@" "${MODULE_PATH}/tests/CMakeLists.txt"
+    fi
+fi
 safe_copy "${TEMPLATE_SRC}/tests/module_test.c.template" "${MODULE_PATH}/tests/${MODULE_NAME}_test.c" || true
 
 # -----------------------------------------------------------------------------
@@ -452,7 +530,11 @@ if safe_copy "${MANIFEST_TEMPLATE}" "${MODULE_PATH}/manifest.dmm"; then
 fi
 
 echo "Generating ${MODULE_NAME}.dmr..."
-safe_copy "${TEMPLATES_DIR}/module.dmr.template" "${MODULE_PATH}/${MODULE_NAME}.dmr" || true
+if [[ "${ADD_GUI}" == "true" ]]; then
+    safe_copy "${TEMPLATES_DIR}/gui/module.dmr.template" "${MODULE_PATH}/${MODULE_NAME}.dmr" || true
+else
+    safe_copy "${TEMPLATES_DIR}/module.dmr.template" "${MODULE_PATH}/${MODULE_NAME}.dmr" || true
+fi
 
 # -----------------------------------------------------------------------------
 # README.md
@@ -516,6 +598,17 @@ else
     print_warning "README.md already existed and was left untouched - the \"Hardware Port\"/\"Project Structure\" sections from the template were not added."
 fi
 
+if [[ "${ADD_GUI}" == "true" && "${README_GENERATED}" == "true" ]]; then
+    cat >> "${MODULE_PATH}/README.md" << 'EOF'
+
+## Graphical interface
+
+An application of the launcher: a page (`views/@MODULE_NAME@.html`), an icon (`icons/`) and a `main()` that claims the display or the rent
+that the launcher gives it. dmod converts the page into a view and the icon into an image at build time - see
+[docs/gui.md](docs/gui.md).
+EOF
+fi
+
 # -----------------------------------------------------------------------------
 # Hardware port module (library only)
 # -----------------------------------------------------------------------------
@@ -535,6 +628,21 @@ if [[ "${ADD_PORT}" == "true" ]]; then
     if [[ "${MANIFEST_GENERATED}" != "true" ]]; then
         print_warning "manifest.dmm already existed - add a ${MODULE_NAME}_port entry (using <cpu_family>, not <arch_name>) to it manually. See .github/templates/port/manifest.dmm.template for the expected shape."
     fi
+fi
+
+# -----------------------------------------------------------------------------
+# Graphical interface (application only): the page, the icon, the notes
+# -----------------------------------------------------------------------------
+if [[ "${ADD_GUI}" == "true" ]]; then
+    echo "Generating views/, icons/ and docs/gui.md..."
+    GUI_TEMPLATE_SRC="${TEMPLATES_DIR}/gui"
+    mkdir -p "${MODULE_PATH}/views" "${MODULE_PATH}/icons"
+    safe_copy "${GUI_TEMPLATE_SRC}/views/page.html.template" "${MODULE_PATH}/views/${MODULE_NAME}.html" || true
+    safe_copy "${GUI_TEMPLATE_SRC}/views/page.html.ini.template" "${MODULE_PATH}/views/${MODULE_NAME}.html.ini" || true
+    safe_copy "${GUI_TEMPLATE_SRC}/views/dmod.js.template" "${MODULE_PATH}/views/dmod.js" || true
+    safe_copy "${GUI_TEMPLATE_SRC}/icons/icon.svg.template" "${MODULE_PATH}/icons/icon.svg" || true
+    safe_copy "${GUI_TEMPLATE_SRC}/icons/icon.svg.ini.template" "${MODULE_PATH}/icons/icon.svg.ini" || true
+    safe_copy "${GUI_TEMPLATE_SRC}/docs/gui.md.template" "${MODULE_PATH}/docs/gui.md" || true
 fi
 
 # -----------------------------------------------------------------------------

@@ -1,0 +1,34 @@
+# The graphical interface of @MODULE_NAME@
+
+`@MODULE_NAME@` is an application of the launcher: it has a **page** (its view), an **icon**, and it runs in the part of the screen that its
+owner gives it - or on a whole display.
+
+| What | Where |
+|------|-------|
+| the page: HTML, CSS and JavaScript (also Tailwind), laid out as a browser does | `views/@MODULE_NAME@.html` |
+| how it is converted: the view's name, the element it is made of, the size it is laid out for | `views/@MODULE_NAME@.html.ini` |
+| the page in a browser (what the application would do) | `views/dmod.js` |
+| the fonts | the ones of dmview: Roboto as `sans-12` ... `sans-32`, `sans-bold-12` ... `sans-bold-32`; a font of its own is a `@font-face` with a `.ttf` next to the page |
+| the icon (a default one; another for a kind of screen is `icons/<screen>/icon.svg`) | `icons/` |
+| the application: claims the display or the rent, sets properties, takes events | `src/@MODULE_NAME@.c` |
+
+## The build
+
+Nothing of the conversion is in this repository: dmod does it (`DMOD_ASSETS_PATHS`, see "Pages" in dmod's `scripts/CMakeLists.txt`).
+When CMake configures, the converter `todmvs` (downloaded with `dmf-get`, with `dmvs_html` and `dmvs_js`) turns the page into a view with the
+fonts and images it draws, and at the build they become `@MODULE_NAME@.dmv`, `.dmvf` and `.dmvi` of `build/views/`; the icon becomes `icon.dmvi`
+(`DMOD_ICON_PATH`). The `.dmr` puts them into the package (`views=`, `icon=`); the system installs the icon where the launcher lists applications.
+
+A page for several kinds of screens: one directory of the page for each, named after the screen and ending in its size
+(`views/epaper-240x320/@MODULE_NAME@.html`), and `set(DMOD_ASSETS_SCREENS epaper-240x320 ...)` in `CMakeLists.txt`.
+
+## The page and the application
+
+They talk through the channel of the claim - the names are the contract:
+
+- `dmod.prop('taps', 'taps: 0')` in the page is a property that the application sets with `libdmview_prop_set_string(claim, "taps", ...)`;
+  `dmod.onchange('taps', fn)` runs when it changes.
+- `dmod.emit('tap')` in the page is an event that the application takes with `libdmview_wait_event()`.
+- With a font of the page's own (not the fonts of dmview), every character that the application may send must be in the page or its scripts: the view has only those.
+
+Open `views/@MODULE_NAME@.html` in a browser to design it: `views/dmod.js` plays the application.

@@ -104,6 +104,14 @@ Optional flags:
   only) - the split-core/port pattern used by `dmuart`/`dmfmc`
 - `--port-arch NAME` - Architecture for the generated port skeleton (default:
   `stm32f7`). Requires `--port`.
+- `--gui` - An application with a graphical interface (application modules
+  only): `views/<name>.html` (a page: HTML, CSS and JavaScript) with
+  `views/<name>.html.ini` (the options of its conversion), `views/dmod.js` (the
+  page in a browser), `icons/icon.svg`, a `main()` that claims the
+  display or the rent of the launcher (`--display NAME`), `docs/gui.md`, and
+  the `DMOD_ASSETS_PATHS` / `DMOD_ICON_PATH` / `libdmview` wiring in
+  `CMakeLists.txt`. dmod converts the page and the icon at build time - there
+  is no conversion in the generated repository.
 - `--force` - Overwrite files that already exist at `--path` instead of
   skipping them
 - `--skip-claude-sync` - Don't run `scripts/sync-claude.sh` at the end of generation

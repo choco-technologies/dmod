@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>@MODULE_NAME@</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 240px; height: 320px; background: #fff; color: #000; font-family: sans-serif; font-weight: 400; overflow: hidden; }
+#screen { position: relative; width: 240px; height: 320px; background: #fff; }
+#title { position: absolute; left: 0; top: 16px; width: 240px; text-align: center; font-size: 22px; }
+#taps { position: absolute; left: 0; top: 150px; width: 240px; text-align: center; font-size: 16px; }
+#button { position: absolute; left: 40px; top: 70px; width: 160px; height: 56px; border: 3px solid #000; border-radius: 10px;
+          text-align: center; line-height: 50px; font-size: 20px; }
+</style>
+</head>
+<body>
+<div id="screen">
+  <div id="title">@MODULE_NAME@</div>
+  <div id="button">Tap me</div>
+  <div id="taps">taps: 0</div>
+</div>
+<script src="dmod.js"></script>
+<script>
+/*
+ * The behaviour of the page - dmod's todmvs compiles it into the view, nothing of it is interpreted on the device.
+ * What the page shows comes from properties that the application sets (dmod.prop / dmod.onchange), what the user does goes to the
+ * application as events (dmod.emit): src/@MODULE_NAME@.c is on the other side of the channel.
+ *
+ * The text is in the fonts that dmview has: Roboto as sans-12 ... sans-32 and sans-bold-12 ... sans-bold-32. A font of the page's own
+ * (@font-face with a .ttf next to the page) is converted by dmod too - and then the view has only the characters that the page and its
+ * scripts have, so list the ones that the application may send in the page, e.g. const CHARS = '...'.
+ */
+
+const taps = document.getElementById('taps');
+dmod.prop('taps', 'taps: 0');
+dmod.onchange('taps', () => { taps.textContent = dmod.get('taps'); });
+
+document.getElementById('button').addEventListener('click', () => dmod.emit('tap'));
+</script>
+</body>
+</html>
