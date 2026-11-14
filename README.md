@@ -604,6 +604,9 @@ For convenience, the **Dmod** repository includes a bash script that automates t
 # Create an application module with GitHub Actions workflow
 ./scripts/new-module.sh --name my_app --type application --path ./modules/my_app --author "Your Name" --github
 
+# Create an application with a graphical interface (a page, an icon)
+./scripts/new-module.sh --name my_gui --type application --path ./modules/my_gui --gui
+
 # Create a driver module with a hardware port (split core/port, like dmuart/dmfmc)
 ./scripts/new-module.sh --name my_driver --type library --path ./modules/my_driver --port --port-arch stm32f7
 ```
@@ -614,6 +617,7 @@ The script supports:
 - **CI/CD pipelines**: GitHub Actions (`--github` generates both `ci.yml` and a full `release.yml` that builds and uploads a release package per architecture on every GitHub release) and Bitbucket pipelines (`--bitbucket`)
 - **Interfaces**: DIF and MAL interface support for library modules
 - **Hardware ports** (`--port [--port-arch NAME]`): scaffolds the `<module>_port` split used by driver modules, selected at build time via `DMOD_CPU_FAMILY`
+- **A graphical interface** (`--gui`, application modules): a page (`views/<name>.html` - HTML, CSS and JavaScript), an icon (`icons/`) and a `main()` that claims a display or the rent of the launcher. dmod itself converts the page into a view (and the icon into an image) at build time - see "Pages" in `scripts/CMakeLists.txt`
 - **Scaffolding into an already-existing repo**: `--path` may point at a directory that already exists (e.g. a repo just created on GitHub and cloned locally with only `README.md`/`LICENSE` in it) - existing files are left untouched unless `--force` is passed
 
 For detailed information about the module generator, see [scripts/README.md](scripts/README.md).

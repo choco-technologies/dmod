@@ -30,6 +30,14 @@ internal smoke-test fixture used by `dmod`'s own CI build (see
 │   ├── docs/README.md.template, docs/api-reference.md.template
 │   ├── vscode/settings.json.template
 │   └── tests/CMakeLists.txt.template, tests/module_test.c.template
+├── gui/                               # Graphical interface add-on (--gui, application only)
+│   ├── main.c.template                # -> src/<module>.c, replaces application's: claims a display or a rent
+│   ├── module.dmr.template            # -> <module>.dmr, replaces the shared one: + views=, icon=, the license of the font
+│   ├── views/page.html.template       # -> views/<module>.html (+ page.html.ini.template -> <module>.html.ini)
+│   ├── views/dmod.js.template         # -> views/dmod.js - the page in a browser, without dmodOS
+│   ├── views/fonts/                   # inter.css.template, Inter-400.ttf, LICENSE-Inter.txt (copied as they are)
+│   ├── icons/icon.svg.template, icon.svg.ini.template
+│   └── docs/gui.md.template
 ├── port/                              # Hardware port add-on (--port, library only)
 │   ├── src/port/CMakeLists.txt.template
 │   ├── src/port/ARCH/config.cmake.template, port.c.template  # ARCH renamed to --port-arch
@@ -98,6 +106,7 @@ The templates use the following placeholders that are replaced by
 - `@LICENSE@` - License name
 - `@MAL_IMPLS@` - MAL interface implementations (empty or module name)
 - `@DIF_IMPLS@` - DIF interface implementations (empty or module name, library only)
+- `@GUI_ASSETS_BLOCK@`, `@GUI_LINK_BLOCK@` (application's `CMakeLists.txt.template`), `@GUI_TEST_BLOCK@` (its `tests/CMakeLists.txt.template`) - filled for `--gui`, removed otherwise
 - `@PORT_ARCH@` - Architecture name passed via `--port-arch` (default `stm32f7`)
 - `@DMOD_TOOLS_NAME@` - `DMOD_TOOLS_NAME` value mapped from `--port-arch`
 

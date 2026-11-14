@@ -1,0 +1,4 @@
+; How dmod turns this page into the view of @MODULE_NAME@ (see "Pages" in dmod's scripts/CMakeLists.txt) - every key is optional
+; name = @MODULE_NAME@           ; the view's name, the page's file name by default
+; root = screen                  ; the element the view is made of, the whole page by default
+size = 240x320                   ; what the page is laid out for (it is the end of the screen's id when there are DMOD_ASSETS_SCREENS)

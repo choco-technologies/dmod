@@ -1,0 +1,6 @@
+; The icon of @MODULE_NAME@: the default one (64x64); a smaller one for a list is another section (see "Icons" in dmod's docs)
+[icon]
+size=64x64
+
+[small]
+size=32x32

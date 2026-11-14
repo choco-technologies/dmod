@@ -196,6 +196,10 @@ endfunction()
 #   fonts (DMOD_FONT_EXTENSIONS) todmvf   -> <section>.dmvf for each size in
 #                                           its .ini
 #
+#   *.html (a page)              todmvs   -> <name>.dmvs + the fonts and images
+#                                           it draws, which are converted as the rest
+#                                           (see "Pages" below)
+#
 # Everything is placed in DMOD_VIEWS_DIR (default: <build>/views) - images
 # and fonts next to the views, so a view finds them by their names. DMOD_VIEWS_DIR is
 # then available to .dmr files as ${views_dir} (see mkdmrpkg --views-dir).
@@ -224,7 +228,33 @@ endfunction()
 #   tracking    = letter spacing added to every advance, pixels, e.g. -2.4
 #                 (CSS letter-spacing; default 0)
 #
+# Pages: a page made in HTML, CSS and JavaScript (also Tailwind) is laid out as a
+# browser does by todmvs (with dmvs_html and dmvs_js, downloaded with dmf-get like
+# the other tools) and becomes a view of dmview with the fonts and images it
+# draws. A directory of DMOD_ASSETS_PATHS that has *.html files is the pages':
+# its other files are what the pages use - the converter takes them from there -
+# and are not converted on their own. The page's .ini (e.g. index.html.ini),
+# every key is optional:
+#
+#   name     = the view's name (default: the file's name without .html)
+#   root     = id of the element the view is made of (default: the whole page)
+#   size     = WIDTHxHEIGHT the page is laid out for (default: the end of the
+#              screen's id - "epaper-240x320" is 240x320 - when there are
+#              DMOD_ASSETS_SCREENS, else the converter's default)
+#   depends  = files or directories (relative to the page, separated by commas)
+#              that the page reads from outside its directory: a change of them
+#              converts the page again
+#   map      = FROM=TO, as todmvs -m: a resource that is elsewhere (repeatable)
+#
+# DMOD_ASSETS_PAGES lists pages that are not in an asset directory (they are
+# made for every screen). dmod_convert_page() does the conversion of one page
+# for a project that has more to do with it (see below).
+#
 # Related variables:
+#   DMOD_ASSETS_PAGES       pages (*.html) that are converted for every screen
+#   DMOD_VIEWS_TOOLS_DIR    directory with todmvs, dmvs_html, dmvs_js (.dmf) of the
+#                           build host, when they are built locally (default:
+#                           downloaded with dmf-get)
 #   DMOD_ASSETS_SCREENS     optional list, e.g. "480x272;320x240"; sources and
 #                          outputs are grouped in one subdirectory per screen
 #   DMOD_VIEWS_DIR          output directory of the converted assets
@@ -412,6 +442,237 @@ function(_dmod_asset_outputs kind source prefix)
     set(${prefix}_NAMES ${SECTIONS} PARENT_SCOPE)
 endfunction()
 
+# ---------------------------------------------------------------------------
+# Pages
+# ---------------------------------------------------------------------------
+
+# The options of a page from its .ini: <prefix>_NAME, _ROOT, _SIZE, _DEPENDS, _MAPS
+function(_dmod_page_options page prefix)
+    get_filename_component(STEM "${page}" NAME_WE)
+    set(NAME "${STEM}")
+    set(ROOT "")
+    set(SIZE "")
+    set(DEPENDS "")
+    set(MAPS "")
+    set(INI "${page}.ini")
+    if(EXISTS "${INI}")
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${INI}")
+        file(STRINGS "${INI}" LINES)
+        foreach(LINE ${LINES})
+            string(REGEX REPLACE "[;#].*$" "" LINE "${LINE}")
+            string(STRIP "${LINE}" LINE)
+            if(LINE STREQUAL "")
+                continue()
+            elseif(LINE MATCHES "^([A-Za-z_]+)[ \t]*=[ \t]*(.*)$")
+                set(KEY "${CMAKE_MATCH_1}")
+                set(VALUE "${CMAKE_MATCH_2}")
+                string(STRIP "${VALUE}" VALUE)
+                if(KEY STREQUAL "name")
+                    set(NAME "${VALUE}")
+                elseif(KEY STREQUAL "root")
+                    set(ROOT "${VALUE}")
+                elseif(KEY STREQUAL "size")
+                    if(NOT VALUE MATCHES "^[0-9]+x[0-9]+$")
+                        message(SEND_ERROR "${INI}: size is WIDTHxHEIGHT, e.g. 240x320 (got '${VALUE}')")
+                    endif()
+                    set(SIZE "${VALUE}")
+                elseif(KEY STREQUAL "depends")
+                    string(REPLACE "," ";" VALUE "${VALUE}")
+                    list(APPEND DEPENDS ${VALUE})
+                elseif(KEY STREQUAL "map")
+                    list(APPEND MAPS "${VALUE}")
+                else()
+                    message(SEND_ERROR "${INI}: unknown key '${KEY}' (name, root, size, depends, map)")
+                endif()
+            else()
+                message(SEND_ERROR "${INI}: cannot read '${LINE}'")
+            endif()
+        endforeach()
+    endif()
+    set(${prefix}_NAME "${NAME}" PARENT_SCOPE)
+    set(${prefix}_ROOT "${ROOT}" PARENT_SCOPE)
+    set(${prefix}_SIZE "${SIZE}" PARENT_SCOPE)
+    set(${prefix}_DEPENDS "${DEPENDS}" PARENT_SCOPE)
+    set(${prefix}_MAPS "${MAPS}" PARENT_SCOPE)
+endfunction()
+
+# Converts a page into the sources of a view - <name>.dmvs, the fonts and images it draws with their .ini - in OUTPUT_DIR:
+#
+#   dmod_convert_page(<page> OUTPUT_DIR <dir> [NAME <name>] [ROOT <element id>] [SIZE <width>x<height>]
+#                     [DEPENDS <file or directory>...] [MAP <from>=<to>...] [QUIET] [CONVERTED <variable>])
+#
+# The sources have to exist when the project is configured (the assets are looked for then), so the page is converted at
+# configure time; a change of the page, of its directory, of DEPENDS or of the converters configures the project again.
+# It is what the .html files of DMOD_ASSETS_PATHS go through; call it for a page that has to be treated afterwards (and make
+# OUTPUT_DIR one of DMOD_ASSETS_PATHS); <variable> is set to TRUE when the page was converted now (not when its sources are up to date).
+function(dmod_convert_page page)
+    cmake_parse_arguments(PAGE "QUIET" "OUTPUT_DIR;NAME;ROOT;SIZE;CONVERTED" "DEPENDS;MAP" ${ARGN})
+    if(NOT PAGE_OUTPUT_DIR)
+        message(FATAL_ERROR "dmod_convert_page: OUTPUT_DIR is needed")
+    endif()
+    if(NOT IS_ABSOLUTE "${page}")
+        set(page "${CMAKE_CURRENT_SOURCE_DIR}/${page}")
+    endif()
+    if(NOT EXISTS "${page}")
+        message(FATAL_ERROR "dmod_convert_page: no page ${page}")
+    endif()
+    if(NOT PAGE_NAME)
+        get_filename_component(PAGE_NAME "${page}" NAME_WE)
+    endif()
+    if(NOT DEFINED DMOD_VIEWS_TOOLS_NAME OR "${DMOD_VIEWS_TOOLS_NAME}" STREQUAL "")
+        set(DMOD_VIEWS_TOOLS_NAME "arch/x86_64")
+    endif()
+    find_program(DMF_GET dmf-get HINTS ${DMOD_TOOLS_BIN_DIR} PATHS ENV PATH)
+    if(NOT DMOD_LOADER)
+        find_program(DMOD_LOADER dmod_loader
+            HINTS ${DMOD_TOOLS_BIN_DIR} ${CMAKE_BINARY_DIR}/examples/system/dmod_loader
+            PATHS ENV PATH)
+    endif()
+    if(NOT DMF_GET OR NOT DMOD_LOADER)
+        message(FATAL_ERROR "dmod_convert_page: dmf-get and dmod_loader are needed to convert ${page} (build the dmod tools: -DDMOD_BUILD_TOOLS=ON)")
+    endif()
+
+    # todmvs and the converters it loads by name (dmvsi finds dmvs_html for a page, which compiles its scripts with dmvs_js), for
+    # the build host: the ones of DMOD_VIEWS_TOOLS_DIR (built locally) or downloaded
+    set(DMOD_VIEWS_TOOLS_DIR "" CACHE PATH "Directory with todmvs, dmvs_html, dmvs_js (.dmf) for the build host; empty: downloaded with dmf-get")
+    if(NOT "${DMOD_VIEWS_TOOLS_DIR}" STREQUAL "")
+        set(TOOL_DIR "${DMOD_VIEWS_TOOLS_DIR}")
+    else()
+        set(TOOL_DIR "${CMAKE_BINARY_DIR}/todmvs")
+    endif()
+    foreach(TOOL todmvs dmvs_html dmvs_js)
+        if(NOT EXISTS "${TOOL_DIR}/${TOOL}.dmf")
+            _dmod_assets_tool(${TOOL} "${TOOL_DIR}" TOOL_DMF)
+            if(NOT TOOL_DMF)
+                message(FATAL_ERROR "dmod_convert_page: cannot download ${TOOL}")
+            endif()
+        endif()
+    endforeach()
+
+    file(MAKE_DIRECTORY "${PAGE_OUTPUT_DIR}")
+    get_filename_component(PAGE_DIR "${page}" DIRECTORY)
+    file(GLOB_RECURSE PAGE_FILES CONFIGURE_DEPENDS "${PAGE_DIR}/*")
+    foreach(DEPENDENCY ${PAGE_DEPENDS})
+        if(NOT IS_ABSOLUTE "${DEPENDENCY}")
+            set(DEPENDENCY "${PAGE_DIR}/${DEPENDENCY}")
+        endif()
+        if(IS_DIRECTORY "${DEPENDENCY}")
+            file(GLOB_RECURSE DEPENDENCY_FILES CONFIGURE_DEPENDS "${DEPENDENCY}/*")
+            list(APPEND PAGE_FILES ${DEPENDENCY_FILES})
+        else()
+            list(APPEND PAGE_FILES "${DEPENDENCY}")
+        endif()
+    endforeach()
+    list(APPEND PAGE_FILES "${TOOL_DIR}/todmvs.dmf" "${TOOL_DIR}/dmvs_html.dmf" "${TOOL_DIR}/dmvs_js.dmf")
+
+    # The options are inputs too, even when no file changed
+    set(INPUTS "${page};${PAGE_SIZE};${PAGE_ROOT};${PAGE_NAME};${PAGE_MAP};${TOOL_DIR}")
+    set(INPUT_STAMP "${PAGE_OUTPUT_DIR}/.${PAGE_NAME}.inputs")
+    set(STAMP "${PAGE_OUTPUT_DIR}/.${PAGE_NAME}.stamp")
+    set(STALE FALSE)
+    if(NOT EXISTS "${PAGE_OUTPUT_DIR}/${PAGE_NAME}.dmvs" OR NOT EXISTS "${STAMP}")
+        set(STALE TRUE)
+    else()
+        foreach(FILE ${PAGE_FILES})
+            if("${FILE}" IS_NEWER_THAN "${STAMP}")
+                set(STALE TRUE)
+                break()
+            endif()
+        endforeach()
+    endif()
+    set(OLD_INPUTS "")
+    if(EXISTS "${INPUT_STAMP}")
+        file(READ "${INPUT_STAMP}" OLD_INPUTS)
+    endif()
+    if(NOT "${INPUTS}" STREQUAL "${OLD_INPUTS}")
+        set(STALE TRUE)
+    endif()
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PAGE_FILES})
+
+    if(STALE)
+        message(STATUS "Converting page ${page} to ${PAGE_OUTPUT_DIR}/${PAGE_NAME}.dmvs")
+        set(TODMVS_ARGS -n ${PAGE_NAME} -o ${PAGE_OUTPUT_DIR}/${PAGE_NAME}.dmvs)
+        if(PAGE_ROOT)
+            list(APPEND TODMVS_ARGS -r ${PAGE_ROOT})
+        endif()
+        if(PAGE_SIZE)
+            list(APPEND TODMVS_ARGS -s ${PAGE_SIZE})
+        endif()
+        foreach(MAPPING ${PAGE_MAP})
+            list(APPEND TODMVS_ARGS -m ${MAPPING})
+        endforeach()
+        if(PAGE_QUIET)
+            list(APPEND TODMVS_ARGS -q)
+        endif()
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E env DMOD_DMF_DIR=${TOOL_DIR}
+                ${DMOD_LOADER} ${TOOL_DIR}/todmvs.dmf --args ${TODMVS_ARGS} ${page}
+            RESULT_VARIABLE RESULT OUTPUT_VARIABLE OUTPUT ERROR_VARIABLE ERROR)
+        if(NOT RESULT EQUAL 0 OR NOT EXISTS "${PAGE_OUTPUT_DIR}/${PAGE_NAME}.dmvs")
+            message(FATAL_ERROR "todmvs failed on ${page} (${RESULT}): ${ERROR}${OUTPUT}")
+        endif()
+        # What the converter could not do is reported
+        string(REGEX MATCHALL "[^\n]*(warning|not supported|unsupported)[^\n]*" WARNINGS "${OUTPUT}${ERROR}")
+        foreach(W ${WARNINGS})
+            message(WARNING "${page}: ${W}")
+        endforeach()
+        file(WRITE "${INPUT_STAMP}" "${INPUTS}")
+        file(TOUCH "${STAMP}")
+    endif()
+    if(PAGE_CONVERTED)
+        set(${PAGE_CONVERTED} ${STALE} PARENT_SCOPE)
+    endif()
+endfunction()
+
+# The pages of the asset directories (and DMOD_ASSETS_PAGES) are converted into <outDir>; sets <outVar> to the directories the
+# other assets are in now: the directories without pages, and outDir when there were pages.
+function(_dmod_convert_pages outDir outVar)
+    set(PAGES "")
+    set(SOURCE_DIRS "")
+    foreach(ASSETS_PATH ${DMOD_ASSETS_PATHS})
+        if(NOT IS_ABSOLUTE "${ASSETS_PATH}")
+            set(ASSETS_PATH "${CMAKE_SOURCE_DIR}/${ASSETS_PATH}")
+        endif()
+        file(GLOB FOUND_PAGES "${ASSETS_PATH}/*.html" "${ASSETS_PATH}/*.htm")
+        if(FOUND_PAGES)
+            list(APPEND PAGES ${FOUND_PAGES})          # (the directory is the pages': the converter takes what they use)
+        else()
+            list(APPEND SOURCE_DIRS "${ASSETS_PATH}")
+        endif()
+    endforeach()
+    foreach(PAGE ${DMOD_ASSETS_PAGES})
+        if(NOT IS_ABSOLUTE "${PAGE}")
+            set(PAGE "${CMAKE_CURRENT_SOURCE_DIR}/${PAGE}")
+        endif()
+        list(APPEND PAGES "${PAGE}")
+    endforeach()
+    foreach(PAGE ${PAGES})
+        _dmod_page_options("${PAGE}" PAGE_OPTIONS)
+        set(SIZE "${PAGE_OPTIONS_SIZE}")
+        if(SIZE STREQUAL "" AND DMOD_ASSETS_CURRENT_SCREEN MATCHES "([0-9]+x[0-9]+)$")
+            set(SIZE "${CMAKE_MATCH_1}")
+        endif()
+        set(ARGUMENTS OUTPUT_DIR "${outDir}" NAME "${PAGE_OPTIONS_NAME}")
+        if(PAGE_OPTIONS_ROOT)
+            list(APPEND ARGUMENTS ROOT "${PAGE_OPTIONS_ROOT}")
+        endif()
+        if(SIZE)
+            list(APPEND ARGUMENTS SIZE "${SIZE}")
+        endif()
+        if(PAGE_OPTIONS_DEPENDS)
+            list(APPEND ARGUMENTS DEPENDS ${PAGE_OPTIONS_DEPENDS})
+        endif()
+        if(PAGE_OPTIONS_MAPS)
+            list(APPEND ARGUMENTS MAP ${PAGE_OPTIONS_MAPS})
+        endif()
+        dmod_convert_page("${PAGE}" ${ARGUMENTS})
+    endforeach()
+    if(PAGES)
+        list(APPEND SOURCE_DIRS "${outDir}")
+    endif()
+    set(${outVar} "${SOURCE_DIRS}" PARENT_SCOPE)
+endfunction()
+
 # Each screen is built into a separate asset directory, within one module package.
 # Source layout: <DMOD_ASSETS_PATHS>/<screen>/*.dmvs, images and fonts.
 function(dmod_setup_assets moduleName)
@@ -437,6 +698,7 @@ function(dmod_setup_assets moduleName)
             list(APPEND DMOD_ASSETS_PATHS "${ROOT}/${SCREEN}")
         endforeach()
         set(DMOD_VIEWS_DIR "${VIEW_ROOT}/${SCREEN}")
+        set(DMOD_ASSETS_CURRENT_SCREEN "${SCREEN}")
         _dmod_setup_assets(${moduleName})
         if(DMOD_VIEWS_ENABLED)
             set(VIEWS_ENABLED TRUE)
@@ -457,7 +719,8 @@ function(_dmod_setup_assets moduleName)
         endif()
         set(DMOD_ASSETS_PATHS "${DMOD_FIXTURES_PATHS}")
     endif()
-    if(NOT DEFINED DMOD_ASSETS_PATHS OR "${DMOD_ASSETS_PATHS}" STREQUAL "")
+    if((NOT DEFINED DMOD_ASSETS_PATHS OR "${DMOD_ASSETS_PATHS}" STREQUAL "") AND
+       (NOT DEFINED DMOD_ASSETS_PAGES OR "${DMOD_ASSETS_PAGES}" STREQUAL ""))
         return()
     endif()
 
@@ -486,11 +749,14 @@ function(_dmod_setup_assets moduleName)
         return()
     endif()
 
+    # Pages become views (and the fonts and images they draw) first
+    _dmod_convert_pages("${CMAKE_BINARY_DIR}/dmod-pages/${ASSETS_KEY}" SOURCE_DIRS)
+
     # Collect the sources
     set(VIEW_SOURCES "")
     set(IMAGE_SOURCES "")
     set(FONT_SOURCES "")
-    foreach(ASSETS_PATH ${DMOD_ASSETS_PATHS})
+    foreach(ASSETS_PATH ${SOURCE_DIRS})
         if(NOT IS_ABSOLUTE "${ASSETS_PATH}")
             set(ASSETS_PATH "${CMAKE_SOURCE_DIR}/${ASSETS_PATH}")
         endif()

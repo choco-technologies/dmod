@@ -65,6 +65,7 @@ set(DMOD_DMR_PATH           ${CMAKE_CURRENT_SOURCE_DIR}/@MODULE_NAME@.dmr)
 
 # List of MAL interfaces implemented by this module (leave empty if none)
 set(DMOD_MAL_IMPLS          @MAL_IMPLS@)
+@GUI_ASSETS_BLOCK@
 
 #
 #   dmod_add_executable - create an executable module
@@ -77,6 +78,7 @@ dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
     src/@MODULE_NAME@.c
 )
 
+@GUI_LINK_BLOCK@
 # To depend on another module's headers, use:
 #   dmod_link_modules(${DMOD_MODULE_NAME}
 #       other_module@1.0

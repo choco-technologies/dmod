@@ -1,0 +1,77 @@
+#include "dmod.h"
+#include "dmosi.h"
+#include "libdmview.h"
+#include <errno.h>
+#include <string.h>
+
+/**
+ * @brief @MODULE_NAME@ - an application with a graphical interface.
+ *
+ * Usage: @MODULE_NAME@ [--display NAME] [<view>]
+ *
+ * NAME is the display it takes, or the rent of one that its owner gave it (the launcher of phoneui passes it to every application it
+ * starts, so the application is shown in a part of the screen); without it, the first display. The view is views/@MODULE_NAME@.html
+ * converted by dmod at build time (see CMakeLists.txt); the application sets its properties (libdmview_prop_set_*) and is told what the
+ * user does by events (libdmview_wait_event): the names are the contract between the page and this file.
+ * It ends when its claim is gone - the owner took the rent back.
+ */
+
+#define DEFAULT_VIEW    "/eviews/@MODULE_NAME@/@MODULE_NAME@.dmv"   /* dmod-boot: the views of the flash modules */
+#define WAIT_MS         100u
+#define DISPLAY_WAIT_MS 10000u
+
+/* The rent or the display may be there a moment after this starts */
+static int claim_display(const char* display, const char* view, uint32_t* claim)
+{
+    dmosi_semaphore_t wakeup = dmosi_semaphore_create(0, 1);
+    if (wakeup == NULL)
+        return -ENOMEM;
+    int ret = -ENODEV;
+    for (uint32_t waited = 0; waited <= DISPLAY_WAIT_MS; waited += WAIT_MS)
+    {
+        ret = libdmview_claim(display, view, claim);
+        if (ret != -ENODEV)
+            break;
+        (void)dmosi_semaphore_wait(wakeup, 1, (int32_t)WAIT_MS);
+    }
+    dmosi_semaphore_destroy(wakeup);
+    return ret;
+}
+
+int main(int argc, char* argv[])
+{
+    const char* display = NULL;
+    const char* view = DEFAULT_VIEW;
+    for (int i = 1; i < argc; i++)
+    {
+        if (strcmp(argv[i], "--display") == 0 && i + 1 < argc)
+            display = argv[++i];
+        else if (argv[i][0] != '\0')
+            view = argv[i];
+    }
+
+    uint32_t claim = 0;
+    int ret = claim_display(display, view, &claim);
+    if (ret != 0)
+    {
+        DMOD_LOG_ERROR("@MODULE_NAME@: cannot claim %s (%d)\n", (display != NULL) ? display : "a display", ret);
+        return ret;
+    }
+    DMOD_LOG_INFO("@MODULE_NAME@: showing %s on %s\n", view, (display != NULL) ? display : "the display");
+
+    uint32_t taps = 0;
+    libdmview_event_t ev;
+    while ((ret = libdmview_wait_event(claim, &ev, -1)) != -ENOENT)
+    {
+        if (ret != 0)
+            continue;
+        if (strcmp(ev.name, "tap") == 0)                    /* dmod.emit('tap') of the page */
+        {
+            char text[24];
+            Dmod_SnPrintf(text, sizeof(text), "taps: %u", (unsigned)++taps);
+            (void)libdmview_prop_set_string(claim, "taps", text);   /* dmod.prop('taps') of the page */
+        }
+    }
+    DMOD_LOG_INFO("@MODULE_NAME@: its claim is gone - ends\n");
+    return 0;
+}

@@ -97,6 +97,10 @@ jobs:
         working-directory: tests/integration
         run: bash test_todmd.sh ../../build
       
+      - name: Run the generator of modules (--gui) integration tests
+        working-directory: tests/integration
+        run: bash test_new_module_gui.sh
+
       - name: Run whereisdmf integration tests
         working-directory: tests/integration
         run: bash test_whereisdmf.sh ../../build

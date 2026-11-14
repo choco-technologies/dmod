@@ -88,3 +88,6 @@ if(DMOD_SYSTEM AND DMOD_BUILD_TOOLS)
     add_test(NAME dmf_get_icons
         COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_dmf_get_icons.sh ${CMAKE_BINARY_DIR})
 endif()
+# The generator of modules: an application with a graphical interface (no network, no build)
+add_test(NAME new_module_gui
+    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_new_module_gui.sh)
