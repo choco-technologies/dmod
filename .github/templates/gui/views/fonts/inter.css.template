@@ -1,6 +1,0 @@
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 400;
-  src: url(Inter-400.ttf) format('truetype');
-}

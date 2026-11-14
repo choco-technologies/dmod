@@ -11,11 +11,11 @@ fail() { echo "FAIL: $*"; exit 1; }
 bash "$CHECKOUT/scripts/new-module.sh" --name guiapp --type application --path "$WORK/gui" --gui --skip-claude-sync > "$WORK/gui.log" 2>&1 || { cat "$WORK/gui.log"; fail "--gui"; }
 bash "$CHECKOUT/scripts/new-module.sh" --name plainapp --type application --path "$WORK/plain" --skip-claude-sync > "$WORK/plain.log" 2>&1 || { cat "$WORK/plain.log"; fail "without --gui"; }
 
-for f in views/guiapp.html views/guiapp.html.ini views/dmod.js views/fonts/inter.css views/fonts/Inter-400.ttf views/fonts/LICENSE-Inter.txt \
+for f in views/guiapp.html views/guiapp.html.ini views/dmod.js \
          icons/icon.svg icons/icon.svg.ini docs/gui.md src/guiapp.c guiapp.dmr CMakeLists.txt tests/CMakeLists.txt; do
     [[ -s "$WORK/gui/$f" ]] || fail "$f is missing"
 done
-cmp "$CHECKOUT/.github/templates/gui/views/fonts/Inter-400.ttf" "$WORK/gui/views/fonts/Inter-400.ttf" || fail "the font was changed (it is copied as it is)"
+[[ ! -e "$WORK/gui/views/fonts" ]] || fail "the module has a font of its own (dmview has its fonts)"
 
 # Nothing of the templates is left (the Makefile's @DMOD_DIR@ is for --dmod-dir: not this test's)
 if grep -rnE "@(MODULE_NAME|MODULE_NAME_UPPER|AUTHOR_NAME|LICENSE|GUI_[A-Z_]*|CI_BADGE_BLOCK|PORT_[A-Z_]*)@" "$WORK/gui" -I | grep -q .; then

@@ -17,7 +17,6 @@ version=./${module}_version.txt => ${destination}/${module}_version.txt [origin=
 # === The views (converted from views/ by dmod at build time) and the icon of the launcher ===
 views=./views => ${views_dir} [origin=${views_dir}]
 icon=./icon.dmvi => ${icons_dir}/${module}.dmvi [origin=${icons_dir}/${module}.dmvi]
-license=./LICENSE-Inter.txt => ${destination}/${module}/LICENSE-Inter.txt [origin=${repo_dir}/views/fonts/LICENSE-Inter.txt]
 
 # === Documentation ===
 # Module documentation in markdown format for dmf-man tool

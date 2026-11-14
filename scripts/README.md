@@ -107,7 +107,7 @@ Optional flags:
 - `--gui` - An application with a graphical interface (application modules
   only): `views/<name>.html` (a page: HTML, CSS and JavaScript) with
   `views/<name>.html.ini` (the options of its conversion), `views/dmod.js` (the
-  page in a browser), a font, `icons/icon.svg`, a `main()` that claims the
+  page in a browser), `icons/icon.svg`, a `main()` that claims the
   display or the rent of the launcher (`--display NAME`), `docs/gui.md`, and
   the `DMOD_ASSETS_PATHS` / `DMOD_ICON_PATH` / `libdmview` wiring in
   `CMakeLists.txt`. dmod converts the page and the icon at build time - there

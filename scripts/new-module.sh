@@ -636,22 +636,13 @@ fi
 if [[ "${ADD_GUI}" == "true" ]]; then
     echo "Generating views/, icons/ and docs/gui.md..."
     GUI_TEMPLATE_SRC="${TEMPLATES_DIR}/gui"
-    mkdir -p "${MODULE_PATH}/views/fonts" "${MODULE_PATH}/icons"
+    mkdir -p "${MODULE_PATH}/views" "${MODULE_PATH}/icons"
     safe_copy "${GUI_TEMPLATE_SRC}/views/page.html.template" "${MODULE_PATH}/views/${MODULE_NAME}.html" || true
     safe_copy "${GUI_TEMPLATE_SRC}/views/page.html.ini.template" "${MODULE_PATH}/views/${MODULE_NAME}.html.ini" || true
     safe_copy "${GUI_TEMPLATE_SRC}/views/dmod.js.template" "${MODULE_PATH}/views/dmod.js" || true
-    safe_copy "${GUI_TEMPLATE_SRC}/views/fonts/inter.css.template" "${MODULE_PATH}/views/fonts/inter.css" || true
     safe_copy "${GUI_TEMPLATE_SRC}/icons/icon.svg.template" "${MODULE_PATH}/icons/icon.svg" || true
     safe_copy "${GUI_TEMPLATE_SRC}/icons/icon.svg.ini.template" "${MODULE_PATH}/icons/icon.svg.ini" || true
     safe_copy "${GUI_TEMPLATE_SRC}/docs/gui.md.template" "${MODULE_PATH}/docs/gui.md" || true
-    # The font and its license are copied as they are (not in GENERATED_FILES: nothing in them is a placeholder, and a binary is not for sed)
-    for FONT_FILE in Inter-400.ttf LICENSE-Inter.txt; do
-        if [[ -e "${MODULE_PATH}/views/fonts/${FONT_FILE}" && "${FORCE}" != "true" ]]; then
-            print_warning "${MODULE_PATH}/views/fonts/${FONT_FILE} already exists, skipping (use --force to overwrite)"
-        else
-            cp "${GUI_TEMPLATE_SRC}/views/fonts/${FONT_FILE}" "${MODULE_PATH}/views/fonts/${FONT_FILE}"
-        fi
-    done
 fi
 
 # -----------------------------------------------------------------------------

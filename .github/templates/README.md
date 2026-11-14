@@ -35,7 +35,6 @@ internal smoke-test fixture used by `dmod`'s own CI build (see
 │   ├── module.dmr.template            # -> <module>.dmr, replaces the shared one: + views=, icon=, the license of the font
 │   ├── views/page.html.template       # -> views/<module>.html (+ page.html.ini.template -> <module>.html.ini)
 │   ├── views/dmod.js.template         # -> views/dmod.js - the page in a browser, without dmodOS
-│   ├── views/fonts/                   # inter.css.template, Inter-400.ttf, LICENSE-Inter.txt (copied as they are)
 │   ├── icons/icon.svg.template, icon.svg.ini.template
 │   └── docs/gui.md.template
 ├── port/                              # Hardware port add-on (--port, library only)
