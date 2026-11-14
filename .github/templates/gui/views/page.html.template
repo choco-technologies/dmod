@@ -26,9 +26,11 @@ html, body { width: 240px; height: 320px; background: #fff; color: #000; font-fa
  * What the page shows comes from properties that the application sets (dmod.prop / dmod.onchange), what the user does goes to the
  * application as events (dmod.emit): src/@MODULE_NAME@.c is on the other side of the channel.
  *
- * The text is in the fonts that dmview has: Roboto as sans-12 ... sans-32 and sans-bold-12 ... sans-bold-32. A font of the page's own
- * (@font-face with a .ttf next to the page) is converted by dmod too - and then the view has only the characters that the page and its
- * scripts have, so list the ones that the application may send in the page, e.g. const CHARS = '...'.
+ * The text is in the font of the page's default (sans-N: the files of Roboto that libdmview ships in its package, found through the
+ * environment variable DMVIEW_FONTS - the firmware does not have it set unless it is told to; without the file the text is the built-in
+ * 8x8 font). For a look that does not depend on that, give the page a font of its own: put a .ttf next to it with an @font-face and
+ * font-family: dmod converts it, in the sizes the page draws. The view then has only the characters that the page and its scripts
+ * have, so list the ones that the application may send in the page, e.g. const CHARS = '...'. A font has a license: keep it with it.
  */
 
 const taps = document.getElementById('taps');

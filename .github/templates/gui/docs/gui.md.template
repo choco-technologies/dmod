@@ -8,7 +8,7 @@ owner gives it - or on a whole display.
 | the page: HTML, CSS and JavaScript (also Tailwind), laid out as a browser does | `views/@MODULE_NAME@.html` |
 | how it is converted: the view's name, the element it is made of, the size it is laid out for | `views/@MODULE_NAME@.html.ini` |
 | the page in a browser (what the application would do) | `views/dmod.js` |
-| the fonts | the ones of dmview: Roboto as `sans-12` ... `sans-32`, `sans-bold-12` ... `sans-bold-32`; a font of its own is a `@font-face` with a `.ttf` next to the page |
+| the fonts | by default `sans-N`, the Roboto files that libdmview ships (found through `DMVIEW_FONTS`, which the firmware has to set - else the built-in 8x8 font is drawn); a font of the application's own is a `@font-face` with a `.ttf` next to the page, converted by dmod in the sizes the page draws (keep its license in the repository and in the `.dmr`) |
 | the icon (a default one; another for a kind of screen is `icons/<screen>/icon.svg`) | `icons/` |
 | the application: claims the display or the rent, sets properties, takes events | `src/@MODULE_NAME@.c` |
 
