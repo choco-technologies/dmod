@@ -146,12 +146,12 @@ Implements a DIF function in a module. This macro:
 Dmod_Context_t* Dmod_GetNextDifModule( const char* DifSignature, Dmod_Context_t* Previous )
 ```
 
-Iterates through all loaded **and enabled** modules that implement a specific DIF function.
+Iterates through all loaded and enabled modules (and the running applications) that implement a specific DIF function.
 - **DifSignature**: The DIF signature string (e.g., `dmod_difs_fopen_sig`)
 - **Previous**: Previous module context (NULL to start from the beginning)
 - **Returns**: Next module implementing the DIF, or NULL if no more modules
 
-**Important**: Only **enabled** modules are returned. Modules must be both loaded and enabled.
+**Important**: Only **enabled** modules and **running** applications are returned. A library must be both loaded and enabled; an application is found for as long as it runs.
 
 ```c
 void* Dmod_GetDifFunction( Dmod_Context_t* Context, const char* DifSignature )
@@ -243,6 +243,6 @@ Total file systems found: 2
 
 - DIF signatures must match exactly between interface definition and implementations
 - Use the `_sig` macros (e.g., `dmod_difs_fopen_sig`) as compile-time constants for signatures
-- **All DIF implementations must be loaded AND enabled before they can be discovered** - only enabled modules are returned by `Dmod_GetNextDifModule()`
+- **All DIF implementations must be loaded AND enabled (a library) or running (an application) before they can be discovered** - only such modules are returned by `Dmod_GetNextDifModule()`
 - The order of discovered modules is determined by the system's module loading order
 

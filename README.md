@@ -400,12 +400,12 @@ int dmod_init(const Dmod_Config_t *Config)
 
 **`Dmod_GetNextDifModule( const char* DifSignature, Dmod_Context_t* Previous )`**
 
-Iterates through all loaded **and enabled** modules that implement a specific DIF function.
+Iterates through all loaded and enabled modules (and the running applications) that implement a specific DIF function.
 - **DifSignature**: The DIF signature string (e.g., `dmod_difs_fopen_sig`)
 - **Previous**: Previous module context (NULL to start from the beginning)
 - **Returns**: Next module implementing the DIF, or NULL if no more modules
 
-**Important**: Only **enabled** modules are returned by this function. Modules must be both loaded and enabled for their DIF implementations to be discoverable.
+**Important**: Only modules that can be called are returned by this function: a library that is loaded and **enabled**, or an application that **runs** (an application is never enabled - it is run - and for as long as it runs it can implement a DIF too, for example to be called back by a driver).
 
 **`Dmod_GetDifFunction( Dmod_Context_t* Context, const char* DifSignature )`**
 

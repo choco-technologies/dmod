@@ -659,8 +659,9 @@ Dmod_Context_t* Dmod_GetNextDifModule( const char* DifSignature, Dmod_Context_t*
             continue;
         }
 
-        // Only consider enabled modules
-        if( !Dmod_IsEnabled( Dmod_Contexts[i] ) )
+        // Only consider the modules that can be called: an enabled library, or an application that runs
+        // (an application is never enabled - it is run - and it can implement a DIF as well, e.g. to be notified)
+        if( !Dmod_IsEnabled( Dmod_Contexts[i] ) && !Dmod_IsRunning( Dmod_Contexts[i] ) )
         {
             continue;
         }
