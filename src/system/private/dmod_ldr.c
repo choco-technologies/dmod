@@ -489,6 +489,40 @@ static bool LoadGot_Crossplatform( Dmod_Context_t* Context )
     return true;
 }
 
+#ifdef DMOD_USE_RELDYN
+/**
+ * @brief Checks the offsets of the table of the relocations before any word of the module is changed
+ *
+ * Every offset is of a whole word that lies before the .got section, and the offsets ascend (reldyn.cmake sorts them). A table without
+ * the magic (a module of the first format) must be the whole section: there the order is the only thing that tells the table from the
+ * entries of the GOT that the linker made. A package built while the two shared the section without the magic (2 November 2026) has
+ * such entries - addresses, not offsets - and loading it would add the address of the load to words of its code and leave the entries
+ * unrelocated (a jump to an address linked at zero). It is refused: the module has to be built again.
+ *
+ * @return true when the table can be applied
+ */
+static bool Reldyn_TableIsValid( Dmod_Context_t* Context, const Dmod_GotSection_t* GotSection, size_t First, size_t End, size_t GotStart )
+{
+    for(size_t i = First; i < End; i++)
+    {
+        size_t offset = (size_t)GotSection->Entries[i];
+        if( offset % sizeof(size_t) != 0 || offset + sizeof(size_t) > GotStart )
+        {
+            DMOD_LOG_ERROR("Cannot load module '%s' - invalid relocation at index %d: offset 0x%08X\n",
+                Dmod_Context_GetModuleName(Context), (int)i, (unsigned)offset);
+            return false;
+        }
+        if( i > First && offset <= (size_t)GotSection->Entries[i - 1] )
+        {
+            DMOD_LOG_ERROR("Cannot load module '%s' - its relocation table is not in order at index %d (an entry of the GOT in a table "
+                "without the magic): rebuild the module with the current DMOD\n", Dmod_Context_GetModuleName(Context), (int)i);
+            return false;
+        }
+    }
+    return true;
+}
+#endif
+
 /**
  * @brief Load got section
  * 
@@ -576,14 +610,13 @@ bool Dmod_Ldr_LoadGot( Dmod_Context_t* Context )
     }
     bool hasMagic = offsetsFirst != 0;
 
+    if( !Reldyn_TableIsValid( Context, gotSection, offsetsFirst, offsetsEnd, got->SectionStart ) )
+    {
+        return false;
+    }
     for(size_t i = offsetsFirst; i < offsetsEnd; i++)
     {
         size_t offset = (size_t)gotSection->Entries[i];
-        if( offset % sizeof(size_t) != 0 || offset + sizeof(size_t) > got->SectionStart )
-        {
-            DMOD_LOG_ERROR("Cannot load got - invalid relocation at index %d: offset 0x%08X\n", (int)i, (unsigned)offset);
-            return false;
-        }
         size_t* word = (size_t*)( Context->Data + offset );
         *word += ( *word >= textStart && *word < textEnd ) ? codeBase : dataBase;
     }
