@@ -302,6 +302,53 @@ void Dmod_Hlp_DeinitSearchCache( void )
     }
 }
 
+/* The table of the modules and the connections of their APIs are changed by tasks only (loading, unloading) and never used by
+ * the interrupts: a recursive mutex guards them, not the interrupts off. Connecting the APIs compares the signatures of every
+ * module with those of every other one - with the interrupts off that took up to 120 ms with some 40 modules on an ESP32-S3,
+ * and every interrupt waited (a display fed by interrupts lost its picture). Without a mutex of the SAL (no RTOS), and before
+ * Dmod_Initialize(), the critical section stays. */
+static void* Dmod_ApiMutex = NULL;
+
+void Dmod_Hlp_InitApiLock( void )
+{
+    if( Dmod_ApiMutex == NULL )
+    {
+        Dmod_ApiMutex = Dmod_Mutex_New( true );
+    }
+}
+
+void Dmod_Hlp_DeinitApiLock( void )
+{
+    if( Dmod_ApiMutex != NULL )
+    {
+        Dmod_Mutex_Delete( Dmod_ApiMutex );
+        Dmod_ApiMutex = NULL;
+    }
+}
+
+/* Returns whether the mutex was taken (true) or the critical section entered (false): pass it to Dmod_Hlp_UnlockApis() */
+bool Dmod_Hlp_LockApis( void )
+{
+    if( Dmod_ApiMutex != NULL && Dmod_Mutex_Lock( Dmod_ApiMutex ) == 0 )
+    {
+        return true;
+    }
+    Dmod_EnterCritical();
+    return false;
+}
+
+void Dmod_Hlp_UnlockApis( bool Mutex )
+{
+    if( Mutex )
+    {
+        Dmod_Mutex_Unlock( Dmod_ApiMutex );
+    }
+    else
+    {
+        Dmod_ExitCritical();
+    }
+}
+
 void Dmod_InvalidateModuleSearchPaths( void )
 {
     if( Dmod_SearchPathsMutex == NULL ) return;

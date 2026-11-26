@@ -33,6 +33,10 @@ extern void               Dmod_Hlp_FreeSearchPathList( Dmod_SearchNode_t* Tail )
 extern Dmod_SearchNode_t* Dmod_Hlp_PrepareSearchNodes( Dmod_SearchNode_t* Tail, const char* Paths );
 extern void               Dmod_Hlp_InitSearchCache( void );
 extern void               Dmod_Hlp_DeinitSearchCache( void );
+extern void               Dmod_Hlp_InitApiLock( void );
+extern void               Dmod_Hlp_DeinitApiLock( void );
+extern bool               Dmod_Hlp_LockApis( void );
+extern void               Dmod_Hlp_UnlockApis( bool Mutex );
 /* Shared immutable snapshot: release with Dmod_Hlp_FreeSearchPathList().
  * Do not append to or modify the returned nodes. */
 extern Dmod_SearchNode_t* Dmod_Hlp_PrepareModulesSearchNodes( void );

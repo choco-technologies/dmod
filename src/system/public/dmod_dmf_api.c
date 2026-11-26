@@ -93,13 +93,13 @@ bool Dmod_ConnectOutputApis( Dmod_Context_t* Context )
         DMOD_LOG_ERROR("Cannot connect APIs - invalid context\n");
         return false;
     }
-    Dmod_EnterCritical();
+    bool apiLock = Dmod_Hlp_LockApis();
 
     Dmod_BuiltinInputApi.SectionSize = (size_t)((void*)&__dmod_inputs_end - (void*)&__dmod_inputs_start);
     if( !Dmod_ConnectApi( &Context->Outputs, &Dmod_BuiltinInputApi ) )
     {
         DMOD_LOG_ERROR("Cannot connect system API to '%s' APIs\n", Dmod_Context_GetModuleName( Context ));
-        Dmod_ExitCritical();
+        Dmod_Hlp_UnlockApis( apiLock );
         return false;
     }
 
@@ -124,7 +124,7 @@ bool Dmod_ConnectOutputApis( Dmod_Context_t* Context )
         Dmod_DisconnectOutputApis( Context );
     }
     
-    Dmod_ExitCritical();
+    Dmod_Hlp_UnlockApis( apiLock );
     return result;
 }
 
@@ -141,13 +141,13 @@ bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
         return false;
     }
 
-    Dmod_EnterCritical();
+    bool apiLock = Dmod_Hlp_LockApis();
 
     Dmod_BuiltinOutputApi.SectionSize = (size_t)((void*)&__dmod_outputs_end - (void*)&__dmod_outputs_start);
     if( !Dmod_ConnectApi( &Dmod_BuiltinOutputApi, &Context->Inputs ) )
     {
         DMOD_LOG_ERROR("Cannot connect API '%s' to system\n", Dmod_Context_GetModuleName( Context ));
-        Dmod_ExitCritical();
+        Dmod_Hlp_UnlockApis( apiLock );
         return false;
     }
 
@@ -174,7 +174,7 @@ bool Dmod_ConnectInputApis( Dmod_Context_t* Context )
         Dmod_DisconnectInputApis( Context );
     }
 
-    Dmod_ExitCritical();
+    Dmod_Hlp_UnlockApis( apiLock );
 
     return result;
 }
@@ -245,7 +245,7 @@ bool Dmod_VerifyAllApisSignatures( Dmod_Context_t* Context )
         return false;
     }
 
-    Dmod_EnterCritical();
+    bool apiLock = Dmod_Hlp_LockApis();
 
     bool result = true;
 
@@ -283,7 +283,7 @@ bool Dmod_VerifyAllApisSignatures( Dmod_Context_t* Context )
         }
     }
 
-    Dmod_ExitCritical();
+    Dmod_Hlp_UnlockApis( apiLock );
 
     return result;
 }
@@ -307,9 +307,9 @@ bool Dmod_ConnectAllApis( Dmod_Context_t* Context )
         DMOD_LOG_WARN("Cannot connect APIs - invalid API signatures\n");
     }
 
-    Dmod_EnterCritical();
+    bool apiLock = Dmod_Hlp_LockApis();
     bool result = Dmod_ConnectOutputApis( Context ) && Dmod_ConnectInputApis( Context );
-    Dmod_ExitCritical();
+    Dmod_Hlp_UnlockApis( apiLock );
 
     return result;
 }
@@ -327,7 +327,7 @@ bool Dmod_DisconnectOutputApis( Dmod_Context_t* Context )
         return false;
     }
 
-    Dmod_EnterCritical();
+    bool apiLock = Dmod_Hlp_LockApis();
     bool result = true;
 
     for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
@@ -349,7 +349,7 @@ bool Dmod_DisconnectOutputApis( Dmod_Context_t* Context )
         DMOD_LOG_ERROR("Cannot disconnect system API from '%s'\n", Dmod_Context_GetModuleName( Context ));
         result = false;
     }
-    Dmod_ExitCritical();
+    Dmod_Hlp_UnlockApis( apiLock );
 
     return result;
 }
@@ -367,7 +367,7 @@ bool Dmod_DisconnectInputApis( Dmod_Context_t* Context )
         return false;
     }
 
-    Dmod_EnterCritical();
+    bool apiLock = Dmod_Hlp_LockApis();
     bool result = true;
 
     for(size_t i = 0; i < DMOD_MAX_MODULES; i++)
@@ -390,7 +390,7 @@ bool Dmod_DisconnectInputApis( Dmod_Context_t* Context )
         result = false;
     }
 
-    Dmod_ExitCritical();
+    Dmod_Hlp_UnlockApis( apiLock );
 
     return result;
 }
@@ -408,9 +408,9 @@ bool Dmod_DisconnectAllApis( Dmod_Context_t* Context )
         return false;
     }
 
-    Dmod_EnterCritical();
+    bool apiLock = Dmod_Hlp_LockApis();
     bool result = Dmod_DisconnectInputApis( Context ) && Dmod_DisconnectOutputApis( Context );
-    Dmod_ExitCritical();
+    Dmod_Hlp_UnlockApis( apiLock );
     if( !result )
     {
         DMOD_LOG_ERROR("Cannot disconnect APIs - failed to disconnect\n");
@@ -635,7 +635,7 @@ Dmod_Context_t* Dmod_GetNextDifModule( const char* DifSignature, Dmod_Context_t*
         return NULL;
     }
 
-    Dmod_EnterCritical();
+    bool apiLock = Dmod_Hlp_LockApis();
     
     size_t startIndex = 0;
     if( Previous != NULL )
@@ -672,12 +672,12 @@ Dmod_Context_t* Dmod_GetNextDifModule( const char* DifSignature, Dmod_Context_t*
         {
             if( Dmod_ApiSignature_AreCompatible( Dmod_Contexts[i]->Inputs.InputSection->Entries[j].Signature, DifSignature ) )
             {
-                Dmod_ExitCritical();
+                Dmod_Hlp_UnlockApis( apiLock );
                 return Dmod_Contexts[i];
             }
         }
     }
 
-    Dmod_ExitCritical();
+    Dmod_Hlp_UnlockApis( apiLock );
     return NULL;
 }
