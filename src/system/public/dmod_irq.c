@@ -216,7 +216,9 @@ void Dmod_Irq_UnregisterModule( Dmod_Context_t* Context )
         return;
     }
 
+    /* the interrupts read the table: an entry goes away between two of them */
     size_t totalEntries = Dmod_IrqNumIrqs * Dmod_IrqMaxHandlers;
+    Dmod_EnterCritical();
     for( size_t i = 0; i < totalEntries; i++ )
     {
         if( Dmod_IrqTable[i].Owner == Context )
@@ -225,6 +227,7 @@ void Dmod_Irq_UnregisterModule( Dmod_Context_t* Context )
             Dmod_IrqTable[i].Owner   = NULL;
         }
     }
+    Dmod_ExitCritical();
 }
 
 void Dmod_IrqAll( int IrqNumber )

@@ -153,6 +153,7 @@ bool Dmod_Initialize( size_t NumIrqs, size_t MaxHandlersPerIrq )
         return false;
     }
     Dmod_Hlp_InitSearchCache();
+    Dmod_Hlp_InitApiLock();
     if( !Dmod_Mgr_BuildSystemModuleList() )
     {
         DMOD_LOG_WARN("Cannot build the list of system modules - built-in APIs will be checked one by one\n");
@@ -168,6 +169,7 @@ bool Dmod_Initialize( size_t NumIrqs, size_t MaxHandlersPerIrq )
 bool Dmod_Deinitialize(void)
 {
     Dmod_Hlp_DeinitSearchCache();
+    Dmod_Hlp_DeinitApiLock();
     Dmod_Mgr_FreeSystemModuleList();
     Dmod_Irq_Deinit();
     return true;
@@ -920,17 +922,17 @@ bool Dmod_Unload( Dmod_Context_t* Context, bool Force )
         return false;
     }
 
-    Dmod_EnterCritical();
+    bool apiLock = Dmod_Hlp_LockApis();
     if(Context->Enabled && !Force)
     {
         DMOD_LOG_ERROR("Module %s cannot be unloaded - it has to be disabled first\n", Dmod_Context_GetModuleName( Context ));
-        Dmod_ExitCritical();
+        Dmod_Hlp_UnlockApis( apiLock );
         return false;
     }
     if(Context->Running && !Force)
     {
         DMOD_LOG_ERROR("Module %s cannot be unloaded - it has to be stopped first\n", Dmod_Context_GetModuleName( Context ));
-        Dmod_ExitCritical();
+        Dmod_Hlp_UnlockApis( apiLock );
         return false;
     }
 
@@ -942,7 +944,7 @@ bool Dmod_Unload( Dmod_Context_t* Context, bool Force )
         DMOD_LOG_WARN("Unloading module %s failed - not found\n", Dmod_Context_GetModuleName( Context ));
     }
     Dmod_Context_Delete( Context );    
-    Dmod_ExitCritical();
+    Dmod_Hlp_UnlockApis( apiLock );
 
     return true;
 }
